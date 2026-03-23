@@ -16,6 +16,7 @@ SET "BUILD_TOOLS_PATH_VS2019Pro=C:\Program Files (x86)\Microsoft Visual Studio\2
 SET "BUILD_TOOLS_PATH_MSBuild2019=C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Auxiliary\Build"
 SET "BUILD_TOOLS_PATH_VS2022CE=C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build"
 SET "BUILD_TOOLS_PATH_VS2022Pro=C:\Program Files\Microsoft Visual Studio\2022\Professional\VC\Auxiliary\Build"
+SET "BUILD_TOOLS_PATH_VS2022Ent=C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build"
 SET "BUILD_TOOLS_PATH_MSBuild2022=C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build"
 
 :: Look for the most recent version of Visual Studio installed
@@ -23,6 +24,9 @@ if %vs2022% EQU 1 (
     if "%VSSOLUTION%"=="" (
         IF EXIST "%BUILD_TOOLS_PATH_MSBuild2022%" (
             SET "BUILD_TOOLS_PATH=%BUILD_TOOLS_PATH_MSBuild2022%"
+            SET VSSOLUTION=vs2022
+        ) ELSE IF EXIST "%BUILD_TOOLS_PATH_VS2022Ent%" (
+            SET "BUILD_TOOLS_PATH=%BUILD_TOOLS_PATH_VS2022Ent%"
             SET VSSOLUTION=vs2022
         ) ELSE IF EXIST "%BUILD_TOOLS_PATH_VS2022Pro%" (
             SET "BUILD_TOOLS_PATH=%BUILD_TOOLS_PATH_VS2022Pro%"
