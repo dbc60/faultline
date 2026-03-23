@@ -131,6 +131,7 @@ if errorlevel 1 (
     GOTO :ERROR
 )
 
+IF NOT EXIST test MD test
 copy /y %DIR_OUT_BIN%\*.exe test\ > NUL
 copy /y %DIR_OUT_BIN%\*.dll test\ > NUL
 
