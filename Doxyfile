@@ -1,0 +1,51 @@
+PROJECT_NAME           = "FaultLine Unit-Test Framework"
+PROJECT_NUMBER         = 1.0
+PROJECT_BRIEF          = "A fault-injection unit-test framework for C"
+PROJECT_LOGO           =
+OUTPUT_DIRECTORY       = docs
+ABBREVIATE_BRIEF       = "The $name class" \
+                         "The $name widget" \
+                         "The $name file" \
+                         is \
+                         provides \
+                         specifies \
+                         contains \
+                         represents \
+                         a \
+                         an \
+                         the
+
+ALIASES                +=fixme="@bug"
+OPTIMIZE_OUTPUT_FOR_C  = YES
+EXTENSION_MAPPING      = md=markdown
+GROUP_NESTED_COMPOUNDS = YES
+INLINE_GROUPED_CLASSES = YES
+EXTRACT_ALL            = YES
+EXTRACT_STATIC         = YES
+EXTRACT_LOCAL_METHODS  = YES
+CASE_SENSE_NAMES       = NO
+SORT_BRIEF_DOCS        = YES
+WARN_NO_PARAMDOC       = YES
+INPUT = src include README.md
+FILE_PATTERNS          = *.c *.h *.md
+RECURSIVE              = YES
+EXCLUDE                = "docs/Faultline Notes/"
+EXCLUDE               += morgue
+EXCLUDE               += target
+EXCLUDE_PATTERNS       = */tests/*
+USE_MDFILE_AS_MAINPAGE = README.md
+USE_HTAGS              = NO
+HTML_HEADER            = docs/custom-header.html
+HTML_FOOTER            = docs/custom-footer.html
+HTML_EXTRA_STYLESHEET  = docs/doxygen-awesome-css/doxygen-awesome.css
+HTML_COLORSTYLE_HUE    = 209
+HTML_COLORSTYLE_SAT    = 255
+HTML_COLORSTYLE_GAMMA  = 113
+HTML_DYNAMIC_SECTIONS  = YES
+GENERATE_TREEVIEW      = YES
+MACRO_EXPANSION        = YES
+INCLUDE_PATH           = include
+PREDEFINED             = DLL_BUILD DOXYGEN
+
+EXTRACT_PRIVATE        = YES
+EXTRACT_PRIV_VIRTUAL   = YES

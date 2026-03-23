@@ -1,0 +1,37 @@
+# See https://git-scm.com/docs/gitignore for details
+
+# Fossil SCM
+_FOSSIL_
+
+# build artifacts
+target/
+
+# WinMerge
+*.bak
+
+# Doxygen generated files
+docs/html/
+
+# RemedyBG debugger session-files
+*.rdbg
+
+# Obsidian
+*/.obsidian
+
+# Visual Studio and VS Code
+.vscode/
+.vs/
+
+# Yes, I use Claude Code to help organize this repo
+.claude/
+CLAUDE.md
+
+# Experiments with agents
+_ai_team/
+
+# Test results
+test/
+test_sh/
+test_clang/
+ctime/
+metrics/

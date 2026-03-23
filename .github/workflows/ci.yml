@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  checks: write
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+
+    strategy:
+      matrix:
+        build_type: [debug, release]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build and test (${{ matrix.build_type }})
+        shell: cmd
+        run: build\cmd\all.cmd test junit ${{ matrix.build_type }}
+
+      - name: Publish test results
+        if: always()
+        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
+        with:
+          name: Test Results (${{ matrix.build_type }})
+          path: test/junit.xml
+          reporter: java-junit
+          fail-on-error: true
+
+      - name: Install SDK (${{ matrix.build_type }})
+        shell: pwsh
+        run: >
+          .\build\ps\install-sdk.ps1
+          -Prefix "${{ runner.temp }}\faultline-sdk"
+          -BuildType ${{ matrix.build_type }}
+          -Force
+
+      - name: Upload SDK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: faultline-sdk-x64-${{ matrix.build_type }}
+          path: ${{ runner.temp }}\faultline-sdk\FaultLine\
