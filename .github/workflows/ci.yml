@@ -19,7 +19,7 @@ jobs:
         build_type: [debug, release]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
 
       - name: Build and test (${{ matrix.build_type }})
         shell: cmd
@@ -43,7 +43,7 @@ jobs:
           -Force
 
       - name: Upload SDK artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: faultline-sdk-x64-${{ matrix.build_type }}
           path: ${{ runner.temp }}\faultline-sdk\FaultLine\
