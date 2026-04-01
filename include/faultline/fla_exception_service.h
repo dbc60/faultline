@@ -14,6 +14,7 @@
 #include <setjmp.h> // for setjmp
 #include <stddef.h> // IWYU pragma: keep - NULL used in FL_THROW
 #include <stdio.h>  // IWYU pragma: keep - snprintf used in FL_THROW_DETAILS macro body
+#include <string.h> // strcmp
 #include <faultline/fl_exception_service.h> // for FLExceptionService
 #include <faultline/fl_exception_types.h>   // for FL_MAX_DETAILS_LENGTH
 #include <faultline/fl_macros.h>            // FL_DECL_SPEC
@@ -60,10 +61,28 @@ FL_DECL_SPEC FLA_SET_EXCEPTION_SERVICE_FN(fla_set_exception_service);
         fl_env_.state = setjmp(fl_env_.jmp);                 \
         if (fl_env_.state == FL_ENTERED) {
 /**
- * @brief Catch a specific exception type.
+ * @brief Catch a specific exception by pointer identity.
  *
- * If an exception was thrown with the matching reason, marks it as handled
- * and executes the catch block.
+ * Compares fl_env_.reason to @p exception using pointer equality, not strcmp.
+ * This is intentional: exception reasons are address tokens, not strings. Two
+ * independently defined variables with identical text are different reasons.
+ *
+ * Consequence for static libraries: fl_exception_service.c is linked into each
+ * module separately, so each module has its own copy of the shared reason
+ * constants (fl_unexpected_failure, fl_expected_failure, etc.) at distinct
+ * addresses. FL_CATCH therefore only matches an exception thrown from the same
+ * module that owns the reason pointer passed as @p exception.
+ *
+ * The idiomatic pattern is to define a module-private reason, throw it, and
+ * catch it within the same translation unit:
+ *
+ *   static FLExceptionReason my_reason = "my reason";
+ *   FL_TRY { FL_THROW(my_reason); }
+ *   FL_CATCH(my_reason) { ... }
+ *   FL_END_TRY;
+ *
+ * To detect a specific exception that may have been thrown by a different
+ * module (e.g., a test suite DLL), use FL_CATCH_STR, below.
  */
 #define FL_CATCH(exception)                   \
     if (fl_env_.state == FL_ENTERED) {        \
@@ -71,6 +90,28 @@ FL_DECL_SPEC FLA_SET_EXCEPTION_SERVICE_FN(fla_set_exception_service);
     }                                         \
     }                                         \
     else if (fl_env_.reason == (exception)) { \
+        fl_env_.state = FL_HANDLED;
+
+/**
+ * @brief Catch a specific exception by string comparison.
+ *
+ * Compares fl_env_.reason to @p exception using strcmp rather than pointer
+ * equality. Use this instead of FL_CATCH when the exception may have been
+ * thrown by a different module (e.g., a test suite DLL catching one of the
+ * shared reason constants from fl_exception_service.h). Because those
+ * constants are statically linked into each module separately, their addresses
+ * differ across modules and FL_CATCH would silently fail to match.
+ *
+ *   FL_TRY { ... }
+ *   FL_CATCH_STR(fl_unexpected_failure) { ... }
+ *   FL_END_TRY;
+ */
+#define FL_CATCH_STR(exception)                     \
+    if (fl_env_.state == FL_ENTERED) {              \
+        FL_EXC_POP();                               \
+    }                                               \
+    }                                               \
+    else if (strcmp(fl_env_.reason, (exception))) { \
         fl_env_.state = FL_HANDLED;
 
 /**
