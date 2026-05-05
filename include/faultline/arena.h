@@ -219,6 +219,21 @@ bool arena_is_valid_allocation(Arena *arena, void const *mem);
 void init_mparams(void);
 
 /**
+ * @brief Set the maximum memory footprint the arena may use.
+ *
+ * The limit is rounded up to the system allocation granularity. Pass 0 to
+ * remove any previously set limit (the default — unlimited growth).
+ *
+ * Once set to a non-zero value, any allocation that would require growing the
+ * arena beyond the limit throws arena_out_of_memory instead.
+ *
+ * @param arena The arena to configure.
+ * @param limit Maximum committed bytes, or 0 for unlimited.
+ * @throw arena_out_of_memory
+ */
+void arena_set_footprint_limit(Arena *arena, size_t limit);
+
+/**
  * @brief Get the operating system's page size.
  *
  * @return The page size in bytes (typically 4096 bytes on most systems).

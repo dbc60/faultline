@@ -114,6 +114,15 @@ size_t arena_granularity(void) {
     return mparams.granularity;
 }
 
+void arena_set_footprint_limit(Arena *arena, size_t limit) {
+    if (limit == 0) {
+        arena->footprint_limit = 0;
+        return;
+    }
+    init_mparams();
+    arena->footprint_limit = ALIGN_UP(limit, mparams.granularity);
+}
+
 Arena *new_arena(size_t commit, u32 reserve) {
     FL_ASSERT_DETAILS(commit <= SIZE_MAX - ARENA_ALIGNED_SIZE - CHUNK_SENTINEL_SIZE
                                     - TWO_SIZE_T_SIZES,
@@ -155,6 +164,10 @@ Arena *new_arena(size_t commit, u32 reserve) {
 }
 
 void release_arena(Arena **arena) {
+    if (arena == NULL || *arena == NULL) {
+        return;
+    }
+
     DList *head = &(*arena)->region_list;
     DList *next = DLIST_NEXT(head);
     while (next != head) {
@@ -465,6 +478,11 @@ static void *extend(Arena *arena, size_t request, char const *file, int line) {
     // region only as much as needed.
     if (top_size > CHUNK_SENTINEL_SIZE) {
         extend_size -= top_size;
+    }
+
+    if (arena->footprint_limit != 0
+        && arena->footprint + extend_size > arena->footprint_limit) {
+        FL_THROW(arena_out_of_memory);
     }
 
     LOG_DEBUG("Arena", "available: %zu, size: %zu", available, extend_size);

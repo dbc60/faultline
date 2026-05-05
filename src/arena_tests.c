@@ -25,6 +25,8 @@
 #include "arena_extend_edge_test.c"
 #include "arena_aligned_alloc_test.c"
 #include "arena_fast_sysinfo_mixed_test.c"
+#include "arena_footprint_limit_test.c"
+#include "arena_catch_str_test.c"
 #include "region.c"
 #include "region_node.c"
 #include "fl_exception_service.c"  // fl_expected_failure
@@ -98,6 +100,13 @@ FL_SUITE_ADD_EMBEDDED(test_aligned_alloc_multiple)
 FL_SUITE_ADD_EMBEDDED(test_aligned_alloc_non_throw_invalid)
 FL_SUITE_ADD_EMBEDDED(test_aligned_alloc_throw_invalid)
 FL_SUITE_ADD_EMBEDDED(test_aligned_alloc_throw_zero)
+FL_SUITE_ADD_EMBEDDED(footprint_limit_rounds_up)
+FL_SUITE_ADD_EMBEDDED(footprint_limit_enforced)
+FL_SUITE_ADD_EMBEDDED(footprint_limit_zero_means_unlimited)
+FL_SUITE_ADD_EMBEDDED(footprint_limit_clear_restores_growth)
+FL_SUITE_ADD(catch_str_catches_matching_string)
+FL_SUITE_ADD(catch_str_skips_non_matching_string)
+FL_SUITE_ADD(catch_str_vs_pointer_identity)
 FL_SUITE_END;
 
 FL_GET_TEST_SUITE("Arena", ts)
