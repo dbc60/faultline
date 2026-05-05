@@ -106,12 +106,12 @@ FL_DECL_SPEC FLA_SET_EXCEPTION_SERVICE_FN(fla_set_exception_service);
  *   FL_CATCH_STR(fl_unexpected_failure) { ... }
  *   FL_END_TRY;
  */
-#define FL_CATCH_STR(exception)                     \
-    if (fl_env_.state == FL_ENTERED) {              \
-        FL_EXC_POP();                               \
-    }                                               \
-    }                                               \
-    else if (strcmp(fl_env_.reason, (exception))) { \
+#define FL_CATCH_STR(exception)                          \
+    if (fl_env_.state == FL_ENTERED) {                   \
+        FL_EXC_POP();                                    \
+    }                                                    \
+    }                                                    \
+    else if (strcmp(fl_env_.reason, (exception)) == 0) { \
         fl_env_.state = FL_HANDLED;
 
 /**
