@@ -5,105 +5,22 @@
  *
  * /DFL_EMBEDDED keeps FL_DECL_SPEC empty (no dllimport on a locally-defined
  * function).  Use /DDLL_BUILD instead when compiling into an actual DLL.
- * flp_exception_service.c and flp_log_service.c are NOT on the command line —
- * the inline stubs below provide flp_push/pop/throw and sa_write_log for the
- * test binary and avoid duplicate symbols.
  *
  * Exit code: 0 = all passed, 1 = one or more failures.
- * @version 0.1
- * @date 2026-05-04
+ * @version 0.2
+ * @date 2026-05-17
  *
  * See LICENSE.txt for copyright and licensing information about this file.
  *
  */
 
-#include <stdarg.h>  // va_list, va_start, va_end
 #include <stdbool.h> // bool
-#include <stdint.h>  // uint32_t, uintptr_t
-#include <stdlib.h>  // abort
+#include <stdint.h>  // uintptr_t
+#include <stdio.h>   // fprintf, stdout, stderr
 
 #include <faultline/fl_try.h> // FL_TRY, FL_CATCH, FL_END_TRY, FL_THROW, FL_CATCH_STR
-#include <faultline/fl_log_types.h>    // FLLogService, FL_WRITE_LOG_FN, FLLogLevel
-#include <faultline/fla_log_service.h> // fla_set_log_service
-#include <faultline/arena.h>           // Arena, new_arena, release_arena, arena_*
-#include <faultline/arena_malloc.h>    // arena_malloc, arena_free, arena_calloc, etc.
-
-/* -----------------------------------------------------------------------
- * Minimal driver-side TLS stack (normally in flp_exception_service.c).
- * Provided here to avoid a duplicate fl_throw_assertion symbol when both
- * flp_exception_service.c and fla_exception_service.c are linked together.
- * ----------------------------------------------------------------------- */
-static FL_THREAD_LOCAL FLExceptionEnvironment *g_flp_stack;
-
-static FL_PUSH_EXCEPTION_SERVICE_FN(flp_push) {
-    env->next   = g_flp_stack;
-    g_flp_stack = env;
-}
-
-static FL_POP_EXCEPTION_SERVICE_FN(flp_pop) {
-    FLExceptionEnvironment *env = g_flp_stack;
-    g_flp_stack                 = env->next;
-}
-
-static FL_THROW_EXCEPTION_SERVICE_FN(flp_throw) {
-    if (g_flp_stack == NULL) {
-        fprintf(stderr, "flp_throw: unhandled exception \"%s\" at %s:%d\n",
-                reason ? reason : "(null)", file ? file : "?", line);
-        abort();
-    }
-    FLExceptionEnvironment *env = g_flp_stack;
-    g_flp_stack                 = env->next;
-    env->reason                 = reason;
-    env->details                = details;
-    env->file                   = file;
-    env->line                   = (uint32_t)line;
-    longjmp(env->jmp, FL_THROWN);
-}
-
-/* Mirrors flp_init_exception_service(fla_set_exception_service) */
-static void init_service(void) {
-    FLExceptionService svc = {
-        .push_env  = flp_push,
-        .pop_env   = flp_pop,
-        .throw_exc = flp_throw,
-    };
-    fla_set_exception_service(&svc, sizeof svc);
-}
-
-/* -----------------------------------------------------------------------
- * Minimal log write (normally provided by flp_log_service.c).
- * Avoids linking flp_log_service.c, which pulls in fl_threads and would
- * duplicate symbols already present in the standalone binary.
- * ----------------------------------------------------------------------- */
-static FL_WRITE_LOG_FN(sa_write_log) {
-    if (level > LOG_LEVEL_INFO) {
-        return;
-    }
-    static char const *level_names[]
-        = {"FATAL", "ERROR", "WARN", "INFO", "VERBOSE", "DEBUG", "TRACE"};
-    char const *sep = strrchr(file, '/');
-    char const *bs  = strrchr(file, '\\');
-    if (bs > sep) {
-        sep = bs;
-    }
-    char const *filename = sep ? sep + 1 : file;
-    fprintf(stdout, "[%-7s] %s:%3d", level_names[level], filename, line);
-    if (id && id[0] != '\0') {
-        fprintf(stdout, " [%s]", id);
-    }
-    fprintf(stdout, " ");
-    va_list args;
-    va_start(args, format);
-    vfprintf(stdout, format, args);
-    va_end(args);
-    fprintf(stdout, "\n");
-    fflush(stdout);
-}
-
-static void init_log_service(void) {
-    FLLogService svc = {.write = sa_write_log};
-    fla_set_log_service(&svc, sizeof svc);
-}
+#include <faultline/arena.h>  // Arena, new_arena, release_arena, arena_*
+#include <faultline/arena_malloc.h> // arena_malloc, arena_free, arena_calloc, etc.
 
 /*
  * Minimal test harness
@@ -465,8 +382,6 @@ static void test_catch_str(void) {
  */
 
 int main(void) {
-    init_service();
-    init_log_service();
     fprintf(stdout, "arena_sa_test\n");
     test_lifecycle();
     test_throwing_malloc();

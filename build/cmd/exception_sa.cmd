@@ -31,7 +31,7 @@ IF %build% EQU 1 (
         /I"%DIR_REPO%\standalone\exception\include" ^
         /I"%DIR_INCLUDE%" ^
         "%DIR_REPO%\src\fl_exception_service.c" ^
-        "%DIR_REPO%\src\fla_exception_service.c" ^
+        "%DIR_REPO%\standalone\exception\src\fla_exception_service.c" ^
         "%DIR_REPO%\standalone\exception\src\exception_sa_test.c" ^
         /Fo:"%DIR_OUT_OBJ%\\" ^
         /Fd:"%DIR_OUT_BIN%\exception_sa_test.pdb" ^

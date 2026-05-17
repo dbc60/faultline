@@ -33,8 +33,8 @@ IF %build% EQU 1 (
         "%DIR_REPO%\src\arena_dbg.c" ^
         "%DIR_REPO%\src\arena_malloc.c" ^
         "%DIR_REPO%\src\digital_search_tree.c" ^
-        "%DIR_REPO%\src\fla_exception_service.c" ^
-        "%DIR_REPO%\src\fla_log_service.c" ^
+        "%DIR_REPO%\standalone\exception\src\fla_exception_service.c" ^
+        "%DIR_REPO%\standalone\log\src\fla_log_service.c" ^
         "%DIR_REPO%\src\fl_exception_service.c" ^
         "%DIR_REPO%\src\region.c" ^
         "%DIR_REPO%\src\region_node.c" ^

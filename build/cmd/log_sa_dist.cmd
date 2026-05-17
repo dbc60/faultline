@@ -27,6 +27,7 @@ SET DIR_REPO=%DIR_REPO:~0,-1%
 
 SET DIR_DIST=%DIR_REPO%\dist\log
 SET DIR_SRC=%DIR_REPO%\src
+SET DIR_SA_LOG=%DIR_REPO%\standalone\log\src
 SET DIR_INC=%DIR_REPO%\include\faultline
 
 :: Handle clean
@@ -50,7 +51,7 @@ IF NOT EXIST "%DIR_DIST%\include\faultline"    MD "%DIR_DIST%\include\faultline"
 ECHO Copying source files...
 COPY /Y "%DIR_SRC%\fl_threads.c"             "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SRC%\flp_log_service.c"        "%DIR_DIST%\src\" > NUL
-COPY /Y "%DIR_SRC%\fla_log_service.c"        "%DIR_DIST%\src\" > NUL
+COPY /Y "%DIR_SA_LOG%\fla_log_service.c"       "%DIR_DIST%\src\" > NUL
 
 :: -----------------------------------------------------------------------
 :: Public headers from include\faultline\

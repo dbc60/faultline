@@ -29,7 +29,6 @@ IF %build% EQU 1 (
 
     cl %CommonCompilerFlagsFinal% /experimental:c11atomics /DFL_EMBEDDED ^
         /I"%DIR_INCLUDE%" ^
-        /I"%DIR_REPO%\src" ^
         "%DIR_REPO%\standalone\log\src\log_sa_test.c" ^
         /Fo:"%DIR_OUT_OBJ%\\" ^
         /Fd:"%DIR_OUT_BIN%\log_sa_test.pdb" ^

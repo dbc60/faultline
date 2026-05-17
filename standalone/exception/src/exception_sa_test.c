@@ -1,79 +1,29 @@
 /**
  * @file exception_sa_test.c
  * @author Douglas Cuthbertson
- * @brief Standalone test for the FLP/FLA service injection exception architecture.
+ * @brief Standalone test for the exception service architecture.
  *
  * All test cases are defined directly in this file using FL_TEST macros.
  * fl_test.h is a stub that strips FL_TEST/FL_SUITE_* down to plain static
  * function definitions so the tests compile without the FaultLine driver
  * infrastructure.
  *
- * flp_exception_service.c is NOT on the command line — the inline
- * flp_push/pop/throw stubs below provide the driver-side TLS stack and avoid
- * the duplicate fl_throw_assertion symbol that would result from linking both.
- *
  * /DFL_EMBEDDED keeps FL_DECL_SPEC empty (no dllimport on a locally-defined
  * function).  Use /DDLL_BUILD instead when compiling fla_exception_service.c
  * into an actual DLL.
- * @version 0.1
- * @date 2026-05-10
+ * @version 0.2
+ * @date 2026-05-17
  *
  * See LICENSE.txt for copyright and licensing information about this file.
  */
-#include <faultline/fla_exception_service.h> /* FL_TRY, FL_CATCH, ... (plugin side) */
-#include <faultline/fl_exception_service.h>  /* FLExceptionService, reason externs  */
-#include <faultline/fl_exception_service_assert.h> /* FL_ASSERT_*, FL_FAIL                */
-#include <faultline/fl_exception_types.h> /* FLExceptionEnvironment, FL_THROWN   */
-#include <faultline/fl_macros.h>          /* FL_THREAD_LOCAL                     */
-#include <faultline/fl_test.h>            /* FL_TEST, FL_TEST_SETUP_CLEANUP       */
-#include <setjmp.h>
+#include <faultline/fla_exception_service.h>       // FL_TRY, FL_CATCH, FL_REASON, etc.
+#include <faultline/fl_exception_service.h>        // reason externs
+#include <faultline/fl_exception_service_assert.h> // FL_ASSERT_*, FL_FAIL
+#include <faultline/fl_test.h>                     // FL_TEST, FL_TEST_SETUP_CLEANUP
 #include <stdbool.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-/* -----------------------------------------------------------------------
- * Minimal driver-side TLS stack (normally in flp_exception_service.c).
- * Provided here to avoid linking flp_exception_service.c into the test,
- * which would produce a duplicate fl_throw_assertion symbol.
- * ----------------------------------------------------------------------- */
-static FL_THREAD_LOCAL FLExceptionEnvironment *g_flp_stack;
-
-static FL_PUSH_EXCEPTION_SERVICE_FN(flp_push) {
-    env->next   = g_flp_stack;
-    g_flp_stack = env;
-}
-
-static FL_POP_EXCEPTION_SERVICE_FN(flp_pop) {
-    FLExceptionEnvironment *env = g_flp_stack;
-    g_flp_stack                 = env->next;
-}
-
-static FL_THROW_EXCEPTION_SERVICE_FN(flp_throw) {
-    if (g_flp_stack == NULL) {
-        fprintf(stderr, "flp_throw: unhandled exception \"%s\" at %s:%d\n",
-                reason ? reason : "(null)", file ? file : "?", line);
-        abort();
-    }
-    FLExceptionEnvironment *env = g_flp_stack;
-    g_flp_stack                 = env->next;
-    env->reason                 = reason;
-    env->details                = details;
-    env->file                   = file;
-    env->line                   = (uint32_t)line;
-    longjmp(env->jmp, FL_THROWN);
-}
-
-/* Mirrors flp_init_exception_service(fla_set_exception_service) */
-static void init_service(void) {
-    FLExceptionService svc = {
-        .push_env  = flp_push,
-        .pop_env   = flp_pop,
-        .throw_exc = flp_throw,
-    };
-    fla_set_exception_service(&svc, sizeof svc);
-}
 
 /* -----------------------------------------------------------------------
  * Minimal harness — wraps each test, counts failures via fl_unexpected_failure
@@ -427,7 +377,6 @@ FL_TEST("Rethrow Preserves Metadata", test_rethrow_preserves_metadata) {
 }
 
 int main(void) {
-    init_service();
     puts("exception_sa_test");
     run("Throw", test_throw);
     run("Throw File Line", test_throw_file_line);

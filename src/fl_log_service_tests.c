@@ -25,8 +25,6 @@
 #include "fla_exception_service.c" // TLS exception service (app-side)
 #include "flp_log_service.c"       // code under test (platform log service)
 
-#include <io.h> // _dup, _dup2, _fileno, _close
-
 // ---------------------------------------------------------------------------
 // Helper functions
 // ---------------------------------------------------------------------------
@@ -255,20 +253,7 @@ FL_TEST("Set Output Path Append Mode", set_output_path_append_mode) {
 
 FL_TEST("Set Output Path Invalid Fallback", set_output_path_invalid_fallback) {
     flp_log_init();
-
-    // Suppress expected stderr error from flp_log_set_output_path
-    fflush(stderr);
-    int   saved_stderr = _dup(_fileno(stderr));
-    FILE *devnull;
-    freopen_s(&devnull, "NUL", "w", stderr);
-
     flp_log_set_output_path("X:\\no_such_dir_abc123\\no_such_file.log");
-
-    // Restore stderr
-    fflush(stderr);
-    _dup2(saved_stderr, _fileno(stderr));
-    _close(saved_stderr);
-
     FL_ASSERT_EQ_PTR((void *)g_logger.output, (void *)stdout);
     FL_ASSERT_FALSE(g_logger.close_output);
     flp_log_cleanup();
