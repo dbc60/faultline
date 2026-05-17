@@ -56,8 +56,6 @@ COPY /Y "%DIR_SRC%\region.c"                 "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SRC%\region_node.c"            "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SRC%\digital_search_tree.c"    "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SRC%\fl_threads.c"             "%DIR_DIST%\src\" > NUL
-COPY /Y "%DIR_SA%\src\fl_sa_exception_service.c" "%DIR_DIST%\src\" > NUL
-COPY /Y "%DIR_SA%\src\fl_sa_reasons.c"           "%DIR_DIST%\src\" > NUL
 
 :: -----------------------------------------------------------------------
 :: Private headers (needed to compile the sources; not part of the public API)
