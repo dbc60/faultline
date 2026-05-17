@@ -415,7 +415,8 @@ FL_TYPE_TEST_SETUP_CLEANUP("Results", TestDriverData, results_test, setup_test_c
 }
 
 FL_TYPE_TEST_SETUP_CLEANUP("Discovery Failure Recording", TestDriverData,
-                           discovery_failure_recording, setup_test_context, cleanup_context) {
+                           discovery_failure_recording, setup_test_context,
+                           cleanup_context) {
     // Create a test summary and properly set its phase and failure type
     FLTestSummary *summary
         = faultline_test_summary_buffer_allocate_next_free_slot(&t->context.results);
@@ -450,7 +451,8 @@ FL_TYPE_TEST_SETUP_CLEANUP("Discovery Failure Recording", TestDriverData,
 }
 
 FL_TYPE_TEST_SETUP_CLEANUP("Injection Failure Recording", TestDriverData,
-                           injection_failure_recording, setup_test_context, cleanup_context) {
+                           injection_failure_recording, setup_test_context,
+                           cleanup_context) {
     // Create a test summary and properly set its phase and failure type for injection
     // phase
     FLTestSummary *summary

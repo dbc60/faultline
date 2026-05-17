@@ -10,7 +10,7 @@
 #include "fl_exception_service.c"
 #include "fla_exception_service.c"
 
-#include "bits.h"                 // macros under test
+#include "bits.h"                           // macros under test
 #include <faultline/fl_abbreviated_types.h> // flag64, u64, U64_BIT
 #include <faultline/fl_macros.h>            // FL_UNUSED
 #include <faultline/fl_test.h>              // FL_TEST, FL_SUITE_*, FL_GET_TEST_SUITE

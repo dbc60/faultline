@@ -150,7 +150,7 @@ struct Set {
     }                                                                                  \
                                                                                        \
     static inline FL_MAYBE_UNUSED bool PRE##_set_contains(VT##Set const *set,          \
-                                                          VT const      *element) {         \
+                                                          VT const      *element) {    \
         return set_contains((Set const *)set, element);                                \
     }                                                                                  \
                                                                                        \

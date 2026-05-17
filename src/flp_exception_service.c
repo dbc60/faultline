@@ -22,7 +22,7 @@
 #include <faultline/fl_exception_service_assert.h> // for fl_throw_assertion
 #include <faultline/fl_exception_types.h>          // for FLExceptionEnvironment, FL_...
 #include <faultline/fl_macros.h>                   // FL_THREAD_LOCAL
-#include <setjmp.h>                      // for longjmp
+#include <setjmp.h>                                // for longjmp
 
 static FL_THREAD_LOCAL FLExceptionEnvironment *g_stack;
 

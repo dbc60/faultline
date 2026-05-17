@@ -16,7 +16,7 @@
  * See LICENSE.txt for copyright and licensing information about this file.
  */
 
-#include <faultline/buffer.h>             // Buffer API
+#include <faultline/buffer.h>               // Buffer API
 #include <faultline/fl_abbreviated_types.h> // i64
 #include <stddef.h>                         // size_t
 

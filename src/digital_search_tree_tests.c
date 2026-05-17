@@ -12,10 +12,10 @@
 #include "fl_exception_service.c"  // fl_expected_failure
 #include "fla_exception_service.c" // fl_throw_assertion, g_fla_exception_service
 
-#include <faultline/fl_test.h>           // FLTestCase
-#include <faultline/dlist.h> // DList
-#include <faultline/fl_macros.h>         // FL_CONTAINER_OF
-#include <faultline/size.h>              // SIZE_T_BITSIZE, SIZE_T_ONE
+#include <faultline/fl_test.h>   // FLTestCase
+#include <faultline/dlist.h>     // DList
+#include <faultline/fl_macros.h> // FL_CONTAINER_OF
+#include <faultline/size.h>      // SIZE_T_BITSIZE, SIZE_T_ONE
 
 #include <stddef.h> // size_t
 
@@ -70,11 +70,11 @@ static FL_SETUP_FN(setup_insert) {
 
 FL_TYPE_TEST_SETUP_CLEANUP("Insert Sibling", DSTInsertTestCase, insert_sibling,
                            setup_insert, fl_default_cleanup) {
-    DigitalSearchTree *root       = &t->dst;
-    flag64             left_shift = ((0 == MAX_BINS - 1) ? 0
-                                                         : (SIZE_T_BITSIZE - SIZE_T_ONE)
-                                                   - ((0 >> 1) + LOG2_MIN - 2));
-    DigitalSearchTree  node;
+    DigitalSearchTree *root = &t->dst;
+    flag64 left_shift       = ((0 == MAX_BINS - 1) ? 0
+                                                   : (SIZE_T_BITSIZE - SIZE_T_ONE)
+                                                         - ((0 >> 1) + LOG2_MIN - 2));
+    DigitalSearchTree node;
 
     dst_init(&node, KEY_MIN);
 
@@ -87,11 +87,11 @@ FL_TYPE_TEST_SETUP_CLEANUP("Insert Sibling", DSTInsertTestCase, insert_sibling,
 
 FL_TYPE_TEST_SETUP_CLEANUP("Insert", DSTInsertTestCase, insert, setup_insert,
                            fl_default_cleanup) {
-    DigitalSearchTree *root       = &t->dst;
-    flag64             left_shift = ((0 == MAX_BINS - 1) ? 0
-                                                         : (SIZE_T_BITSIZE - SIZE_T_ONE)
-                                                   - ((0 >> 1) + LOG2_MIN - 2));
-    DigitalSearchTree  node;
+    DigitalSearchTree *root = &t->dst;
+    flag64 left_shift       = ((0 == MAX_BINS - 1) ? 0
+                                                   : (SIZE_T_BITSIZE - SIZE_T_ONE)
+                                                         - ((0 >> 1) + LOG2_MIN - 2));
+    DigitalSearchTree node;
 
     for (size_t key = KEY_MIN + KEY_INCREMENT; key < KEY_MAX; key += KEY_INCREMENT) {
         dst_init(root, KEY_MIN);

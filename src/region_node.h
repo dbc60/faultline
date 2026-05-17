@@ -10,15 +10,15 @@
  *
  * See LICENSE.txt for copyright and licensing information about this file.
  */
-#include <faultline/dlist.h>    // for DList
+#include <faultline/dlist.h>                // for DList
 #include <faultline/size.h>                 // for TWO_SIZE_T_SIZES
-#include <stdbool.h>              // for bool
-#include <stddef.h>               // for ptrdiff_t, size_t
-#include "bits.h"                 // for ALIGN_UP
-#include "chunk.h"                // for Chunk, FreeChunk
+#include <stdbool.h>                        // for bool
+#include <stddef.h>                         // for ptrdiff_t, size_t
+#include "bits.h"                           // for ALIGN_UP
+#include "chunk.h"                          // for Chunk, FreeChunk
 #include <faultline/fl_abbreviated_types.h> // for u32
 #include <faultline/fl_exception_types.h>   // for FLExceptionReason
-#include "region.h"               // for release_region, MEM_TO_REGION
+#include "region.h"                         // for release_region, MEM_TO_REGION
 
 #if defined(__cplusplus)
 extern "C" {

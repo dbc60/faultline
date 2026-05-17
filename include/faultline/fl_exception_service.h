@@ -12,7 +12,7 @@
  *
  */
 #include <faultline/fl_exception_types.h> // FLExceptionEnvironment, FLExceptionReason, fl_exception_handler_fn
-#include <faultline/fl_macros.h>          // FL_STR
+#include <faultline/fl_macros.h> // FL_STR
 
 #if defined(__cplusplus)
 extern "C" {

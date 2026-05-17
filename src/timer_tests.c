@@ -14,7 +14,7 @@
 #include "win_timer.c" // start_win, stop_win, elapsed_win_ticks, elapsed_win_seconds
 
 #include <faultline/fl_test.h> // FL_TYPE_TEST_SETUP_CLEANUP, FL_TEST, FL_SUITE_*, FL_GET_TEST_SUITE
-#include <faultline/fl_try.h>  // FL_THROW_DETAILS
+#include <faultline/fl_try.h> // FL_THROW_DETAILS
 
 #include <faultline/fl_abbreviated_types.h> // u32, u64, i64
 #include <faultline/fl_macros.h>            // FL_CONTAINER_OF

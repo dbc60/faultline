@@ -16,7 +16,7 @@
  * - TickTimer: CPU time-stamp counter (TSC) for finest resolution
  */
 #include <faultline/fl_abbreviated_types.h> // u64, i64
-#include <time.h>                 // time_t, struct timespec, struct timeval
+#include <time.h>                           // time_t, struct timespec, struct timeval
 
 #if defined(_WIN32) || defined(WIN32)
 #ifndef WIN32_LEAN_AND_MEAN

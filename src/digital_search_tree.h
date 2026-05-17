@@ -11,14 +11,14 @@
  * See LICENSE.txt for copyright and licensing information about this file.
  *
  */
-#include <faultline/dlist.h>           // for DLIST_IS_EMPTY, DLIST_NEXT
+#include <faultline/dlist.h>                       // for DLIST_IS_EMPTY, DLIST_NEXT
 #include <faultline/fl_abbreviated_types.h>        // for flag64
 #include <faultline/fl_exception_service_assert.h> // for assert
 #include <faultline/fl_macros.h>                   // for FL_CONTAINER_OF
 #include <faultline/fl_try.h>                      // for FL_THROW_DETAILS, FL_THROW
-#include <stddef.h>                      // for NULL, size_t
-#include "bits.h"                        // for BITS_RIGHT_MSB_LEAST, UNSIG...
-#include "chunk.h"                       // for CHUNK_SIZE
+#include <stddef.h>                                // for NULL, size_t
+#include "bits.h"                                  // for BITS_RIGHT_MSB_LEAST, UNSIG...
+#include "chunk.h"                                 // for CHUNK_SIZE
 #include <faultline/fl_exception_service.h>        // for fl_internal_error
 
 /**

@@ -42,10 +42,10 @@ typedef u64 flag64;
 #define U32_BIT (sizeof(u32) * U08_BIT)
 #define U64_BIT (sizeof(u64) * U08_BIT)
 
-#define I08_MASK      ((i08)(~0))
-#define I16_MASK      ((i16)(~0))
-#define I32_MASK      ((i32)(~0))
-#define I64_MASK      ((i64)(~0))
+#define I08_MASK ((i08)(~0))
+#define I16_MASK ((i16)(~0))
+#define I32_MASK ((i32)(~0))
+#define I64_MASK ((i64)(~0))
 
 #define U08_MASK      ((u08)(~0))
 #define U16_MASK      ((u16)(~0))

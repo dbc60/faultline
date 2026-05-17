@@ -13,9 +13,10 @@
  * See LICENSE.txt for copyright and licensing information about this file.
  */
 #if defined(_MSC_VER) && _MSC_VER >= 1300
-#include <faultline/math_windows.h>  // IWYU pragma: export
-#elif (defined(__clang__) || defined(__GNUC__)) && (defined(__i386__) || defined(__x86_64__))
-#include <faultline/math_linux.h>  // IWYU pragma: export
+#include <faultline/math_windows.h> // IWYU pragma: export
+#elif (defined(__clang__) || defined(__GNUC__)) \
+    && (defined(__i386__) || defined(__x86_64__))
+#include <faultline/math_linux.h> // IWYU pragma: export
 // IWYU pragma: no_include "math/math_linux.h"
 #elif defined(__INTEL_COMPILER)
 // #include <math_intel.h>

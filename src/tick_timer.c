@@ -8,7 +8,7 @@
  * See LICENSE.txt for copyright and licensing information about this file.
  *
  */
-#include <faultline/timer.h>          // for TickTimer, elapsed_tick_seconds
+#include <faultline/timer.h>                // for TickTimer, elapsed_tick_seconds
 #include <faultline/fl_abbreviated_types.h> // for u64
 
 void start_ticks(TickTimer *t) {

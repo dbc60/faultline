@@ -3,20 +3,17 @@
 
 /**
  * @file fl_try.h
- * @author Douglas Cuthbertson
- * @brief Standalone override — same FL_BUILD_DRIVER selector as the original.
+ * @brief Unified try/catch/throw macros that work in both platform and application code.
  *
- * Both paths resolve to fl_sa_push/pop/throw; the split is structural only.
- * @version 0.1
- * @date 2026-05-04
- *
- * See LICENSE.txt for copyright and licensing information about this file.
- *
+ * This header selects include/log/flp_exception_service.h or
+ * include/fla_exception_service.h to provide FL_TRY, FL_CATCH, FL_END_TRY, FL_THROW,
+ * etc. macros based on whether FL_BUILD_DRIVER is defined.
  */
+
 #if defined(FL_BUILD_DRIVER)
-#include "flp_exception_service.h" // IWYU pragma: export
-#else
+#include "flp_exception_service.h"           // IWYU pragma: export
+#else                                        // Application/DLL build
 #include <faultline/fla_exception_service.h> // IWYU pragma: export
-#endif
+#endif                                       // FL_BUILD_DRIVER
 
 #endif // FL_TRY_H_

@@ -10,10 +10,10 @@
  *
  * See LICENSE.txt for copyright and licensing information about this file.
  */
-#include "fl_exception_service.c"        // fl_expected_failure, fl_invalid_value, etc.
-#include "fla_exception_service.c"       // fl_throw_assertion, g_fla_exception_service
-#include <faultline/fl_test.h>                     // FL_TEST, FL_SUITE_*, FL_GET_TEST_SUITE
-#include <faultline/fl_try.h>                      // FL_TRY, FL_CATCH, FL_CATCH_ALL, FL_END_TRY
+#include "fl_exception_service.c"  // fl_expected_failure, fl_invalid_value, etc.
+#include "fla_exception_service.c" // fl_throw_assertion, g_fla_exception_service
+#include <faultline/fl_test.h>     // FL_TEST, FL_SUITE_*, FL_GET_TEST_SUITE
+#include <faultline/fl_try.h>      // FL_TRY, FL_CATCH, FL_CATCH_ALL, FL_END_TRY
 #include <faultline/fl_exception_service_assert.h> // all FL_ASSERT* macros
 
 #include <stdbool.h> // bool
@@ -658,7 +658,8 @@ FL_TEST("FL_ASSERT_*_INT throws fl_unexpected_failure for violated int relations
 // Macros: EQ, NEQ, LT, LE, GT, GE using %d
 // ============================================================
 
-FL_TEST("FL_ASSERT_*_SINT passes for correct signed int relationships", test_binop_sint_pass) {
+FL_TEST("FL_ASSERT_*_SINT passes for correct signed int relationships",
+        test_binop_sint_pass) {
     FL_ASSERT_EQ_SINT(1, 1);
     FL_ASSERT_NEQ_SINT(1, 2);
     FL_ASSERT_LT_SINT(1, 2);
@@ -669,7 +670,8 @@ FL_TEST("FL_ASSERT_*_SINT passes for correct signed int relationships", test_bin
     FL_ASSERT_GE_SINT(2, 1);
 }
 
-FL_TEST("FL_ASSERT_*_SINT throws fl_unexpected_failure for violated signed int relationships",
+FL_TEST("FL_ASSERT_*_SINT throws fl_unexpected_failure for violated signed int "
+        "relationships",
         test_binop_sint_fail) {
     bool volatile caught;
 
@@ -1079,8 +1081,9 @@ FL_TEST("FL_ASSERT_*_UCHAR passes for correct unsigned char relationships",
     FL_ASSERT_GE_UCHAR(2u, 1u);
 }
 
-FL_TEST("FL_ASSERT_*_UCHAR throws fl_unexpected_failure for violated uchar relationships",
-        test_binop_uchar_fail) {
+FL_TEST(
+    "FL_ASSERT_*_UCHAR throws fl_unexpected_failure for violated uchar relationships",
+    test_binop_uchar_fail) {
     bool volatile caught;
 
     caught = false;

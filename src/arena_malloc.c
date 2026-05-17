@@ -11,8 +11,8 @@
 #include <faultline/fl_exception_service.h>        // for fl_invalid_address
 #include <faultline/fl_exception_service_assert.h> // FL_ASSERT
 #include <faultline/fl_try.h>                      // for FL_CATCH, FL_END_TRY, FL_TRY
-#include <faultline/arena_malloc.h>         // for arena_free_throw, arena_out_of_me...
-#include <stddef.h>                      // for size_t, NULL
+#include <faultline/arena_malloc.h> // for arena_free_throw, arena_out_of_me...
+#include <stddef.h>                 // for size_t, NULL
 
 void *arena_aligned_alloc(Arena *arena, size_t alignment, size_t size, char const *file,
                           int line) {

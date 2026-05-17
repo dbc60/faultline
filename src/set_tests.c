@@ -50,8 +50,8 @@ FL_SETUP_FN(setup_set) {
     t->capacity    = 2039;
     t->max_entries = 2039;
     u32 reserve    = (u32)((sizeof(Set) + t->capacity * sizeof(SetEntry)
-                         + t->max_entries * sizeof(SetEntry))
-                        / arena_granularity());
+                            + t->max_entries * sizeof(SetEntry))
+                           / arena_granularity());
     t->arena       = new_arena(0, reserve);
 }
 

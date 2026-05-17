@@ -13,8 +13,8 @@
  */
 #include <fnv/FNV64.h> // FNV64Block
 
-#include <faultline/set.h> // Set implementation (needs full definition)
-#include <faultline/fl_log.h>          // LOG_DEBUG
+#include <faultline/set.h>    // Set implementation (needs full definition)
+#include <faultline/fl_log.h> // LOG_DEBUG
 
 #include <faultline/fl_macros.h> // FL_UNUSED
 #include <faultline/fl_try.h>    // FL_THROW

@@ -23,7 +23,6 @@
 #endif
 #include <Windows.h>
 
-
 static void cleanup_region_allocation_windows(FLTestCase *data) {
     RegionAllocationTestCase *tc = FL_CONTAINER_OF(data, RegionAllocationTestCase, tc);
     if (tc->region != NULL) {
@@ -33,7 +32,8 @@ static void cleanup_region_allocation_windows(FLTestCase *data) {
 }
 
 FL_TYPE_TEST_SETUP_CLEANUP("Successful Reservation", RegionAllocationTestCase,
-                           test_reserve, fl_default_setup, cleanup_region_allocation_windows) {
+                           test_reserve, fl_default_setup,
+                           cleanup_region_allocation_windows) {
     MEMORY_BASIC_INFORMATION mem_info;
     u32                      expected_reserved;
     Region                  *region = new_region(0, 0);

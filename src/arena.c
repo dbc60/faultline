@@ -8,7 +8,7 @@
  * See LICENSE.txt for copyright and licensing information about this file.
  */
 #include <faultline/arena.h>
-#include <faultline/dlist.h>           // for DLIST_NEXT, DList, DLIST_IS...
+#include <faultline/dlist.h>                       // for DLIST_NEXT, DList, DLIST_IS...
 #include <faultline/fl_abbreviated_types.h>        // for u32, flag64, u64
 #include <faultline/fl_exception_service_assert.h> // for assert, FL_ASSERT_DETAILS_F...
 #include <faultline/fl_exception_types.h>          // for FLExceptionReason
@@ -16,19 +16,19 @@
 #include <faultline/fl_macros.h>                   // for FL_CONTAINER_OF
 #include <faultline/fl_try.h>                      // for FL_THROW_DETAILS_FILE_LINE
 #include <faultline/size.h>                        // for TWO_SIZE_T_SIZES, MAX
-#include <stdbool.h>                     // for bool, true
-#include <stddef.h>                      // for size_t, NULL
-#include <stdint.h>                      // for uintptr_t
-#include <string.h>                      // for memcpy, memset
-#include "arena_dbg.h"                   // for ARENA_CHECK_ALLOCATED_CHUNK
-#include "arena_internal.h"              // for Arena, ARENA_RTCHECK, arena...
-#include "bits.h"                        // for BIT_LSB, ALIGN_UP, BIT_MASK...
-#include "chunk.h"                       // for CHUNK_SIZE, FreeChunk, Chunk
-#include "digital_search_tree.h"         // for DigitalSearchTree, dst_init...
-#include "index.h"                       // for INDEX_BY_VALUE64, COMPUTE_L...
-#include "region.h"                      // for MEM_TO_REGION, REGION_BYTES...
-#include "region_node.h"                 // for RegionNode, new_region_node
-#include "win32_platform.h"              // for get_memory_info
+#include <stdbool.h>                               // for bool, true
+#include <stddef.h>                                // for size_t, NULL
+#include <stdint.h>                                // for uintptr_t
+#include <string.h>                                // for memcpy, memset
+#include "arena_dbg.h"                             // for ARENA_CHECK_ALLOCATED_CHUNK
+#include "arena_internal.h"                        // for Arena, ARENA_RTCHECK, arena...
+#include "bits.h"                                  // for BIT_LSB, ALIGN_UP, BIT_MASK...
+#include "chunk.h"                                 // for CHUNK_SIZE, FreeChunk, Chunk
+#include "digital_search_tree.h"                   // for DigitalSearchTree, dst_init...
+#include "index.h"                                 // for INDEX_BY_VALUE64, COMPUTE_L...
+#include "region.h"                                // for MEM_TO_REGION, REGION_BYTES...
+#include "region_node.h"                           // for RegionNode, new_region_node
+#include "win32_platform.h"                        // for get_memory_info
 
 FLExceptionReason arena_out_of_memory = "arena out of memory";
 
@@ -758,7 +758,7 @@ void arena_free_throw(Arena *arena, void *mem, char const *file, int line) {
         } else {
             // remove previous chunk from large bin - chunks will be merged below
             DigitalSearchTree *dst = ARENA_CHUNK_TO_DST(prev);
-            u32 index;
+            u32                index;
             INDEX_BY_VALUE64(CHUNK_SIZE(dst), ARENA_LARGE_BIN_COUNT,
                              ARENA_LOG2_MIN_LARGE_CHUNK, index);
             DigitalSearchTree **bin = ARENA_LARGE_BIN_AT(arena, index);
@@ -802,7 +802,8 @@ void arena_free_throw(Arena *arena, void *mem, char const *file, int line) {
         // CHUNK_CLEAR_PREVIOUS_INUSE(next) call above cleared sentinel's PREV_INUSE bit;
         // making ch the new top restores the invariant because ch->PREV_INUSE is already
         // set correctly by free_chunk_init. The sentinel itself stays in place as the
-        // boundary marker with its PREV_INUSE correctly reflecting the free top before it.
+        // boundary marker with its PREV_INUSE correctly reflecting the free top before
+        // it.
         arena->top = ch;
         if (!CHUNK_IS_INUSE(next)) {
             // Normal case: next is a free top chunk; absorb it into ch.
@@ -820,7 +821,8 @@ void arena_free_throw(Arena *arena, void *mem, char const *file, int line) {
     }
 
     if (!CHUNK_IS_INUSE(next)) {
-        // merge forward. The next chunk can be a region node top, fast node, or in a bin.
+        // merge forward. The next chunk can be a region node top, fast node, or in a
+        // bin.
         {
             // Check if next chunk is a region node's top
             RegionNode *owner_node = find_region_node_owner(arena, ch);

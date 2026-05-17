@@ -12,12 +12,12 @@
 #include <faultline/fl_exception_service_assert.h> // for FL_ASSERT*
 #include <faultline/fl_threads.h>                  // for mtx_init, WIN32_LEAN_AND_MEAN
 #include <faultline/fl_try.h>                      // for FL_THROW_DETAILS, FL_THROW
-#include <stdatomic.h>                   // for atomic_fetch_add
-#include <stddef.h>                      // for size_t, NULL, ptrdiff_t
-#include "bits.h"                        // for ALIGN_UP, ALIGN_DOWN
+#include <stdatomic.h>                             // for atomic_fetch_add
+#include <stddef.h>                                // for size_t, NULL, ptrdiff_t
+#include "bits.h"                                  // for ALIGN_UP, ALIGN_DOWN
 #include <faultline/fl_exception_service.h>        // for fl_internal_error
-#include "region.h"                      // for Region, region_initializati...
-#include "win32_platform.h"              // for get_memory_info
+#include "region.h"                                // for Region, region_initializati...
+#include "win32_platform.h"                        // for get_memory_info
 
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
@@ -83,7 +83,7 @@ Region *new_custom_region(size_t commit, u32 reserve, u32 granularity_multiplier
     // of the granularity.
     to_reserve = (size_t)reserve * (size_t)applied_granularity
                  + ALIGN_UP(to_commit, applied_granularity);
-    top = VirtualAlloc(0, to_reserve, MEM_RESERVE, PAGE_NOACCESS);
+    top        = VirtualAlloc(0, to_reserve, MEM_RESERVE, PAGE_NOACCESS);
     FL_ASSERT_NOT_NULL(top);
 
     region = (Region *)(top);

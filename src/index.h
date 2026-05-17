@@ -10,13 +10,13 @@
  * See LICENSE.txt for copyright and licensing information about this file.
  */
 #if defined(_MSC_VER) && _MSC_VER >= 1300
-#include "index_windows.h"  // IWYU pragma: export
+#include "index_windows.h" // IWYU pragma: export
 #elif defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
-#include "index_linux.h"  // IWYU pragma: export
+#include "index_linux.h" // IWYU pragma: export
 #elif defined(__INTEL_COMPILER)
-#include "index_intel.h"  // IWYU pragma: export
+#include "index_intel.h" // IWYU pragma: export
 #else
-#include "index_generic.h"  // IWYU pragma: export
+#include "index_generic.h" // IWYU pragma: export
 #endif
 
 #endif // INDEX_H_

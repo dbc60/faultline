@@ -10,15 +10,15 @@
 #include "arena_dbg.h"
 #include <faultline/fl_abbreviated_types.h>        // for u32, flag64
 #include <faultline/fl_macros.h>                   // for FL_THREAD_LOCAL
-#include <stdio.h>                       // for fprintf, stderr, snprintf
-#include "arena_internal.h"              // for Arena, ARENA_DST_TO_FREE_CHUNK
-#include "chunk.h"                       // for Chunk, CHUNK_SIZE, free_chu...
+#include <stdio.h>                                 // for fprintf, stderr, snprintf
+#include "arena_internal.h"                        // for Arena, ARENA_DST_TO_FREE_CHUNK
+#include "chunk.h"                                 // for Chunk, CHUNK_SIZE, free_chu...
 #include <faultline/dlist.h>                       // for DList, DLIST_PREVIOUS, DLIS...
-#include "digital_search_tree.h"         // for DigitalSearchTree, DST_NEXT...
+#include "digital_search_tree.h"                   // for DigitalSearchTree, DST_NEXT...
 #include <faultline/fl_exception_service_assert.h> // for FL_ASSERT_FILE_LINE, FL_ASS...
 #include <faultline/fl_log.h>                      // for LOG_DEBUG
-#include "index.h"                       // for INDEX_BIN_TO_LOWER_LIMIT
-#include "region.h"                      // for MEM_TO_REGION, Region
+#include "index.h"                                 // for INDEX_BIN_TO_LOWER_LIMIT
+#include "region.h"                                // for MEM_TO_REGION, Region
 #include <faultline/size.h>                        // for SIZE_T_BITSIZE, SIZE_T_ONE
 
 // Forward declaration to support recursive calls

@@ -18,7 +18,7 @@
 // Unity build: include implementation files directly
 // Order matters: exception service first, then code under test
 #include <faultline/fl_exception_service_assert.h> // FL_ASSERT_* macros
-#include <faultline/fl_test.h>                     // FL_TEST, FL_SUITE_*, FL_GET_TEST_SUITE
+#include <faultline/fl_test.h> // FL_TEST, FL_SUITE_*, FL_GET_TEST_SUITE
 #include <faultline/fl_try.h> // FL_TRY, FL_CATCH, FL_THROW (resolves to FLA_* in DLL builds)
 
 #include "fl_exception_service.c"  // exception reason constants

@@ -27,18 +27,9 @@ CALL %DIR_CMD%\setup.cmd %*
 IF %build% EQU 1 (
     IF %verbose% EQU 1 ECHO Build the %PROJECT_NAME% test executable
 
-    cl %CommonCompilerFlagsFinal% /experimental:c11atomics /wd4456 ^
+    cl %CommonCompilerFlagsFinal% /experimental:c11atomics /wd4456 /DFL_EMBEDDED ^
         /I"%DIR_REPO%\standalone\arena\include" ^
         /I"%DIR_INCLUDE%" ^
-        /I"%DIR_REPO%\src" ^
-        "%DIR_REPO%\src\arena.c" ^
-        "%DIR_REPO%\src\arena_dbg.c" ^
-        "%DIR_REPO%\src\arena_malloc.c" ^
-        "%DIR_REPO%\src\region.c" ^
-        "%DIR_REPO%\src\region_node.c" ^
-        "%DIR_REPO%\src\digital_search_tree.c" ^
-        "%DIR_REPO%\standalone\arena\src\fl_sa_exception_service.c" ^
-        "%DIR_REPO%\standalone\arena\src\fl_sa_reasons.c" ^
         "%DIR_REPO%\standalone\arena\src\arena_sa_test.c" ^
         /Fo:"%DIR_OUT_OBJ%\\" ^
         /Fd:"%DIR_OUT_BIN%\arena_sa_test.pdb" ^

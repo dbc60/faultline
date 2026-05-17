@@ -17,8 +17,7 @@
 #include <faultline/fl_macros.h>                   // FL_SPEC_EXPORT
 #include <faultline/fl_test.h>                     // FL_SUITE_*, FL_GET_TEST_SUITE
 #include <faultline/fl_try.h> // FL_TRY, FL_CATCH, FL_THROW_DETAILS_FILE_LINE
-#include <stddef.h> // size_t
-
+#include <stddef.h>           // size_t
 
 /**
  * @brief Allocate a new Region with default commit and reserve (0, 0).
@@ -450,7 +449,6 @@ FL_TEST("Release Then Re-allocate", test_release_reallocate) {
 
     release_region(region2);
 }
-
 
 FL_SUITE_BEGIN(ts)
 FL_SUITE_ADD_EMBEDDED(test_region_allocation)

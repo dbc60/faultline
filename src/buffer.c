@@ -9,11 +9,11 @@
  *
  */
 #include <faultline/fl_exception_service_assert.h> // for assert, FL_ASSERT_DETAILS
-#include <faultline/arena.h>                // for ARENA_FREE_THROW, ARENA_MAL...
-#include <faultline/buffer.h>               // for Buffer, buffer_initialize
-#include <stdbool.h>                     // for true
-#include <stdint.h>                      // for SIZE_MAX
-#include <string.h>                      // for NULL, size_t, memcpy
+#include <faultline/arena.h>                       // for ARENA_FREE_THROW, ARENA_MAL...
+#include <faultline/buffer.h>                      // for Buffer, buffer_initialize
+#include <stdbool.h>                               // for true
+#include <stdint.h>                                // for SIZE_MAX
+#include <string.h>                                // for NULL, size_t, memcpy
 
 // 12 is an arbitrary number of elements to increase the capacity of a Buffer.
 #define INCREASE_CAPACITY_BY 12

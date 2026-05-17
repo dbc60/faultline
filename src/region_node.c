@@ -22,9 +22,9 @@
 FLExceptionReason region_node_out_of_memory = "failed to allocate a RegionNode";
 
 RegionNode *new_region_node(size_t commit, u32 reserve) {
-    size_t commit_size = REGION_NODE_ALIGNED_SIZE + ALIGN_UP(commit, TWO_SIZE_T_SIZES)
-                         + CHUNK_SENTINEL_SIZE;
-    Region *region = new_region(commit_size, reserve);
+    size_t  commit_size = REGION_NODE_ALIGNED_SIZE + ALIGN_UP(commit, TWO_SIZE_T_SIZES)
+                          + CHUNK_SENTINEL_SIZE;
+    Region *region      = new_region(commit_size, reserve);
 
     RegionNode *rl = REGION_TO_MEM(region);
     DLIST_INIT(&rl->link);
@@ -32,7 +32,7 @@ RegionNode *new_region_node(size_t commit, u32 reserve) {
     rl->top                = (FreeChunk *)rl->base;
     size_t const committed = REGION_BYTES_COMMITTED(region);
     size_t       top_size  = committed - REGION_ALIGNED_SIZE - REGION_NODE_ALIGNED_SIZE
-                      - CHUNK_SENTINEL_SIZE;
+                             - CHUNK_SENTINEL_SIZE;
 
     CHUNK_SET_SENTINEL(rl->top);
 

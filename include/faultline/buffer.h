@@ -58,7 +58,7 @@ typedef struct Buffer {
                                                                                      \
     static inline FL_MAYBE_UNUSED void init_##PRE##_buffer(VT##Buffer *buf,          \
                                                            Arena      *arena,        \
-                                                           size_t      capacity) {        \
+                                                           size_t      capacity) {   \
         FL_ASSERT_NOT_NULL(buf);                                                     \
         init_buffer((Buffer *)buf, arena, capacity, sizeof(VT));                     \
     }                                                                                \
@@ -78,12 +78,12 @@ typedef struct Buffer {
     }                                                                                \
                                                                                      \
     static inline FL_MAYBE_UNUSED VT *PRE##_buffer_put(VT##Buffer *buf,              \
-                                                       VT const   *item) {             \
+                                                       VT const   *item) {           \
         return (VT *)buffer_put((Buffer *)buf, (void *)item);                        \
     }                                                                                \
                                                                                      \
     static inline FL_MAYBE_UNUSED VT *PRE##_buffer_get(VT##Buffer const *buf,        \
-                                                       size_t            index) {               \
+                                                       size_t            index) {    \
         return (VT *)buffer_get((Buffer *)buf, index);                               \
     }                                                                                \
                                                                                      \

@@ -100,13 +100,15 @@ fi
 # Test
 # ---------------------------------------------------------------------------
 if [[ $test -eq 1 ]]; then
-    if [[ ! -f "$DIR_OUT_BIN/but_driver.exe" ]]; then
+    if [[ ! -f "$DIR_OUT_BIN/faultline.exe" ]]; then
         _driver_args=(build)
         [[ $release -eq 1 ]] && _driver_args+=(release)
-        bash "$SCRIPT_DIR/but_driver.sh" "${_driver_args[@]}"
+        bash "$SCRIPT_DIR/faultline.sh" "${_driver_args[@]}"
     fi
     [[ $verbose -eq 1 ]] && echo "Run ${_project_name} unit tests"
     pushd "$DIR_OUT_BIN" > /dev/null
-    ./but_driver.exe "${_dll_name}.dll"
+    ./faultline.exe run "${_dll_name}.dll"
+    faultline.exe show results --limit 1
+    faultline.exe show results --failures
     popd > /dev/null
 fi

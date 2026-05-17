@@ -18,7 +18,7 @@ FLExceptionReason fl_expected_failure
 FLExceptionReason fl_unexpected_failure = "unexpected failure"; ///< something is wrong
 FLExceptionReason fl_test_exception
     = "test exception"; ///< a test needs to throw and catch an exception
-FLExceptionReason fl_not_implemented   = "not implemented"; ///< useful in development
-FLExceptionReason fl_invalid_value     = "invalid value";   ///< an argument is invalid
-FLExceptionReason fl_internal_error    = "internal error";  ///< a bad state
-FLExceptionReason fl_invalid_address   = "invalid address"; ///< address not valid
+FLExceptionReason fl_not_implemented = "not implemented"; ///< useful in development
+FLExceptionReason fl_invalid_value   = "invalid value";   ///< an argument is invalid
+FLExceptionReason fl_internal_error  = "internal error";  ///< a bad state
+FLExceptionReason fl_invalid_address = "invalid address"; ///< address not valid

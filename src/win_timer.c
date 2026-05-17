@@ -11,18 +11,18 @@
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include <errhandlingapi.h>     // for GetLastError
+#include <errhandlingapi.h>               // for GetLastError
 #include <faultline/fl_exception_types.h> // for FLExceptionReason
 #include <faultline/fl_try.h>             // for FL_THROW, FL_THROW_DETAILS
-#include <handleapi.h>          // for CloseHandle
-#include <minwinbase.h>         // for SYSTEMTIME
-#include <minwindef.h>          // for _ULARGE_INTEGER::(anonymous), DWORD
-#include <profileapi.h>         // for QueryPerformanceCounter, QueryPer...
-#include <synchapi.h>           // for SetWaitableTimer, WaitForSingleOb...
-#include <time.h>               // for NULL, timespec
+#include <handleapi.h>                    // for CloseHandle
+#include <minwinbase.h>                   // for SYSTEMTIME
+#include <minwindef.h>                    // for _ULARGE_INTEGER::(anonymous), DWORD
+#include <profileapi.h>                   // for QueryPerformanceCounter, QueryPer...
+#include <synchapi.h>                     // for SetWaitableTimer, WaitForSingleOb...
+#include <time.h>                         // for NULL, timespec
 #include <faultline/timer.h>              // for WinTimer, NANOSECONDS_PER_SECOND
-#include <timezoneapi.h>        // for SystemTimeToFileTime
-#include <winbase.h>            // for INFINITE
+#include <timezoneapi.h>                  // for SystemTimeToFileTime
+#include <winbase.h>                      // for INFINITE
 #include <windows.h>
 // IWYU pragma: no_include "fla_exception_service.h"
 // IWYU pragma: no_include <flp_exception_service.h>

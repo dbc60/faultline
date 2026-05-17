@@ -82,8 +82,8 @@ IF %build% EQU 1 (
 )
 
 if %test% EQU 1 (
-    IF NOT EXIST "%DIR_OUT_BIN%\but_driver.exe" (
-        call %_BTDLL_DIR%\but_driver.cmd build %REL_OPT%
+    IF NOT EXIST "%DIR_OUT_BIN%\faultline.exe" (
+        call %_BTDLL_DIR%\faultline.cmd build %REL_OPT%
         if errorlevel 1 (
             GOTO :_btdll_error
         )
@@ -99,7 +99,9 @@ if %test% EQU 1 (
         ECHO Run the %_BTDLL_NAME% unit tests
     )
     pushd %DIR_OUT_BIN%
-    but_driver.exe %_BTDLL_DLL%.dll
+    faultline.exe run %_BTDLL_DLL%.dll
+    faultline.exe show results --limit 1
+    faultline.exe show results --failures
     popd
 )
 GOTO :_btdll_success

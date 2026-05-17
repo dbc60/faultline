@@ -13,9 +13,9 @@
 // included after those macros are active, corecrt_malloc.h tries to declare
 // e.g. "void* __cdecl malloc(size_t)" and the macro expansion produces an
 // invalid declaration (C4229 / C2220 in MSVC).
-#include <stdio.h>              // fprintf
-#include <stdlib.h>             // abort, NULL
-#include <faultline/fl_memory_service.h>  // FL_ALIGNED_ALLOC_FN, FL_CALLOC_FN, ...
+#include <stdio.h>                       // fprintf
+#include <stdlib.h>                      // abort, NULL
+#include <faultline/fl_memory_service.h> // FL_ALIGNED_ALLOC_FN, FL_CALLOC_FN, ...
 #include <faultline/fla_memory_service.h> // FLA_SET_MEMORY_SERVICE_FN, fla_set_memory_service
 #include <faultline/fl_macros.h>          // FL_UNUSED
 

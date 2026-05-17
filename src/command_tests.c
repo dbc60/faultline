@@ -14,8 +14,8 @@
 
 #include <faultline/fl_exception_service_assert.h> // FL_ASSERT_* macros
 #include <faultline/fl_macros.h>                   // FL_CONTAINER_OF, FL_UNUSED
-#include <faultline/fl_test.h>                     // FL_TYPE_TEST_SETUP_CLEANUP, FL_GET_TEST_SUITE
-#include <faultline/fl_try.h>                      // FL_TRY, FL_CATCH, FL_END_TRY
+#include <faultline/fl_test.h> // FL_TYPE_TEST_SETUP_CLEANUP, FL_GET_TEST_SUITE
+#include <faultline/fl_try.h>  // FL_TRY, FL_CATCH, FL_END_TRY
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -62,7 +62,8 @@ static FormalCommand test_subcommands[] = {
 static FormalCommand test_commands[] = {
     {"simple", "Simple command", test_cmd_handler, NULL, NULL, NULL},
     {"options", "Command with options", test_cmd_handler, test_options, NULL, NULL},
-    {"nested", "Command with subcommands", test_cmd_handler, NULL, test_subcommands, NULL},
+    {"nested", "Command with subcommands", test_cmd_handler, NULL, test_subcommands,
+     NULL},
     {NULL, NULL, NULL, NULL, NULL, NULL}, // NULL terminator
 };
 

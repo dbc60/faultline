@@ -9,19 +9,19 @@
  * See LICENSE.txt for copyright and licensing information about this file.
  *
  */
-#include <faultline/dlist.h>    // for DLIST_INIT, DLIST_REMOVE_SIMPLE
-#include <faultline/set.h>      // for Set, SetEntry, SET_ENTRY_GET_NEXT
+#include <faultline/dlist.h>                // for DLIST_INIT, DLIST_REMOVE_SIMPLE
+#include <faultline/set.h>                  // for Set, SetEntry, SET_ENTRY_GET_NEXT
 #include <faultline/fl_abbreviated_types.h> // for u64
 #include <faultline/fl_exception_service.h> // for fl_invalid_value, fl_internal_error
 #include <faultline/fl_try.h>               // for FL_THROW
-#include <fnv/FNV64.h>            // for FNV64block
-#include <fnv/FNVErrorCodes.h>    // for fnvSuccess
-#include <faultline/arena.h>         // for ARENA_FREE_THROW, ARENA_CALLOC_THROW
+#include <fnv/FNV64.h>                      // for FNV64block
+#include <fnv/FNVErrorCodes.h>              // for fnvSuccess
+#include <faultline/arena.h>                // for ARENA_FREE_THROW, ARENA_CALLOC_THROW
 #include <faultline/size.h>                 // for SIZE_T_SIZE
-#include <stdbool.h>              // for bool, false, true
-#include <stdint.h>               // for uint8_t
-#include <string.h>               // for size_t, memcmp, memcpy
-#include "bits.h"                 // for ALIGN_UP
+#include <stdbool.h>                        // for bool, false, true
+#include <stdint.h>                         // for uint8_t
+#include <string.h>                         // for size_t, memcmp, memcpy
+#include "bits.h"                           // for ALIGN_UP
 #include <faultline/fl_exception_types.h>   // for FLExceptionReason
 
 FLExceptionReason set_release_bucket_not_allowed
