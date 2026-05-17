@@ -3,8 +3,6 @@
  * @author Douglas Cuthbertson
  * @brief Standalone arena test suite — no FaultLine test infrastructure required.
  *
- * Build (example, run from repo root):
- *
  * /DFL_EMBEDDED keeps FL_DECL_SPEC empty (no dllimport on a locally-defined
  * function).  Use /DDLL_BUILD instead when compiling into an actual DLL.
  * flp_exception_service.c and flp_log_service.c are NOT on the command line —
@@ -19,16 +17,16 @@
  *
  */
 
-/* Unity build — pull in all implementation files */
-#include "digital_search_tree.c"
-#include "region_node.c"
-#include "region.c" /* internally #includes fl_threads.c and region_windows.c */
-#include "arena_dbg.c"
-#include "arena_malloc.c"
-#include "arena.c"
-#include "fl_exception_service.c"
-#include "fla_exception_service.c"
-#include "fla_log_service.c"
+#include <stdarg.h>  // va_list, va_start, va_end
+#include <stdbool.h> // bool
+#include <stdint.h>  // uint32_t, uintptr_t
+#include <stdlib.h>  // abort
+
+#include <faultline/fl_try.h> // FL_TRY, FL_CATCH, FL_END_TRY, FL_THROW, FL_CATCH_STR
+#include <faultline/fl_log_types.h>    // FLLogService, FL_WRITE_LOG_FN, FLLogLevel
+#include <faultline/fla_log_service.h> // fla_set_log_service
+#include <faultline/arena.h>           // Arena, new_arena, release_arena, arena_*
+#include <faultline/arena_malloc.h>    // arena_malloc, arena_free, arena_calloc, etc.
 
 /* -----------------------------------------------------------------------
  * Minimal driver-side TLS stack (normally in flp_exception_service.c).
