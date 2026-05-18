@@ -66,7 +66,7 @@ void fl_logger_cleanup(void) {
 bool enqueue_log(char const *message, int severity) {
     mtx_lock(&logger.queue.mutex);
 
-    while ((logger.queue.count >= MAX_QUEUE_SIZE) & logger.running) {
+    while ((logger.queue.count >= MAX_QUEUE_SIZE) && logger.running) {
         cnd_wait(&logger.queue.not_full, &logger.queue.mutex);
     }
 
@@ -96,11 +96,11 @@ int fl_logger_thread(void *arg) {
     while (logger.running) {
         mtx_lock(&logger.queue.mutex);
 
-        while ((logger.queue.count == 0) & logger.running) {
+        while ((logger.queue.count == 0) && logger.running) {
             cnd_wait(&logger.queue.not_empty, &logger.queue.mutex);
         }
 
-        if (!logger.running & (logger.queue.count == 0)) {
+        if (!logger.running && (logger.queue.count == 0)) {
             mtx_unlock(&logger.queue.mutex);
             break;
         }

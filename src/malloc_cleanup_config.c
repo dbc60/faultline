@@ -23,12 +23,15 @@ typedef struct Config {
 
 void config_destroy(Config *cfg) {
     if (cfg != NULL) {
-        if (cfg->host != NULL)
+        if (cfg->host != NULL) {
             free(cfg->host);
-        if (cfg->username)
+        }
+        if (cfg->username) {
             free(cfg->username);
-        if (cfg->password)
+        }
+        if (cfg->password) {
             free(cfg->password);
+        }
         free(cfg);
     }
 }

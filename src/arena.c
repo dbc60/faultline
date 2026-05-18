@@ -67,8 +67,9 @@ static int change_mparam(int param_number, int value) {
         if (val >= mparams.page_size && ((val & (val - 1)) == 0)) {
             mparams.granularity = val;
             return 1;
-        } else
+        } else {
             return 0;
+        }
     default:
         return 0;
     }

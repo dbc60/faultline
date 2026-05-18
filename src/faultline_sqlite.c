@@ -665,10 +665,12 @@ void faultline_record_test_run_complete(sqlite3 *db, int run_id, FLContext *fctx
             discovery_failures += summary->discovery_failures;
             injection_failures += summary->injection_failures;
 
-            if (summary->code == FL_LEAK)
+            if (summary->code == FL_LEAK) {
                 leak_failures++;
-            if (summary->code == FL_INVALID_FREE || summary->code == FL_DOUBLE_FREE)
+            }
+            if (summary->code == FL_INVALID_FREE || summary->code == FL_DOUBLE_FREE) {
                 invalid_free_failures++;
+            }
         }
 
         // Parameter indices for UPDATE raw_test_runs
@@ -1109,12 +1111,14 @@ void faultline_show_test_failures(sqlite3 *db, char const *suite_name, int limit
         if (source_file != NULL && source_line > 0) {
             // Extract just the filename from the full path
             char const *filename = strrchr(source_file, '\\');
-            if (filename == NULL)
+            if (filename == NULL) {
                 filename = strrchr(source_file, '/');
-            if (filename != NULL)
+            }
+            if (filename != NULL) {
                 filename++;
-            else
+            } else {
                 filename = source_file;
+            }
 
             // Include resource address for leaks and invalid frees when available
             if (resource_addr != 0 && result_code > FL_PASS) {
@@ -1271,12 +1275,14 @@ void faultline_show_run_details(sqlite3 *db, int run_id) {
                 if (source_file != NULL && source_line > 0) {
                     // Extract just the filename from the full path
                     char const *filename = strrchr(source_file, '\\');
-                    if (filename == NULL)
+                    if (filename == NULL) {
                         filename = strrchr(source_file, '/');
-                    if (filename != NULL)
+                    }
+                    if (filename != NULL) {
                         filename++;
-                    else
+                    } else {
                         filename = source_file;
+                    }
 
                     snprintf(location, sizeof location, "%s:%d", filename, source_line);
                 } else if (result_code > FL_PASS) {
