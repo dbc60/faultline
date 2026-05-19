@@ -18,6 +18,16 @@
 extern "C" {
 #endif
 
+#define ARENA_ALIGNED_ALLOC(AR, ALIGN, SZ) \
+    arena_aligned_alloc((AR), (ALIGN), (SZ), __FILE__, __LINE__)
+#define ARENA_CALLOC(AR, COUNT, BYTES) \
+    arena_calloc((AR), (COUNT), (BYTES), __FILE__, __LINE__)
+#define ARENA_FREE(AR, PTR)         arena_free((AR), (PTR), __FILE__, __LINE__)
+#define ARENA_FREE_POINTER(AR, PTR) arena_free_pointer((AR), (PTR), __FILE__, __LINE__)
+#define ARENA_MALLOC(AR, BYTES)     arena_malloc((AR), (BYTES), __FILE__, __LINE__)
+#define ARENA_REALLOC(AR, PTR, BYTES) \
+    arena_realloc((AR), (PTR), (BYTES), __FILE__, __LINE__)
+
 extern FLExceptionReason arena_out_of_memory;
 
 /////////////////////////////////
