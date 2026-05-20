@@ -42,19 +42,6 @@
 #include "command_show.c"
 #include "command_help.c"
 
-#include "../../src/flp_memory_context.h" // FLMemoryContext (full definition)
-
-#include "../../src/command.h"        // parse_command, has_option, get_string_option
-#include <faultline/fault_injector.h> // fault_injector_init
-#include <faultline/fl_context.h>     // faultline_initialize
-#include <faultline_sqlite.h>   // faultline_init_database, faultline_close_database
-#include <flp_log_service.h>    // flp_log_init, flp_log_set_level, flp_log_cleanup
-#include <flp_memory_service.h> // flp_init_memory_service, flp_init_memory_context
-
-#include <stdbool.h>
-#include <stdio.h>
-#include <string.h>
-
 static char const *module = "Faultline";
 
 // No-op fla_set for the unity build: flp_init_memory_service requires a non-NULL
@@ -145,13 +132,15 @@ int main(int argc, char **argv) {
         ectx.cmd.command->handler((RuntimeCommand *)&ectx);
     }
     FL_CATCH(command_error) {
-        printf("Usage: faultline <command> [options] [arguments]\n");
-        printf("Try 'faultline help' for usage information.\n");
+        printf("Usage: faultline <command> [options] [arguments]\n\n");
+        RuntimeCommand help_request = {0};
+        help_cmd(&help_request);
         exit_code = 1;
     }
     FL_CATCH(command_unknown) {
-        printf("Error: Unknown command: %s.\n", FL_DETAILS);
-        printf("Try 'faultline help' for usage information.\n");
+        printf("Error: Unknown command: %s.\n\n", FL_DETAILS);
+        RuntimeCommand help_request = {0};
+        help_cmd(&help_request);
         exit_code = 1;
     }
     FL_CATCH_ALL {

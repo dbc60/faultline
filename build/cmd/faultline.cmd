@@ -96,6 +96,7 @@ if %test% EQU 1 (
     )
     pushd %DIR_OUT_BIN%
     faultline.exe run faultline_tests.dll
+    faultline.exe show results --limit 1
     popd
 )
 GOTO :SUCCESS

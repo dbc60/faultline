@@ -83,5 +83,6 @@ if [[ $test -eq 1 ]]; then
     [[ $verbose -eq 1 ]] && echo "Run $PROJECT_NAME tests"
     pushd "$DIR_OUT_BIN" > /dev/null
     ./faultline.exe run faultline_tests.dll
+    ./faultline.exe show results --limit 1
     popd > /dev/null
 fi

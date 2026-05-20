@@ -12,13 +12,15 @@
 #include <string.h>
 
 /**
- * @brief Display help for a specific command
+ * @brief Display help for a command or subcommand
  *
- * @param cmd the FormalCommand to display help for
- * @param show if true, also show subcommands
+ * @param cmd   the FormalCommand to display help for
+ * @param label heading label printed before the command name ("Command" or "Subcommand")
+ * @param show  if true, recursively display each subcommand's full help
  */
-static void display_command_help(FormalCommand const *cmd, bool show) {
-    printf("Command: %s\n", cmd->name);
+static void display_command_help(FormalCommand const *cmd, char const *label,
+                                 bool show) {
+    printf("%s: %s\n", label, cmd->name);
     printf("  %s\n\n", cmd->help);
 
     // Display options
@@ -55,13 +57,12 @@ static void display_command_help(FormalCommand const *cmd, bool show) {
         printf("  %s\n\n", cmd->arguments);
     }
 
-    // Display subcommands
+    // Display subcommands with full option details
     if (show && cmd->subcommands != NULL) {
-        printf("Subcommands:\n");
+        printf("Subcommands:\n\n");
         for (int i = 0; cmd->subcommands[i].name != NULL; i++) {
-            printf("  %-15s %s\n", cmd->subcommands[i].name, cmd->subcommands[i].help);
+            display_command_help(&cmd->subcommands[i], "Subcommand", false);
         }
-        printf("\n");
     }
 }
 
@@ -82,7 +83,7 @@ COMMAND_HANDLER(help_cmd) {
         // Find the command
         for (int i = 0; cmds[i].name != NULL; i++) {
             if (strcmp(cmds[i].name, cmd_name) == 0) {
-                display_command_help(&cmds[i], true);
+                display_command_help(&cmds[i], "Command", true);
                 return;
             }
         }
@@ -114,7 +115,7 @@ COMMAND_HANDLER(help_cmd) {
  */
 COMMAND_HANDLER(version_cmd) {
     FL_UNUSED(cmd);
-    printf("FaultLine version 0.2.0\n");
+    printf("FaultLine version 0.3.0\n");
     printf("Fault Injection Testing Framework\n");
     printf("Copyright (c) 2025 Douglas Cuthbertson\n");
 }
