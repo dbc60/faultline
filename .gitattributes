@@ -1,4 +1,15 @@
-############################################################
-# I think it's best if git doesn't muck with line endings. #
-############################################################
-* -text
+# Force LF for all text files
+*       text=auto eol=lf
+
+# Binary files - no conversion
+*.png   -text
+*.exe   -text
+*.dll   -text
+*.lib   -text
+*.obj   -text
+*.pdb   -text
+*.res   -text
+
+# Windows batch files require CRLF
+*.cmd   text eol=crlf
+*.bat   text eol=crlf

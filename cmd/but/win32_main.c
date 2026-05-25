@@ -30,10 +30,6 @@
 #include "../../src/region_node.c"
 #include "../../src/set.c"
 
-#include <faultline/fl_exception_service.h> // fla_set_exception_service
-#include <faultline/fl_log_types.h>         // FLLogService, fla_set_log_service_fn
-#include <flp_log_service.h> // flp_log_init, flp_log_cleanup, flp_log_set_level
-
 #include <stddef.h> // size_t
 #include <stdio.h>  // printf, snprintf
 #include <stdlib.h> // exit

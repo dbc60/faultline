@@ -19,8 +19,8 @@ docs/html/
 */.obsidian
 
 # Visual Studio and VS Code
-.vscode/
-.vs/
+.vscode
+.vs
 
 # Yes, I use Claude Code to help organize this repo
 .claude/
@@ -38,3 +38,7 @@ test_sh/
 test_clang/
 ctime/
 metrics/
+
+# Other
+*.sqlite
+*.log
