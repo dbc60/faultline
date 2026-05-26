@@ -36,8 +36,10 @@ IF %build% EQU 1 (
         "%DIR_REPO%\standalone\exception\src\fla_exception_service.c" ^
         "%DIR_REPO%\standalone\log\src\fla_log_service.c" ^
         "%DIR_REPO%\src\fl_exception_service.c" ^
+        "%DIR_REPO%\src\fl_threads.c" ^
         "%DIR_REPO%\src\region.c" ^
         "%DIR_REPO%\src\region_node.c" ^
+        "%DIR_REPO%\src\region_os.c" ^
         "%DIR_REPO%\standalone\arena\src\arena_sa_test.c" ^
         /Fo:"%DIR_OUT_OBJ%\\" ^
         /Fd:"%DIR_OUT_BIN%\arena_sa_test.pdb" ^

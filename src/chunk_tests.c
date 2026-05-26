@@ -9,8 +9,10 @@
  *
  */
 #include "fl_exception_service.c"  // fl_expected_failure
+#include "fl_threads.c"            // mtx_init, mtx_lock, mtx_unlock, mtx_destroy
 #include "fla_exception_service.c" // fl_throw_assertion, g_fla_exception_service
 #include "region.c"
+#include "region_os.c"
 
 #include "chunk.h"
 #include <faultline/fl_exception_service_assert.h> // FL_ASSERT_* macros

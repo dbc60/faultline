@@ -10,9 +10,9 @@
 #include "but_driver.c"
 #include "but_result_context.c"
 #include "fl_exception_service.c"
+#include "fl_threads.c" // mtx_init, mtx_lock, mtx_unlock, mtx_destroy
 #include "flp_exception_service.c"
 #include "flp_log_service.c"
-#include "fl_threads.c" // mtx_init
 
 // Dummy fla_set_exception_service so set_up_test_driver_data() in but_test_cases.c has
 // a function to load.

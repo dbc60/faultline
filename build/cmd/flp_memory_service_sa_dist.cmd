@@ -70,12 +70,13 @@ COPY /Y "%DIR_SRC%\arena_malloc.c"             "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SRC%\buffer.c"                   "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SRC%\digital_search_tree.c"      "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SRC%\fl_exception_service.c"     "%DIR_DIST%\src\" > NUL
+COPY /Y "%DIR_SRC%\fl_threads.c"               "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SA_EXC%\fla_exception_service.c" "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SA_LOG%\fla_log_service.c"       "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SRC%\region.c"                   "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SRC%\region_node.c"              "%DIR_DIST%\src\" > NUL
+COPY /Y "%DIR_SRC%\region_os.c"                "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SRC%\region_windows.c"           "%DIR_DIST%\src\" > NUL
-COPY /Y "%DIR_SRC%\fl_threads.c"               "%DIR_DIST%\src\" > NUL
 
 :: -----------------------------------------------------------------------
 :: C source files — collections

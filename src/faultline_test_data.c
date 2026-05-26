@@ -14,6 +14,7 @@
 #include "buffer.c"
 #include "digital_search_tree.c"
 #include "fl_exception_service.c"
+#include "fl_threads.c" // mtx_init, mtx_lock, mtx_unlock, mtx_destroy
 #include "flp_exception_service.c"
 #include "fault_injector.c"
 #include "fla_memory_service.c"
@@ -23,6 +24,7 @@
 #include "flp_log_service.c"
 #include "region.c"
 #include "region_node.c"
+#include "region_os.c"
 #include "set.c"
 #include "win_timer.c"
 

@@ -21,11 +21,13 @@
 #include "faultline_sqlite_test.c"
 #include "faultline_test.c"
 #include "fl_exception_service.c"
+#include "fl_threads.c" // mtx_init, mtx_lock, mtx_unlock, mtx_destroy
 #include "fla_exception_service.c"
 #include "fla_log_service.c"
 #include "../third_party/fnv/FNV64.c"
 #include "region.c"
 #include "region_node.c"
+#include "region_os.c"
 #include "set.c"
 #include "win_timer.c"
 #include <faultline/fault.h>

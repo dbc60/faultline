@@ -26,6 +26,7 @@
 #include "../../src/faultline_driver.c"
 #include "../../src/faultline_sqlite.c"
 #include "../../src/fl_exception_service.c"
+#include "../../src/fl_threads.c"
 #include "../../src/flp_exception_service.c"
 #include "../../src/flp_log_service.c"
 #include "../../src/flp_memory_service.c"
@@ -33,6 +34,7 @@
 #include "../../third_party/fnv/FNV64.c"
 #include "../../src/region.c"
 #include "../../src/region_node.c"
+#include "../../src/region_os.c"
 #include "../../src/set.c"
 #include "../../src/win_timer.c"
 
