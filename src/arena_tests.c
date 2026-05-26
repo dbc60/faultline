@@ -32,7 +32,7 @@
 #include "fl_exception_service.c"  // fl_expected_failure
 #include "fla_exception_service.c" // fl_throw_assertion, g_fla_exception_service
 #include "fla_log_service.c"       // g_fla_log_service
-#include "fla_memory_service.c"
+#include "fla_memory_service.c"    // g_fla_memory_service, fla_set_memory_service
 
 FL_SUITE_BEGIN(ts)
 FL_SUITE_ADD(test_arena_macros)

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # but_driver.sh - Build but_tests.dll, but_test_data.dll, and but_driver.exe.
-# Mirrors build/cmd/but_driver.cmd.
+# Mirrors build/app/but_driver.cmd.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -48,7 +48,7 @@ if [[ $build -eq 1 ]]; then
 
     "$CLANG" $COMMON_COMPILER_FLAGS -DFL_BUILD_DRIVER -DFL_EMBEDDED \
         -I "$DIR_INCLUDE" -I "$DIR_THIRD_PARTY" \
-        -c "$DIR_REPO/cmd/but/win32_main.c" \
+        -c "$DIR_REPO/app/but/win32_main.c" \
         -o "$DIR_OUT_OBJ/win32_main.o" \
         -MJ "$DIR_OUT_OBJ/win32_main.json"
 

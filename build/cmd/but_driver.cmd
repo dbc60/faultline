@@ -71,7 +71,7 @@ IF %build% EQU 1 (
     )
     cl %CommonCompilerFlagsFinal% /wd4456 /I%DIR_INCLUDE% /I%DIR_THIRD_PARTY% ^
     /DFL_BUILD_DRIVER /DFL_EMBEDDED ^
-    %DIR_REPO%\cmd\but\win32_main.c  /Fo:%DIR_OUT_OBJ%\ ^
+    %DIR_REPO%\app\but\win32_main.c  /Fo:%DIR_OUT_OBJ%\ ^
     /Fd:%DIR_OUT_BIN%\but_driver.pdb /Fe:%DIR_OUT_BIN%\but_driver.exe /link ^
     %CommonLinkerFlagsFinal% /ENTRY:mainCRTStartup > "%TEMP%\cl_out.tmp"
     if errorlevel 1 (

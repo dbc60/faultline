@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # faultline.sh - Build faultline_tests.dll, faultline_test_data.dll, and faultline.exe.
-# Mirrors build/cmd/faultline.cmd.
+# Mirrors build/app/faultline.cmd.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -63,7 +63,7 @@ if [[ $build -eq 1 ]]; then
 
     "$CLANG" $COMMON_COMPILER_FLAGS -DFL_BUILD_DRIVER -DFL_EMBEDDED \
         -I "$DIR_INCLUDE" -I "$DIR_THIRD_PARTY" \
-        -c "$DIR_REPO/cmd/faultline/main_windows.c" \
+        -c "$DIR_REPO/app/faultline/main_windows.c" \
         -o "$DIR_OUT_OBJ/faultline_main.o" \
         -MJ "$DIR_OUT_OBJ/faultline_main.json"
 

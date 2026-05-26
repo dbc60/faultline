@@ -36,6 +36,12 @@ void config_destroy(Config *cfg) {
     }
 }
 
+/**
+ * Three malloc calls. If the second fails, host must be freed. If the third fails, host
+ * and username must be freed. This directly tests the most common real-world fault-
+ * injection bug : cleanup skipped on partial initialization. FaultLine will discover 3
+ * fault sites and verify no leak at each.
+ */
 Config *config_create(char const *host, char const *user, char const *pass) {
     Config *cfg      = calloc(1, sizeof(Config));
     size_t  len_host = strlen(host);
@@ -68,10 +74,3 @@ Config *config_create(char const *host, char const *user, char const *pass) {
 
     return cfg;
 }
-
-/**
- * Three malloc calls.If the second fails, host must be freed.If the third fails, host
- * and username must be freed.This directly tests the most common real-world
- * fault-injection bug : cleanup skipped on partial initialization. FaultLine will
- * discover 3 fault sites and verify no leak at each.
- */

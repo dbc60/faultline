@@ -20,7 +20,7 @@
 #include "fl_exception_service.c"  // fl_expected_failure
 #include "fla_exception_service.c" // fl_throw_assertion, g_fla_exception_service
 #include "fla_log_service.c"       // g_fla_log_service
-#include "fla_memory_service.c"
+#include "fla_memory_service.c"    // g_fla_memory_service, fla_set_memory_service
 
 #include <faultline/fl_test.h>   // FLTestCase, FLTestSuite
 #include <faultline/fl_macros.h> // FL_UNUSED, FL_CONTAINER_OF

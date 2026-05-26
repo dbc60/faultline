@@ -26,12 +26,6 @@
 
 // Private reason used exclusively by this test file.
 static FLExceptionReason catch_str_reason_a = "catch_str test reason A";
-
-// A second variable whose *content* matches catch_str_reason_a but whose
-// *address* differs.  This simulates the same reason string being defined
-// independently in two different modules (e.g., a driver and a test DLL).
-static FLExceptionReason catch_str_reason_a_copy = "catch_str test reason A";
-
 static FLExceptionReason catch_str_reason_b = "catch_str test reason B";
 
 // ============================================================================
@@ -93,6 +87,9 @@ FL_TEST("FL_CATCH_STR skips non-matching string", catch_str_skips_non_matching_s
 
 FL_TEST("FL_CATCH_STR matches same-string different-address reason",
         catch_str_vs_pointer_identity) {
+    // Make a copy of catch_str_reason_a to verify that FL_CATCH compares by address
+    // while FL_CATCH_STR compares by content.
+    char *catch_str_reason_a_copy = strdup(catch_str_reason_a);
     // Verify the addresses truly differ (the test premise).
     FL_ASSERT_DETAILS(catch_str_reason_a != catch_str_reason_a_copy,
                       "expected distinct addresses for the two reason variables");
@@ -123,4 +120,5 @@ FL_TEST("FL_CATCH_STR matches same-string different-address reason",
     FL_END_TRY;
 
     FL_ASSERT_TRUE(str_caught);
+    free(catch_str_reason_a_copy);
 }
