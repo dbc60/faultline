@@ -13,6 +13,7 @@
 #include <faultline/fl_try.h>                      // for FL_CATCH, FL_END_TRY, FL_TRY
 #include <faultline/arena_malloc.h> // for arena_free_throw, arena_out_of_me...
 #include <stddef.h>                 // for size_t, NULL
+#include "region.h"                 // for region_initialization_failure, region_out_of_memory
 
 void *arena_aligned_alloc(Arena *arena, size_t alignment, size_t size, char const *file,
                           int line) {
@@ -29,6 +30,12 @@ void *arena_aligned_alloc(Arena *arena, size_t alignment, size_t size, char cons
     FL_CATCH(arena_out_of_memory) {
         mem = NULL;
     }
+    FL_CATCH(region_initialization_failure) {
+        mem = NULL;
+    }
+    FL_CATCH(region_out_of_memory) {
+        mem = NULL;
+    }
     FL_END_TRY;
 
     return mem;
@@ -40,6 +47,12 @@ void *arena_calloc(Arena *arena, size_t count, size_t size, char const *file, in
         mem = arena_calloc_throw(arena, count, size, file, line);
     }
     FL_CATCH(arena_out_of_memory) {
+        mem = NULL;
+    }
+    FL_CATCH(region_initialization_failure) {
+        mem = NULL;
+    }
+    FL_CATCH(region_out_of_memory) {
         mem = NULL;
     }
     FL_END_TRY;
@@ -79,15 +92,17 @@ void *arena_malloc(Arena *arena, size_t bytes, char const *file, int line) {
     FL_CATCH(arena_out_of_memory) {
         mem = NULL;
     }
+    FL_CATCH(region_initialization_failure) {
+        mem = NULL;
+    }
+    FL_CATCH(region_out_of_memory) {
+        mem = NULL;
+    }
     FL_END_TRY;
 
     return mem;
 }
 
-/*
- * N.B.: don't get fancy. The only way a caller knows if realloc succeeded is if the
- * returned value does NOT match mem.
- */
 void *arena_realloc(Arena *arena, void *mem, size_t size, char const *file, int line) {
     void *p;
 
@@ -95,8 +110,13 @@ void *arena_realloc(Arena *arena, void *mem, size_t size, char const *file, int 
         p = arena_realloc_throw(arena, mem, size, file, line);
     }
     FL_CATCH(arena_out_of_memory) {
-        // realloc failed, so return the old object unchanged
-        p = mem;
+        p = NULL;
+    }
+    FL_CATCH(region_initialization_failure) {
+        p = NULL;
+    }
+    FL_CATCH(region_out_of_memory) {
+        p = NULL;
     }
     FL_END_TRY;
 

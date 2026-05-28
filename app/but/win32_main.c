@@ -16,6 +16,7 @@
 
 #include "../../src/arena.c"
 #include "../../src/arena_dbg.c"
+#include "../../src/arena_malloc.c"
 #include "../../src/but_driver.c"
 #include "../../src/but_result_context.c"
 #include "../../src/buffer.c"
@@ -26,6 +27,7 @@
 #include "../../src/flp_exception_service.c"
 #include "../../src/flp_log_service.c"
 #include "../../src/flp_memory_service.c"
+#include "../../src/flp_fault_memory_service.c"
 #include "../../third_party/fnv/FNV64.c"
 #include "../../src/region.c"
 #include "../../src/region_node.c"
@@ -168,10 +170,10 @@ int main(int argc, char **argv) {
     Arena                *arena = new_arena(0, 0);
 
     if (argc > 1) {
-        FaultInjector   fi;
-        FLMemoryContext flmctx;
+        FaultInjector        fi;
+        FLFaultMemoryContext flmctx;
         fault_injector_init(&fi, arena);
-        flp_init_memory_context(&flmctx, arena, &fi);
+        flp_init_fault_memory_context(&flmctx, arena, &fi);
 
         flp_log_init_custom(LOG_LEVEL_INFO, "but_test.log");
         LOG_INFO(module, "Log out path set");
@@ -213,7 +215,7 @@ int main(int argc, char **argv) {
                     GetProcAddress(test_suite, FLA_SET_MEMORY_SERVICE_STR);
             // the memory service is optional
             if (fla_set_memory_service != NULL) {
-                flp_init_memory_service(fla_set_memory_service, &flmctx);
+                flp_init_fault_memory_service(fla_set_memory_service, &flmctx);
             }
 
             fl_get_test_suite

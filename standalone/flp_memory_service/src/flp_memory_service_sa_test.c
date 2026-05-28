@@ -30,7 +30,7 @@
 
 // Private headers — requires /I pointing to the src directory.
 #include "fault_injector_internal.h"
-#include "flp_memory_context.h"
+#include "flp_fault_memory_context.h"
 
 // Must be last: redefines malloc/calloc/free/realloc to route through
 // g_fla_memory_service once flp_init_memory_service has injected the service.
@@ -51,14 +51,14 @@ static int g_failures = 0;
 int main(void) {
     fprintf(stdout, "flp_memory_service standalone tests\n");
 
-    Arena          *arena = new_arena(0, 0);
-    FaultInjector   fi    = {0};
-    FLMemoryContext ctx   = {0};
+    Arena               *arena = new_arena(0, 0);
+    FaultInjector        fi    = {0};
+    FLFaultMemoryContext ctx   = {0};
 
     FL_TRY {
         fault_injector_init(&fi, arena);
-        flp_init_memory_context(&ctx, arena, &fi);
-        flp_init_memory_service(fla_set_memory_service, &ctx);
+        flp_init_fault_memory_context(&ctx, arena, &fi);
+        flp_init_fault_memory_service(fla_set_memory_service, &ctx);
 
         SECTION("service injection");
         CHECK(g_fla_memory_service.ctx != NULL);

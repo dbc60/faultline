@@ -83,8 +83,10 @@ Region *new_custom_region(size_t commit, u32 reserve, u32 granularity_multiplier
     // of the granularity.
     to_reserve = (size_t)reserve * (size_t)applied_granularity
                  + ALIGN_UP(to_commit, applied_granularity);
-    top        = VirtualAlloc(0, to_reserve, MEM_RESERVE, PAGE_NOACCESS);
-    FL_ASSERT_NOT_NULL(top);
+    top = VirtualAlloc(0, to_reserve, MEM_RESERVE, PAGE_NOACCESS);
+    if (top == NULL) {
+        FL_THROW(region_initialization_failure);
+    }
 
     region = (Region *)(top);
 
@@ -116,13 +118,14 @@ size_t commit(Region *region, size_t to_commit) {
     void *end_committed = region->end_committed;
     commit_address = VirtualAlloc(end_committed, to_commit, MEM_COMMIT, PAGE_READWRITE);
 
-    // VirtualAlloc shouldn't fail very often, because we've been careful about ensuring
-    // there is sufficient reserved memory to allow for the commit.
-    FL_ASSERT_DETAILS(commit_address != NULL,
-                      "Error %d: region 0x%p failed to allocate %zu bytes at 0x%p; "
-                      "reserved(%zu), committed(%zu)",
-                      GetLastError(), region, to_commit, end_committed,
-                      REGION_BYTES_RESERVED(region), REGION_BYTES_COMMITTED(region));
+    // VirtualAlloc can fail under memory pressure; treat it as a recoverable OOM.
+    if (commit_address == NULL) {
+        FL_THROW_DETAILS(region_out_of_memory,
+                         "Error %d: region 0x%p failed to commit %zu bytes at 0x%p; "
+                         "reserved(%zu), committed(%zu)",
+                         GetLastError(), region, to_commit, end_committed,
+                         REGION_BYTES_RESERVED(region), REGION_BYTES_COMMITTED(region));
+    }
 
     /* Check returned pointer for consistency */
     FL_ASSERT_DETAILS(commit_address == region->end_committed,
@@ -188,7 +191,11 @@ size_t extend_region(Region *region, size_t to_commit) {
                 size_t to_reserve = ALIGN_UP(to_commit, region->granularity);
                 base_reserved = VirtualAlloc((LPVOID)region->end_reserved, to_reserve,
                                              MEM_RESERVE, PAGE_NOACCESS);
-                FL_ASSERT_NOT_NULL(base_reserved);
+                if (base_reserved == NULL) {
+                    FL_THROW_DETAILS(region_out_of_memory,
+                                     "failed to reserve %zu bytes at 0x%p",
+                                     to_reserve, region->end_reserved);
+                }
 
                 // Verify that the returned pointer is the expected address
                 if (base_reserved != region->end_reserved) {

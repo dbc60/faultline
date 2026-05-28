@@ -11,8 +11,8 @@
 #define FAULTLINE_COMMANDS_H_
 
 #include "../../src/command.h"
+#include "../../src/flp_fault_memory_context.h" // FLFaultMemoryContext
 #include <faultline/fl_context.h>
-#include <faultline/fl_memory_service.h> // FLMemoryContext (forward declaration)
 #include <faultline/arena.h>             // Arena
 #include <sqlite/sqlite3.h>
 
@@ -39,7 +39,7 @@ typedef struct {
     FLContext       *fctx;      // Test execution context (run command only)
     int              log_level; // Configured logging level
     Arena           *arena;     // owned by main(), borrowed by command handlers
-    FLMemoryContext *mem_ctx;   // initialized from arena, borrowed by command handlers
+    FLFaultMemoryContext *mem_ctx; // initialized from arena, borrowed by command handlers
     char const      *junit_xml_path; // path to output for writing JUNIT XML
 } ExecutionContext;
 

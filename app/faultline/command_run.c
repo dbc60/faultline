@@ -9,7 +9,7 @@
  */
 #include "../../src/command.h"  // RuntimeCommand, has_option, get_string_option
 #include "faultline_commands.h" // ExecutionContext, run_cmd
-#include "../../src/flp_memory_context.h" // FLMemoryContext (full definition)
+#include "../../src/flp_fault_memory_context.h" // FLFaultMemoryContext (full definition)
 #include "../../src/output_junit.h"       // write_junit_xml
 
 #include <faultline/fl_log.h>          // LOG_ERROR, LOG_WARN, LOG_INFO
@@ -330,7 +330,7 @@ COMMAND_HANDLER(run_cmd) {
             fla_set_memory_service_fn *fla_set_mem = (fla_set_memory_service_fn *)
                 GetProcAddress(test_suite, FLA_SET_MEMORY_SERVICE_STR);
             if (fla_set_mem != NULL) {
-                flp_init_memory_service(fla_set_mem, ectx->mem_ctx);
+                flp_init_fault_memory_service(fla_set_mem, ectx->mem_ctx);
             }
 
             // Run tests

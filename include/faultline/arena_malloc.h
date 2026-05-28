@@ -81,8 +81,8 @@ void arena_free_pointer(Arena *arena, void **mp, char const *file, int line);
  * @param bytes the number of bytes requested
  * @param file
  * @param line
- * @return the address of a block of memory that satisfies the request
- * @throw arena_out_of_memory exception.
+ * @return the address of a block of memory that satisfies the request or NULL if memory
+ * cannot be allocated.
  */
 void *arena_malloc(Arena *arena, size_t bytes, char const *file, int line);
 
@@ -97,7 +97,8 @@ void *arena_malloc(Arena *arena, size_t bytes, char const *file, int line);
  * the specified size. Otherwise, if mem does not match a pointer earlier returned by the
  * calloc, malloc, or realloc function, or if the space has been deallocated by a call to
  * the free or realloc function, the behavior is undefined. If memory for the new object
- * cannot be allocated, the old object is not deallocated and its value is unchanged.
+ * cannot be allocated, the old object is not deallocated and its value is unchanged, but
+ * realloc returns NULL.
  *
  * @param mem
  * @param size

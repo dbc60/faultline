@@ -30,6 +30,7 @@
 #include "../../src/flp_exception_service.c"
 #include "../../src/flp_log_service.c"
 #include "../../src/flp_memory_service.c"
+#include "../../src/flp_fault_memory_service.c"
 #include "../../src/output_junit.c"
 #include "../../third_party/fnv/FNV64.c"
 #include "../../src/region.c"
@@ -77,15 +78,15 @@ static FLLogLevel parse_log_level(char const *level_str) {
 int main(int argc, char **argv) {
     Arena          *arena   = new_arena(0, 0);
     FLContext       fctx    = {0};
-    FLMemoryContext mem_ctx = {0};
-    sqlite3        *db      = NULL;
-    int volatile exit_code  = 0;
+    FLFaultMemoryContext mem_ctx = {0};
+    sqlite3             *db      = NULL;
+    int volatile exit_code       = 0;
 
     flp_log_init_custom(LOG_LEVEL_INFO, "faultline.log");
     fctx.injector = arena_malloc_throw(arena, sizeof *fctx.injector, __FILE__, __LINE__);
     fault_injector_init(fctx.injector, arena);
-    flp_init_memory_context(&mem_ctx, arena, fctx.injector);
-    flp_init_memory_service(noop_fla_set_memory_service, &mem_ctx);
+    flp_init_fault_memory_context(&mem_ctx, arena, fctx.injector);
+    flp_init_fault_memory_service(noop_fla_set_memory_service, &mem_ctx);
 
     FL_TRY {
         RuntimeCommand *parsed_cmd = parse_command(get_faultline_commands(), argc, argv);
