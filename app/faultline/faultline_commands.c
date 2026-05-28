@@ -110,9 +110,12 @@ static FormalOption trends_options[] = {
 // Show subcommands
 static FormalCommand show_subcommands[] = {
     {"results", "List test results", show_results_cmd, results_options, NULL, NULL},
-    {"result", "Show specific result details", show_result_cmd, result_options, NULL, NULL},
-    {"suites", "List registered test suites", show_suites_cmd, suites_options, NULL, NULL},
-    {"suite", "Show suite info and test cases", show_suite_cmd, suite_options, NULL, NULL},
+    {"result", "Show specific result details", show_result_cmd, result_options, NULL,
+     NULL},
+    {"suites", "List registered test suites", show_suites_cmd, suites_options, NULL,
+     NULL},
+    {"suite", "Show suite info and test cases", show_suite_cmd, suite_options, NULL,
+     NULL},
     {"cases", "Search test case catalog", show_cases_cmd, cases_options, NULL, NULL},
     {"hotspots", "Show frequently failing locations", show_hotspots_cmd,
      hotspots_options, NULL, NULL},

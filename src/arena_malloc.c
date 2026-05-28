@@ -13,7 +13,7 @@
 #include <faultline/fl_try.h>                      // for FL_CATCH, FL_END_TRY, FL_TRY
 #include <faultline/arena_malloc.h> // for arena_free_throw, arena_out_of_me...
 #include <stddef.h>                 // for size_t, NULL
-#include "region.h"                 // for region_initialization_failure, region_out_of_memory
+#include "region.h" // for region_initialization_failure, region_out_of_memory
 
 void *arena_aligned_alloc(Arena *arena, size_t alignment, size_t size, char const *file,
                           int line) {

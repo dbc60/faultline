@@ -193,8 +193,8 @@ size_t extend_region(Region *region, size_t to_commit) {
                                              MEM_RESERVE, PAGE_NOACCESS);
                 if (base_reserved == NULL) {
                     FL_THROW_DETAILS(region_out_of_memory,
-                                     "failed to reserve %zu bytes at 0x%p",
-                                     to_reserve, region->end_reserved);
+                                     "failed to reserve %zu bytes at 0x%p", to_reserve,
+                                     region->end_reserved);
                 }
 
                 // Verify that the returned pointer is the expected address

@@ -100,8 +100,9 @@ COPY /Y "%DIR_SRC%\fault_injector.c"           "%DIR_DIST%\src\" > NUL
 :: C source files — memory service (both sides)
 :: -----------------------------------------------------------------------
 ECHO Copying memory service source files...
-COPY /Y "%DIR_SRC%\fla_memory_service.c"       "%DIR_DIST%\src\" > NUL
-COPY /Y "%DIR_SRC%\flp_memory_service.c"       "%DIR_DIST%\src\" > NUL
+COPY /Y "%DIR_SRC%\fla_memory_service.c"            "%DIR_DIST%\src\" > NUL
+COPY /Y "%DIR_SRC%\flp_memory_service.c"            "%DIR_DIST%\src\" > NUL
+COPY /Y "%DIR_SRC%\flp_fault_memory_service.c"      "%DIR_DIST%\src\" > NUL
 
 :: -----------------------------------------------------------------------
 :: Private headers — arena
@@ -143,7 +144,8 @@ COPY /Y "%DIR_SRC%\fault_injector_resource.h"  "%DIR_DIST%\src\" > NUL
 :: Private headers — memory service
 :: -----------------------------------------------------------------------
 ECHO Copying memory service private headers...
-COPY /Y "%DIR_SRC%\flp_memory_context.h"       "%DIR_DIST%\src\" > NUL
+COPY /Y "%DIR_SRC%\flp_memory_context.h"            "%DIR_DIST%\src\" > NUL
+COPY /Y "%DIR_SRC%\flp_fault_memory_context.h"      "%DIR_DIST%\src\" > NUL
 
 :: -----------------------------------------------------------------------
 :: Public headers from include\faultline\ — arena + exception + log

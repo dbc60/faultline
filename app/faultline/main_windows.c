@@ -76,8 +76,8 @@ static FLLogLevel parse_log_level(char const *level_str) {
 }
 
 int main(int argc, char **argv) {
-    Arena          *arena   = new_arena(0, 0);
-    FLContext       fctx    = {0};
+    Arena               *arena   = new_arena(0, 0);
+    FLContext            fctx    = {0};
     FLFaultMemoryContext mem_ctx = {0};
     sqlite3             *db      = NULL;
     int volatile exit_code       = 0;

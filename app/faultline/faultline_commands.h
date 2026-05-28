@@ -13,7 +13,7 @@
 #include "../../src/command.h"
 #include "../../src/flp_fault_memory_context.h" // FLFaultMemoryContext
 #include <faultline/fl_context.h>
-#include <faultline/arena.h>             // Arena
+#include <faultline/arena.h> // Arena
 #include <sqlite/sqlite3.h>
 
 #if defined(__cplusplus)
@@ -34,13 +34,14 @@ extern "C" {
  * Database: db may be NULL if --no-db was specified or db init failed.
  */
 typedef struct {
-    RuntimeCommand   cmd;       // MUST be first - enables handler type-pun
-    sqlite3         *db;        // Database connection (may be NULL)
-    FLContext       *fctx;      // Test execution context (run command only)
-    int              log_level; // Configured logging level
-    Arena           *arena;     // owned by main(), borrowed by command handlers
-    FLFaultMemoryContext *mem_ctx; // initialized from arena, borrowed by command handlers
-    char const      *junit_xml_path; // path to output for writing JUNIT XML
+    RuntimeCommand cmd;       // MUST be first - enables handler type-pun
+    sqlite3       *db;        // Database connection (may be NULL)
+    FLContext     *fctx;      // Test execution context (run command only)
+    int            log_level; // Configured logging level
+    Arena         *arena;     // owned by main(), borrowed by command handlers
+    FLFaultMemoryContext
+               *mem_ctx;        // initialized from arena, borrowed by command handlers
+    char const *junit_xml_path; // path to output for writing JUNIT XML
 } ExecutionContext;
 
 // Get the faultline command table
