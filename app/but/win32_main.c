@@ -234,7 +234,7 @@ int main(int argc, char **argv) {
                 LOG_INFO(module, "%s (%zu): test suite %d of %d", ts->name, ts->count, i,
                          argc - 1);
                 exercise_test_suite(&bctx, ts);
-                if (i < argc) {
+                if (i < argc - 1) {
                     printf("*******************************************\n");
                 }
             }

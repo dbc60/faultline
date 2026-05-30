@@ -8,20 +8,19 @@
  * See LICENSE.txt for copyright and licensing information about this file.
  *
  */
-#include <faultline/fl_log.h>                      // LOG_DEBUG
-#include <faultline/fl_memory_service.h>           // FLMemoryService, FL_*_FN macros
-#include <faultline/arena.h>                       // arena_*_throw
-#include <faultline/arena_malloc.h>                // arena_out_of_memory
-#include <flp_memory_service.h>                    // FLP_INIT_FAULT_MEMORY_SERVICE_FN
-#include <stddef.h>                                // NULL
-#include "chunk.h"                                 // FREE_CHUNK_FROM_MEMORY
-#include "fault_injector_internal.h"               // fault_injector_*
-#include <faultline/fl_exception_service.h>        // FL_REASON, FL_FILE, FL_LINE
+#include <faultline/fl_log.h>               // LOG_DEBUG
+#include <faultline/fl_memory_service.h>    // FLMemoryService, FL_*_FN macros
+#include <faultline/arena.h>                // arena_free_throw, arena_free_pointer_throw
+#include <faultline/arena_malloc.h>         // arena_malloc, arena_calloc, etc.
+#include <flp_memory_service.h>             // FLP_INIT_FAULT_MEMORY_SERVICE_FN
+#include <stddef.h>                         // NULL
+#include "chunk.h"                          // FREE_CHUNK_FROM_MEMORY
+#include "fault_injector_internal.h"        // fault_injector_*
+#include <faultline/fl_exception_service.h> // FL_REASON, FL_FILE, FL_LINE
 #include <faultline/fl_exception_service_assert.h> // FL_ASSERT_NOT_NULL
 #include <faultline/fl_try.h>                      // FL_TRY, FL_CATCH, FL_END_TRY
 #include "flp_fault_memory_context.h"              // FLFaultMemoryContext,
                                                    //   FLP_INIT_FAULT_MEMORY_CONTEXT_FN
-#include "region.h"                                // region_initialization_failure
 
 static FLFaultMemoryContext *g_fault_ctx = NULL;
 
@@ -63,18 +62,10 @@ FL_ALIGNED_ALLOC_FN(flp_fault_aligned_alloc) {
 
     FL_TRY {
         fault_injector_try_throw_with_site(g_fault_ctx->fi, file, line);
-
-        mem = arena_aligned_alloc_throw(g_fault_ctx->arena, alignment, size, file, line);
-        fault_injector_record_allocate(g_fault_ctx->fi, mem, file, line);
-    }
-    FL_CATCH(arena_out_of_memory) {
-        mem = NULL;
-    }
-    FL_CATCH(region_initialization_failure) {
-        mem = NULL;
-    }
-    FL_CATCH(region_out_of_memory) {
-        mem = NULL;
+        mem = arena_aligned_alloc(g_fault_ctx->arena, alignment, size, file, line);
+        if (mem != NULL) {
+            fault_injector_record_allocate(g_fault_ctx->fi, mem, file, line);
+        }
     }
     FL_CATCH(fault_injector_exception) {
         mem = NULL;
@@ -89,18 +80,10 @@ FL_CALLOC_FN(flp_fault_calloc) {
 
     FL_TRY {
         fault_injector_try_throw_with_site(g_fault_ctx->fi, file, line);
-
-        mem = arena_calloc_throw(g_fault_ctx->arena, nmemb, size, file, line);
-        fault_injector_record_allocate(g_fault_ctx->fi, mem, file, line);
-    }
-    FL_CATCH(arena_out_of_memory) {
-        mem = NULL;
-    }
-    FL_CATCH(region_initialization_failure) {
-        mem = NULL;
-    }
-    FL_CATCH(region_out_of_memory) {
-        mem = NULL;
+        mem = arena_calloc(g_fault_ctx->arena, nmemb, size, file, line);
+        if (mem != NULL) {
+            fault_injector_record_allocate(g_fault_ctx->fi, mem, file, line);
+        }
     }
     FL_CATCH(fault_injector_exception) {
         mem = NULL;
@@ -119,18 +102,16 @@ FL_FREE_FN(flp_fault_free) {
             arena_free_throw(g_fault_ctx->arena, ptr, file, line);
             fault_injector_record_free(g_fault_ctx->fi, ptr, file, line);
         }
-        FL_CATCH_ALL {
+        FL_CATCH(fl_invalid_address) {
             LOG_DEBUG("FAULT FREE", "do free exception");
-            fault_injector_put_invalid_free(g_fault_ctx->fi, ptr, FL_REASON, FL_FILE,
-                                            FL_LINE);
+            fault_injector_put_invalid_free(g_fault_ctx->fi, ptr, FL_REASON, file, line);
         }
         FL_END_TRY;
     }
     FL_CATCH(fl_invalid_address) {
         LOG_DEBUG("FAULT FREE", "recording invalid free: 0x%p, reason=%s, details=%s",
                   ptr, FL_REASON, FL_DETAILS);
-        fault_injector_put_invalid_free(g_fault_ctx->fi, ptr, FL_REASON, FL_FILE,
-                                        FL_LINE);
+        fault_injector_put_invalid_free(g_fault_ctx->fi, ptr, FL_REASON, file, line);
     }
     FL_END_TRY;
 }
@@ -146,15 +127,13 @@ FL_FREE_POINTER_FN(flp_fault_free_pointer) {
             arena_free_pointer_throw(g_fault_ctx->arena, ptr, file, line);
             fault_injector_record_free(g_fault_ctx->fi, mem, file, line);
         }
-        FL_CATCH_ALL {
-            fault_injector_put_invalid_free(g_fault_ctx->fi, mem, FL_REASON, FL_FILE,
-                                            FL_LINE);
+        FL_CATCH(fl_invalid_address) {
+            fault_injector_put_invalid_free(g_fault_ctx->fi, mem, FL_REASON, file, line);
         }
         FL_END_TRY;
     }
     FL_CATCH(fl_invalid_address) {
-        fault_injector_put_invalid_free(g_fault_ctx->fi, mem, FL_REASON, FL_FILE,
-                                        FL_LINE);
+        fault_injector_put_invalid_free(g_fault_ctx->fi, mem, FL_REASON, file, line);
     }
     FL_END_TRY;
 }
@@ -164,18 +143,10 @@ FL_MALLOC_FN(flp_fault_malloc) {
 
     FL_TRY {
         fault_injector_try_throw_with_site(g_fault_ctx->fi, file, line);
-
-        mem = arena_malloc_throw(g_fault_ctx->arena, size, file, line);
-        fault_injector_record_allocate(g_fault_ctx->fi, mem, file, line);
-    }
-    FL_CATCH(arena_out_of_memory) {
-        mem = NULL;
-    }
-    FL_CATCH(region_initialization_failure) {
-        mem = NULL;
-    }
-    FL_CATCH(region_out_of_memory) {
-        mem = NULL;
+        mem = arena_malloc(g_fault_ctx->arena, size, file, line);
+        if (mem != NULL) {
+            fault_injector_record_allocate(g_fault_ctx->fi, mem, file, line);
+        }
     }
     FL_CATCH(fault_injector_exception) {
         mem = NULL;
@@ -190,26 +161,14 @@ FL_REALLOC_FN(flp_fault_realloc) {
 
     FL_TRY {
         fault_injector_try_throw_with_site(g_fault_ctx->fi, file, line);
-
-        mem = arena_realloc_throw(g_fault_ctx->arena, ptr, size, file, line);
-        if (mem != ptr) {
+        mem = arena_realloc(g_fault_ctx->arena, ptr, size, file, line);
+        if (mem != NULL && mem != ptr) {
             fault_injector_record_free(g_fault_ctx->fi, ptr, file, line);
-            if (mem != NULL) {
-                fault_injector_record_allocate(g_fault_ctx->fi, mem, file, line);
-            }
+            fault_injector_record_allocate(g_fault_ctx->fi, mem, file, line);
         }
     }
-    FL_CATCH(arena_out_of_memory) {
-        mem = NULL;
-    }
-    FL_CATCH(region_initialization_failure) {
-        mem = NULL;
-    }
-    FL_CATCH(region_out_of_memory) {
-        mem = NULL;
-    }
     FL_CATCH(fault_injector_exception) {
-        mem = ptr;
+        mem = NULL;
     }
     FL_END_TRY;
 

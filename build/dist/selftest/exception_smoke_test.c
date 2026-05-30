@@ -20,22 +20,13 @@
  * See LICENSE.txt for copyright and licensing information about this file.
  */
 
-#include <faultline/fl_try.h>             // FL_TRY/CATCH/THROW/RETHROW (platform side under FL_BUILD_DRIVER)
+#include "fl_selftest.h"
+
+#include <faultline/fl_try.h> // FL_TRY/CATCH/THROW/RETHROW (platform side under FL_BUILD_DRIVER)
 #include <faultline/fl_exception_service.h>
 #include <faultline/fl_exception_types.h> // FLExceptionReason
 
 #include <stdbool.h>
-#include <stdio.h>
-
-static int g_failures = 0;
-
-#define CHECK(cond)                                                         \
-    do {                                                                    \
-        if (!(cond)) {                                                      \
-            fprintf(stderr, "FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond); \
-            g_failures++;                                                   \
-        }                                                                   \
-    } while (0)
 
 static FLExceptionReason smoke_reason = "smoke exception";
 

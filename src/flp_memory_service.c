@@ -9,14 +9,15 @@
  *
  */
 #include <faultline/fl_memory_service.h> // FLMemoryService, FL_*_FN macros
-#include <faultline/arena.h>             // arena_realloc_throw
-#include <faultline/arena_malloc.h> // arena_malloc/calloc/free/..., arena_out_of_memory
+#include <faultline/arena.h>             // arena_free_throw
+#include <faultline/arena_malloc.h> // arena_malloc, arena_calloc, arena_aligned_alloc, arena_realloc
+#include <faultline/fl_log.h>       // LOG_WARN
 #include <flp_memory_service.h>     // FLP_INIT_MEMORY_SERVICE_FN
 #include <stddef.h>                 // NULL
+#include <faultline/fl_exception_service.h>        // fl_invalid_address
 #include <faultline/fl_exception_service_assert.h> // FL_ASSERT_NOT_NULL
 #include <faultline/fl_try.h>                      // FL_TRY, FL_CATCH, FL_END_TRY
 #include "flp_memory_context.h" // FLMemoryContext, FLP_INIT_MEMORY_CONTEXT_FN
-#include "region.h"             // region_initialization_failure, region_out_of_memory
 
 static FLMemoryService g_memory_service = {
     .ctx              = NULL,
@@ -59,11 +60,28 @@ FL_CALLOC_FN(flp_calloc) {
 }
 
 FL_FREE_FN(flp_free) {
-    arena_free(g_memory_service.ctx->arena, ptr, file, line);
+    FL_TRY {
+        arena_free_throw(g_memory_service.ctx->arena, ptr, file, line);
+    }
+    FL_CATCH(fl_invalid_address) {
+        LOG_WARN("MEMORY SERVICE", "invalid free of 0x%p at %s:%d: %s", ptr, file, line,
+                 FL_REASON);
+    }
+    FL_END_TRY;
 }
 
 FL_FREE_POINTER_FN(flp_free_pointer) {
-    arena_free_pointer(g_memory_service.ctx->arena, ptr, file, line);
+    FL_ASSERT_NOT_NULL(ptr);
+    void *mem = *ptr;
+    FL_TRY {
+        arena_free_throw(g_memory_service.ctx->arena, mem, file, line);
+    }
+    FL_CATCH(fl_invalid_address) {
+        LOG_WARN("MEMORY SERVICE", "invalid free of 0x%p at %s:%d: %s", mem, file, line,
+                 FL_REASON);
+    }
+    FL_END_TRY;
+    *ptr = NULL;
 }
 
 FL_MALLOC_FN(flp_malloc) {

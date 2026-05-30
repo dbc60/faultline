@@ -14,22 +14,13 @@
  * See LICENSE.txt for copyright and licensing information about this file.
  */
 
+#include "fl_selftest.h"
+
 #include <faultline/fl_try.h>
 #include <faultline/arena.h>
 #include <faultline/arena_malloc.h>
 
 #include <stdbool.h>
-#include <stdio.h>
-
-static int g_failures = 0;
-
-#define CHECK(cond)                                                         \
-    do {                                                                    \
-        if (!(cond)) {                                                      \
-            fprintf(stderr, "FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond); \
-            g_failures++;                                                   \
-        }                                                                   \
-    } while (0)
 
 #define COMMIT_64K ((size_t)64 * 1024)
 

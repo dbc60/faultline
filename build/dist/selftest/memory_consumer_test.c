@@ -24,9 +24,10 @@
 // included after those macros are active, the compiler tries to declare e.g.
 // "void* __cdecl malloc(size_t)" and the macro expansion produces an invalid
 // declaration (C4229 / C2220 in MSVC).
+#include "fl_selftest.h"
+
 #include <stdbool.h>
 #include <stddef.h>
-#include <stdio.h>
 #include <stdlib.h>
 
 #include <faultline/arena.h>
@@ -41,18 +42,6 @@
 // Must be last: redefines malloc/calloc/free/realloc to route through
 // g_fla_memory_service once flp_init_fault_memory_service has injected it.
 #include <faultline/fla_memory_service.h>
-
-static int g_failures = 0;
-
-#define CHECK(cond)                                                         \
-    do {                                                                    \
-        if (!(cond)) {                                                      \
-            fprintf(stderr, "FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond); \
-            g_failures++;                                                   \
-        }                                                                   \
-    } while (0)
-
-#define SECTION(name) fprintf(stdout, "  %s\n", (name))
 
 int main(void) {
     fprintf(stdout, "memory_consumer_test (imported package)\n");
