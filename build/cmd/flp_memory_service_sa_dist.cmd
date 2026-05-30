@@ -44,6 +44,15 @@ SET DIR_SA_LOG=%DIR_REPO%\standalone\log\src
 SET DIR_INC=%DIR_REPO%\include\faultline
 SET DIR_FNV=%DIR_REPO%\third_party\fnv
 
+:: Package metadata recorded in manifest.txt (bump SVC_VERSION on release).
+:: This package bundles the exception and log service sources it needs, so it is
+:: self-contained and declares no dependencies. fl_import reference-counts the
+:: shared files, so importing it alongside the standalone exception/log packages
+:: is still safe.
+SET SVC_NAME=memory
+SET SVC_VERSION=0.2.0
+SET SVC_DEPENDS=
+
 :: Handle clean
 IF /I "%~1"=="clean" (
     IF EXIST "%DIR_DIST%" (
@@ -55,10 +64,13 @@ IF /I "%~1"=="clean" (
     GOTO :SUCCESS
 )
 
-:: Create output directories
-IF NOT EXIST "%DIR_DIST%\src"                  MD "%DIR_DIST%\src"
-IF NOT EXIST "%DIR_DIST%\src\fnv"              MD "%DIR_DIST%\src\fnv"
-IF NOT EXIST "%DIR_DIST%\include\faultline"    MD "%DIR_DIST%\include\faultline"
+:: Wipe any previously-collected files so the package reflects exactly the
+:: current file set and the generated manifest matches what is on disk.
+IF EXIST "%DIR_DIST%\src"     RD /S /Q "%DIR_DIST%\src"
+IF EXIST "%DIR_DIST%\include" RD /S /Q "%DIR_DIST%\include"
+MD "%DIR_DIST%\src"
+MD "%DIR_DIST%\src\fnv"
+MD "%DIR_DIST%\include\faultline"
 
 :: -----------------------------------------------------------------------
 :: C source files — arena
@@ -190,6 +202,16 @@ ECHO Copying top-level public headers...
 COPY /Y "%DIR_REPO%\include\flp_memory_service.h"   "%DIR_DIST%\include\" > NUL
 COPY /Y "%DIR_REPO%\include\flp_log_service.h"      "%DIR_DIST%\include\" > NUL
 
+:: -----------------------------------------------------------------------
+:: Generate the package manifest (authoritative file list used by fl_import)
+:: -----------------------------------------------------------------------
+ECHO Generating manifest...
+powershell -NoProfile -ExecutionPolicy Bypass -File "%DIR_BUILD%\dist\fl_emit_manifest.ps1" -PackageDir "%DIR_DIST%" -Name "%SVC_NAME%" -Version "%SVC_VERSION%" -Depends "%SVC_DEPENDS%"
+IF ERRORLEVEL 1 (
+    ECHO ERROR: manifest generation failed.
+    GOTO :FAIL
+)
+
 ECHO.
 ECHO Done. Package written to dist\flp_memory_service\
 ECHO.
@@ -201,6 +223,10 @@ ECHO     dist\flp_memory_service\src\*.c
 ECHO     dist\flp_memory_service\src\fnv\FNV64.c
 
 GOTO :SUCCESS
+
+:FAIL
+ENDLOCAL
+EXIT /B 1
 
 :SUCCESS
 ENDLOCAL

@@ -44,6 +44,11 @@ SET DIR_DIST=%DIR_REPO%\dist\exception-driver
 SET DIR_SRC=%DIR_REPO%\src
 SET DIR_INC=%DIR_REPO%\include\faultline
 
+:: Package metadata recorded in manifest.txt (bump SVC_VERSION on release).
+SET SVC_NAME=exception-driver
+SET SVC_VERSION=0.2.0
+SET SVC_DEPENDS=
+
 :: Handle clean
 IF /I "%~1"=="clean" (
     IF EXIST "%DIR_DIST%" (
@@ -55,9 +60,12 @@ IF /I "%~1"=="clean" (
     GOTO :SUCCESS
 )
 
-:: Create output directories
-IF NOT EXIST "%DIR_DIST%\src"                  MD "%DIR_DIST%\src"
-IF NOT EXIST "%DIR_DIST%\include\faultline"    MD "%DIR_DIST%\include\faultline"
+:: Wipe any previously-collected files so the package reflects exactly the
+:: current file set and the generated manifest matches what is on disk.
+IF EXIST "%DIR_DIST%\src"     RD /S /Q "%DIR_DIST%\src"
+IF EXIST "%DIR_DIST%\include" RD /S /Q "%DIR_DIST%\include"
+MD "%DIR_DIST%\src"
+MD "%DIR_DIST%\include\faultline"
 
 :: -----------------------------------------------------------------------
 :: C source files
@@ -80,6 +88,16 @@ COPY /Y "%DIR_INC%\fl_macros.h"                     "%DIR_DIST%\include\faultlin
 COPY /Y "%DIR_INC%\fl_try.h"                        "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_REPO%\include\flp_exception_service.h" "%DIR_DIST%\include\" > NUL
 
+:: -----------------------------------------------------------------------
+:: Generate the package manifest (authoritative file list used by fl_import)
+:: -----------------------------------------------------------------------
+ECHO Generating manifest...
+powershell -NoProfile -ExecutionPolicy Bypass -File "%DIR_BUILD%\dist\fl_emit_manifest.ps1" -PackageDir "%DIR_DIST%" -Name "%SVC_NAME%" -Version "%SVC_VERSION%" -Depends "%SVC_DEPENDS%"
+IF ERRORLEVEL 1 (
+    ECHO ERROR: manifest generation failed.
+    GOTO :FAIL
+)
+
 ECHO.
 ECHO Done. Package written to dist\exception-driver\
 ECHO.
@@ -88,6 +106,10 @@ ECHO   Driver compiles       : fl_exception_service.c  flp_exception_service.c
 ECHO   DLL compiles          : fl_exception_service.c  fla_exception_service.c
 
 GOTO :SUCCESS
+
+:FAIL
+ENDLOCAL
+EXIT /B 1
 
 :SUCCESS
 ENDLOCAL
