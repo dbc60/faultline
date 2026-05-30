@@ -10,6 +10,8 @@
  */
 #include <faultline/fl_log_types.h> // for FLLogLevel, FL_WRITE_LOG_FN, FLLogS...
 #include <faultline/fl_threads.h>   // for mtx_destroy, mtx_init, mtx_lock
+#include <faultline/fl_try.h>       // FL_ASSERT_REASON_IMPL indirectly
+#include <faultline/fl_exception_service_assert.h> // FL_ASSERT_NOT_NULL
 #include <flp_log_service.h>        // for FLP_INIT_LOG_SERVICE_FN, flp_con...
 #include <stdarg.h>                 // for va_end, va_list, va_start
 #include <stdbool.h>                // for false, bool, true
