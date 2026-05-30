@@ -94,7 +94,7 @@ FL_TEST("FL_CATCH_STR matches same-string different-address reason",
     FL_ASSERT_DETAILS(catch_str_reason_a != catch_str_reason_a_copy,
                       "expected distinct addresses for the two reason variables");
 
-    // Phase 1: FL_CATCH uses pointer equality — it misses the cross-address case.
+    // Phase 1: FL_CATCH uses pointer equality. It misses the cross-address case.
     bool pointer_caught = false;
     FL_TRY {
         FL_THROW(catch_str_reason_a);
@@ -109,7 +109,7 @@ FL_TEST("FL_CATCH_STR matches same-string different-address reason",
 
     FL_ASSERT_FALSE(pointer_caught);
 
-    // Phase 2: FL_CATCH_STR uses strcmp — it correctly catches the exception.
+    // Phase 2: FL_CATCH_STR uses strcmp. It correctly catches the exception.
     bool str_caught = false;
     FL_TRY {
         FL_THROW(catch_str_reason_a);

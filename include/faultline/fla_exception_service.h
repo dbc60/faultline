@@ -41,7 +41,7 @@ extern FLExceptionService g_fla_exception_service;
  */
 FL_DECL_SPEC FLA_SET_EXCEPTION_SERVICE_FN(fla_set_exception_service);
 
-// Hook macros — the only asymmetry between this file and flp_exception_service.h
+// Hook macros are the only asymmetry between this file and flp_exception_service.h
 #define FL_EXC_PUSH(env) g_fla_exception_service.push_env(env)
 #define FL_EXC_POP()     g_fla_exception_service.pop_env()
 #define FL_EXC_THROW(reason, details, file, line) \

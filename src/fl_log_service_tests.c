@@ -24,6 +24,9 @@
 #include "fl_exception_service.c"  // exception reason constants
 #include "fla_exception_service.c" // TLS exception service (app-side)
 #include "flp_log_service.c"       // code under test (platform log service)
+#include "fla_log_service.c"       // code under test (application log service)
+
+#include <io.h> // _dup, _dup2, _close, _fileno (stderr suppression)
 
 // ---------------------------------------------------------------------------
 // Helper functions
@@ -74,6 +77,29 @@ static size_t count_lines(char const *buf) {
         }
     }
     return count;
+}
+
+/**
+ * @brief Redirect stderr to NUL for a block expected to emit a diagnostic
+ * (e.g. the invalid-path fallback warning). Saves and returns the original
+ * stderr fd; pass it to restore_stderr() to undo. Saving the underlying fd
+ * keeps any harness-level redirection of stderr intact.
+ */
+static int suppress_stderr(void) {
+    fflush(stderr);
+    int   saved = _dup(_fileno(stderr));
+    FILE *devnull;
+    freopen_s(&devnull, "NUL", "w", stderr);
+    return saved;
+}
+
+/**
+ * @brief Restore stderr previously redirected by suppress_stderr().
+ */
+static void restore_stderr(int saved) {
+    fflush(stderr);
+    _dup2(saved, _fileno(stderr));
+    _close(saved);
 }
 
 // ---------------------------------------------------------------------------
@@ -131,6 +157,39 @@ FL_TEST("Init Cleanup Reinit", init_cleanup_reinit) {
     size_t n = read_output(path, buf, sizeof buf);
     FL_ASSERT_GT_SIZE_T(n, (size_t)0);
     FL_ASSERT_TRUE(strstr(buf, "reinit works") != NULL);
+}
+
+FL_TEST("Init Custom With Path", init_custom_with_path) {
+    char path[256], buf[4096];
+    snprintf(path, sizeof path, "fl_log_test_%d.tmp", ++tmp_counter);
+
+    // init_custom with a non-NULL path opens the file itself and takes ownership.
+    flp_log_init_custom(LOG_LEVEL_TRACE, path);
+    FL_ASSERT_TRUE(g_logger.close_output);
+    FL_ASSERT_EQ_INT((int)g_logger.min_level, (int)LOG_LEVEL_TRACE);
+
+    flp_write_log(LOG_LEVEL_INFO, __FILE__, __LINE__, "test", "custom path msg");
+    size_t n = read_output(path, buf, sizeof buf);
+    FL_ASSERT_GT_SIZE_T(n, (size_t)0);
+    FL_ASSERT_TRUE(strstr(buf, "custom path msg") != NULL);
+}
+
+FL_TEST("Init Custom Null Path Stdout", init_custom_null_path_stdout) {
+    // A NULL path routes to stdout (unowned) and honors the requested level.
+    flp_log_init_custom(LOG_LEVEL_WARN, NULL);
+    FL_ASSERT_EQ_PTR((void *)g_logger.output, (void *)stdout);
+    FL_ASSERT_FALSE(g_logger.close_output);
+    FL_ASSERT_EQ_INT((int)g_logger.min_level, (int)LOG_LEVEL_WARN);
+    flp_log_cleanup();
+}
+
+FL_TEST("Init Is Idempotent", init_is_idempotent) {
+    // The first init wins; a second init while still initialized is a no-op
+    // and must not overwrite the configured level.
+    flp_log_init_custom(LOG_LEVEL_WARN, NULL);
+    flp_log_init_custom(LOG_LEVEL_TRACE, NULL);
+    FL_ASSERT_EQ_INT((int)g_logger.min_level, (int)LOG_LEVEL_WARN);
+    flp_log_cleanup();
 }
 
 // ---------------------------------------------------------------------------
@@ -253,7 +312,11 @@ FL_TEST("Set Output Path Append Mode", set_output_path_append_mode) {
 
 FL_TEST("Set Output Path Invalid Fallback", set_output_path_invalid_fallback) {
     flp_log_init();
+    // The invalid path triggers an expected "falling back to stdout" warning on
+    // stderr; silence it so it doesn't clutter the test run output.
+    int saved = suppress_stderr();
     flp_log_set_output_path("X:\\no_such_dir_abc123\\no_such_file.log");
+    restore_stderr(saved);
     FL_ASSERT_EQ_PTR((void *)g_logger.output, (void *)stdout);
     FL_ASSERT_FALSE(g_logger.close_output);
     flp_log_cleanup();
@@ -400,6 +463,65 @@ FL_TEST("App Writes to Platform Log", app_writes_to_platform_log) {
     FL_ASSERT_TRUE(strstr(buf, "noop check") != NULL);
 }
 
+// --------------------------------------------------------------------------------------
+// Application-side service tests (fla_log_service.c)
+//
+// These exercise the real g_fla_log_service and fla_set_log_service, as opposed to the
+// local test_svc / set_log_service stub used above. Note the driver injects a real log
+// service into the DLL at load time, so g_fla_log_service is already wired before any
+// test runs; the initial default_write stub and the size-mismatch abort branch of
+// fla_set_log_service are therefore not reachable here and are intentionally left
+// uncovered.
+// --------------------------------------------------------------------------------------
+
+static int        recording_write_called = 0;
+static FLLogLevel recording_write_level  = LOG_LEVEL_FATAL;
+
+static FL_WRITE_LOG_FN(recording_write) {
+    FL_UNUSED(file);
+    FL_UNUSED(line);
+    FL_UNUSED(id);
+    FL_UNUSED(format);
+    recording_write_called++;
+    recording_write_level = level;
+}
+
+// fla_set_log_service installs the provided write pointer, and calls through
+// g_fla_log_service route to it with the arguments intact.
+FL_TEST("App Set Installs Write", app_set_installs_write) {
+    fl_write_log_fn *saved = g_fla_log_service.write;
+
+    FLLogService svc = {.write = recording_write};
+    fla_set_log_service(&svc, sizeof svc);
+    FL_ASSERT_TRUE(g_fla_log_service.write == recording_write);
+
+    recording_write_called = 0;
+    recording_write_level  = LOG_LEVEL_FATAL;
+    g_fla_log_service.write(LOG_LEVEL_WARN, __FILE__, __LINE__, "test", "routed %d", 1);
+    FL_ASSERT_EQ_INT(recording_write_called, 1);
+    FL_ASSERT_EQ_INT((int)recording_write_level, (int)LOG_LEVEL_WARN);
+
+    g_fla_log_service.write = saved;
+}
+
+// The application service can be wired to the real platform writer, so an
+// app-side write lands in the platform logger's output file.
+FL_TEST("App Set Routes To Platform", app_set_routes_to_platform) {
+    fl_write_log_fn *saved = g_fla_log_service.write;
+    char             path[256], buf[4096];
+    init_to_tmpfile(path, sizeof path);
+
+    FLLogService svc = {.write = flp_write_log};
+    fla_set_log_service(&svc, sizeof svc);
+    g_fla_log_service.write(LOG_LEVEL_INFO, __FILE__, __LINE__, "test",
+                            "via app service");
+
+    read_output(path, buf, sizeof buf);
+    FL_ASSERT_TRUE(strstr(buf, "via app service") != NULL);
+
+    g_fla_log_service.write = saved;
+}
+
 // ---------------------------------------------------------------------------
 // Thread safety tests
 // ---------------------------------------------------------------------------
@@ -512,6 +634,9 @@ FL_SUITE_ADD(init_defaults)
 FL_SUITE_ADD(cleanup_flushes_owned_file)
 FL_SUITE_ADD(cleanup_does_not_close_unowned)
 FL_SUITE_ADD(init_cleanup_reinit)
+FL_SUITE_ADD(init_custom_with_path)
+FL_SUITE_ADD(init_custom_null_path_stdout)
+FL_SUITE_ADD(init_is_idempotent)
 FL_SUITE_ADD(default_level_is_info)
 FL_SUITE_ADD(set_level_trace_all_pass)
 FL_SUITE_ADD(set_level_fatal_only)
@@ -534,6 +659,8 @@ FL_SUITE_ADD(get_filename_no_path)
 FL_SUITE_ADD(get_filename_mixed_slashes)
 FL_SUITE_ADD(init_service_sets_write)
 FL_SUITE_ADD(app_writes_to_platform_log)
+FL_SUITE_ADD(app_set_installs_write)
+FL_SUITE_ADD(app_set_routes_to_platform)
 FL_SUITE_ADD(concurrent_writes_no_corruption)
 FL_SUITE_ADD(thread_ids_unique)
 FL_SUITE_ADD(thread_id_stable)

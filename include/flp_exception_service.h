@@ -24,7 +24,7 @@
 extern "C" {
 #endif
 
-// Hook macros — the only asymmetry between this file and fla_exception_service.h
+// Hook macros are the only asymmetry between this file and fla_exception_service.h
 #define FL_EXC_PUSH(env)                          flp_push(env)
 #define FL_EXC_POP()                              flp_pop()
 #define FL_EXC_THROW(reason, details, file, line) flp_throw(reason, details, file, line)

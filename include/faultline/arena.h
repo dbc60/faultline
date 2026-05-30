@@ -222,7 +222,7 @@ void init_mparams(void);
  * @brief Set the maximum memory footprint the arena may use.
  *
  * The limit is rounded up to the system allocation granularity. Pass 0 to
- * remove any previously set limit (the default — unlimited growth).
+ * remove any previously set limit (the default is unlimited growth).
  *
  * Once set to a non-zero value, any allocation that would require growing the
  * arena beyond the limit throws arena_out_of_memory instead.

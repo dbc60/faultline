@@ -22,7 +22,7 @@
  */
 static inline struct tm *fl_gmtime(time_t const *timer, struct tm *result) {
 #if defined(_MSC_VER) || defined(__clang__) && defined(_WIN32)
-    gmtime_s(result, timer); // Microsoft: (result, time) — parameters reversed vs POSIX
+    gmtime_s(result, timer); // VS: (result, time), parameters reversed vs POSIX
     return result;
 #else
     return gmtime_r(timer, result); // POSIX/MinGW: (time, result)

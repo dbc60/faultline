@@ -211,5 +211,6 @@ FL_WRITE_LOG_FN(flp_write_log) {
 }
 
 FLP_INIT_LOG_SERVICE_FN(flp_init_log_service) {
+    FL_ASSERT_NOT_NULL(fla_set);
     fla_set(&g_log_service, sizeof g_log_service);
 }

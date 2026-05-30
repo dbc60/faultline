@@ -347,7 +347,7 @@ FL_EXERCISE_TEST(faultline_run_test) {
             // A test exception during injection is expected: the injected fault
             // propagated up and caused an assertion to fail. Log at DEBUG level so
             // it's still visible when diagnosing problems, but don't treat it as a
-            // failure — only leaks and invalid frees represent real bugs.
+            // failure. Only memory leaks and invalid frees represent real bugs.
             if (injection_result.unexpected_exception) {
                 LOG_DEBUG(fctx->ts->name,
                           "%u. %s: INJECTION FAULT %lld - %s (%s) at %s:%d",

@@ -34,7 +34,7 @@
 #include <faultline/fl_try.h>
 #include <flp_memory_service.h>
 
-// Private headers — resolved via <Into>/src on the include path.
+// Private headers that are resolved via <Into>/src on the include path.
 #include "fault_injector_internal.h"
 #include "flp_fault_memory_context.h"
 
@@ -44,12 +44,12 @@
 
 static int g_failures = 0;
 
-#define CHECK(cond)                                                          \
-    do {                                                                     \
-        if (!(cond)) {                                                       \
+#define CHECK(cond)                                                         \
+    do {                                                                    \
+        if (!(cond)) {                                                      \
             fprintf(stderr, "FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond); \
-            g_failures++;                                                    \
-        }                                                                    \
+            g_failures++;                                                   \
+        }                                                                   \
     } while (0)
 
 #define SECTION(name) fprintf(stdout, "  %s\n", (name))
