@@ -42,7 +42,7 @@
 [CmdletBinding(DefaultParameterSetName = 'Import')]
 param(
     [Parameter(ParameterSetName = 'Import', Position = 0)][string]$From,
-    [string]$Into = "third_party/faultline",
+    [string]$Into = "$PWD\third_party\faultline",
     [Parameter(ParameterSetName = 'Remove')][string]$Remove,
     [Parameter(ParameterSetName = 'List')][switch]$List,
     [switch]$NoDepCheck
@@ -57,6 +57,12 @@ function Get-Sha256([string]$path) {
     try {
         $bytes = [System.IO.File]::ReadAllBytes($path)
         return ([BitConverter]::ToString($sha.ComputeHash($bytes)) -replace '-', '').ToLower()
+    } catch {
+        $e = $_.Exception
+        $line = $_.InvocationInfo.ScriptLineNumber
+        $msg = $e.Message
+
+        Write-Host -ForegroundColor Red "caught exception: $msg at $line"
     } finally {
         $sha.Dispose()
     }
