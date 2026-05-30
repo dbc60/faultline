@@ -28,7 +28,6 @@ SET DIR_REPO=%DIR_REPO:~0,-1%
 SET DIR_DIST=%DIR_REPO%\dist\exception
 SET DIR_SRC=%DIR_REPO%\src
 SET DIR_INC=%DIR_REPO%\include\faultline
-SET DIR_SA=%DIR_REPO%\standalone\exception\src
 
 :: Package metadata recorded in manifest.txt (bump SVC_VERSION on release).
 SET SVC_NAME=exception
@@ -58,7 +57,7 @@ MD "%DIR_DIST%\include\faultline"
 :: -----------------------------------------------------------------------
 ECHO Copying source files...
 COPY /Y "%DIR_SRC%\fl_exception_service.c"   "%DIR_DIST%\src\" > NUL
-COPY /Y "%DIR_SA%\fla_exception_service.c"   "%DIR_DIST%\src\" > NUL
+COPY /Y "%DIR_SRC%\fla_exception_service.c"  "%DIR_DIST%\src\" > NUL
 
 :: -----------------------------------------------------------------------
 :: Public headers from include\faultline\
@@ -76,7 +75,7 @@ COPY /Y "%DIR_INC%\fl_try.h"                        "%DIR_DIST%\include\faultlin
 :: Standalone-specific header (stub that strips FL_TEST to plain functions)
 :: -----------------------------------------------------------------------
 ECHO Copying standalone-specific headers...
-COPY /Y "%DIR_REPO%\standalone\exception\include\faultline\fl_test.h" "%DIR_DIST%\include\faultline\" > NUL
+COPY /Y "%DIR_INC%\fl_test.h" "%DIR_DIST%\include\faultline\" > NUL
 
 :: -----------------------------------------------------------------------
 :: Generate the package manifest (authoritative file list used by fl_import)

@@ -27,8 +27,6 @@ SET DIR_REPO=%DIR_REPO:~0,-1%
 
 SET DIR_DIST=%DIR_REPO%\dist\arena
 SET DIR_SRC=%DIR_REPO%\src
-SET DIR_SA_EXC=%DIR_REPO%\standalone\exception\src
-SET DIR_SA_LOG=%DIR_REPO%\standalone\log\src
 SET DIR_INC=%DIR_REPO%\include\faultline
 
 :: Package metadata recorded in manifest.txt (bump SVC_VERSION on release).
@@ -61,8 +59,8 @@ ECHO Copying source files...
 COPY /Y "%DIR_SRC%\arena.c"                  "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SRC%\arena_dbg.c"              "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SRC%\arena_malloc.c"           "%DIR_DIST%\src\" > NUL
-COPY /Y "%DIR_SA_EXC%\fla_exception_service.c" "%DIR_DIST%\src\" > NUL
-COPY /Y "%DIR_SA_LOG%\fla_log_service.c"       "%DIR_DIST%\src\" > NUL
+COPY /Y "%DIR_SRC%\flp_exception_service.c"  "%DIR_DIST%\src\" > NUL
+COPY /Y "%DIR_SRC%\flp_log_service.c"        "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SRC%\fl_exception_service.c"   "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SRC%\fl_threads.c"             "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SRC%\region.c"                 "%DIR_DIST%\src\" > NUL
@@ -88,6 +86,7 @@ COPY /Y "%DIR_SRC%\index_linux.h"            "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SRC%\index_windows.h"          "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SRC%\region.h"                 "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SRC%\region_node.h"            "%DIR_DIST%\src\" > NUL
+COPY /Y "%DIR_SRC%\region_os.h"              "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SRC%\region_windows.h"         "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SRC%\win32_platform.h"         "%DIR_DIST%\src\" > NUL
 
@@ -99,8 +98,6 @@ COPY /Y "%DIR_INC%\arena.h"                         "%DIR_DIST%\include\faultlin
 COPY /Y "%DIR_INC%\arena_malloc.h"                  "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\dlist.h"                         "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\fl_abbreviated_types.h"          "%DIR_DIST%\include\faultline\" > NUL
-COPY /Y "%DIR_INC%\fla_exception_service.h"         "%DIR_DIST%\include\faultline\" > NUL
-COPY /Y "%DIR_INC%\fla_log_service.h"               "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\fl_exception_service.h"          "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\fl_exception_service_assert.h"   "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\fl_exception_types.h"            "%DIR_DIST%\include\faultline\" > NUL
@@ -110,6 +107,7 @@ COPY /Y "%DIR_INC%\fl_macros.h"                     "%DIR_DIST%\include\faultlin
 COPY /Y "%DIR_INC%\fl_threads.h"                    "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\fl_try.h"                        "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\size.h"                          "%DIR_DIST%\include\faultline\" > NUL
+COPY /Y "%DIR_REPO%\include\flp_exception_service.h" "%DIR_DIST%\include\" > NUL
 COPY /Y "%DIR_REPO%\include\flp_log_service.h"       "%DIR_DIST%\include\" > NUL
 
 :: -----------------------------------------------------------------------
