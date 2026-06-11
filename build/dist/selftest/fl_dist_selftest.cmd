@@ -48,9 +48,9 @@ MD "%DIR_SELF%"
 SET FAILS=0
 
 :: =======================================================================
-::  exception-driver  — single-binary platform exception service (FL_BUILD_DRIVER)
+::  exception_service  — single-binary platform exception service (FL_BUILD_DRIVER)
 ::
-::  The exception-driver package ships fl_ + fla_ + flp_. A standalone binary
+::  The exception_service package ships fl_ + fla_ + flp_. A standalone binary
 ::  acts as the platform: build /DFL_BUILD_DRIVER (so fl_try.h selects the
 ::  self-contained flp_ macros) and compile fl_ + flp_ ONLY. The fla_ stub must
 ::  be excluded -- it would both abort at runtime and clash with flp_ on the
@@ -59,12 +59,12 @@ SET FAILS=0
 :: =======================================================================
 ECHO.
 ECHO ============================================================
-ECHO  exception-driver
+ECHO  exception_service
 ECHO ============================================================
-CALL "%DIR_CMDS%\exception_driver_dist.cmd" > NUL
+CALL "%DIR_CMDS%\exception_service_dist.cmd" > NUL
 IF ERRORLEVEL 1 ( ECHO   [dist]    FAILED & SET /A FAILS+=1 & GOTO :after_exc )
-SET INTO=%DIR_SELF%\exception-driver
-CALL :IMPORT "%DIR_REPO%\dist\exception-driver" "%INTO%"
+SET INTO=%DIR_SELF%\exception_service
+CALL :IMPORT "%DIR_REPO%\dist\exception_service" "%INTO%"
 IF ERRORLEVEL 1 ( ECHO   [import]  FAILED & SET /A FAILS+=1 & GOTO :after_exc )
 SET OBJ=%INTO%\_obj
 IF NOT EXIST "%OBJ%" MD "%OBJ%"
@@ -82,21 +82,21 @@ ECHO   [ok]
 :after_exc
 
 :: =======================================================================
-::  log  — application-side service test (unity-includes fla_log_service.c)
+::  log_service  — application-side service test (unity-includes fla_log_service.c)
 :: =======================================================================
 ECHO.
 ECHO ============================================================
-ECHO  log
+ECHO  log_service
 ECHO ============================================================
-CALL "%DIR_CMDS%\log_sa_dist.cmd" > NUL
+CALL "%DIR_CMDS%\log_service_dist.cmd" > NUL
 IF ERRORLEVEL 1 ( ECHO   [dist]    FAILED & SET /A FAILS+=1 & GOTO :after_log )
-SET INTO=%DIR_SELF%\log
-CALL :IMPORT "%DIR_REPO%\dist\log" "%INTO%"
+SET INTO=%DIR_SELF%\log_service
+CALL :IMPORT "%DIR_REPO%\dist\log_service" "%INTO%"
 IF ERRORLEVEL 1 ( ECHO   [import]  FAILED & SET /A FAILS+=1 & GOTO :after_log )
 SET OBJ=%INTO%\_obj
 IF NOT EXIST "%OBJ%" MD "%OBJ%"
 :: The test unity-includes fla_log_service.c, so do NOT compile src\*.c too
-:: (that would duplicate its symbols). Add <Into>\src so the quoted include
+:: (that would duplicate its symbols). Add <root>\src so the quoted include
 :: resolves to the package copy.
 cl %CommonCompilerFlagsFinal% /experimental:c11atomics /DFL_EMBEDDED ^
     /I"%INTO%\include" /I"%INTO%\src" ^
@@ -110,43 +110,16 @@ ECHO   [ok]
 :after_log
 
 :: =======================================================================
-::  arena  — minimal "packaged subset compiles and runs" smoke test
-:: =======================================================================
-ECHO.
-ECHO ============================================================
-ECHO  arena
-ECHO ============================================================
-CALL "%DIR_CMDS%\arena_sa_dist.cmd" > NUL
-IF ERRORLEVEL 1 ( ECHO   [dist]    FAILED & SET /A FAILS+=1 & GOTO :after_arena )
-SET INTO=%DIR_SELF%\arena
-CALL :IMPORT "%DIR_REPO%\dist\arena" "%INTO%"
-IF ERRORLEVEL 1 ( ECHO   [import]  FAILED & SET /A FAILS+=1 & GOTO :after_arena )
-SET OBJ=%INTO%\_obj
-IF NOT EXIST "%OBJ%" MD "%OBJ%"
-CALL :COLLECT_SRCS "%INTO%\src"
-cl %CommonCompilerFlagsFinal% /experimental:c11atomics /wd4456 /DFL_EMBEDDED /DFL_BUILD_DRIVER ^
-    /I"%INTO%\include" /I"%INTO%\src" ^
-    !SRCS! ^
-    "%HERE%\arena_smoke_test.c" ^
-    /Fo:"%OBJ%\\" /Fd:"%INTO%\arena_smoke.pdb" /Fe:"%INTO%\arena_smoke.exe" ^
-    /link %CommonLinkerFlagsFinal% /ENTRY:mainCRTStartup > "%CL_LOG%" 2>&1
-IF ERRORLEVEL 1 ( ECHO   [compile] FAILED & TYPE "%CL_LOG%" & SET /A FAILS+=1 & GOTO :after_arena )
-"%INTO%\arena_smoke.exe"
-IF ERRORLEVEL 1 ( ECHO   [run]     FAILED & SET /A FAILS+=1 & GOTO :after_arena )
-ECHO   [ok]
-:after_arena
-
-:: =======================================================================
 ::  memory  — single-binary platform memory-service assembly + fault injection
 :: =======================================================================
 ECHO.
 ECHO ============================================================
 ECHO  memory
 ECHO ============================================================
-CALL "%DIR_CMDS%\flp_memory_service_sa_dist.cmd" > NUL
+CALL "%DIR_CMDS%\fault_memory_service_dist.cmd" > NUL
 IF ERRORLEVEL 1 ( ECHO   [dist]    FAILED & SET /A FAILS+=1 & GOTO :after_mem )
 SET INTO=%DIR_SELF%\memory
-CALL :IMPORT "%DIR_REPO%\dist\flp_memory_service" "%INTO%"
+CALL :IMPORT "%DIR_REPO%\dist\fault_memory_service" "%INTO%"
 IF ERRORLEVEL 1 ( ECHO   [import]  FAILED & SET /A FAILS+=1 & GOTO :after_mem )
 SET OBJ=%INTO%\_obj
 IF NOT EXIST "%OBJ%" MD "%OBJ%"

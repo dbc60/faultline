@@ -6,7 +6,7 @@
  *
  * The in-driver suites already cover the exception engine's functional surface;
  * this test deliberately stays minimal. Its purpose is to prove the
- * exception-driver package is self-sufficient as a single binary: that
+ * exception_service package is self-sufficient as a single binary: that
  * FL_TRY / FL_THROW / FL_CATCH / FL_RETHROW link and behave correctly with no
  * driver and no service injection.
  *

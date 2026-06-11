@@ -24,17 +24,16 @@ The distribution system solves both with a **manifest** (the authoritative file 
 | `build/cmd/*_dist.cmd`            | Collect one service's files into `dist\<pkg>\` and emit its manifest |
 | `build/dist/fl_emit_manifest.ps1` | Hash every file in a package dir and write `manifest.txt`            |
 
-The five packages:
+The four packages:
 
-| Build script                     | Package dir               | Service name       | Notes                                                         |
-| -------------------------------- | ------------------------- | ------------------ | ------------------------------------------------------------- |
-| `exception_sa_dist.cmd`          | `dist\exception`          | `exception`        | Exception service, both sides                                 |
-| `log_sa_dist.cmd`                | `dist\log`                | `log`              | Log service, both sides                                       |
-| `arena_sa_dist.cmd`              | `dist\arena`              | `arena`            | Standalone arena; bundles self-contained platform (`flp_`) exception+log. Build `/DFL_BUILD_DRIVER`. |
-| `flp_memory_service_sa_dist.cmd` | `dist\flp_memory_service` | `memory`           | Memory service: arena + fault injector + platform exception+log + app-side memory service. Build `/DFL_BUILD_DRIVER`. |
-| `exception_driver_dist.cmd`      | `dist\exception-driver`   | `exception-driver` | Platform/driver exception package; self-contained for single binaries. Build `/DFL_BUILD_DRIVER`. |
+| Build script                    | Package dir                 | Service name           | Notes                                                         |
+| ------------------------------- | --------------------------- | ---------------------- | ------------------------------------------------------------- |
+| `log_service_dist.cmd`          | `dist\log_service`          | `log_service`          | Log service, both sides                                       |
+| `exception_service_dist.cmd`    | `dist\exception_service`    | `exception_service`    | Exception service, both sides (driver `flp_` + DLL `fla_`); self-contained for single binaries via `/DFL_BUILD_DRIVER`. |
+| `memory_service_dist.cmd`       | `dist\memory_service`       | `memory_service`       | Arena-only memory service (no fault injection): arena + platform exception+log + both service sides. Build `/DFL_BUILD_DRIVER`. |
+| `fault_memory_service_dist.cmd` | `dist\fault_memory_service` | `fault_memory_service` | Fault-injecting memory service: arena + fault injector + platform exception+log + app-side memory service. Build `/DFL_BUILD_DRIVER`. |
 
-Note the package **directory** and the **service name** recorded in the manifest can differ — the memory package lives in `dist\flp_memory_service\` but registers as `memory`.
+Note the package **directory** and the **service name** recorded in the manifest are set independently — a script can register under a name that differs from its directory.
 
 ### Consumer side (other repos)
 
@@ -50,7 +49,7 @@ The three importers share the same manifest and lockfile formats and produce byt
 Run the relevant build script from the repo root. No build of the library is required — the dist scripts only copy source and headers.
 
 ```
-build\cmd\flp_memory_service_sa_dist.cmd
+build\cmd\fault_memory_service_dist.cmd
 ```
 
 Each script:
@@ -74,7 +73,7 @@ Edit the `COPY` lines in the relevant `*_dist.cmd` and re-run it. The manifest r
 Each dist script sets three metadata variables near the top:
 
 ```
-SET SVC_NAME=memory
+SET SVC_NAME=fault_memory_service
 SET SVC_VERSION=0.2.0
 SET SVC_DEPENDS=
 ```
@@ -96,7 +95,7 @@ Every package has the same shape:
 dist\<pkg>\
   manifest.txt              authoritative file list (name, version, depends, f <path> <sha256>)
   src\                      .c sources + private .h headers — compile these
-    fnv\                    (memory package only) FNV hash sources; FNV64.c compiles
+    fnv\                    (fault_memory_service package only) FNV hash sources; FNV64.c compiles
   include\
     faultline\              public headers, included as <faultline/...>
     *.h                     a few top-level headers included as <flp_*_service.h>
@@ -106,25 +105,25 @@ The manifest is plain text with **LF line endings and no BOM** so it parses iden
 
 ## Importing into a consumer
 
-Copy the `build/dist/fl_import.*` scripts and the package directory into the consumer, then run the importer. All services merge into a single unified tree under `-Into` (default `third_party/faultline`):
+Copy the `build/dist/fl_import.*` scripts and the package directory into the consumer, then run the importer. All services merge into a single unified tree under `-Into` — the "root" (default `third_party/faultline`):
 
 ```
-<Into>\src\...        compile these (plus src\fnv\*.c if present)
-<Into>\include\...     add <Into>\include to the consumer's include path
-<Into>\faultline.lock  bookkeeping — which service owns which file
+<root>\src\...        compile these (plus src\fnv\*.c if present)
+<root>\include\...     add <root>\include to the consumer's include path
+<root>\faultline.lock  bookkeeping — which service owns which file
 ```
 
 ### PowerShell
 
 ```powershell
 # Import or update a package
-build\dist\fl_import.ps1 -From dist\flp_memory_service -Into third_party\faultline
+build\dist\fl_import.ps1 -From dist\fault_memory_service -Into third_party\faultline
 
 # List what is installed
 build\dist\fl_import.ps1 -Into third_party\faultline -List
 
 # Remove a service (shared files kept if another service still owns them)
-build\dist\fl_import.ps1 -Into third_party\faultline -Remove memory
+build\dist\fl_import.ps1 -Into third_party\faultline -Remove fault_memory_service
 ```
 
 `fl_import.cmd` takes the same arguments for batch-file callers.
@@ -132,9 +131,9 @@ build\dist\fl_import.ps1 -Into third_party\faultline -Remove memory
 ### Bash (MSYS2 / Git-Bash)
 
 ```bash
-build/dist/fl_import.sh --from dist/flp_memory_service --into third_party/faultline
+build/dist/fl_import.sh --from dist/fault_memory_service --into third_party/faultline
 build/dist/fl_import.sh --into third_party/faultline --list
-build/dist/fl_import.sh --into third_party/faultline --remove memory
+build/dist/fl_import.sh --into third_party/faultline --remove fault_memory_service
 ```
 
 ### What import does
@@ -170,24 +169,24 @@ Each service has a platform (`flp_`) side and an application (`fla_`) side, sele
 
 | Package | Build mode | Why |
 | --- | --- | --- |
-| `exception-driver`, `arena`, `memory` | **`/DFL_BUILD_DRIVER`** | Single-binary / platform consumers. These ship the self-contained `flp_` exception and log services, which work with no driver and no injection. |
-| `exception`, `log` | application/DLL (`/DDLL_BUILD`, no `FL_BUILD_DRIVER`) | Compiled into a test DLL whose services a driver injects at load time. |
+| `memory_service`, `fault_memory_service` | **`/DFL_BUILD_DRIVER`** | Single-binary / platform consumers. These ship the self-contained `flp_` exception and log services, which work with no driver and no injection. |
+| `exception_service`, `log_service` | either side | Ship both sides. Build a single binary `/DFL_BUILD_DRIVER` (compiles the self-contained `flp_` side), or compile the `fla_` side into a test DLL `/DDLL_BUILD` for a driver to inject at load time — see the service-split demo (`examples/service_demo`). |
 
-> The `arena` and `memory` packages are **platform-side**: they ship `flp_exception_service.c`
+> The `memory_service` and `fault_memory_service` packages are **platform-side**: they ship `flp_exception_service.c`
 > and `flp_log_service.c` (self-contained), not the `fla_` abort-stubs. Build them
 > `/DFL_BUILD_DRIVER`, or the first `FL_TRY` / `LOG_*` will hit an uninitialized service and
 > abort. (The application-side memory service, `fla_memory_service.c`, is the exception: the
-> memory package still ships it, because a platform injects it into itself — see the memory
+> memory packages still ship it, because a platform injects it into itself — see the memory
 > consumer test.)
 
 **Do not compile unity-`#include`d sources directly.** `region_os.c` `#include`s the platform implementation for the target OS (`region_windows.c` on Windows). Both files are shipped, but only `region_os.c` is compiled — compiling `region_windows.c` as its own translation unit duplicates `new_region` / `commit` / `extend_region` / … So a "compile `src\*.c`" rule must **exclude `region_windows.c`** (and any other `region_<os>.c`).
 
 **Include paths:**
 
-* Add `<Into>\include` always (public headers, included as `<faultline/...>` and `<flp_*_service.h>`).
-* For the `arena` and `memory` packages, also add `<Into>\src` — the private headers live alongside the sources, and that path also covers `src\fnv\` for the memory package.
+* Add `<root>\include` always (public headers, included as `<faultline/...>` and `<flp_*_service.h>`).
+* For the `arena` and `memory` packages, also add `<root>\src` — the private headers live alongside the sources, and that path also covers `src\fnv\` for the memory package.
 
-For the memory package, compile `<Into>\src\fnv\FNV64.c` along with the other `src\*.c` files.
+For the memory package, compile `<root>\src\fnv\FNV64.c` along with the other `src\*.c` files.
 
 A worked, runnable example of every rule above — build mode, include paths, and the `region_windows.c` exclusion — lives in `build\dist\selftest\` (see [Validating the packages](#validating-the-packages)).
 
