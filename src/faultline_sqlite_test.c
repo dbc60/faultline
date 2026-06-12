@@ -17,6 +17,19 @@
 
 #include <stdio.h>
 
+#ifdef _WIN32
+#include <io.h>       // _chmod
+#include <sys/stat.h> // _S_IREAD, _S_IWRITE
+#define FL_RO_MODE _S_IREAD
+#define FL_RW_MODE (_S_IREAD | _S_IWRITE)
+#define fl_chmod   _chmod
+#else
+#include <sys/stat.h> // chmod, S_IRUSR, S_IWUSR
+#define FL_RO_MODE S_IRUSR
+#define FL_RW_MODE (S_IRUSR | S_IWUSR)
+#define fl_chmod   chmod
+#endif
+
 ///////////////////////////
 //  Test Infrastructure  //
 ///////////////////////////
@@ -246,19 +259,36 @@ FL_TYPE_TEST_SETUP_CLEANUP("Invalid Path", TestSchema, schema_invalid_path_throw
 }
 
 //  8. Permission Denied Handling
+//
+// Create a regular file and mark it read-only, then point the schema
+// initializer at it. init_schema opens with SQLITE_OPEN_READWRITE, so opening a
+// read-only file fails (and even if that were tolerated, the first CREATE TABLE
+// would), and it throws faultline_db_create_failed. The read-only attribute is
+// honored even for an elevated process, so this is reliable on CI -- unlike
+// relying on a system directory being write-protected.
 static void setup_permission_denied(FLTestCase *btc) {
     TestSchema *t = FL_CONTAINER_OF(btc, TestSchema, tc);
-// Create a read-only directory (platform-specific implementation)
-#ifdef _WIN32
-    t->test_db = "C:\\Windows\\System32\\test.db"; // Should be read-only
-#else
-    t->test_db = "/usr/test.db"; // Should be read-only
-#endif
+    t->test_db    = "test_permission_denied.db";
+
+    FILE *f = NULL;
+    fopen_s(&f, t->test_db, "wb");
+    if (f != NULL) {
+        (void)fclose(f);
+    }
+    (void)fl_chmod(t->test_db, FL_RO_MODE);
+}
+
+// remove() cannot delete a read-only file on Windows, so restore write access
+// before deleting.
+static void cleanup_permission_denied(FLTestCase *btc) {
+    TestSchema *t = FL_CONTAINER_OF(btc, TestSchema, tc);
+    (void)fl_chmod(t->test_db, FL_RW_MODE);
+    remove(t->test_db);
 }
 
 FL_TYPE_TEST_SETUP_CLEANUP("Permission Denied", TestSchema,
                            schema_permission_denied_throws, setup_permission_denied,
-                           cleanup_test_db) {
+                           cleanup_permission_denied) {
     bool throw_catch = false;
     FL_TRY {
         faultline_sqlite_init_schema(t->test_db);
