@@ -7,11 +7,11 @@
   against it. Unlike a plain file copy, this is a true sync: files dropped from a
   package in a newer version are deleted from the consumer on update.
 
-  All services merge into a single unified tree under -Into:
+  All services merge into a single unified tree under -Into (the "root"):
 
-      <Into>/src/...       compile these (plus src/fnv/*.c if present)
-      <Into>/include/...   add <Into>/include to the consumer include path
-      <Into>/faultline.lock   bookkeeping (which service owns which files)
+      <root>/src/...       compile these (plus src/fnv/*.c if present)
+      <root>/include/...   add <root>/include to the consumer include path
+      <root>/faultline.lock   bookkeeping (which service owns which files)
 
   Shared files (e.g. fl_exception_service.c, which several packages bundle) land
   at the same path and are reference-counted in the lockfile: a file is deleted

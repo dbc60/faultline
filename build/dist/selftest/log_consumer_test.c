@@ -11,7 +11,7 @@
  *
  * Unity build: fla_log_service.c is included directly so its static
  * default_write and s_level are in the same translation unit. The package
- * places it at <Into>/src/fla_log_service.c, so the build adds <Into>/src to
+ * places it at <root>/src/fla_log_service.c, so the build adds <root>/src to
  * the include path and this quoted include resolves there.
  *
  * /DFL_EMBEDDED keeps FL_DECL_SPEC empty (no dllimport on a locally-defined

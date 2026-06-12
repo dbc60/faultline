@@ -51,7 +51,7 @@ src/flp_exception_service.c   — platform TLS stack + push/pop/throw + flp_init
 src/fl_exception_service.c    — shared reason-string constants (fl_expected_failure, etc.)
 ```
 
-**Compile flag:** none required, but define `FL_BUILD_DRIVER` if you also use the `fl_memory.h` / `fl_log.h` selector headers (see §3 and the Memory section).
+**Compile flag:** none required, but build the platform target with `/DFL_BUILD_DRIVER` (a compiler flag, not an in-source `#define`) if you also use the `fl_memory.h` / `fl_log.h` selector headers (see §3 and the Memory section).
 
 **Initialization (no explicit init call needed):** The platform TLS stack initializes lazily; just ensure the platform wraps its top-level execution in `FL_TRY` / `FL_END_TRY` so there is always a frame on the stack when a test throws.
 
@@ -163,8 +163,8 @@ if (fla_set_log != NULL) {                   // log service is optional
 Alternatively, include the unified selector header, which picks the right side automatically:
 
 ```c
-// Define FL_BUILD_DRIVER before including this in platform code.
-// In application code, omit the define.
+// Platform target built with /DFL_BUILD_DRIVER selects the flp_ side;
+// application code (no such flag) selects the fla_ side.
 #include <faultline/fl_log.h>
 ```
 
@@ -192,25 +192,28 @@ The memory service is **optional**. Application code that uses standard `malloc`
 
 ```c
 #include <flp_memory_service.h>              // flp_malloc/free/calloc/..., flp_init_memory_service,
-                                             //   flp_init_memory_context
-// Pulled in automatically by the above:
-//   <faultline/fl_memory_service.h>         // FLMemoryService, FLMemoryContext,
+                                             //   flp_init_fault_memory_service
+#include <faultline/flp_memory_context.h>    // FLMemoryContext, flp_init_memory_context
+// Pulled in automatically by flp_memory_service.h:
+//   <faultline/fl_memory_service.h>         // FLMemoryService, FLMemoryContext (forward decl),
 //                                           //   fla_set_memory_service_fn,
 //                                           //   FLA_SET_MEMORY_SERVICE_STR
 ```
 
-For platform code that uses `FL_MALLOC` / `FL_FREE` macros:
+For platform code that uses `FL_MALLOC` / `FL_FREE` macros (platform target built with
+`/DFL_BUILD_DRIVER`):
 
 ```c
-#define FL_BUILD_DRIVER
 #include <faultline/fl_memory.h>             // routes FL_MALLOC etc. to flp_malloc
 ```
 
 **Source files to compile and link:**
 
 ```
-src/flp_memory_service.c      — g_memory_service, all six allocator implementations,
-                                flp_init_memory_service, flp_init_memory_context
+src/flp_memory_service.c        — g_memory_service, all six allocator implementations,
+                                  flp_init_memory_service, flp_init_memory_context
+src/flp_fault_memory_service.c  — fault-injecting allocator backend, flp_init_fault_memory_service,
+                                  flp_init_fault_memory_context
 ```
 
 The memory service depends on the arena allocator and fault injector. Those bring in additional source files; see the `fl_memory.lib` and `faultline.lib` build scripts for the full list.
@@ -218,12 +221,20 @@ The memory service depends on the arena allocator and fault injector. Those brin
 **Initialization:**
 
 ```c
-#include <flp_memory_service.h>
+// Arena-only backend
+#include <flp_memory_service.h>             // flp_init_memory_service
+#include <faultline/flp_memory_context.h>   // FLMemoryContext, flp_init_memory_context
 
 FLMemoryContext flmctx;
-flp_init_memory_context(&flmctx, arena, fault_injector_ptr);
-// arena and fault_injector_ptr must outlive all DLL test runs
+flp_init_memory_context(&flmctx, arena);    // 2 args: context + arena
+// arena must outlive all DLL test runs
 ```
+
+For the fault-injecting backend, use `FLFaultMemoryContext` and
+`flp_init_fault_memory_context(&flmctx, arena, fi)` from
+`<faultline/flp_fault_memory_context.h>`, where `fi = fault_injector_create(arena)` (from
+`<faultline/fault_injector.h>`), then inject with `flp_init_fault_memory_service` instead of
+`flp_init_memory_service`. Both context headers are public (`include/faultline/`).
 
 **Injection call (after `LoadLibrary`):**
 
@@ -297,7 +308,7 @@ directly bypasses the service entirely and is invisible to both platform variant
 | --------- | ------------------------- | --------------------------------------------------- | ----------- |
 | Exception | `flp_exception_service.h` | `flp_exception_service.c`, `fl_exception_service.c` | Optional    |
 | Log       | `flp_log_service.h`       | `flp_log_service.c`, `fl_threads.c`                 | Recommended |
-| Memory    | `flp_memory_service.h`    | `flp_memory_service.c` (+ arena + fault injector)   | Optional    |
+| Memory    | `flp_memory_service.h` + a `faultline/` context header | `flp_memory_service.c`, `flp_fault_memory_service.c` (+ arena + fault injector)   | Optional    |
 
 ### Application DLL
 
@@ -347,7 +358,8 @@ if (fla_set_exc != NULL) {
     flp_init_exception_service(fla_set_exc);
 }
 
-// Memory (optional)
+// Memory (optional) — arena-only shown; fault programs instead call
+//   flp_init_fault_memory_service(fla_set_mem, &flmctx) with an FLFaultMemoryContext.
 fla_set_memory_service_fn *fla_set_mem =
     (fla_set_memory_service_fn *)GetProcAddress(dll, FLA_SET_MEMORY_SERVICE_STR);
 if (fla_set_mem != NULL) {
