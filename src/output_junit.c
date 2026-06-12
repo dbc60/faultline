@@ -8,6 +8,9 @@
 #include <faultline/fl_exception_service_assert.h> // for FL_ASSERT_NOT_NULL, FL_ASSE...
 #include <faultline/fl_log.h>                      // LOG_ERROR, LOG_WARN, LOG_INFO
 #include <faultline/fl_macros.h>                   // FL_UNUSED
+#include <faultline/fl_result_codes.h>             // FL_PASS
+#include <faultline/fl_test.h>                      // FLTestSuite, FLTestCase
+#include <faultline/fl_test_summary.h>             // FLTestSummary, faultline_test_summary_buffer_get
 #include <flp_exception_service.h>                 // FL_THROW
 #include <stdio.h>                                 // FILE, fputs, fputc, FILENAME_MAX
 #include <cwalk/include/cwalk.h>                   // cwk_path_normalize, cwk_path_*
@@ -184,11 +187,40 @@ int junit_write(JUnitXML *junit, FLContext *fctx) {
                 "               failures=\"%zu\"\n"
                 "               errors=\"%zu\"\n"
                 "               time=\"%.3f\"\n"
-                "               timestamp=\"%s\">\n"
-                "    </testsuite>\n",
+                "               timestamp=\"%s\">\n",
                 fctx->tests_run, fctx->tests_failed,
                 fctx->setups_failed + fctx->cleanups_failed, total_elapsed_seconds,
                 timestamp);
+
+        // Emit one <testcase> per result. JUnit consumers (the CI test reporter)
+        // count individual <testcase> elements, not the testsuite's tests=
+        // attribute, so a suite with only attributes is reported as "no tests
+        // found". A non-FL_PASS result carries a <failure> child.
+        for (size_t i = 0; i < results_count; i++) {
+            FLTestSummary const *summary
+                = faultline_test_summary_buffer_get(&fctx->results, i);
+            char const *case_name
+                = (summary->index < ts->count) ? ts->test_cases[summary->index]->name : "";
+
+            fputs("        <testcase name=\"", junit->file);
+            xml_write_escaped(junit->file, case_name);
+            fputs("\" classname=\"", junit->file);
+            xml_write_escaped(junit->file, ts->name);
+            fprintf(junit->file, "\" time=\"%.3f\"", summary->elapsed_seconds);
+
+            if (summary->code == FL_PASS) {
+                fputs("/>\n", junit->file);
+            } else {
+                fputs(">\n            <failure message=\"", junit->file);
+                xml_write_escaped(junit->file,
+                                  summary->reason ? summary->reason : "test failed");
+                fprintf(junit->file, "\" type=\"FLResultCode %d\">", (int)summary->code);
+                xml_write_escaped(junit->file, summary->details);
+                fputs("</failure>\n        </testcase>\n", junit->file);
+            }
+        }
+
+        fputs("    </testsuite>\n", junit->file);
 
         junit_close(junit);
     }
