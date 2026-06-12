@@ -31,9 +31,14 @@ if [[ $build -eq 1 ]]; then
     # --- faultline_tests.dll ---
     [[ $verbose -eq 1 ]] && echo "Build $PROJECT_NAME test suite"
 
+    # Unity TU: faultline_tests_unity.c pulls in the implementation sources plus
+    # the embedded test cases (faultline_test.c, faultline_sqlite_test.c) and the
+    # suite registration (faultline_tests.c). The cases are now defined in those
+    # separate files, so compiling faultline_tests.c alone leaves their symbols
+    # undefined at link time.
     "$CLANG" $COMMON_COMPILER_FLAGS -DDLL_BUILD \
-        -I "$DIR_INCLUDE" -I "$DIR_THIRD_PARTY" \
-        -c "$DIR_REPO/src/faultline_tests.c" \
+        -I "$DIR_INCLUDE" -I "$DIR_THIRD_PARTY" -I "$DIR_THIRD_PARTY/cwalk/include" \
+        -c "$DIR_REPO/src/faultline_tests_unity.c" \
         -o "$DIR_OUT_OBJ/faultline_tests.o" \
         -MJ "$DIR_OUT_OBJ/faultline_tests.json"
 
@@ -61,9 +66,12 @@ if [[ $build -eq 1 ]]; then
     # --- faultline.exe ---
     [[ $verbose -eq 1 ]] && echo "Build $PROJECT_NAME driver"
 
+    # Unity TU: main_unity_windows.c pulls in the implementation sources and the
+    # command handlers; main_windows.c is now just the CLI entry point and no
+    # longer aggregates the implementation.
     "$CLANG" $COMMON_COMPILER_FLAGS -DFL_BUILD_DRIVER -DFL_EMBEDDED \
-        -I "$DIR_INCLUDE" -I "$DIR_THIRD_PARTY" \
-        -c "$DIR_REPO/app/faultline/main_windows.c" \
+        -I "$DIR_INCLUDE" -I "$DIR_THIRD_PARTY" -I "$DIR_THIRD_PARTY/cwalk/include" \
+        -c "$DIR_REPO/app/faultline/main_unity_windows.c" \
         -o "$DIR_OUT_OBJ/faultline_main.o" \
         -MJ "$DIR_OUT_OBJ/faultline_main.json"
 
