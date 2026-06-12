@@ -1,37 +1,21 @@
 /**
- * @file faultline_butts.c
+ * @file faultline_tests.c
  * @author Douglas Cuthbertson
- * @brief
+ * @brief "Faultline Driver" test-suite registration.
  * @version 0.1
  * @date 2025-02-16
  *
  * See LICENSE.txt for copyright and licensing information about this file.
  *
+ * This translation unit contains only the suite registration. The embedded test
+ * cases it references are defined in faultline_test.c and faultline_sqlite_test.c
+ * and forward-declared via faultline_tests_cases.h, so this file builds either as
+ * a standalone TU (standard build) or #included into faultline_tests_unity.c
+ * (unity build).
  */
-#include "arena.c"
-#include "arena_dbg.c"
-#include "arena_malloc.c"
-#include "buffer.c"
-#include "digital_search_tree.c"
-#include "fault_injector.c"
-#include "fla_memory_service.c"
-#include "faultline_context.c"
-#include "faultline_driver.c"
-#include "faultline_sqlite.c"
-#include "faultline_sqlite_test.c"
-#include "faultline_test.c"
-#include "fl_exception_service.c"
-#include "fl_threads.c" // mtx_init, mtx_lock, mtx_unlock, mtx_destroy
-#include "fla_exception_service.c"
-#include "fla_log_service.c"
-#include "../third_party/fnv/FNV64.c"
-#include "region.c"
-#include "region_node.c"
-#include "region_os.c"
-#include "set.c"
-#include "win_timer.c"
 #include <faultline/fault.h>
 #include <faultline/fl_test.h>
+#include "faultline_tests_cases.h" // extern decls for the embedded test cases
 
 FL_SUITE_BEGIN(ts)
 FL_SUITE_ADD_EMBEDDED(load_driver_test)

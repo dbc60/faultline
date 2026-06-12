@@ -26,9 +26,6 @@
 #include <faultline/fl_test.h>              // for FLTestSuite
 #include "flp_time.h"                       // for fl_gmtime
 
-// Schema version management
-#define FL_SCHEMA_VERSION 1
-
 FLExceptionReason faultline_db_create_failed = "failed to create database";
 FLExceptionReason faultline_db_not_found     = "database not found";
 

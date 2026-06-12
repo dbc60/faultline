@@ -48,6 +48,7 @@ extern void faultline_export_sqlite(FLContext *fctx, char const *db_path);
 extern void faultline_import_sqlite(FLContext *fctx, char const *db_path, int run_id);
 
 // Schema management
+#define FL_SCHEMA_VERSION 1
 extern void faultline_sqlite_init_schema(char const *db_path);
 extern void faultline_sqlite_migrate_schema(char const *db_path, int current_version);
 

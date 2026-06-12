@@ -55,7 +55,7 @@ typedef struct FLTestSuite FLTestSuite;
         FL_UNUSED(tc);                           \
         TEST();                                  \
     }                                            \
-    static FLTestCase TEST##_case = {            \
+    FLTestCase TEST##_case = {                   \
         .name    = NAME,                         \
         .setup   = fl_default_setup,             \
         .test    = TEST##_wrapper,               \
@@ -77,7 +77,7 @@ typedef struct FLTestSuite FLTestSuite;
         FL_UNUSED(fltc);                                  \
         TEST();                                           \
     }                                                     \
-    static FLTestCase TEST##_case = {                     \
+    FLTestCase TEST##_case = {                            \
         .name    = (NAME),                                \
         .setup   = (SETUP),                               \
         .test    = TEST##_wrapper,                        \
@@ -181,6 +181,14 @@ typedef struct FLTestSuite FLTestSuite;
 #define FL_SUITE_ADD(TC)          &TC##_case,
 #define FL_SUITE_ADD_EMBEDDED(TC) &TC##_case.tc,
 #define FL_SUITE_END              }
+
+// Forward-declare an externally-linked test-case object so a suite defined in a
+// separate translation unit can reference it (non-unity builds). FL_TEST_DECL
+// matches the FL_TEST / FL_TEST_SETUP_CLEANUP family (plain FLTestCase);
+// FL_TYPE_TEST_DECL matches the FL_TYPE_TEST / *_SETUP_CLEANUP / FL_VOID_TEST
+// family (a TYPE that embeds an FLTestCase named tc).
+#define FL_TEST_DECL(TEST)            extern FLTestCase TEST##_case
+#define FL_TYPE_TEST_DECL(TYPE, TEST) extern TYPE TEST##_case
 
 //////////////////////////////////////////////////////////////////
 /////////////////// DEFINE TEST FUNCTIONS ////////////////////////

@@ -35,9 +35,11 @@
 #include <faultline/fl_try.h>
 #include <flp_memory_service.h>
 
-// Private headers that are resolved via <Into>/src on the include path.
+// The fault context header is public (include/faultline/). The injector's
+// control surface (enable/set_threshold/triggered/disable) is still private,
+// resolved via <root>/src on the include path.
 #include "fault_injector_internal.h"
-#include "flp_fault_memory_context.h"
+#include <faultline/flp_fault_memory_context.h>
 
 // Must be last: redefines malloc/calloc/free/realloc to route through
 // g_fla_memory_service once flp_init_fault_memory_service has injected it.
@@ -47,12 +49,12 @@ int main(void) {
     fprintf(stdout, "memory_consumer_test (imported package)\n");
 
     Arena               *arena = new_arena(0, 0);
-    FaultInjector        fi    = {0};
+    FaultInjector       *fi    = NULL;
     FLFaultMemoryContext ctx   = {0};
 
     FL_TRY {
-        fault_injector_init(&fi, arena);
-        flp_init_fault_memory_context(&ctx, arena, &fi);
+        fi = fault_injector_create(arena);
+        flp_init_fault_memory_context(&ctx, arena, fi);
         flp_init_fault_memory_service(fla_set_memory_service, &ctx);
 
         SECTION("service injection");
@@ -100,12 +102,12 @@ int main(void) {
 
         SECTION("fault injection fails malloc");
         {
-            fault_injector_enable(&fi);
-            fault_injector_set_threshold(&fi, 1);
+            fault_injector_enable(fi);
+            fault_injector_set_threshold(fi, 1);
             void *p = malloc(32);
             CHECK(p == NULL);
-            CHECK(fault_injector_triggered(&fi));
-            fault_injector_disable(&fi);
+            CHECK(fault_injector_triggered(fi));
+            fault_injector_disable(fi);
         }
     }
     FL_CATCH_ALL {
@@ -114,7 +116,9 @@ int main(void) {
     }
     FL_END_TRY;
 
-    fault_injector_uninit(&fi);
+    if (fi != NULL) {
+        fault_injector_uninit(fi);
+    }
     release_arena(&arena);
 
     if (g_failures == 0) {

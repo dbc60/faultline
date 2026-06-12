@@ -8,42 +8,24 @@
  * See LICENSE.txt for copyright and licensing information about this file.
  */
 
-// Must be defined before any headers are included so that fl_log.h and fl_try.h
-// select the platform (driver) implementations of the log and exception services.
-#ifndef FL_BUILD_DRIVER
-#define FL_BUILD_DRIVER
-#endif
+#include "faultline_commands.h" // ExecutionContext, get_faultline_commands, help_cmd
+                                // (transitively: command.h, fl_context.h, arena.h,
+                                //  flp_fault_memory_context.h, sqlite3.h)
+#include "../../src/command.h"  // parse_command, RuntimeCommand, command_error/unknown
+#include <faultline/flp_fault_memory_context.h> // FLFaultMemoryContext, flp_init_fault_memory_context
 
-// Unity build: pull all implementation source into this translation unit.
-#include "../../src/arena.c"
-#include "../../src/arena_dbg.c"
-#include "../../src/arena_malloc.c"
-#include "../../src/buffer.c"
-#include "../../src/command.c"
-#include "../../src/digital_search_tree.c"
-#include "../../src/fault_injector.c"
-#include "../../src/faultline_context.c"
-#include "../../src/faultline_driver.c"
-#include "../../src/faultline_sqlite.c"
-#include "../../src/fl_exception_service.c"
-#include "../../src/fl_threads.c"
-#include "../../src/flp_exception_service.c"
-#include "../../src/flp_log_service.c"
-#include "../../src/flp_memory_service.c"
-#include "../../src/flp_fault_memory_service.c"
-#include "../../src/output_junit.c"
-#include "../../third_party/fnv/FNV64.c"
-#include "../../src/region.c"
-#include "../../src/region_node.c"
-#include "../../src/region_os.c"
-#include "../../src/set.c"
-#include "../../src/win_timer.c"
+#include <faultline/arena.h>             // Arena, new_arena
+#include <faultline/fl_context.h>        // FLContext, faultline_initialize
+#include <faultline/fault_injector.h>    // fault_injector_create
+#include <faultline/fl_log.h>            // LOG_ERROR
+#include <faultline/fl_try.h>            // FL_TRY / FL_CATCH / FL_REASON / FL_DETAILS
+#include <faultline/fl_memory_service.h> // FLA_SET_MEMORY_SERVICE_FN
+#include <flp_log_service.h>    // flp_log_init_custom/set_level/set_output_path/cleanup
+#include <flp_memory_service.h> // flp_init_fault_memory_service
+#include <faultline_sqlite.h>   // faultline_init_database, faultline_close_database
 
-// Command infrastructure
-#include "faultline_commands.c"
-#include "command_run.c"
-#include "command_show.c"
-#include "command_help.c"
+#include <stdio.h>  // printf
+#include <string.h> // strcmp
 
 static char const *module = "Faultline";
 
@@ -83,8 +65,7 @@ int main(int argc, char **argv) {
     int volatile exit_code       = 0;
 
     flp_log_init_custom(LOG_LEVEL_INFO, "faultline.log");
-    fctx.injector = arena_malloc_throw(arena, sizeof *fctx.injector, __FILE__, __LINE__);
-    fault_injector_init(fctx.injector, arena);
+    fctx.injector = fault_injector_create(arena);
     flp_init_fault_memory_context(&mem_ctx, arena, fctx.injector);
     flp_init_fault_memory_service(noop_fla_set_memory_service, &mem_ctx);
 

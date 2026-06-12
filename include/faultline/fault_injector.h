@@ -48,6 +48,22 @@ typedef struct FaultInjector FaultInjector;
 void fault_injector_init(FaultInjector *injector, Arena *arena);
 
 /**
+ * @brief Allocate and initialize a FaultInjector from @p arena.
+ *
+ * The injector struct itself and all of its internal structures are arena-backed, so
+ * resetting or releasing the arena reclaims them. The returned injector is ready for
+ * use; no separate fault_injector_init() call is needed.
+ *
+ * This is the public construction path for callers that hold the type opaquely (it
+ * avoids stack-allocating an incomplete type, which requires the private
+ * fault_injector_internal.h).
+ *
+ * @param arena the arena used to allocate the injector and its internals.
+ * @return a ready-to-use FaultInjector, or throws on allocation failure.
+ */
+FaultInjector *fault_injector_create(Arena *arena);
+
+/**
  * @brief Uninitialize the fault injector, releasing all memory from its internal
  * structures.
  *

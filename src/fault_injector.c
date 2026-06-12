@@ -26,6 +26,12 @@
 
 FLExceptionReason fault_injector_exception = "fault injected";
 
+FaultInjector *fault_injector_create(Arena *arena) {
+    FaultInjector *injector = arena_malloc_throw(arena, sizeof *injector, __FILE__, __LINE__);
+    fault_injector_init(injector, arena);
+    return injector;
+}
+
 void fault_injector_init(FaultInjector *injector, Arena *arena) {
     injector->fault_index         = FAULT_INJECTOR_INITIAL_INDEX;
     injector->injection_threshold = FAULT_INJECTOR_INITIAL_THRESHOLD;

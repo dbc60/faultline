@@ -116,7 +116,17 @@ if errorlevel 1 (
     GOTO :ERROR
 )
 
+call %DIR_CMD%\faultline_fixtures.cmd !args!
+if errorlevel 1 (
+    GOTO :ERROR
+)
+
 call %DIR_CMD%\faultline.cmd !args!
+if errorlevel 1 (
+    GOTO :ERROR
+)
+
+call %DIR_CMD%\std_faultline.cmd !args!
 if errorlevel 1 (
     GOTO :ERROR
 )
@@ -152,7 +162,7 @@ if %test% EQU 1 (
     set "JUNIT_OPT="
     if %junit% EQU 1 set "JUNIT_OPT=--junit-xml junit.xml"
     pushd test
-    faultline.exe run !JUNIT_OPT! ^
+    .\faultline.exe run !JUNIT_OPT! ^
         fl_exception_tests.dll ^
         but_tests.dll ^
         dlist_tests.dll ^
@@ -175,7 +185,7 @@ if %test% EQU 1 (
         faultline_tests.dll ^
         malloc_cleanup_config_tests.dll ^
         flp_memory_service_tests.dll
-    faultline.exe show results --limit 22
+    .\faultline.exe show results --limit 22
     popd
 )
 GOTO :SUCCESS

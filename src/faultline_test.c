@@ -10,6 +10,7 @@
  */
 #include "faultline_test.h"
 #include "faultline_test_data.h"
+#include "faultline_test_result.h"     // TestResult
 #include <faultline/fl_result_codes.h> // FLResultCode
 #include <faultline/fl_context.h>
 #include <faultline/fl_log.h>

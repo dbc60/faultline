@@ -9,17 +9,13 @@
  */
 #include <faultline_sqlite.h>
 
+#include "faultline_sqlite_test.h" // TestSchema
 #include <faultline/fl_test.h>
 #include <faultline/fl_try.h>
 #include <faultline/fl_exception_service_assert.h> // assert macros and fl_unexpected_failure declaration
 #include <sqlite/sqlite3.h>
 
 #include <stdio.h>
-
-typedef struct {
-    FLTestCase  tc;
-    char const *test_db;
-} TestSchema;
 
 ///////////////////////////
 //  Test Infrastructure  //
