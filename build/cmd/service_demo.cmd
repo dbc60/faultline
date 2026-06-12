@@ -42,9 +42,30 @@ SET OBJ_DLL=%DIR_REPO%\target\service_demo\obj\dll
 SET OBJ_EXE=%DIR_REPO%\target\service_demo\obj\exe
 SET CL_LOG=%TEMP%\service_demo_cl.tmp
 
-IF %clean% EQU 1    GOTO :CLEAN
-IF %cleanall% EQU 1 GOTO :CLEAN
-IF %cleanplat% EQU 1 GOTO :CLEAN
+:: Honor clean/cleanall/cleanplat by removing the demo's private tree. The demo
+:: keeps every artifact under target\service_demo (setup.cmd's clean targets the
+:: standard target\ tree and never touches this one), so all three clean flavors
+:: map to the same removal. When build is also requested, fall through and rebuild
+:: after cleaning; mirroring the standard scripts where setup.cmd cleans first and
+:: then the build proceeds.
+SET _DO_CLEAN=0
+IF %clean% EQU 1    SET _DO_CLEAN=1
+IF %cleanall% EQU 1 SET _DO_CLEAN=1
+IF %cleanplat% EQU 1 SET _DO_CLEAN=1
+
+IF %_DO_CLEAN% EQU 1 (
+    IF EXIST "%DIR_REPO%\target\service_demo" (
+        ECHO Removing %DIR_REPO%\target\service_demo
+        RD /S /Q "%DIR_REPO%\target\service_demo"
+    )
+)
+
+:: A clean-only invocation (no build requested) is done now. setup.cmd leaves
+:: build at 0 when a clean flag is given without an explicit build.
+IF %build% NEQ 1 (
+    ENDLOCAL
+    EXIT /B 0
+)
 
 :: -----------------------------------------------------------------------
 :: 1. Produce the three packages.
@@ -140,16 +161,6 @@ GOTO :SUCCESS
 :FAIL
 ENDLOCAL
 EXIT /B 1
-
-:CLEAN
-IF EXIST "%DIR_REPO%\target\service_demo" (
-    ECHO Removing %DIR_REPO%\target\service_demo
-    RD /S /Q "%DIR_REPO%\target\service_demo"
-) ELSE (
-    ECHO Nothing to clean.
-)
-ENDLOCAL
-EXIT /B 0
 
 :SUCCESS
 ENDLOCAL
