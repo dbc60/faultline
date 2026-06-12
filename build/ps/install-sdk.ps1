@@ -100,6 +100,23 @@ if ($Toolchain -eq 'clang' -and $Platform -eq 'x86') {
 
 $BuildOut = Join-Path $RepoRoot "target\$Toolchain\$Platform\$BuildType"
 
+# The MSVC build directory is named after the Visual Studio version that
+# shell.cmd selected via vswhere (e.g. vs2022, vs2026), so the requested
+# vsNNNN bucket may not be the one actually present. If it is missing, fall
+# back to the newest target\vs* build that has the requested platform/type.
+if ($Toolchain -ne 'clang' -and -not (Test-Path $BuildOut)) {
+    $TargetRoot = Join-Path $RepoRoot 'target'
+    $Fallback = Get-ChildItem -Path $TargetRoot -Directory -Filter 'vs*' -ErrorAction SilentlyContinue |
+        Sort-Object Name -Descending |
+        ForEach-Object { Join-Path $_.FullName "$Platform\$BuildType" } |
+        Where-Object { Test-Path $_ } |
+        Select-Object -First 1
+    if ($Fallback) {
+        Write-Verbose "Toolchain '$Toolchain' build not found; using $Fallback"
+        $BuildOut = $Fallback
+    }
+}
+
 if (-not (Test-Path $BuildOut)) {
     Write-Error "Build output directory not found: $BuildOut`nBuild the project first (build\cmd\all.cmd)."
 }

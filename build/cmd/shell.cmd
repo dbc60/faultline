@@ -3,91 +3,104 @@ SETLOCAL ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 
 :: See LICENSE.txt for copyright and licensing information about this file.
 
-:: When this script runs, it sets these environment variables:
-::  VSSolution: the name of the subdirectory under "%DIR_REPO%\builds\" where
-::              the Visual Studion solution file is located.
+:: Locate and activate a Visual Studio C++ build environment.
+::
+:: Visual Studio is found via vswhere.exe -- which ships at a fixed location with
+:: VS 2017 and later -- rather than by probing hardcoded install directories. The
+:: build therefore keeps working across VS editions and versions, including new
+:: versions that appear on updated CI runner images (e.g. VS 2026 on the
+:: windows-latest runner). The located edition's vcvars{64,32}.bat is called to
+:: put cl on PATH and export the SDK environment.
+::
+:: This script is called once per build script (all.cmd plus each component), so
+:: it has two paths:
+::   * Not yet in a dev environment (VSINSTALLDIR empty): locate VS with vswhere
+::     and call vcvars to activate it.
+::   * Already activated by a parent (VSINSTALLDIR set, e.g. a component called
+::     from all.cmd): skip activation, but STILL derive VSSOLUTION so every build
+::     script agrees on the target\ subfolder. (Skipping it here makes setup.cmd
+::     fall back to its default and the parent/child write to different trees.)
+::
+:: On success this sets, in the caller's environment:
+::   VSSOLUTION   - vsYYYY (e.g. vs2022, vs2026); used as the target\ subfolder
+::   VSINSTALLDIR plus the rest of the VS/SDK variables exported by vcvars
 
-:: Set a variable for each default path
-SET "BUILD_TOOLS_PATH_VS2017CE=C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build"
-SET "BUILD_TOOLS_PATH_VS2017Pro=C:\Program Files (x86)\Microsoft Visual Studio\2017\Professional\VC\Auxiliary\Build"
-SET "BUILD_TOOLS_PATH_MSBuild2017=C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\VC\Auxiliary\Build"
-SET "BUILD_TOOLS_PATH_VS2019CE=C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build"
-SET "BUILD_TOOLS_PATH_VS2019Pro=C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\VC\Auxiliary\Build"
-SET "BUILD_TOOLS_PATH_MSBuild2019=C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Auxiliary\Build"
-SET "BUILD_TOOLS_PATH_VS2022CE=C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build"
-SET "BUILD_TOOLS_PATH_VS2022Pro=C:\Program Files\Microsoft Visual Studio\2022\Professional\VC\Auxiliary\Build"
-SET "BUILD_TOOLS_PATH_VS2022Ent=C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build"
-SET "BUILD_TOOLS_PATH_MSBuild2022=C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build"
-
-:: Look for the most recent version of Visual Studio installed
-if %vs2022% EQU 1 (
-    if "%VSSOLUTION%"=="" (
-        IF EXIST "%BUILD_TOOLS_PATH_MSBuild2022%" (
-            SET "BUILD_TOOLS_PATH=%BUILD_TOOLS_PATH_MSBuild2022%"
-            SET VSSOLUTION=vs2022
-        ) ELSE IF EXIST "%BUILD_TOOLS_PATH_VS2022Ent%" (
-            SET "BUILD_TOOLS_PATH=%BUILD_TOOLS_PATH_VS2022Ent%"
-            SET VSSOLUTION=vs2022
-        ) ELSE IF EXIST "%BUILD_TOOLS_PATH_VS2022Pro%" (
-            SET "BUILD_TOOLS_PATH=%BUILD_TOOLS_PATH_VS2022Pro%"
-            SET VSSOLUTION=vs2022
-        ) ELSE IF EXIST "%BUILD_TOOLS_PATH_VS2022CE%" (
-            SET "BUILD_TOOLS_PATH=%BUILD_TOOLS_PATH_VS2022CE%"
-            SET VSSOLUTION=vs2022
-        )
-    )
+:: Already inside a developer environment? Reuse it; just take the active version
+:: so VSSOLUTION can still be derived below. vcvars sets VisualStudioVersion.
+IF NOT "%VSINSTALLDIR%"=="" (
+    SET "VS_VER=!VisualStudioVersion!"
+    GOTO :have_version
 )
 
-if %vs2019% EQU 1 (
-    if "%VSSOLUTION%"=="" (
-        IF EXIST "%BUILD_TOOLS_PATH_MSBuild2019%" (
-            SET "BUILD_TOOLS_PATH=%BUILD_TOOLS_PATH_MSBuild2019%"
-            SET VSSOLUTION=vs2019
-        ) ELSE IF EXIST "%BUILD_TOOLS_PATH_VS2019Pro%" (
-            SET "BUILD_TOOLS_PATH=%BUILD_TOOLS_PATH_VS2019Pro%"
-            SET VSSOLUTION=vs2019
-        ) ELSE IF EXIST "%BUILD_TOOLS_PATH_VS2019CE%" (
-            SET "BUILD_TOOLS_PATH=%BUILD_TOOLS_PATH_VS2019CE%"
-            SET VSSOLUTION=vs2019
-        )
-    )
-)
-
-if %vs2017% EQU 1 (
-    if "%VSSOLUTION%"=="" (
-        IF EXIST "%BUILD_TOOLS_PATH_MSBuild2017%" (
-            SET "BUILD_TOOLS_PATH=%BUILD_TOOLS_PATH_MSBuild2017%"
-            SET VSSOLUTION=vs2017
-        ) ELSE IF EXIST "%BUILD_TOOLS_PATH_VS2017Pro%" (
-            SET "BUILD_TOOLS_PATH=%BUILD_TOOLS_PATH_VS2017Pro%"
-            SET VSSOLUTION=vs2017
-        ) ELSE IF EXIST "%BUILD_TOOLS_PATH_VS2017CE%" (
-            SET "BUILD_TOOLS_PATH=%BUILD_TOOLS_PATH_VS2017CE%"
-            SET VSSOLUTION=vs2017
-        )
-    )
-)
-
-:: No known version of Visual Studio was found
-IF "!BUILD_TOOLS_PATH!"=="" (
-    ECHO Visual Studio is not installed, or is installed on an unexpected path.
+SET "VSWHERE=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
+IF NOT EXIST "%VSWHERE%" (
+    ECHO Visual Studio locator vswhere.exe not found at:
+    ECHO   "%VSWHERE%"
+    ECHO Visual Studio 2017 or later with the C++ toolset is required.
     GOTO :EOF
 )
 
-:: CALL 'vcvars64.bat' for the selected build tool and check for errors.
-IF NOT "!VSINSTALLDIR!" == "" GOTO :EOF
-IF %x64% EQU 1 (
-    CALL "%BUILD_TOOLS_PATH%\vcvars64.bat"
-) ELSE IF %x86% EQU 1 (
-    CALL "%BUILD_TOOLS_PATH%\vcvars32.bat"
+:: When exactly one VS year is requested, constrain vswhere to that major
+:: version; otherwise take the latest installed VS. The ranges are left UNquoted:
+:: the SET "..." protects the ')' on this line, and below VS_RANGE is expanded
+:: with delayed expansion inside the FOR /F (so the ')' is absent at parse time
+:: and merely a literal argument char -- with no matching '(' -- at run time).
+:: Quoting the range here instead unbalances the quotes around "%VSWHERE%" when
+:: the FOR /F command is executed, dropping vswhere's leading quote.
+::   VS2017 = 15.x, VS2019 = 16.x, VS2022 = 17.x, VS2026 = 18.x
+SET "VS_RANGE="
+IF %vs2017% EQU 1 IF %vs2019% EQU 0 IF %vs2022% EQU 0 SET "VS_RANGE=-version [15.0,16.0)"
+IF %vs2019% EQU 1 IF %vs2017% EQU 0 IF %vs2022% EQU 0 SET "VS_RANGE=-version [16.0,17.0)"
+IF %vs2022% EQU 1 IF %vs2017% EQU 0 IF %vs2019% EQU 0 SET "VS_RANGE=-version [17.0,18.0)"
+
+:: Only consider installs that actually carry the C++ x86/x64 toolset, and allow
+:: any product (Community/Professional/Enterprise/BuildTools).
+SET "VS_REQUIRE=-products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64"
+
+:: Query the install path and the installation version (e.g. 17.14.x, 18.6.x).
+CALL :VSWHERE_PROP installationPath VSINSTALL
+CALL :VSWHERE_PROP installationVersion VS_VER
+
+IF "%VSINSTALL%"=="" (
+    ECHO No Visual Studio installation with the C++ x86/x64 toolset was found.
+    ECHO   vswhere : "%VSWHERE%"
+    GOTO :EOF
 )
 
-IF "!VSINSTALLDIR!" == "" GOTO badenv
+:have_version
+:: Map the MSVC major version to its marketing year so the target\ subfolder
+:: keeps the familiar vsYYYY name (vswhere's catalog_productLineVersion is
+:: inconsistent -- "2022" for VS2022 but "18" for VS2026 -- so derive it here).
+:: Unknown future majors fall through as vs<major>, which is still stable.
+FOR /f "tokens=1 delims=." %%V IN ("%VS_VER%") DO SET "VS_MAJOR=%%V"
+SET "VS_YEAR=%VS_MAJOR%"
+IF "%VS_MAJOR%"=="15" SET "VS_YEAR=2017"
+IF "%VS_MAJOR%"=="16" SET "VS_YEAR=2019"
+IF "%VS_MAJOR%"=="17" SET "VS_YEAR=2022"
+IF "%VS_MAJOR%"=="18" SET "VS_YEAR=2026"
+IF NOT "%VS_YEAR%"=="" SET "VSSOLUTION=vs%VS_YEAR%"
 
+:: Already in a developer environment: VSSOLUTION is set, nothing to activate.
+IF NOT "%VSINSTALLDIR%"=="" GOTO :export
+
+:: VS 2026's vcvars invokes vswhere by name, so put the VS Installer directory
+:: (which contains vswhere.exe) on PATH before activating, or it prints a benign
+:: "'vswhere.exe' is not recognized" / "system cannot find the file" warning.
+FOR %%I IN ("%VSWHERE%") DO SET "PATH=%%~dpI;%PATH%"
+
+:: Activate the toolchain for the target architecture.
+IF %x64% EQU 1 (
+    CALL "%VSINSTALL%\VC\Auxiliary\Build\vcvars64.bat"
+) ELSE IF %x86% EQU 1 (
+    CALL "%VSINSTALL%\VC\Auxiliary\Build\vcvars32.bat"
+)
+
+IF "%VSINSTALLDIR%" == "" GOTO badenv
+
+:export
 :: Set some variables in the shell
 ENDLOCAL & (
     REM Project environment variables
-    SET "BUILD_TOOLS_PATH=%BUILD_TOOLS_PATH%"
     SET "VSSOLUTION=%VSSOLUTION%"
 
     REM Visual Studio environment variables
@@ -125,10 +138,18 @@ ENDLOCAL & (
 )
 GOTO :EOF
 
+:: -----------------------------------------------------------------------
+:: :VSWHERE_PROP <vswhere-property> <out-var>
+:: Run vswhere for the selected version range and toolset, capturing a single
+:: property into <out-var>. VS_RANGE is expanded with delayed expansion so its
+:: ')' cannot disturb the FOR /F parenthesis matching.
+:: -----------------------------------------------------------------------
+:VSWHERE_PROP
+SET "%~2="
+FOR /f "usebackq tokens=* delims=" %%I IN (`"%VSWHERE%" -latest !VS_RANGE! !VS_REQUIRE! -property %~1`) DO SET "%~2=%%I"
+EXIT /B 0
+
 :badenv
-ECHO VSINSTALLDIR is not defined.
-ECHO.
-ECHO Depending on your Visual Studio edition and install path one of these might work:
-ECHO %comspec% /k "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"
-ECHO or
-ECHO %comspec% /k "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsx86_amd64.bat"
+ECHO VSINSTALLDIR is not defined after calling vcvars.
+ECHO The located Visual Studio install may be missing the C++ toolset:
+ECHO   "%VSINSTALL%"
