@@ -17,7 +17,7 @@
 #include <faultline/fl_exception_service.h>        // fl_invalid_address
 #include <faultline/fl_exception_service_assert.h> // FL_ASSERT_NOT_NULL
 #include <faultline/fl_try.h>                      // FL_TRY, FL_CATCH, FL_END_TRY
-#include "flp_memory_context.h" // FLMemoryContext, FLP_INIT_MEMORY_CONTEXT_FN
+#include <faultline/flp_memory_context.h> // FLMemoryContext, FLP_INIT_MEMORY_CONTEXT_FN
 
 static FLMemoryService g_memory_service = {
     .ctx              = NULL,

@@ -19,7 +19,7 @@
 #include <faultline/fl_exception_service.h> // FL_REASON, FL_FILE, FL_LINE
 #include <faultline/fl_exception_service_assert.h> // FL_ASSERT_NOT_NULL
 #include <faultline/fl_try.h>                      // FL_TRY, FL_CATCH, FL_END_TRY
-#include "flp_fault_memory_context.h"              // FLFaultMemoryContext,
+#include <faultline/flp_fault_memory_context.h>    // FLFaultMemoryContext,
                                                    //   FLP_INIT_FAULT_MEMORY_CONTEXT_FN
 
 static FLFaultMemoryContext *g_fault_ctx = NULL;

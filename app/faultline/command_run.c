@@ -9,7 +9,7 @@
  */
 #include "../../src/command.h"  // RuntimeCommand, has_option, get_string_option
 #include "faultline_commands.h" // ExecutionContext, run_cmd
-#include "../../src/flp_fault_memory_context.h" // FLFaultMemoryContext (full definition)
+#include <faultline/flp_fault_memory_context.h> // FLFaultMemoryContext (full definition)
 #include "../../src/output_junit.h"             // write_junit_xml
 
 #include <faultline/fl_log.h>          // LOG_ERROR, LOG_WARN, LOG_INFO

@@ -11,7 +11,7 @@
 #define FAULTLINE_COMMANDS_H_
 
 #include "../../src/command.h"
-#include "../../src/flp_fault_memory_context.h" // FLFaultMemoryContext
+#include <faultline/flp_fault_memory_context.h> // FLFaultMemoryContext
 #include <faultline/fl_context.h>
 #include <faultline/arena.h> // Arena
 #include <sqlite/sqlite3.h>

@@ -10,13 +10,13 @@
  *
  * See LICENSE.txt for copyright and licensing information about this file.
  */
-#include <faultline/arena.h>         // Arena
-#include "fault_injector_internal.h" // FaultInjector
+#include <faultline/arena.h>          // Arena
+#include <faultline/fault_injector.h> // FaultInjector (opaque)
 
-struct FLFaultMemoryContext {
+typedef struct FLFaultMemoryContext {
     Arena         *arena;
     FaultInjector *fi;
-};
+} FLFaultMemoryContext;
 
 #define FLP_INIT_FAULT_MEMORY_CONTEXT_FN(name) \
     void name(FLFaultMemoryContext *ctx, Arena *arena, FaultInjector *fi)

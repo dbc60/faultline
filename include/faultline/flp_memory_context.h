@@ -10,7 +10,8 @@
  *
  * See LICENSE.txt for copyright and licensing information about this file.
  */
-#include <faultline/arena.h> // Arena
+#include <faultline/arena.h>             // Arena
+#include <faultline/fl_memory_service.h> // FLMemoryContext typedef
 
 struct FLMemoryContext {
     Arena *arena;
