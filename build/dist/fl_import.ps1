@@ -50,19 +50,28 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# Set-Location/cd updates PowerShell's location but NOT [Environment]::CurrentDirectory,
+# the value .NET file APIs ([System.IO.File]::ReadAllBytes/WriteAllText, etc.) use to
+# resolve relative paths. Left unsynced, a relative -Into would be read from / written to
+# the process's startup directory instead of the caller's location. Sync it once here so
+# every raw .NET call below sees the same cwd PowerShell does.
+[Environment]::CurrentDirectory = $PWD.ProviderPath
+
 # Compute a lowercase SHA-256 hex digest using .NET directly, so we do not
 # depend on Get-FileHash (absent or constrained in some PowerShell hosts).
+#
+# .NET file APIs resolve relative paths against [Environment]::CurrentDirectory,
+# which Set-Location/cd does NOT update -- so a relative $path would be read from
+# the process's startup directory, not the caller's location. Convert-Path turns
+# it into an absolute provider path first. We deliberately do not catch here: a
+# read failure is a real error and must propagate, not be masked as a later
+# "Hash mismatch (corrupt package?)".
 function Get-Sha256([string]$path) {
+    $full = Convert-Path -LiteralPath $path
     $sha = [System.Security.Cryptography.SHA256]::Create()
     try {
-        $bytes = [System.IO.File]::ReadAllBytes($path)
+        $bytes = [System.IO.File]::ReadAllBytes($full)
         return ([BitConverter]::ToString($sha.ComputeHash($bytes)) -replace '-', '').ToLower()
-    } catch {
-        $e = $_.Exception
-        $line = $_.InvocationInfo.ScriptLineNumber
-        $msg = $e.Message
-
-        Write-Host -ForegroundColor Red "caught exception: $msg at $line"
     } finally {
         $sha.Dispose()
     }
