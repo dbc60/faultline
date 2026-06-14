@@ -228,6 +228,50 @@ FL_TYPE_TEST_SETUP_CLEANUP("Create Views", TestSchema, schema_creates_views, set
     sqlite3_close_v2(db);
 }
 
+//  6b. latest_runs counts passing cases (result_code = FL_PASS = 1), not 0
+static void setup_latest_runs_counts(FLTestCase *btc) {
+    TestSchema *t = FL_CONTAINER_OF(btc, TestSchema, tc);
+    t->test_db    = "test_latest_runs_counts.db";
+}
+
+FL_TYPE_TEST_SETUP_CLEANUP("Latest Runs Counts", TestSchema, schema_counts_successes,
+                           setup_latest_runs_counts, cleanup_test_db) {
+    faultline_sqlite_init_schema(t->test_db);
+
+    sqlite3 *db;
+    FL_ASSERT_EQ_INT(SQLITE_OK,
+                     sqlite3_open_v2(t->test_db, &db, SQLITE_OPEN_READWRITE, NULL));
+
+    // One run with two cases: one pass (FL_PASS = 1) and one failure (FL_FAIL = 5).
+    FL_ASSERT_EQ_INT(
+        SQLITE_OK,
+        sqlite3_exec(
+            db,
+            "INSERT INTO test_suites (suite_name) VALUES ('S');"
+            "INSERT INTO raw_test_runs (suite_id, timestamp, test_cases, tests_run,"
+            "  tests_passed, tests_passed_with_leaks, tests_failed, setups_failed,"
+            "  cleanups_failed, total_fault_sites, total_elapsed_time) VALUES"
+            "  (1,'2024-05-01 09:00:00',2,2,1,0,1,0,0,7,1.0);"
+            "INSERT INTO raw_test_summaries (run_id, test_index, test_name, result_code,"
+            "  elapsed_seconds, faults_exercised) VALUES"
+            "  (1,0,'pass_case',1,0.5,3),"
+            "  (1,1,'fail_case',5,0.5,4);",
+            NULL, NULL, NULL));
+
+    sqlite3_stmt *stmt;
+    FL_ASSERT_EQ_INT(SQLITE_OK,
+                     sqlite3_prepare_v2(db,
+                                        "SELECT executed_test_cases, successful_cases "
+                                        "FROM latest_runs WHERE suite_name = 'S'",
+                                        -1, &stmt, NULL));
+    FL_ASSERT_EQ_INT(SQLITE_ROW, sqlite3_step(stmt));
+    FL_ASSERT_EQ_INT(2, sqlite3_column_int(stmt, 0)); // both cases executed
+    FL_ASSERT_EQ_INT(1, sqlite3_column_int(stmt, 1)); // only the FL_PASS case counts
+    sqlite3_finalize(stmt);
+
+    sqlite3_close_v2(db);
+}
+
 /////////////////////////////////
 //  Regression Tracking Tests  //
 /////////////////////////////////

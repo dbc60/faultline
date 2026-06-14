@@ -177,7 +177,9 @@ static char const *schema_views[] = {
     "    rtr.*,"
     "    ts.suite_name,"
     "    COUNT(rts.id) as executed_test_cases,"
-    "    SUM(CASE WHEN rts.result_code = 0 THEN 1 ELSE 0 END) as successful_cases "
+    // result_code stores FLResultCode, where FL_PASS is 1 (FL_NOT_RUN is 0), so
+    // a passing case is result_code = 1, not 0.
+    "    SUM(CASE WHEN rts.result_code = 1 THEN 1 ELSE 0 END) as successful_cases "
     "FROM raw_test_runs rtr "
     "JOIN test_suites ts ON ts.suite_id = rtr.suite_id "
     "LEFT JOIN raw_test_summaries rts ON rtr.id = rts.run_id "

@@ -36,6 +36,7 @@ FL_TYPE_TEST_DECL(TestSchema, schema_sets_version);
 FL_TYPE_TEST_DECL(TestSchema, schema_creates_foreign_keys);
 FL_TYPE_TEST_DECL(TestSchema, schema_creates_analysis_tables);
 FL_TYPE_TEST_DECL(TestSchema, schema_creates_views);
+FL_TYPE_TEST_DECL(TestSchema, schema_counts_successes);
 FL_TYPE_TEST_DECL(TestSchema, schema_tracks_baseline);
 FL_TYPE_TEST_DECL(TestSchema, schema_reports_regressions);
 FL_TYPE_TEST_DECL(TestSchema, schema_reports_trends);
