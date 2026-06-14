@@ -364,18 +364,23 @@ RuntimeCommand *parse_command(FormalCommand const *formals, int argc, char **arg
  * @return true if the option is present, false otherwise
  */
 bool has_option(RuntimeCommand const *cmd, char const *option_name) {
-    if (cmd == NULL || cmd->options == NULL) {
+    if (cmd == NULL) {
         return false;
     }
 
-    for (int i = 0; cmd->options[i].option != NULL; i++) {
-        if (cmd->options[i].option->long_form != NULL
-            && strcmp(cmd->options[i].option->long_form, option_name) == 0) {
-            return true;
+    if (cmd->options != NULL) {
+        for (int i = 0; cmd->options[i].option != NULL; i++) {
+            if (cmd->options[i].option->long_form != NULL
+                && strcmp(cmd->options[i].option->long_form, option_name) == 0) {
+                return true;
+            }
         }
     }
 
-    return false;
+    // Global options (e.g. --db) may be given before or after a subcommand, so
+    // search the subcommand chain. The current level is checked first, so an
+    // option set at this level wins over the same option set on a subcommand.
+    return has_option(cmd->subcommand, option_name);
 }
 
 /**
@@ -388,18 +393,22 @@ bool has_option(RuntimeCommand const *cmd, char const *option_name) {
  */
 char const *get_string_option(RuntimeCommand const *cmd, char const *option_name,
                               char const *default_value) {
-    if (cmd == NULL || cmd->options == NULL) {
+    if (cmd == NULL) {
         return default_value;
     }
 
-    for (int i = 0; cmd->options[i].option != NULL; i++) {
-        if (cmd->options[i].option->long_form != NULL
-            && strcmp(cmd->options[i].option->long_form, option_name) == 0) {
-            return cmd->options[i].arg;
+    if (cmd->options != NULL) {
+        for (int i = 0; cmd->options[i].option != NULL; i++) {
+            if (cmd->options[i].option->long_form != NULL
+                && strcmp(cmd->options[i].option->long_form, option_name) == 0) {
+                return cmd->options[i].arg;
+            }
         }
     }
 
-    return default_value;
+    // See has_option: global options are resolved across the subcommand chain so
+    // their placement on the command line does not matter.
+    return get_string_option(cmd->subcommand, option_name, default_value);
 }
 
 /**

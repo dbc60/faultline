@@ -62,8 +62,8 @@ static FormalCommand test_subcommands[] = {
 static FormalCommand test_commands[] = {
     {"simple", "Simple command", test_cmd_handler, NULL, NULL, NULL},
     {"options", "Command with options", test_cmd_handler, test_options, NULL, NULL},
-    {"nested", "Command with subcommands", test_cmd_handler, NULL, test_subcommands,
-     NULL},
+    {"nested", "Command with subcommands", test_cmd_handler, test_options,
+     test_subcommands, NULL},
     {NULL, NULL, NULL, NULL, NULL, NULL}, // NULL terminator
 };
 
@@ -322,6 +322,55 @@ FL_TYPE_TEST_SETUP_CLEANUP("get int option", TestCommand, test_get_int_option,
 }
 
 // ============================================================================
+// Tests for option resolution across the subcommand chain
+// ============================================================================
+
+// An option given on a subcommand resolves when looked up on the parent, so a
+// global option (e.g. --db) works regardless of where it sits on the line.
+FL_TYPE_TEST_SETUP_CLEANUP("option resolves from subcommand", TestCommand,
+                           test_option_from_subcommand, setup_command_tests, NULL) {
+    char *argv[] = {"program", "nested", "sub2", "--force", "--limit", "42"};
+    int   argc   = 6;
+
+    RuntimeCommand *cmd = parse_command(t->commands, argc, argv);
+
+    FL_ASSERT_NOT_NULL(cmd);
+    FL_ASSERT_NOT_NULL(cmd->subcommand);
+    // Looked up on the PARENT, the subcommand's options are still found.
+    FL_ASSERT_TRUE(has_option(cmd, "force"));
+    FL_ASSERT_EQ_INT(get_int_option(cmd, "limit", 0), 42);
+    FL_ASSERT_STR_EQ(get_string_option(cmd, "limit", "default"), "42");
+}
+
+// When the same option is set at both levels, the outer (current) level wins.
+FL_TYPE_TEST_SETUP_CLEANUP("parent option wins over subcommand", TestCommand,
+                           test_option_parent_precedence, setup_command_tests, NULL) {
+    char *argv[] = {"program", "nested", "--limit", "5", "sub2", "--limit", "42"};
+    int   argc   = 7;
+
+    RuntimeCommand *cmd = parse_command(t->commands, argc, argv);
+
+    FL_ASSERT_NOT_NULL(cmd);
+    FL_ASSERT_NOT_NULL(cmd->subcommand);
+    FL_ASSERT_EQ_INT(get_int_option(cmd, "limit", 0), 5);              // parent
+    FL_ASSERT_EQ_INT(get_int_option(cmd->subcommand, "limit", 0), 42); // subcommand
+}
+
+// An option present at no level returns the default through the whole chain.
+FL_TYPE_TEST_SETUP_CLEANUP("option absent through chain", TestCommand,
+                           test_option_absent_through_chain, setup_command_tests, NULL) {
+    char *argv[] = {"program", "nested", "sub1"};
+    int   argc   = 3;
+
+    RuntimeCommand *cmd = parse_command(t->commands, argc, argv);
+
+    FL_ASSERT_NOT_NULL(cmd);
+    FL_ASSERT_NOT_NULL(cmd->subcommand);
+    FL_ASSERT_FALSE(has_option(cmd, "force"));
+    FL_ASSERT_STR_EQ(get_string_option(cmd, "limit", "default"), "default");
+}
+
+// ============================================================================
 // Test Suite Definition
 // ============================================================================
 
@@ -342,6 +391,9 @@ FL_SUITE_ADD_EMBEDDED(test_parse_subcommand_with_options)
 FL_SUITE_ADD_EMBEDDED(test_has_option)
 FL_SUITE_ADD_EMBEDDED(test_get_string_option)
 FL_SUITE_ADD_EMBEDDED(test_get_int_option)
+FL_SUITE_ADD_EMBEDDED(test_option_from_subcommand)
+FL_SUITE_ADD_EMBEDDED(test_option_parent_precedence)
+FL_SUITE_ADD_EMBEDDED(test_option_absent_through_chain)
 FL_SUITE_END;
 
 FL_GET_TEST_SUITE("Command Parsing", command_tests);
