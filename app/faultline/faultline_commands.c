@@ -97,8 +97,17 @@ static FormalOption hotspots_options[] = {
 // Show trends options
 static FormalOption trends_options[] = {
     {"s", "suite", "Filter by suite name", true, NULL},
-    {"n", "limit", "Limit result count (default: 10)", true, NULL},
+    {"n", "limit", "Limit result count (default: 0=unlimited)", true, NULL},
     {NULL, "format", "Output format (text|json|csv)", true, NULL},
+    {"d", "db", "Database file path", true, NULL},
+    {NULL, NULL, NULL, false, NULL},
+};
+
+// Show regressions options
+static FormalOption regressions_options[] = {
+    {"s", "suite", "Filter by suite name", true, NULL},
+    {"n", "limit", "Limit result count (default: 0=unlimited)", true, NULL},
+    {"t", "threshold", "Runtime regression threshold percent (default: 20)", true, NULL},
     {"d", "db", "Database file path", true, NULL},
     {NULL, NULL, NULL, false, NULL},
 };
@@ -120,6 +129,8 @@ static FormalCommand show_subcommands[] = {
     {"hotspots", "Show frequently failing locations", show_hotspots_cmd,
      hotspots_options, NULL, NULL},
     {"trends", "Show performance trends", show_trends_cmd, trends_options, NULL, NULL},
+    {"regressions", "Show coverage/runtime regressions vs baseline",
+     show_regressions_cmd, regressions_options, NULL, NULL},
     {NULL, NULL, NULL, NULL, NULL, NULL}, // NULL terminator
 };
 

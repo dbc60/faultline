@@ -42,13 +42,66 @@ extern void faultline_show_test_failures(sqlite3 *db, char const *suite_name, in
                                          bool show_all_history);
 extern void faultline_show_run_details(sqlite3 *db, int run_id);
 extern void faultline_show_suite_summary(sqlite3 *db, char const *suite_name);
+extern void faultline_show_regressions(sqlite3 *db, char const *suite_name, int limit,
+                                       double threshold_pct);
+
+/**
+ * @brief One test's coverage/runtime regression versus its baseline.
+ *
+ * The string fields point into the query's storage and are only valid for the
+ * duration of the FLRegressionFn callback; copy them if needed afterwards.
+ */
+typedef struct FLRegression {
+    char const *suite_name;
+    char const *test_name;
+    long long   baseline_fault_sites;
+    long long   last_fault_sites;
+    double      baseline_execution_time;
+    double      last_execution_time;
+    bool        coverage_regression; // last_fault_sites < baseline_fault_sites
+    bool        runtime_regression;  // last_execution_time over baseline by threshold
+} FLRegression;
+
+typedef void (*FLRegressionFn)(FLRegression const *regression, void *ctx);
+
+extern int faultline_for_each_regression(sqlite3 *db, char const *suite_name, int limit,
+                                         double threshold_pct, FLRegressionFn fn,
+                                         void *ctx);
+
+extern void faultline_show_trends(sqlite3 *db, char const *suite_name, int limit);
+
+/**
+ * @brief One suite's aggregated health for a single day, with the prior day's
+ * values for trend direction.
+ *
+ * has_prev is false for a suite's earliest day, where the prev_* fields are
+ * undefined. The string fields point into the query's storage and are only
+ * valid for the duration of the FLSuiteTrendFn callback.
+ */
+typedef struct FLSuiteTrend {
+    char const *suite_name;
+    char const *day; // 'YYYY-MM-DD'
+    int         total_runs;
+    double      avg_pass_rate;      // 0..1
+    double      avg_execution_time; // seconds
+    long long   total_failures;
+    bool        has_prev;
+    double      prev_pass_rate;
+    double      prev_execution_time;
+    long long   prev_total_failures;
+} FLSuiteTrend;
+
+typedef void (*FLSuiteTrendFn)(FLSuiteTrend const *trend, void *ctx);
+
+extern int faultline_for_each_trend(sqlite3 *db, char const *suite_name, int limit,
+                                    FLSuiteTrendFn fn, void *ctx);
 
 // Main API functions from Stage 6 requirements
 extern void faultline_export_sqlite(FLContext *fctx, char const *db_path);
 extern void faultline_import_sqlite(FLContext *fctx, char const *db_path, int run_id);
 
 // Schema management
-#define FL_SCHEMA_VERSION 1
+#define FL_SCHEMA_VERSION 2
 extern void faultline_sqlite_init_schema(char const *db_path);
 extern void faultline_sqlite_migrate_schema(char const *db_path, int current_version);
 

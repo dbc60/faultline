@@ -61,6 +61,7 @@ COMMAND_HANDLER(show_suite_cmd);
 COMMAND_HANDLER(show_cases_cmd);
 COMMAND_HANDLER(show_hotspots_cmd);
 COMMAND_HANDLER(show_trends_cmd);
+COMMAND_HANDLER(show_regressions_cmd);
 
 #if defined(__cplusplus)
 }

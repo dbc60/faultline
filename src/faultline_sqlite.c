@@ -122,24 +122,35 @@ static char const *schema_tables[] = {
     NULL // Terminator
 };
 
-// Derived tables - trigger-maintained, best-effort on creation (a failure only
-// warns). These are not part of the raw result set; they are computed from it.
-static char const *schema_analysis_tables[] = {
-    // test_case_evolution: a running per-(suite, test) history, maintained by
-    // the update_test_evolution trigger on each raw_test_summaries insert.
+// Derived tables - best-effort on creation (a failure only warns). These are
+// not part of the raw result set; they are computed from it.
+static char const *schema_derived_tables[] = {
+    // test_case_evolution: one row per (suite, test), upserted from C in
+    // faultline_record_test_summary. Holds a frozen baseline (captured the
+    // first time a test is seen) alongside the latest observation, so the
+    // regressions report can compare fault-site coverage and runtime against
+    // the baseline. UNIQUE(suite_name, test_name) is the upsert conflict key.
     "CREATE TABLE IF NOT EXISTS test_case_evolution ("
-    "    id INTEGER PRIMARY KEY AUTOINCREMENT,"
     "    suite_name TEXT NOT NULL,"
     "    test_name TEXT NOT NULL,"
-    "    first_seen_run_id INTEGER NOT NULL,"
-    "    last_seen_run_id INTEGER NOT NULL,"
-    "    total_appearances INTEGER DEFAULT 1,"
-    "    total_failures INTEGER DEFAULT 0,"
-    "    avg_execution_time REAL,"
-    "    avg_fault_sites REAL,"
     ""
+    "    first_seen_run_id INTEGER NOT NULL,"
+    "    total_appearances INTEGER NOT NULL DEFAULT 1,"
+    "    total_failures INTEGER NOT NULL DEFAULT 0,"
+    ""
+    "    baseline_run_id INTEGER NOT NULL,"
+    "    baseline_fault_sites INTEGER NOT NULL,"
+    "    baseline_execution_time REAL,"
+    "    baseline_date TEXT,"
+    ""
+    "    last_run_id INTEGER NOT NULL,"
+    "    last_fault_sites INTEGER NOT NULL,"
+    "    last_execution_time REAL,"
+    ""
+    "    UNIQUE(suite_name, test_name),"
     "    FOREIGN KEY (first_seen_run_id) REFERENCES raw_test_runs(id),"
-    "    FOREIGN KEY (last_seen_run_id) REFERENCES raw_test_runs(id)"
+    "    FOREIGN KEY (baseline_run_id) REFERENCES raw_test_runs(id),"
+    "    FOREIGN KEY (last_run_id) REFERENCES raw_test_runs(id)"
     ");",
     NULL // Terminator
 };
@@ -179,43 +190,6 @@ static char const *schema_views[] = {
     NULL // Terminator
 };
 
-static char const *schema_triggers[] = {
-    // update_test_evolution: refresh the test_case_evolution row for a test each
-    // time a summary is inserted, joining test_suites to resolve the suite name.
-    "CREATE TRIGGER IF NOT EXISTS update_test_evolution "
-    "AFTER INSERT ON raw_test_summaries "
-    "BEGIN "
-    "    INSERT OR REPLACE INTO test_case_evolution ("
-    "        suite_name, test_name, first_seen_run_id, last_seen_run_id,"
-    "        total_appearances, total_failures, avg_execution_time, avg_fault_sites "
-    "    ) "
-    "    SELECT "
-    "        ts.suite_name,"
-    "        NEW.test_name,"
-    "        COALESCE((SELECT first_seen_run_id FROM test_case_evolution "
-    "                WHERE suite_name = ts.suite_name AND test_name = NEW.test_name), "
-    "NEW.run_id),"
-    "        NEW.run_id,"
-    "        COALESCE((SELECT total_appearances FROM test_case_evolution "
-    "                WHERE suite_name = ts.suite_name AND test_name = NEW.test_name), "
-    "0) + 1,"
-    "        COALESCE((SELECT total_failures FROM test_case_evolution "
-    "                WHERE suite_name = ts.suite_name AND test_name = NEW.test_name), "
-    "0) + "
-    "                CASE WHEN NEW.result_code != 0 THEN 1 ELSE 0 END,"
-    "        (SELECT AVG(elapsed_seconds) FROM raw_test_summaries rts2 "
-    "        JOIN raw_test_runs rtr2 ON rts2.run_id = rtr2.id "
-    "        WHERE rtr2.suite_id = rtr.suite_id AND rts2.test_name = NEW.test_name),"
-    "        (SELECT AVG(faults_exercised) FROM raw_test_summaries rts2 "
-    "        JOIN raw_test_runs rtr2 ON rts2.run_id = rtr2.id "
-    "        WHERE rtr2.suite_id = rtr.suite_id AND rts2.test_name = NEW.test_name) "
-    "    FROM raw_test_runs rtr "
-    "    JOIN test_suites ts ON ts.suite_id = rtr.suite_id "
-    "    WHERE rtr.id = NEW.run_id; "
-    "END;",
-    NULL // Terminator
-};
-
 typedef struct {
     int         from_version;
     int         to_version;
@@ -226,11 +200,8 @@ typedef struct {
  * @brief Apply the full FaultLine schema to an open database connection.
  *
  * Core tables are mandatory: a failure throws faultline_db_create_failed.
- * The derived table, indexes, views, and triggers are best-effort and only log
- * a warning on failure. Records the current schema version on completion.
- *
- * The update_test_evolution trigger writes the derived test_case_evolution
- * table, so the derived table is created before the trigger.
+ * The derived table, indexes, and views are best-effort and only log a warning
+ * on failure. Records the current schema version on completion.
  *
  * @param db Open database connection. Not closed by this function.
  */
@@ -251,10 +222,37 @@ static void faultline_apply_schema(sqlite3 *db) {
     }
     LOG_DEBUG(faultline_db, "Core tables created successfully");
 
-    // Derived tables - SHOULD succeed but not fatal (trigger-maintained)
+    // Schema upgrades: bring an older database forward before (re)creating the
+    // derived objects. test_case_evolution changed shape in v2 and the old
+    // update_test_evolution trigger was retired, so drop both when upgrading
+    // from a pre-v2 database; the old rows held only unread, duplicated history.
+    // A fresh database has no schema_info rows yet (MAX(version) is NULL -> 0),
+    // so this is a no-op for new databases.
+    int stored_version = 0;
+    {
+        sqlite3_stmt *vstmt = NULL;
+        if (sqlite3_prepare_v2(db, "SELECT MAX(version) FROM schema_info", -1, &vstmt,
+                               NULL)
+            == SQLITE_OK) {
+            if (sqlite3_step(vstmt) == SQLITE_ROW) {
+                stored_version = sqlite3_column_int(vstmt, 0);
+            }
+            sqlite3_finalize(vstmt);
+        }
+    }
+    if (stored_version > 0 && stored_version < 2) {
+        LOG_INFO(faultline_db,
+                 "Upgrading schema from v%d: rebuilding test_case_evolution",
+                 stored_version);
+        sqlite3_exec(db, "DROP TRIGGER IF EXISTS update_test_evolution;", NULL, NULL,
+                     NULL);
+        sqlite3_exec(db, "DROP TABLE IF EXISTS test_case_evolution;", NULL, NULL, NULL);
+    }
+
+    // Derived tables - SHOULD succeed but not fatal (computed from raw data)
     LOG_DEBUG(faultline_db, "Creating derived tables...");
-    for (int i = 0; schema_analysis_tables[i] != NULL; i++) {
-        rc = sqlite3_exec(db, schema_analysis_tables[i], NULL, NULL, NULL);
+    for (int i = 0; schema_derived_tables[i] != NULL; i++) {
+        rc = sqlite3_exec(db, schema_derived_tables[i], NULL, NULL, NULL);
         if (rc != SQLITE_OK) {
             LOG_WARN(faultline_db, "Derived table creation failed: %s",
                      sqlite3_errmsg(db));
@@ -276,15 +274,6 @@ static void faultline_apply_schema(sqlite3 *db) {
         rc = sqlite3_exec(db, schema_views[i], NULL, NULL, NULL);
         if (rc != SQLITE_OK) {
             LOG_WARN(faultline_db, "View creation failed: %s", sqlite3_errmsg(db));
-        }
-    }
-
-    // Triggers - CAN fail silently (derived data maintenance)
-    LOG_DEBUG(faultline_db, "Creating triggers...");
-    for (int i = 0; schema_triggers[i] != NULL; i++) {
-        rc = sqlite3_exec(db, schema_triggers[i], NULL, NULL, NULL);
-        if (rc != SQLITE_OK) {
-            LOG_WARN(faultline_db, "Trigger creation failed: %s", sqlite3_errmsg(db));
         }
     }
 
@@ -564,6 +553,67 @@ void faultline_record_test_run_complete(sqlite3 *db, int run_id, FLContext *fctx
 }
 
 /**
+ * @brief Upsert the per-(suite, test) evolution row from a recorded summary.
+ *
+ * The baseline columns are captured once, when the row is first inserted, and
+ * left untouched on conflict so they stay frozen at the test's first sighting;
+ * the last_* columns and the appearance/failure counters track the most recent
+ * run. Best-effort: a failure only warns. The suite name is resolved from
+ * run_id so callers need not pass it.
+ *
+ * @param db Database connection
+ * @param run_id Run ID the summary belongs to
+ * @param summary Test summary data (uses code, faults_exercised, elapsed_seconds)
+ * @param test_name Name of the test case
+ */
+static void faultline_update_test_evolution(sqlite3 *db, int run_id,
+                                            FLTestSummary const *summary,
+                                            char const          *test_name) {
+    char const *upsert_sql
+        = "INSERT INTO test_case_evolution ("
+          "    suite_name, test_name, first_seen_run_id, total_appearances, "
+          "total_failures, "
+          "    baseline_run_id, baseline_fault_sites, baseline_execution_time, "
+          "baseline_date, "
+          "    last_run_id, last_fault_sites, last_execution_time"
+          ") VALUES ("
+          "    (SELECT ts.suite_name FROM raw_test_runs r "
+          "       JOIN test_suites ts ON ts.suite_id = r.suite_id WHERE r.id = ?1),"
+          "    ?2, ?1, 1, ?3,"
+          "    ?1, ?4, ?5, datetime('now'),"
+          "    ?1, ?4, ?5"
+          ") "
+          "ON CONFLICT(suite_name, test_name) DO UPDATE SET "
+          "    total_appearances   = total_appearances + 1,"
+          "    total_failures      = total_failures + excluded.total_failures,"
+          "    last_run_id         = excluded.last_run_id,"
+          "    last_fault_sites    = excluded.last_fault_sites,"
+          "    last_execution_time = excluded.last_execution_time;";
+
+    sqlite3_stmt *stmt = NULL;
+    if (sqlite3_prepare_v2(db, upsert_sql, -1, &stmt, NULL) != SQLITE_OK) {
+        LOG_WARN(faultline_db, "test_case_evolution upsert prepare failed: %s",
+                 sqlite3_errmsg(db));
+        return;
+    }
+
+    // Enum is ordered best->worst (FL_NOT_RUN, FL_PASS, then failures), matching
+    // the result_code > FL_PASS "failed" convention used elsewhere in this file.
+    int failed = (summary->code > FL_PASS) ? 1 : 0;
+    sqlite3_bind_int(stmt, 1, run_id);
+    sqlite3_bind_text(stmt, 2, test_name, -1, SQLITE_STATIC);
+    sqlite3_bind_int(stmt, 3, failed);
+    sqlite3_bind_int64(stmt, 4, summary->faults_exercised);
+    sqlite3_bind_double(stmt, 5, summary->elapsed_seconds);
+
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+        LOG_WARN(faultline_db, "test_case_evolution upsert failed: %s",
+                 sqlite3_errmsg(db));
+    }
+    sqlite3_finalize(stmt);
+}
+
+/**
  * @brief Record a single test summary result
  *
  * @param db Database connection
@@ -711,6 +761,9 @@ void faultline_record_test_summary(sqlite3 *db, int run_id, FLTestSummary *summa
                 LOG_DEBUG(faultline_db,
                           "Recorded test summary %d for test: %s with %zu faults",
                           summary_id, test_name, fault_count);
+
+                // Maintain the per-(suite, test) baseline/latest rollup.
+                faultline_update_test_evolution(db, run_id, summary, test_name);
             }
             sqlite3_finalize(stmt);
         }
@@ -810,6 +863,311 @@ void faultline_show_recent_runs(sqlite3 *db, int limit) {
     }
 
     sqlite3_finalize(stmt);
+}
+
+/**
+ * @brief Iterate tests whose coverage or runtime regressed against their baseline
+ *
+ * Reads test_case_evolution and invokes `fn` for each test where the latest run
+ * lost fault-site coverage (last_fault_sites < baseline_fault_sites) or got
+ * slower than the baseline by more than threshold_pct. Fault-site coverage is
+ * the robust signal: for an unchanged test it is deterministic, so a drop points
+ * at the system under test or at fault discovery. Runtime is noisier, hence the
+ * threshold. The coverage_regression/runtime_regression flags on each row record
+ * which condition fired. Row string fields are only valid during the callback.
+ *
+ * @param db Database connection
+ * @param suite_name Suite to filter by, or NULL for all suites
+ * @param limit Maximum rows to visit (0 = no limit)
+ * @param threshold_pct Runtime regression threshold, in percent (e.g. 20.0)
+ * @param fn Callback invoked once per regression
+ * @param ctx Opaque pointer passed through to `fn`
+ * @return Number of regressions visited, or -1 on a query error
+ */
+int faultline_for_each_regression(sqlite3 *db, char const *suite_name, int limit,
+                                  double threshold_pct, FLRegressionFn fn, void *ctx) {
+    if (db == NULL || fn == NULL) {
+        return -1;
+    }
+
+    double threshold_frac = threshold_pct / 100.0;
+
+    char const *base_sql
+        = "SELECT suite_name, test_name, baseline_fault_sites, last_fault_sites, "
+          "       baseline_execution_time, last_execution_time "
+          "FROM test_case_evolution "
+          "WHERE (?1 IS NULL OR suite_name = ?1) "
+          "  AND (last_fault_sites < baseline_fault_sites "
+          "       OR (baseline_execution_time > 0 "
+          "           AND last_execution_time > baseline_execution_time * (1.0 + ?2))) "
+          "ORDER BY (CAST(baseline_fault_sites - last_fault_sites AS REAL) / "
+          "          CASE WHEN baseline_fault_sites = 0 THEN 1 "
+          "               ELSE baseline_fault_sites END) DESC, suite_name, test_name";
+
+    char query[1024];
+    if (limit > 0) {
+        snprintf(query, sizeof query, "%s LIMIT %d;", base_sql, limit);
+    } else {
+        snprintf(query, sizeof query, "%s;", base_sql);
+    }
+
+    sqlite3_stmt *stmt;
+    if (sqlite3_prepare_v2(db, query, -1, &stmt, NULL) != SQLITE_OK) {
+        LOG_WARN(faultline_db, "regressions query prepare failed: %s",
+                 sqlite3_errmsg(db));
+        return -1;
+    }
+
+    if (suite_name != NULL) {
+        sqlite3_bind_text(stmt, 1, suite_name, -1, SQLITE_STATIC);
+    } else {
+        sqlite3_bind_null(stmt, 1);
+    }
+    sqlite3_bind_double(stmt, 2, threshold_frac);
+
+    enum {
+        COL_SUITE = 0,
+        COL_TEST,
+        COL_BASE_SITES,
+        COL_LAST_SITES,
+        COL_BASE_TIME,
+        COL_LAST_TIME
+    };
+
+    int count = 0;
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        FLRegression r;
+        r.suite_name              = (char const *)sqlite3_column_text(stmt, COL_SUITE);
+        r.test_name               = (char const *)sqlite3_column_text(stmt, COL_TEST);
+        r.baseline_fault_sites    = sqlite3_column_int64(stmt, COL_BASE_SITES);
+        r.last_fault_sites        = sqlite3_column_int64(stmt, COL_LAST_SITES);
+        r.baseline_execution_time = sqlite3_column_double(stmt, COL_BASE_TIME);
+        r.last_execution_time     = sqlite3_column_double(stmt, COL_LAST_TIME);
+        r.coverage_regression     = r.last_fault_sites < r.baseline_fault_sites;
+        r.runtime_regression = r.baseline_execution_time > 0.0
+                               && r.last_execution_time > r.baseline_execution_time
+                                                              * (1.0 + threshold_frac);
+
+        fn(&r, ctx);
+        count++;
+    }
+
+    sqlite3_finalize(stmt);
+    return count;
+}
+
+// Print one regression row in the "show regressions" table.
+static void print_regression_row(FLRegression const *r, void *ctx) {
+    (void)ctx;
+
+    double      fs_delta = (r->baseline_fault_sites != 0)
+                               ? ((double)(r->last_fault_sites - r->baseline_fault_sites)
+                                  / (double)r->baseline_fault_sites)
+                                     * 100.0
+                               : 0.0;
+    double      t_delta  = (r->baseline_execution_time > 0.0)
+                               ? ((r->last_execution_time - r->baseline_execution_time)
+                                  / r->baseline_execution_time)
+                                     * 100.0
+                               : 0.0;
+    char const *type     = (r->coverage_regression && r->runtime_regression)
+                               ? "COVERAGE+RUNTIME"
+                           : r->coverage_regression ? "COVERAGE"
+                                                    : "RUNTIME";
+
+    printf("%-20.20s %-24.24s %7lld %7lld %7.1f%%   %9.3f %9.3f %7.1f%%  %s\n",
+           r->suite_name, r->test_name, (long long)r->baseline_fault_sites,
+           (long long)r->last_fault_sites, fs_delta, r->baseline_execution_time,
+           r->last_execution_time, t_delta, type);
+}
+
+/**
+ * @brief Show tests whose coverage or runtime regressed against their baseline
+ *
+ * Thin presentation wrapper over faultline_for_each_regression; see that
+ * function for the selection semantics.
+ *
+ * @param db Database connection
+ * @param suite_name Suite to filter by, or NULL for all suites
+ * @param limit Maximum rows to display (0 = no limit)
+ * @param threshold_pct Runtime regression threshold, in percent (e.g. 20.0)
+ */
+void faultline_show_regressions(sqlite3 *db, char const *suite_name, int limit,
+                                double threshold_pct) {
+    if (db == NULL) {
+        printf("No database connection available\n");
+        return;
+    }
+
+    printf("\n=== Regressions vs Baseline (runtime threshold %.0f%%) ===\n",
+           threshold_pct);
+    printf("%-20s %-24s %7s %7s %8s   %9s %9s %8s  %s\n", "Suite", "Test", "BaseFS",
+           "LastFS", "FS d%", "BaseT(s)", "LastT(s)", "T d%", "Type");
+    printf("%-20s %-24s %7s %7s %8s   %9s %9s %8s  %s\n", "--------------------",
+           "------------------------", "-------", "-------", "--------", "---------",
+           "---------", "--------", "----");
+
+    int count = faultline_for_each_regression(db, suite_name, limit, threshold_pct,
+                                              print_regression_row, NULL);
+    if (count < 0) {
+        printf("Error querying regressions\n");
+    } else if (count == 0) {
+        printf("(no regressions)\n");
+    }
+}
+
+/**
+ * @brief Iterate per-suite, per-day health metrics with the prior day alongside
+ *
+ * Aggregates raw_test_runs by suite and calendar day (average pass rate and run
+ * time, summed failures, run count), and uses LAG window functions to attach
+ * each day's previous-day values so callers can show trend direction. The
+ * metrics are computed directly from the raw runs, so no rollup table is
+ * required. Rows are visited most-recent-day first. The has_prev flag is false
+ * for a suite's earliest day, where the previous-day values are undefined.
+ * Row string fields are only valid during the callback.
+ *
+ * @param db Database connection
+ * @param suite_name Suite to filter by, or NULL for all suites
+ * @param limit Maximum rows to visit (0 = no limit)
+ * @param fn Callback invoked once per suite-day
+ * @param ctx Opaque pointer passed through to `fn`
+ * @return Number of rows visited, or -1 on a query error
+ */
+int faultline_for_each_trend(sqlite3 *db, char const *suite_name, int limit,
+                             FLSuiteTrendFn fn, void *ctx) {
+    if (db == NULL || fn == NULL) {
+        return -1;
+    }
+
+    char const *base_sql
+        = "SELECT suite_name, day, total_runs, avg_pass_rate, avg_execution_time, "
+          "       total_failures, "
+          "       LAG(avg_pass_rate)      OVER w AS prev_pass_rate, "
+          "       LAG(avg_execution_time) OVER w AS prev_execution_time, "
+          "       LAG(total_failures)     OVER w AS prev_total_failures "
+          "FROM ("
+          "    SELECT ts.suite_name AS suite_name, date(rtr.timestamp) AS day, "
+          "           COUNT(*) AS total_runs, "
+          "           AVG(rtr.pass_rate) AS avg_pass_rate, "
+          "           AVG(rtr.total_elapsed_time) AS avg_execution_time, "
+          "           SUM(rtr.tests_failed) AS total_failures "
+          "    FROM raw_test_runs rtr "
+          "    JOIN test_suites ts ON ts.suite_id = rtr.suite_id "
+          "    WHERE (?1 IS NULL OR ts.suite_name = ?1) "
+          "    GROUP BY ts.suite_name, day"
+          ") "
+          "WINDOW w AS (PARTITION BY suite_name ORDER BY day) "
+          "ORDER BY suite_name, day DESC";
+
+    char query[1024];
+    if (limit > 0) {
+        snprintf(query, sizeof query, "%s LIMIT %d;", base_sql, limit);
+    } else {
+        snprintf(query, sizeof query, "%s;", base_sql);
+    }
+
+    sqlite3_stmt *stmt;
+    if (sqlite3_prepare_v2(db, query, -1, &stmt, NULL) != SQLITE_OK) {
+        LOG_WARN(faultline_db, "trends query prepare failed: %s", sqlite3_errmsg(db));
+        return -1;
+    }
+
+    if (suite_name != NULL) {
+        sqlite3_bind_text(stmt, 1, suite_name, -1, SQLITE_STATIC);
+    } else {
+        sqlite3_bind_null(stmt, 1);
+    }
+
+    enum {
+        COL_SUITE = 0,
+        COL_DAY,
+        COL_RUNS,
+        COL_PASS,
+        COL_EXEC,
+        COL_FAILS,
+        COL_PREV_PASS,
+        COL_PREV_EXEC,
+        COL_PREV_FAILS
+    };
+
+    int count = 0;
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        FLSuiteTrend tr;
+        tr.suite_name          = (char const *)sqlite3_column_text(stmt, COL_SUITE);
+        tr.day                 = (char const *)sqlite3_column_text(stmt, COL_DAY);
+        tr.total_runs          = sqlite3_column_int(stmt, COL_RUNS);
+        tr.avg_pass_rate       = sqlite3_column_double(stmt, COL_PASS);
+        tr.avg_execution_time  = sqlite3_column_double(stmt, COL_EXEC);
+        tr.total_failures      = sqlite3_column_int64(stmt, COL_FAILS);
+        tr.has_prev            = sqlite3_column_type(stmt, COL_PREV_PASS) != SQLITE_NULL;
+        tr.prev_pass_rate      = sqlite3_column_double(stmt, COL_PREV_PASS);
+        tr.prev_execution_time = sqlite3_column_double(stmt, COL_PREV_EXEC);
+        tr.prev_total_failures = sqlite3_column_int64(stmt, COL_PREV_FAILS);
+
+        fn(&tr, ctx);
+        count++;
+    }
+
+    sqlite3_finalize(stmt);
+    return count;
+}
+
+// Print one suite-day row in the "show trends" table, with deltas vs the prior
+// day (or "-" on a suite's first day).
+static void print_trend_row(FLSuiteTrend const *t, void *ctx) {
+    (void)ctx;
+
+    char dpass[16];
+    char dtime[16];
+    char dfail[16];
+    if (t->has_prev) {
+        snprintf(dpass, sizeof dpass, "%+.1f",
+                 (t->avg_pass_rate - t->prev_pass_rate) * 100.0);
+        snprintf(dtime, sizeof dtime, "%+.3f",
+                 t->avg_execution_time - t->prev_execution_time);
+        snprintf(dfail, sizeof dfail, "%+lld",
+                 (long long)(t->total_failures - t->prev_total_failures));
+    } else {
+        snprintf(dpass, sizeof dpass, "%s", "-");
+        snprintf(dtime, sizeof dtime, "%s", "-");
+        snprintf(dfail, sizeof dfail, "%s", "-");
+    }
+
+    printf("%-20.20s %-10s %5d  %6.1f%% %8s  %8.3f %8s  %6lld %6s\n", t->suite_name,
+           t->day, t->total_runs, t->avg_pass_rate * 100.0, dpass, t->avg_execution_time,
+           dtime, (long long)t->total_failures, dfail);
+}
+
+/**
+ * @brief Show per-suite health trends over time
+ *
+ * Thin presentation wrapper over faultline_for_each_trend; see that function for
+ * the aggregation semantics.
+ *
+ * @param db Database connection
+ * @param suite_name Suite to filter by, or NULL for all suites
+ * @param limit Maximum rows to display (0 = no limit)
+ */
+void faultline_show_trends(sqlite3 *db, char const *suite_name, int limit) {
+    if (db == NULL) {
+        printf("No database connection available\n");
+        return;
+    }
+
+    printf("\n=== Suite Trends (per day) ===\n");
+    printf("%-20s %-10s %5s  %7s %8s  %8s %8s  %6s %6s\n", "Suite", "Day", "Runs",
+           "Pass%", "Pass d", "Time(s)", "Time d", "Fails", "Fail d");
+    printf("%-20s %-10s %5s  %7s %8s  %8s %8s  %6s %6s\n", "--------------------",
+           "----------", "-----", "-------", "--------", "--------", "--------", "------",
+           "------");
+
+    int count = faultline_for_each_trend(db, suite_name, limit, print_trend_row, NULL);
+    if (count < 0) {
+        printf("Error querying trends\n");
+    } else if (count == 0) {
+        printf("(no trend data)\n");
+    }
 }
 
 /**

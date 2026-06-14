@@ -149,15 +149,29 @@ COMMAND_HANDLER(show_hotspots_cmd) {
  * Options: --suite <name>, --limit <N>, --format
  */
 COMMAND_HANDLER(show_trends_cmd) {
-    char const *suite = get_string_option(cmd, "suite", NULL);
-    int         limit = get_int_option(cmd, "limit", 10); // default 10
+    ExecutionContext *ectx = (ExecutionContext *)cmd;
 
-    // TODO: Implement trends query
-    printf("Performance trends (limit: %d):\n", limit);
-    if (suite != NULL) {
-        printf("  Filtered to suite: %s\n", suite);
-    }
-    printf("TODO: Implement trends query\n");
+    char const *suite = get_string_option(cmd, "suite", NULL);
+    int         limit = get_int_option(cmd, "limit", 0); // 0 = unlimited
+
+    faultline_show_trends(ectx->db, suite, limit);
+}
+
+/**
+ * @brief Handler for "show regressions" command
+ *
+ * Reports tests whose fault-site coverage dropped or whose runtime regressed
+ * past the threshold, compared to each test's baseline.
+ * Options: --suite <name>, --limit <N>, --threshold <pct>
+ */
+COMMAND_HANDLER(show_regressions_cmd) {
+    ExecutionContext *ectx = (ExecutionContext *)cmd;
+
+    char const *suite     = get_string_option(cmd, "suite", NULL);
+    int         limit     = get_int_option(cmd, "limit", 0);      // 0 = unlimited
+    int         threshold = get_int_option(cmd, "threshold", 20); // percent
+
+    faultline_show_regressions(ectx->db, suite, limit, (double)threshold);
 }
 
 /**
