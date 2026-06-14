@@ -31,9 +31,11 @@ FLExceptionReason faultline_db_not_found     = "database not found";
 
 static char const *faultline_db = "Faultline DB Initialization";
 
-// Table creation statements
+// Core tables - MUST succeed on creation. These hold the raw result data the
+// CLI reads back. Everything else (the derived table, indexes, and views) is
+// built on top of them and is best-effort.
 static char const *schema_tables[] = {
-    // Test Suite Registry - tracks different test suites being tested over time
+    // test_suites: registry of distinct suites, one row per suite name.
     "CREATE TABLE IF NOT EXISTS test_suites ("
     "  suite_id INTEGER PRIMARY KEY AUTOINCREMENT,"
     "  suite_name TEXT NOT NULL UNIQUE,"
@@ -43,7 +45,7 @@ static char const *schema_tables[] = {
     "  total_runs INTEGER DEFAULT 0"
     ");",
 
-    // Test runs table - tracks each execution
+    // raw_test_runs: one row per suite execution, with summary counters.
     "CREATE TABLE IF NOT EXISTS raw_test_runs ("
     "    id INTEGER PRIMARY KEY AUTOINCREMENT,"
     "    suite_id INTEGER NOT NULL,"
@@ -73,7 +75,7 @@ static char const *schema_tables[] = {
     "    FOREIGN KEY (suite_id) REFERENCES test_suites(suite_id)"
     ");",
 
-    // Raw test summaries - direct FLTestSummary mapping
+    // raw_test_summaries: one row per test case in a run (maps FLTestSummary).
     "CREATE TABLE IF NOT EXISTS raw_test_summaries ("
     "    id INTEGER PRIMARY KEY AUTOINCREMENT,"
     "    run_id INTEGER NOT NULL,"
@@ -96,7 +98,7 @@ static char const *schema_tables[] = {
     "    FOREIGN KEY (run_id) REFERENCES raw_test_runs(id) ON DELETE CASCADE"
     ");",
 
-    // Raw fault data - direct Fault structure mapping
+    // raw_faults: one row per fault injected in a test case (maps Fault).
     "CREATE TABLE IF NOT EXISTS raw_faults ("
     "    id INTEGER PRIMARY KEY AUTOINCREMENT,"
     "    summary_id INTEGER NOT NULL,"
@@ -112,7 +114,7 @@ static char const *schema_tables[] = {
     "    FOREIGN KEY (summary_id) REFERENCES raw_test_summaries(id) ON DELETE CASCADE"
     ");",
 
-    // Schema version tracking
+    // schema_info: records the schema version applied to this database.
     "CREATE TABLE IF NOT EXISTS schema_info ("
     "  version INTEGER PRIMARY KEY,"
     "  applied_date TEXT NOT NULL"
@@ -120,37 +122,11 @@ static char const *schema_tables[] = {
     NULL // Terminator
 };
 
-// Query optimization tables - SHOULD succeed on creation
+// Derived tables - trigger-maintained, best-effort on creation (a failure only
+// warns). These are not part of the raw result set; they are computed from it.
 static char const *schema_analysis_tables[] = {
-    // ============================================================================
-    // Layer 2: Query-Optimized Tables (Common Access Patterns)
-    // ============================================================================
-    //
-    // Failure-focused table for debugging workflows
-    "CREATE TABLE IF NOT EXISTS test_failures ("
-    "    id INTEGER PRIMARY KEY AUTOINCREMENT,"
-    "    run_id INTEGER NOT NULL,"
-    "    suite_name TEXT NOT NULL,"
-    "    test_name TEXT NOT NULL,"
-    "    test_index INTEGER NOT NULL,"
-    ""
-    "    failure_phase TEXT NOT NULL,"
-    "    failure_type TEXT NOT NULL,"
-    ""
-    "    result_code INTEGER NOT NULL,"
-    "    exception_reason TEXT,"
-    "    source_file TEXT,"
-    "    source_line INTEGER,"
-    ""
-    "    fault_index INTEGER,"
-    "    resource_address INTEGER,"
-    "    elapsed_seconds REAL,"
-    "    timestamp DATETIME,"
-    ""
-    "    FOREIGN KEY (run_id) REFERENCES raw_test_runs(id) ON DELETE CASCADE"
-    ");",
-
-    // Test case evolution tracking
+    // test_case_evolution: a running per-(suite, test) history, maintained by
+    // the update_test_evolution trigger on each raw_test_summaries insert.
     "CREATE TABLE IF NOT EXISTS test_case_evolution ("
     "    id INTEGER PRIMARY KEY AUTOINCREMENT,"
     "    suite_name TEXT NOT NULL,"
@@ -165,191 +141,47 @@ static char const *schema_analysis_tables[] = {
     "    FOREIGN KEY (first_seen_run_id) REFERENCES raw_test_runs(id),"
     "    FOREIGN KEY (last_seen_run_id) REFERENCES raw_test_runs(id)"
     ");",
-
-    // Fault hotspots - frequently failing source locations
-    "CREATE TABLE IF NOT EXISTS fault_hotspots ("
-    "    id INTEGER PRIMARY KEY AUTOINCREMENT,"
-    "    source_file TEXT NOT NULL,"
-    "    source_line INTEGER NOT NULL,"
-    "    failure_count INTEGER NOT NULL,"
-    "    first_failure_run_id INTEGER NOT NULL,"
-    "    last_failure_run_id INTEGER NOT NULL,"
-    "    common_failure_types TEXT,"
-    ""
-    "   FOREIGN KEY (first_failure_run_id) REFERENCES raw_test_runs(id),"
-    "   FOREIGN KEY (last_failure_run_id) REFERENCES raw_test_runs(id)"
-    ");",
-
-    // ============================================================================
-    // Layer 3: Aggregated Metrics (Trend Analysis)
-    // ============================================================================
-
-    // Daily test suite metrics rollup
-    "CREATE TABLE IF NOT EXISTS daily_suite_metrics ("
-    "    id INTEGER PRIMARY KEY AUTOINCREMENT,"
-    "    suite_name TEXT NOT NULL,"
-    "    date DATE NOT NULL,"
-    ""
-    "    total_runs INTEGER NOT NULL,"
-    "    avg_pass_rate REAL,"
-    "    avg_execution_time REAL,"
-    "    total_test_cases INTEGER,"
-    "    avg_fault_sites REAL,"
-    ""
-    "   total_failures INTEGER,"
-    "   discovery_failure_rate REAL,"
-    "   injection_failure_rate REAL,"
-    "   leak_failure_count INTEGER,"
-    ""
-    "    fastest_run_time REAL,"
-    "    slowest_run_time REAL,"
-    ""
-    "    UNIQUE(suite_name, date)"
-    ");",
-
-    // Test case performance baselines
-    "CREATE TABLE IF NOT EXISTS test_case_baselines ("
-    "    id INTEGER PRIMARY KEY AUTOINCREMENT,"
-    "    suite_name TEXT NOT NULL,"
-    "    test_name TEXT NOT NULL,"
-    ""
-    "    baseline_execution_time REAL,"
-    "    baseline_fault_sites INTEGER,"
-    "    baseline_established_date DATE,"
-    "    baseline_run_count INTEGER,"
-    ""
-    "    last_execution_time REAL,"
-    "    execution_time_deviation_pct REAL,"
-    "    last_fault_sites INTEGER,"
-    "    fault_sites_deviation_pct REAL,"
-    ""
-    "    UNIQUE(suite_name, test_name)"
-    ");",
-
-    // Suite evolution summary
-    "CREATE TABLE IF NOT EXISTS suite_evolution_summary ("
-    "    id INTEGER PRIMARY KEY AUTOINCREMENT,"
-    "    suite_name TEXT NOT NULL,"
-    "    month TEXT NOT NULL,"
-    ""
-    "    test_cases_added INTEGER DEFAULT 0,"
-    "    test_cases_removed INTEGER DEFAULT 0,"
-    "    test_cases_renamed INTEGER DEFAULT 0,"
-    ""
-    "    avg_pass_rate REAL,"
-    "    pass_rate_trend TEXT,"
-    "    total_runs INTEGER,"
-    ""
-    "    UNIQUE(suite_name, month)"
-    ");",
     NULL // Terminator
 };
 
 // Performance indexes - CAN fail silently on creation
 static char const *schema_indexes[] = {
-    // ============================================================================
-    // Layer 4: Indexes for Performance
-    // ============================================================================
-
-    // Performance indexes
+    // Indexes on the raw tables for the CLI's run/summary/fault lookups.
     "CREATE INDEX IF NOT EXISTS idx_raw_test_runs_suite_timestamp ON "
     "raw_test_runs(suite_id, timestamp);",
     "CREATE INDEX IF NOT EXISTS idx_raw_test_summaries_run_index ON "
     "raw_test_summaries(run_id, test_index);",
     "CREATE INDEX IF NOT EXISTS idx_raw_faults_summary_index ON raw_faults(summary_id, "
     "fault_index);",
-    "CREATE INDEX IF NOT EXISTS idx_test_failures_suite_timestamp ON "
-    "test_failures(suite_name, timestamp);",
-    "CREATE INDEX IF NOT EXISTS idx_test_failures_type_phase ON "
-    "test_failures(failure_type, failure_phase);",
-    "CREATE INDEX IF NOT EXISTS idx_fault_hotspots_location ON "
-    "fault_hotspots(source_file, source_line);",
-    "CREATE INDEX IF NOT EXISTS idx_daily_metrics_suite_date ON "
-    "daily_suite_metrics(suite_name, date);",
     NULL // Terminator
 };
 
 // Convenience views - CAN fail silently on creation
 static char const *schema_views[] = {
-    // ============================================================================
-    // Layer 4: Convenience Views
-    // ============================================================================
-
-    // Latest run for each suite
+    // latest_runs: the most recent run per suite with executed/passed counts.
+    // A read-only convenience view over the live raw tables (no stored rows of
+    // its own); safe to query ad hoc.
     "CREATE VIEW IF NOT EXISTS latest_runs AS "
     "SELECT "
     "    rtr.*,"
+    "    ts.suite_name,"
     "    COUNT(rts.id) as executed_test_cases,"
     "    SUM(CASE WHEN rts.result_code = 0 THEN 1 ELSE 0 END) as successful_cases "
     "FROM raw_test_runs rtr "
+    "JOIN test_suites ts ON ts.suite_id = rtr.suite_id "
     "LEFT JOIN raw_test_summaries rts ON rtr.id = rts.run_id "
     "WHERE rtr.timestamp = ("
     "    SELECT MAX(timestamp) "
     "    FROM raw_test_runs rtr2 "
-    "    WHERE rtr2.suite_name = rtr.suite_name"
+    "    WHERE rtr2.suite_id = rtr.suite_id"
     ")"
     "GROUP BY rtr.id;",
-
-    // Failure summary by test case (for debugging)
-    "CREATE VIEW IF NOT EXISTS test_case_failure_summary AS "
-    "SELECT "
-    "    tf.suite_name,"
-    "    tf.test_name,"
-    "    COUNT(*) as total_failures,"
-    "    COUNT(DISTINCT tf.run_id) as failed_in_runs,"
-    "    GROUP_CONCAT(DISTINCT tf.failure_type) as failure_types,"
-    "    GROUP_CONCAT(DISTINCT tf.failure_phase) as failure_phases,"
-    "    AVG(tf.elapsed_seconds) as avg_failure_time,"
-    "    MAX(tf.timestamp) as last_failure "
-    "FROM test_failures tf "
-    "GROUP BY tf.suite_name, tf.test_name "
-    "ORDER BY total_failures DESC;",
-
-    // Performance regression detection
-    "CREATE VIEW IF NOT EXISTS performance_regressions AS "
-    "SELECT "
-    "    tcb.suite_name,"
-    "    tcb.test_name,"
-    "    tcb.baseline_execution_time,"
-    "    tcb.last_execution_time,"
-    "    tcb.execution_time_deviation_pct,"
-    "    tcb.baseline_fault_sites,"
-    "    tcb.last_fault_sites,"
-    "    tcb.fault_sites_deviation_pct,"
-    "    CASE "
-    "        WHEN tcb.execution_time_deviation_pct > 20 THEN 'SLOW_REGRESSION' "
-    "        WHEN tcb.fault_sites_deviation_pct < -10 THEN 'COVERAGE_REGRESSION' "
-    "        ELSE 'STABLE' "
-    "    END as regression_type "
-    "FROM test_case_baselines tcb "
-    "WHERE tcb.execution_time_deviation_pct > 20 "
-    "    OR tcb.fault_sites_deviation_pct < -10;",
-
-    // Trend analysis view
-    "CREATE VIEW IF NOT EXISTS suite_trends AS "
-    "SELECT "
-    "    dsm.suite_name,"
-    "    dsm.date,"
-    "    dsm.avg_pass_rate,"
-    "    LAG(dsm.avg_pass_rate) OVER (PARTITION BY dsm.suite_name ORDER BY dsm.date) as "
-    "prev_pass_rate,"
-    "    dsm.avg_execution_time,"
-    "    LAG(dsm.avg_execution_time) OVER (PARTITION BY dsm.suite_name ORDER BY "
-    "dsm.date) as prev_execution_time,"
-    "    dsm.total_failures,"
-    "    LAG(dsm.total_failures) OVER (PARTITION BY dsm.suite_name ORDER BY dsm.date) "
-    "as prev_failures "
-    "FROM daily_suite_metrics dsm "
-    "ORDER BY dsm.suite_name, dsm.date;",
     NULL // Terminator
 };
 
 static char const *schema_triggers[] = {
-    // ============================================================================
-    // Triggers for Maintaining Derived Data
-    // ============================================================================
-
-    // Update test_case_evolution when new test summaries are inserted
+    // update_test_evolution: refresh the test_case_evolution row for a test each
+    // time a summary is inserted, joining test_suites to resolve the suite name.
     "CREATE TRIGGER IF NOT EXISTS update_test_evolution "
     "AFTER INSERT ON raw_test_summaries "
     "BEGIN "
@@ -358,26 +190,28 @@ static char const *schema_triggers[] = {
     "        total_appearances, total_failures, avg_execution_time, avg_fault_sites "
     "    ) "
     "    SELECT "
-    "        rtr.suite_name,"
+    "        ts.suite_name,"
     "        NEW.test_name,"
     "        COALESCE((SELECT first_seen_run_id FROM test_case_evolution "
-    "                WHERE suite_name = rtr.suite_name AND test_name = NEW.test_name), "
+    "                WHERE suite_name = ts.suite_name AND test_name = NEW.test_name), "
     "NEW.run_id),"
     "        NEW.run_id,"
     "        COALESCE((SELECT total_appearances FROM test_case_evolution "
-    "                WHERE suite_name = rtr.suite_name AND test_name = NEW.test_name), "
+    "                WHERE suite_name = ts.suite_name AND test_name = NEW.test_name), "
     "0) + 1,"
     "        COALESCE((SELECT total_failures FROM test_case_evolution "
-    "                WHERE suite_name = rtr.suite_name AND test_name = NEW.test_name), "
+    "                WHERE suite_name = ts.suite_name AND test_name = NEW.test_name), "
     "0) + "
     "                CASE WHEN NEW.result_code != 0 THEN 1 ELSE 0 END,"
     "        (SELECT AVG(elapsed_seconds) FROM raw_test_summaries rts2 "
     "        JOIN raw_test_runs rtr2 ON rts2.run_id = rtr2.id "
-    "        WHERE rtr2.suite_name = rtr.suite_name AND rts2.test_name = NEW.test_name),"
+    "        WHERE rtr2.suite_id = rtr.suite_id AND rts2.test_name = NEW.test_name),"
     "        (SELECT AVG(faults_exercised) FROM raw_test_summaries rts2 "
     "        JOIN raw_test_runs rtr2 ON rts2.run_id = rtr2.id "
-    "        WHERE rtr2.suite_name = rtr.suite_name AND rts2.test_name = NEW.test_name) "
-    "    FROM raw_test_runs rtr WHERE rtr.id = NEW.run_id; "
+    "        WHERE rtr2.suite_id = rtr.suite_id AND rts2.test_name = NEW.test_name) "
+    "    FROM raw_test_runs rtr "
+    "    JOIN test_suites ts ON ts.suite_id = rtr.suite_id "
+    "    WHERE rtr.id = NEW.run_id; "
     "END;",
     NULL // Terminator
 };
@@ -387,6 +221,84 @@ typedef struct {
     int         to_version;
     char const *sql;
 } SchemaMigration;
+
+/**
+ * @brief Apply the full FaultLine schema to an open database connection.
+ *
+ * Core tables are mandatory: a failure throws faultline_db_create_failed.
+ * The derived table, indexes, views, and triggers are best-effort and only log
+ * a warning on failure. Records the current schema version on completion.
+ *
+ * The update_test_evolution trigger writes the derived test_case_evolution
+ * table, so the derived table is created before the trigger.
+ *
+ * @param db Open database connection. Not closed by this function.
+ */
+static void faultline_apply_schema(sqlite3 *db) {
+    int rc;
+
+    // Core tables - MUST succeed
+    LOG_DEBUG(faultline_db, "Creating core tables...");
+    for (int i = 0; schema_tables[i] != NULL; i++) {
+        rc = sqlite3_exec(db, schema_tables[i], NULL, NULL, NULL);
+        if (rc != SQLITE_OK) {
+            char details[256];
+            snprintf(details, sizeof details, "Failed to create table %d: %s", i,
+                     sqlite3_errmsg(db));
+            LOG_ERROR(faultline_db, "%s", details);
+            FL_THROW_DETAILS(faultline_db_create_failed, "sqlite3: %s", details);
+        }
+    }
+    LOG_DEBUG(faultline_db, "Core tables created successfully");
+
+    // Derived tables - SHOULD succeed but not fatal (trigger-maintained)
+    LOG_DEBUG(faultline_db, "Creating derived tables...");
+    for (int i = 0; schema_analysis_tables[i] != NULL; i++) {
+        rc = sqlite3_exec(db, schema_analysis_tables[i], NULL, NULL, NULL);
+        if (rc != SQLITE_OK) {
+            LOG_WARN(faultline_db, "Derived table creation failed: %s",
+                     sqlite3_errmsg(db));
+        }
+    }
+
+    // Indexes - CAN fail silently (performance optimization)
+    LOG_DEBUG(faultline_db, "Creating indexes...");
+    for (int i = 0; schema_indexes[i] != NULL; i++) {
+        rc = sqlite3_exec(db, schema_indexes[i], NULL, NULL, NULL);
+        if (rc != SQLITE_OK) {
+            LOG_WARN(faultline_db, "Index creation failed: %s", sqlite3_errmsg(db));
+        }
+    }
+
+    // Views - CAN fail silently (convenience feature)
+    LOG_DEBUG(faultline_db, "Creating views...");
+    for (int i = 0; schema_views[i] != NULL; i++) {
+        rc = sqlite3_exec(db, schema_views[i], NULL, NULL, NULL);
+        if (rc != SQLITE_OK) {
+            LOG_WARN(faultline_db, "View creation failed: %s", sqlite3_errmsg(db));
+        }
+    }
+
+    // Triggers - CAN fail silently (derived data maintenance)
+    LOG_DEBUG(faultline_db, "Creating triggers...");
+    for (int i = 0; schema_triggers[i] != NULL; i++) {
+        rc = sqlite3_exec(db, schema_triggers[i], NULL, NULL, NULL);
+        if (rc != SQLITE_OK) {
+            LOG_WARN(faultline_db, "Trigger creation failed: %s", sqlite3_errmsg(db));
+        }
+    }
+
+    // Record schema version
+    char version_sql[256];
+    snprintf(version_sql, sizeof version_sql,
+             "INSERT OR REPLACE INTO schema_info (version, applied_date) "
+             "VALUES (%d, datetime('now'));",
+             FL_SCHEMA_VERSION);
+    rc = sqlite3_exec(db, version_sql, NULL, NULL, NULL);
+    if (rc != SQLITE_OK) {
+        LOG_WARN(faultline_db, "Schema version record failed: %s", sqlite3_errmsg(db));
+    }
+}
 
 /**
  * @brief Initialize database connection and create schema if needed
@@ -413,35 +325,7 @@ sqlite3 *faultline_init_database(char const *db_path) {
 
     // Initialize schema on the opened connection
     FL_TRY {
-        // Create all tables
-        LOG_DEBUG(faultline_db, "Creating core tables...");
-        for (int i = 0; schema_tables[i] != NULL; i++) {
-            LOG_DEBUG(faultline_db, "Creating table %d", i);
-            rc = sqlite3_exec(db, schema_tables[i], NULL, NULL, NULL);
-            if (rc != SQLITE_OK) {
-                char details[256];
-                snprintf(details, sizeof details, "Failed to create table %d: %s", i,
-                         sqlite3_errmsg(db));
-                LOG_ERROR(faultline_db, "%s", details);
-                FL_THROW_DETAILS(faultline_db_create_failed, "sqlite3: %s", details);
-            }
-        }
-        LOG_DEBUG(faultline_db, "Core tables created successfully");
-
-        // Create indexes (can fail silently - performance optimization)
-        LOG_DEBUG(faultline_db, "Creating indexes...");
-        for (int i = 0; schema_indexes[i] != NULL; i++) {
-            sqlite3_exec(db, schema_indexes[i], NULL, NULL, NULL);
-        }
-        LOG_DEBUG(faultline_db, "Indexes created");
-
-        // Create views (can fail silently - convenience feature)
-        LOG_DEBUG(faultline_db, "Creating views...");
-        for (int i = 0; schema_views[i] != NULL; i++) {
-            sqlite3_exec(db, schema_views[i], NULL, NULL, NULL);
-        }
-        LOG_DEBUG(faultline_db, "Views created");
-
+        faultline_apply_schema(db);
         LOG_VERBOSE(faultline_db, "Database initialized successfully: %s", db_path);
     }
     FL_CATCH_ALL {
@@ -469,76 +353,11 @@ void faultline_close_database(sqlite3 *db) {
 }
 
 void faultline_sqlite_init_schema(char const *db_path) {
-    sqlite3 *db;
-    int rc = sqlite3_open_v2(db_path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE,
-                             NULL);
-    if (rc != SQLITE_OK) {
-        char details[256];
-        strcpy_s(details, sizeof details, sqlite3_errmsg(db));
-        sqlite3_close_v2(db);
-        FL_THROW_DETAILS(faultline_db_create_failed, "sqlite3: %s: %s", details,
-                         db_path);
-    }
-
-    // Core tables - MUST succeed
-    for (int i = 0; schema_tables[i] != NULL; i++) {
-        rc = sqlite3_exec(db, schema_tables[i], NULL, NULL, NULL);
-        if (rc != SQLITE_OK) {
-            char details[256];
-            strcpy_s(details, sizeof details, sqlite3_errmsg(db));
-            sqlite3_close_v2(db);
-            FL_THROW_DETAILS(faultline_db_create_failed,
-                             "Core table creation failed: %s: %s", details, db_path);
-        }
-    }
-
-    // Analysis tables - SHOULD succeed but not fatal
-    for (int i = 0; schema_analysis_tables[i] != NULL; i++) {
-        rc = sqlite3_exec(db, schema_analysis_tables[i], NULL, NULL, NULL);
-        // Log but don't fail - these are for analytics
-        if (rc != SQLITE_OK) {
-            LOG_WARN(faultline_db, "Analysis table creation failed: %s",
-                     sqlite3_errmsg(db));
-        }
-    }
-
-    // Indexes - CAN fail silently
-    for (int i = 0; schema_indexes[i] != NULL; i++) {
-        rc = sqlite3_exec(db, schema_indexes[i], NULL, NULL, NULL);
-        if (rc != SQLITE_OK) {
-            LOG_WARN(faultline_db, "Index creation failed: %s", sqlite3_errmsg(db));
-        }
-    }
-
-    // Views - CAN fail silently
-    for (int i = 0; schema_views[i] != NULL; i++) {
-        rc = sqlite3_exec(db, schema_views[i], NULL, NULL, NULL);
-        if (rc != SQLITE_OK) {
-            LOG_WARN(faultline_db, "View creation failed: %s", sqlite3_errmsg(db));
-        }
-    }
-
-    // Triggers - CAN fail silently
-    for (int i = 0; schema_triggers[i] != NULL; i++) {
-        rc = sqlite3_exec(db, schema_triggers[i], NULL, NULL, NULL);
-        if (rc != SQLITE_OK) {
-            LOG_WARN(faultline_db, "Trigger creation failed: %s", sqlite3_errmsg(db));
-        }
-    }
-
-    // Record schema version
-    char version_sql[256];
-    snprintf(version_sql, sizeof(version_sql),
-             "INSERT OR REPLACE INTO schema_info (version, applied_date) "
-             "VALUES (%d, datetime('now'));",
-             FL_SCHEMA_VERSION);
-    rc = sqlite3_exec(db, version_sql, NULL, NULL, NULL);
-    if (rc != SQLITE_OK) {
-        LOG_WARN(faultline_db, "Schema Version table creation failed: %s",
-                 sqlite3_errmsg(db));
-    }
-
-    sqlite3_close_v2(db);
+    // Create-and-close wrapper over faultline_init_database for callers
+    // (mainly tests) that only need the schema persisted, not a live handle.
+    // faultline_init_database closes and rethrows on failure, and
+    // faultline_close_database is NULL-safe, so no extra guarding is needed.
+    faultline_close_database(faultline_init_database(db_path));
 }
 
 /**

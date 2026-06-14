@@ -20,12 +20,12 @@
 #include <faultline/arena.h>              // Arena, new_arena
 #include <faultline/flp_memory_context.h> // FLMemoryContext, flp_init_memory_context
 #include <flp_memory_service.h>           // flp_init_memory_service
-#include <flp_log_service.h>              // flp_log_init / set_level / cleanup, flp_init_log_service
+#include <flp_log_service.h> // flp_log_init / set_level / cleanup, flp_init_log_service
 #include <faultline/fl_exception_service.h> // fla_set_exception_service_fn, FLA_SET_EXCEPTION_SERVICE_STR, fl_invalid_value
-#include <faultline/fl_log_types.h>      // fla_set_log_service_fn, FLA_SET_LOG_SERVICE_STR
+#include <faultline/fl_log_types.h> // fla_set_log_service_fn, FLA_SET_LOG_SERVICE_STR
 #include <faultline/fl_memory_service.h> // fla_set_memory_service_fn, FLA_SET_MEMORY_SERVICE_STR
-#include <faultline/fl_try.h>            // FL_TRY/FL_CATCH (flp_ side), flp_init_exception_service
-#include <faultline/fl_log.h>            // LOG_INFO/LOG_ERROR (flp_ side)
+#include <faultline/fl_try.h> // FL_TRY/FL_CATCH (flp_ side), flp_init_exception_service
+#include <faultline/fl_log.h> // LOG_INFO/LOG_ERROR (flp_ side)
 
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
@@ -39,7 +39,7 @@ typedef int (*demo_run_fn)(void);
 typedef void (*demo_throw_uncaught_fn)(void);
 
 int main(int argc, char **argv) {
-    char const  *dll_path  = (argc > 1) ? argv[1] : "demo_suite.dll";
+    char const *dll_path   = (argc > 1) ? argv[1] : "demo_suite.dll";
     int volatile exit_code = 0;
 
     flp_log_init(); // stdout, LOG_INFO
@@ -50,8 +50,7 @@ int main(int argc, char **argv) {
 
     HMODULE suite = LoadLibraryA(dll_path);
     if (suite == NULL) {
-        LOG_ERROR(module, "Failed to load \"%s\", error=%lu", dll_path,
-                  GetLastError());
+        LOG_ERROR(module, "Failed to load \"%s\", error=%lu", dll_path, GetLastError());
         flp_log_cleanup();
         return 1;
     }
@@ -67,8 +66,9 @@ int main(int argc, char **argv) {
     }
 
     // Exception service (required): without it the DLL's throws would abort.
-    fla_set_exception_service_fn *fla_set_exc = (fla_set_exception_service_fn *)
-        GetProcAddress(suite, FLA_SET_EXCEPTION_SERVICE_STR);
+    fla_set_exception_service_fn *fla_set_exc
+        = (fla_set_exception_service_fn *)GetProcAddress(suite,
+                                                         FLA_SET_EXCEPTION_SERVICE_STR);
     if (fla_set_exc == NULL) {
         LOG_ERROR(module, "\"%s\" has no exception service", dll_path);
         FreeLibrary(suite);
@@ -79,14 +79,14 @@ int main(int argc, char **argv) {
     LOG_INFO(module, "exception service injected");
 
     // Memory service (optional): point the DLL's malloc/free at our arena.
-    fla_set_memory_service_fn *fla_set_mem = (fla_set_memory_service_fn *)
-        GetProcAddress(suite, FLA_SET_MEMORY_SERVICE_STR);
+    fla_set_memory_service_fn *fla_set_mem
+        = (fla_set_memory_service_fn *)GetProcAddress(suite, FLA_SET_MEMORY_SERVICE_STR);
     if (fla_set_mem != NULL) {
         flp_init_memory_service(fla_set_mem, &mem_ctx);
         LOG_INFO(module, "memory service injected");
     }
 
-    demo_run_fn demo_run = (demo_run_fn)GetProcAddress(suite, "demo_run");
+    demo_run_fn            demo_run = (demo_run_fn)GetProcAddress(suite, "demo_run");
     demo_throw_uncaught_fn demo_throw_uncaught
         = (demo_throw_uncaught_fn)GetProcAddress(suite, "demo_throw_uncaught");
 

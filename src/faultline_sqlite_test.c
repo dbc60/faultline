@@ -198,13 +198,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Analysis Tables", TestSchema, schema_creates_analysi
 
     FL_ASSERT_EQ_INT(SQLITE_OK,
                      sqlite3_open_v2(t->test_db, &db, SQLITE_OPEN_READONLY, NULL));
-
-    verify_table_exists(db, "test_failures");
     verify_table_exists(db, "test_case_evolution");
-    verify_table_exists(db, "fault_hotspots");
-    verify_table_exists(db, "daily_suite_metrics");
-    verify_table_exists(db, "test_case_baselines");
-    verify_table_exists(db, "suite_evolution_summary");
 
     sqlite3_close_v2(db);
 }
@@ -225,9 +219,6 @@ FL_TYPE_TEST_SETUP_CLEANUP("Create Views", TestSchema, schema_creates_views, set
                      sqlite3_open_v2(t->test_db, &db, SQLITE_OPEN_READONLY, NULL));
 
     verify_view_exists(db, "latest_runs");
-    verify_view_exists(db, "test_case_failure_summary");
-    verify_view_exists(db, "performance_regressions");
-    verify_view_exists(db, "suite_trends");
 
     sqlite3_close_v2(db);
 }
