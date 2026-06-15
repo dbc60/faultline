@@ -46,12 +46,17 @@ typedef struct {
 
 // Get the faultline command table
 FormalCommand const *get_faultline_commands(void);
+FormalOption const  *get_faultline_global_options(void);
 
 // Top-level command handlers
 COMMAND_HANDLER(run_cmd);
 COMMAND_HANDLER(show_cmd);
+COMMAND_HANDLER(baseline_cmd);
 COMMAND_HANDLER(help_cmd);
 COMMAND_HANDLER(version_cmd);
+
+// Baseline subcommand handlers
+COMMAND_HANDLER(baseline_reset_cmd);
 
 // Show subcommand handlers
 COMMAND_HANDLER(show_results_cmd);

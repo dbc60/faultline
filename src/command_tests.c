@@ -249,6 +249,42 @@ FL_TYPE_TEST_SETUP_CLEANUP("parse interspersed options", TestCommand,
     FL_ASSERT_STR_EQ(cmd->args[1], "file2.txt");
 }
 
+FL_TYPE_TEST_SETUP_CLEANUP("parse leading global options", TestCommand,
+                           test_parse_global_options, setup_command_tests, NULL) {
+    // --force and --limit appear before the command; with a globals set they are
+    // consumed as global options and the command still parses.
+    char *argv[] = {"program", "--force", "--limit", "9", "options", "file.txt"};
+    int   argc   = 6;
+
+    RuntimeCommand *cmd
+        = parse_command_with_globals(t->commands, test_options, argc, argv);
+
+    FL_ASSERT_NOT_NULL(cmd);
+    FL_ASSERT_STR_EQ(cmd->command->name, "options");
+    FL_ASSERT_TRUE(has_option(cmd, "force"));
+    FL_ASSERT_EQ_INT(get_int_option(cmd, "limit", 0), 9);
+    FL_ASSERT_EQ_INT(cmd->argc, 1);
+    FL_ASSERT_STR_EQ(cmd->args[0], "file.txt");
+}
+
+FL_TYPE_TEST_SETUP_CLEANUP("unknown leading option errors", TestCommand,
+                           test_parse_unknown_global, setup_command_tests, NULL) {
+    // A leading option that is not in the globals set is an error, not a command.
+    char *argv[] = {"program", "--nope", "options"};
+    int   argc   = 3;
+    bool  threw  = false;
+
+    FL_TRY {
+        (void)parse_command_with_globals(t->commands, test_options, argc, argv);
+    }
+    FL_CATCH(command_error) {
+        threw = true;
+    }
+    FL_END_TRY;
+
+    FL_ASSERT_TRUE(threw);
+}
+
 FL_TYPE_TEST_SETUP_CLEANUP("parse double-dash separator", TestCommand,
                            test_parse_double_dash_separator, setup_command_tests, NULL) {
     char *argv[] = {"program", "simple", "--", "--not-an-option", "-f"};
@@ -402,6 +438,8 @@ FL_SUITE_ADD_EMBEDDED(test_parse_multiple_options)
 FL_SUITE_ADD_EMBEDDED(test_parse_positional_arguments)
 FL_SUITE_ADD_EMBEDDED(test_parse_options_and_arguments)
 FL_SUITE_ADD_EMBEDDED(test_parse_interspersed_options)
+FL_SUITE_ADD_EMBEDDED(test_parse_global_options)
+FL_SUITE_ADD_EMBEDDED(test_parse_unknown_global)
 FL_SUITE_ADD_EMBEDDED(test_parse_double_dash_separator)
 FL_SUITE_ADD_EMBEDDED(test_parse_subcommand)
 FL_SUITE_ADD_EMBEDDED(test_parse_subcommand_with_options)

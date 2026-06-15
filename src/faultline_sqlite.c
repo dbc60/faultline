@@ -868,6 +868,39 @@ void faultline_show_recent_runs(sqlite3 *db, int limit) {
 }
 
 /**
+ * @brief Prepare a suite-filtered report query with an optional row limit.
+ *
+ * Appends "LIMIT n" when limit > 0, prepares base_sql, and binds ?1 to the suite filter
+ * (NULL binds SQL NULL, which the report queries treat as "all suites"). Callers bind
+ * any further parameters (e.g. ?2) on the returned statement.
+ *
+ * @return Prepared statement, or NULL on a prepare error.
+ */
+static sqlite3_stmt *prepare_suite_report(sqlite3 *db, char const *base_sql,
+                                          char const *suite_name, int limit) {
+    char query[1024];
+    if (limit > 0) {
+        snprintf(query, sizeof query, "%s LIMIT %d;", base_sql, limit);
+    } else {
+        snprintf(query, sizeof query, "%s;", base_sql);
+    }
+
+    sqlite3_stmt *stmt = NULL;
+    if (sqlite3_prepare_v2(db, query, -1, &stmt, NULL) != SQLITE_OK) {
+        LOG_WARN(faultline_db, "report query prepare failed: %s", sqlite3_errmsg(db));
+        return NULL;
+    }
+
+    if (suite_name != NULL) {
+        sqlite3_bind_text(stmt, 1, suite_name, -1, SQLITE_STATIC);
+    } else {
+        sqlite3_bind_null(stmt, 1);
+    }
+
+    return stmt;
+}
+
+/**
  * @brief Iterate tests whose coverage or runtime regressed against their baseline
  *
  * Reads test_case_evolution and invokes `fn` for each test where the latest run
@@ -906,24 +939,9 @@ int faultline_for_each_regression(sqlite3 *db, char const *suite_name, int limit
           "          CASE WHEN baseline_fault_sites = 0 THEN 1 "
           "               ELSE baseline_fault_sites END) DESC, suite_name, test_name";
 
-    char query[1024];
-    if (limit > 0) {
-        snprintf(query, sizeof query, "%s LIMIT %d;", base_sql, limit);
-    } else {
-        snprintf(query, sizeof query, "%s;", base_sql);
-    }
-
-    sqlite3_stmt *stmt;
-    if (sqlite3_prepare_v2(db, query, -1, &stmt, NULL) != SQLITE_OK) {
-        LOG_WARN(faultline_db, "regressions query prepare failed: %s",
-                 sqlite3_errmsg(db));
+    sqlite3_stmt *stmt = prepare_suite_report(db, base_sql, suite_name, limit);
+    if (stmt == NULL) {
         return -1;
-    }
-
-    if (suite_name != NULL) {
-        sqlite3_bind_text(stmt, 1, suite_name, -1, SQLITE_STATIC);
-    } else {
-        sqlite3_bind_null(stmt, 1);
     }
     sqlite3_bind_double(stmt, 2, threshold_frac);
 
@@ -1019,6 +1037,61 @@ void faultline_show_regressions(sqlite3 *db, char const *suite_name, int limit,
 }
 
 /**
+ * @brief Re-pin regression baselines to each test's latest observation.
+ *
+ * Sets the baseline_* columns of test_case_evolution equal to the last_* values
+ * and stamps baseline_date, so subsequent `show regressions` compares against
+ * the current state rather than the original first-sighting baseline. Scoped by
+ * the optional suite and test filters (NULL matches all).
+ *
+ * @param db Database connection
+ * @param suite_name Suite to scope to, or NULL for all suites
+ * @param test_name Test case to scope to, or NULL for all tests
+ * @return Number of baselines re-pinned, or -1 on a query error
+ */
+int faultline_reset_baselines(sqlite3 *db, char const *suite_name,
+                              char const *test_name) {
+    if (db == NULL) {
+        return -1;
+    }
+
+    char const *sql = "UPDATE test_case_evolution SET "
+                      "    baseline_run_id = last_run_id, "
+                      "    baseline_fault_sites = last_fault_sites, "
+                      "    baseline_execution_time = last_execution_time, "
+                      "    baseline_date = datetime('now') "
+                      "WHERE (?1 IS NULL OR suite_name = ?1) "
+                      "  AND (?2 IS NULL OR test_name = ?2);";
+
+    sqlite3_stmt *stmt;
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
+        LOG_WARN(faultline_db, "baseline reset prepare failed: %s", sqlite3_errmsg(db));
+        return -1;
+    }
+
+    if (suite_name != NULL) {
+        sqlite3_bind_text(stmt, 1, suite_name, -1, SQLITE_STATIC);
+    } else {
+        sqlite3_bind_null(stmt, 1);
+    }
+    if (test_name != NULL) {
+        sqlite3_bind_text(stmt, 2, test_name, -1, SQLITE_STATIC);
+    } else {
+        sqlite3_bind_null(stmt, 2);
+    }
+
+    int updated = -1;
+    if (sqlite3_step(stmt) == SQLITE_DONE) {
+        updated = sqlite3_changes(db);
+    } else {
+        LOG_WARN(faultline_db, "baseline reset failed: %s", sqlite3_errmsg(db));
+    }
+
+    sqlite3_finalize(stmt);
+    return updated;
+}
+
+/**
  * @brief Iterate per-suite, per-day health metrics with the prior day alongside
  *
  * Aggregates raw_test_runs by suite and calendar day (average pass rate and run
@@ -1062,23 +1135,9 @@ int faultline_for_each_trend(sqlite3 *db, char const *suite_name, int limit,
           "WINDOW w AS (PARTITION BY suite_name ORDER BY day) "
           "ORDER BY suite_name, day DESC";
 
-    char query[1024];
-    if (limit > 0) {
-        snprintf(query, sizeof query, "%s LIMIT %d;", base_sql, limit);
-    } else {
-        snprintf(query, sizeof query, "%s;", base_sql);
-    }
-
-    sqlite3_stmt *stmt;
-    if (sqlite3_prepare_v2(db, query, -1, &stmt, NULL) != SQLITE_OK) {
-        LOG_WARN(faultline_db, "trends query prepare failed: %s", sqlite3_errmsg(db));
+    sqlite3_stmt *stmt = prepare_suite_report(db, base_sql, suite_name, limit);
+    if (stmt == NULL) {
         return -1;
-    }
-
-    if (suite_name != NULL) {
-        sqlite3_bind_text(stmt, 1, suite_name, -1, SQLITE_STATIC);
-    } else {
-        sqlite3_bind_null(stmt, 1);
     }
 
     enum {
@@ -1204,23 +1263,9 @@ int faultline_for_each_hotspot(sqlite3 *db, char const *suite_name, int limit,
           "GROUP BY rf.source_file, rf.source_line "
           "ORDER BY failure_count DESC, rf.source_file, rf.source_line";
 
-    char query[1024];
-    if (limit > 0) {
-        snprintf(query, sizeof query, "%s LIMIT %d;", base_sql, limit);
-    } else {
-        snprintf(query, sizeof query, "%s;", base_sql);
-    }
-
-    sqlite3_stmt *stmt;
-    if (sqlite3_prepare_v2(db, query, -1, &stmt, NULL) != SQLITE_OK) {
-        LOG_WARN(faultline_db, "hotspots query prepare failed: %s", sqlite3_errmsg(db));
+    sqlite3_stmt *stmt = prepare_suite_report(db, base_sql, suite_name, limit);
+    if (stmt == NULL) {
         return -1;
-    }
-
-    if (suite_name != NULL) {
-        sqlite3_bind_text(stmt, 1, suite_name, -1, SQLITE_STATIC);
-    } else {
-        sqlite3_bind_null(stmt, 1);
     }
 
     enum {

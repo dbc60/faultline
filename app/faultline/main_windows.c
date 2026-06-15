@@ -70,7 +70,9 @@ int main(int argc, char **argv) {
     flp_init_fault_memory_service(noop_fla_set_memory_service, &mem_ctx);
 
     FL_TRY {
-        RuntimeCommand *parsed_cmd = parse_command(get_faultline_commands(), argc, argv);
+        RuntimeCommand *parsed_cmd
+            = parse_command_with_globals(get_faultline_commands(),
+                                         get_faultline_global_options(), argc, argv);
 
         // Configure logging from parsed options
         FLLogLevel log_level

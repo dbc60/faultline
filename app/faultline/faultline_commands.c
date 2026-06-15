@@ -13,8 +13,9 @@
 // Option Definitions
 // ============================================================================
 
-// Common options (database and logging)
-static FormalOption show_options[] = {
+// CoFmmon options (database and logging), shared by commands that dispatch to
+// subcommands (show, baseline) so the global options may precede the subcommand.
+static FormalOption common_options[] = {
     {"d", "db", "Database file path (default: ./faultline_results.sqlite)", true, NULL},
     {NULL, "no-db", "Disable database storage (run command only)", false, NULL},
     {"l", "log-level", "Set log verbosity (error|warn|info|debug)", true, NULL},
@@ -112,6 +113,14 @@ static FormalOption regressions_options[] = {
     {NULL, NULL, NULL, false, NULL},
 };
 
+// Baseline reset options
+static FormalOption reset_options[] = {
+    {"s", "suite", "Limit to a single suite", true, NULL},
+    {"t", "test", "Limit to a single test case", true, NULL},
+    {"d", "db", "Database file path", true, NULL},
+    {NULL, NULL, NULL, false, NULL},
+};
+
 // ============================================================================
 // Subcommand Definitions
 // ============================================================================
@@ -134,6 +143,13 @@ static FormalCommand show_subcommands[] = {
     {NULL, NULL, NULL, NULL, NULL, NULL}, // NULL terminator
 };
 
+// Baseline subcommands
+static FormalCommand baseline_subcommands[] = {
+    {"reset", "Re-pin baselines to each test's latest run", baseline_reset_cmd,
+     reset_options, NULL, NULL},
+    {NULL, NULL, NULL, NULL, NULL, NULL}, // NULL terminator
+};
+
 // ============================================================================
 // Top-Level Command Definitions
 // ============================================================================
@@ -141,7 +157,9 @@ static FormalCommand show_subcommands[] = {
 static FormalCommand commands[] = {
     {"run", "Execute test suites", run_cmd, run_options, NULL,
      "<suite.dll> [suite.dll ...]"},
-    {"show", "Display test results", show_cmd, show_options, show_subcommands, NULL},
+    {"show", "Display test results", show_cmd, common_options, show_subcommands, NULL},
+    {"baseline", "Manage regression baselines", baseline_cmd, common_options,
+     baseline_subcommands, NULL},
     {"help", "Display help information", help_cmd, NULL, NULL, NULL},
     {"version", "Display version information", version_cmd, NULL, NULL, NULL},
     {NULL, NULL, NULL, NULL, NULL, NULL}, // NULL terminator
@@ -158,4 +176,9 @@ static FormalCommand commands[] = {
  */
 FormalCommand const *get_faultline_commands(void) {
     return commands;
+}
+
+FormalOption const *get_faultline_global_options(void) {
+    // Options accepted before the command (e.g. `faultline --db x show ...`).
+    return common_options;
 }

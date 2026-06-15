@@ -86,6 +86,7 @@ IF %build% EQU 1 (
     %DIR_REPO%\app\faultline\faultline_commands.c ^
     %DIR_REPO%\app\faultline\command_run.c ^
     %DIR_REPO%\app\faultline\command_show.c ^
+    %DIR_REPO%\app\faultline\command_baseline.c ^
     %DIR_REPO%\app\faultline\command_help.c ^
     %DIR_REPO%\src\arena.c %DIR_REPO%\src\arena_dbg.c %DIR_REPO%\src\arena_malloc.c ^
     %DIR_REPO%\src\buffer.c %DIR_REPO%\src\command.c ^

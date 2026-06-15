@@ -36,6 +36,7 @@
 #include "faultline_commands.c"
 #include "command_run.c"
 #include "command_show.c"
+#include "command_baseline.c"
 #include "command_help.c"
 
 #include "main_windows.c"

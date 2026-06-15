@@ -399,6 +399,80 @@ RuntimeCommand *parse_command(FormalCommand const *formals, int argc, char **arg
 }
 
 /**
+ * @brief Parse a command line that may carry global options before the command.
+ *
+ * Scans any leading options that match `globals` (e.g. `--db x` in `faultline
+ * --db x show hotspots`) to locate the command, then reorders the line to
+ * "program <command> <leading options...> <rest...>" and hands it to
+ * parse_command. The leading options are thus parsed as the command's own
+ * options, so the command must accept them (the real commands do, via their
+ * shared option set). A leading token that is not a recognized global option
+ * ends the scan and is taken as the command name; passing NULL for `globals`
+ * makes this behave exactly like parse_command.
+ *
+ * @param formals the table of built-in commands
+ * @param globals NULL-terminated array of options accepted before the command
+ * @param argc argument count
+ * @param argv argument vector
+ * @return RuntimeCommand* the parsed command, or NULL on allocation failure
+ * @throw command_error if a leading option is unknown, missing its argument, or
+ *        not followed by a command
+ * @throw command_unknown if the command name is not recognized
+ */
+RuntimeCommand *parse_command_with_globals(FormalCommand const *formals,
+                                           FormalOption const *globals, int argc,
+                                           char **argv) {
+    if (argc < 2) {
+        FL_THROW(command_error);
+    }
+
+    // Scan leading options against `globals` to find where the command begins.
+    // parse_option throws command_error on an unknown option or a missing
+    // required argument, which is the desired behavior for a bad leading option.
+    FormalCommand const global_cmd = {"", "", NULL, globals, NULL, NULL};
+    int                 cmd_index  = 1;
+    while (cmd_index < argc && strcmp(argv[cmd_index], "--") != 0) {
+        int            consumed;
+        RuntimeOption *opt
+            = parse_option(&global_cmd, &argv[cmd_index], argc - cmd_index, &consumed);
+        if (opt == NULL) {
+            break; // not a global option: the command name starts here
+        }
+        free(opt); // only the boundary matters; the option is re-parsed below
+        cmd_index += consumed;
+    }
+
+    // No leading options: behave exactly like parse_command (and avoid a copy).
+    if (cmd_index == 1) {
+        return parse_command(formals, argc, argv);
+    }
+    // Leading options but no command after them.
+    if (cmd_index >= argc) {
+        FL_THROW(command_error);
+    }
+
+    // Reorder to "program <command> <leading options...> <rest...>" so the
+    // leading options are parsed as the command's own options.
+    char **reordered = malloc(sizeof(char *) * argc);
+    if (reordered == NULL) {
+        return NULL;
+    }
+    int n          = 0;
+    reordered[n++] = argv[0];         // program name
+    reordered[n++] = argv[cmd_index]; // command
+    for (int j = 1; j < cmd_index; j++) {
+        reordered[n++] = argv[j]; // leading options and their arguments
+    }
+    for (int j = cmd_index + 1; j < argc; j++) {
+        reordered[n++] = argv[j]; // everything after the command
+    }
+
+    RuntimeCommand *cmd = parse_command(formals, n, reordered);
+    free(reordered);
+    return cmd;
+}
+
+/**
  * @brief check if a RuntimeCommand has a specific option
  *
  * @param cmd the RuntimeCommand to check

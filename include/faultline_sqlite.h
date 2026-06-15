@@ -68,6 +68,9 @@ extern int faultline_for_each_regression(sqlite3 *db, char const *suite_name, in
                                          double threshold_pct, FLRegressionFn fn,
                                          void *ctx);
 
+extern int faultline_reset_baselines(sqlite3 *db, char const *suite_name,
+                                     char const *test_name);
+
 extern void faultline_show_trends(sqlite3 *db, char const *suite_name, int limit);
 
 /**

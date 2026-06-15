@@ -447,6 +447,52 @@ FL_TYPE_TEST_SETUP_CLEANUP("Regression Report", TestSchema, schema_reports_regre
     sqlite3_close_v2(db);
 }
 
+//  8b. Re-pinning the baseline clears regressions for the chosen scope
+static void setup_baseline_reset(FLTestCase *btc) {
+    TestSchema *t = FL_CONTAINER_OF(btc, TestSchema, tc);
+    t->test_db    = "test_baseline_reset.db";
+}
+
+FL_TYPE_TEST_SETUP_CLEANUP("Baseline Reset", TestSchema, schema_resets_baseline,
+                           setup_baseline_reset, cleanup_test_db) {
+    faultline_sqlite_init_schema(t->test_db);
+
+    sqlite3 *db;
+    FL_ASSERT_EQ_INT(SQLITE_OK,
+                     sqlite3_open_v2(t->test_db, &db, SQLITE_OPEN_READWRITE, NULL));
+
+    Arena *arena = new_arena(0, 0);
+
+    // Baseline at 10 fault sites, then a run that drops to 7 -> coverage regression.
+    int run1 = faultline_record_test_run_start(db, "ResetSuite", 1000);
+    record_summary(db, arena, run1, "rt", FL_PASS, 10, 1.0);
+    int run2 = faultline_record_test_run_start(db, "ResetSuite", 2000);
+    record_summary(db, arena, run2, "rt", FL_PASS, 7, 1.0);
+
+    RegressionCollector before = {0};
+    FL_ASSERT_EQ_INT(1, faultline_for_each_regression(db, "ResetSuite", 0, 20.0,
+                                                      collect_regression, &before));
+
+    // A non-matching filter re-pins nothing and leaves the regression in place.
+    FL_ASSERT_EQ_INT(0, faultline_reset_baselines(db, "OtherSuite", NULL));
+    RegressionCollector still = {0};
+    FL_ASSERT_EQ_INT(1, faultline_for_each_regression(db, "ResetSuite", 0, 20.0,
+                                                      collect_regression, &still));
+
+    // Re-pinning the baseline to the latest run clears the regression.
+    FL_ASSERT_EQ_INT(1, faultline_reset_baselines(db, "ResetSuite", NULL));
+    RegressionCollector after = {0};
+    FL_ASSERT_EQ_INT(0, faultline_for_each_regression(db, "ResetSuite", 0, 20.0,
+                                                      collect_regression, &after));
+
+    // The stored baseline now matches the latest observation.
+    FL_ASSERT_EQ_INT(7, query_int(db, "SELECT baseline_fault_sites FROM "
+                                      "test_case_evolution WHERE test_name = 'rt'"));
+
+    release_arena(&arena);
+    sqlite3_close_v2(db);
+}
+
 //  9. Opening a pre-v2 database rebuilds test_case_evolution (migration)
 static void setup_schema_migration(FLTestCase *btc) {
     TestSchema *t = FL_CONTAINER_OF(btc, TestSchema, tc);
