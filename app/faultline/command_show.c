@@ -127,19 +127,12 @@ COMMAND_HANDLER(show_cases_cmd) {
  * Options: --suite <name>, --limit <N>, --format, --verbose
  */
 COMMAND_HANDLER(show_hotspots_cmd) {
-    char const *suite   = get_string_option(cmd, "suite", NULL);
-    int         limit   = get_int_option(cmd, "limit", 10); // default 10
-    bool        verbose = has_option(cmd, "verbose");
+    ExecutionContext *ectx = (ExecutionContext *)cmd;
 
-    // TODO: Implement fault hotspots query
-    printf("Fault hotspots (limit: %d):\n", limit);
-    if (suite != NULL) {
-        printf("  Filtered to suite: %s\n", suite);
-    }
-    if (verbose) {
-        printf("  Verbose mode: ON\n");
-    }
-    printf("TODO: Implement hotspots query\n");
+    char const *suite = get_string_option(cmd, "suite", NULL);
+    int         limit = get_int_option(cmd, "limit", 0); // 0 = unlimited
+
+    faultline_show_hotspots(ectx->db, suite, limit);
 }
 
 /**

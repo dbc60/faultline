@@ -586,11 +586,96 @@ FL_TYPE_TEST_SETUP_CLEANUP("Suite Trends", TestSchema, schema_reports_trends,
     FL_ASSERT_EQ_INT(1000, c.pass_milli[0]);
     FL_ASSERT_EQ_INT(500, c.prev_pass_milli[0]);
 
-    // Smoke-check the printer, and confirm the suite filter scopes results.
-    faultline_show_trends(db, NULL, 0);
+    // The suite filter scopes the query: a non-existent suite yields nothing.
     TrendCollector empty = {0};
+    FL_ASSERT_EQ_INT(0, faultline_for_each_trend(db, "NoSuchSuite", 0, collect_trend,
+                                                 &empty));
+
+    sqlite3_close_v2(db);
+}
+
+/////////////////////////////
+//  Fault Hotspot Tests     //
+/////////////////////////////
+
+typedef struct {
+    int  count;
+    char file[8][64];
+    int  line[8];
+    int  failures[8];
+    int  tests[8];
+} HotspotCollector;
+
+static void collect_hotspot(FLFaultHotspot const *h, void *vctx) {
+    HotspotCollector *c = (HotspotCollector *)vctx;
+    int               i = c->count;
+    if (i < 8) {
+        snprintf(c->file[i], sizeof c->file[i], "%s", h->source_file);
+        c->line[i]     = h->source_line;
+        c->failures[i] = (int)h->failure_count;
+        c->tests[i]    = (int)h->tests_affected;
+    }
+    c->count++;
+}
+
+//  11. Hotspots rank source locations by fault count, worst first
+static void setup_hotspot_report(FLTestCase *btc) {
+    TestSchema *t = FL_CONTAINER_OF(btc, TestSchema, tc);
+    t->test_db    = "test_hotspot_report.db";
+}
+
+FL_TYPE_TEST_SETUP_CLEANUP("Fault Hotspots", TestSchema, schema_reports_hotspots,
+                           setup_hotspot_report, cleanup_test_db) {
+    faultline_sqlite_init_schema(t->test_db);
+
+    sqlite3 *db;
+    FL_ASSERT_EQ_INT(SQLITE_OK,
+                     sqlite3_open_v2(t->test_db, &db, SQLITE_OPEN_READWRITE, NULL));
+
+    // One run, two test cases. alloc.c:10 faults three times across both cases;
+    // free.c:20 faults once.
     FL_ASSERT_EQ_INT(
-        0, faultline_for_each_trend(db, "NoSuchSuite", 0, collect_trend, &empty));
+        SQLITE_OK,
+        sqlite3_exec(
+            db,
+            "INSERT INTO test_suites (suite_name) VALUES ('H');"
+            "INSERT INTO raw_test_runs (suite_id, timestamp, test_cases, tests_run,"
+            "  tests_passed, tests_passed_with_leaks, tests_failed, setups_failed,"
+            "  cleanups_failed, total_fault_sites, total_elapsed_time) VALUES"
+            "  (1,'2024-06-01 09:00:00',2,2,0,0,2,0,0,4,1.0);"
+            "INSERT INTO raw_test_summaries (run_id, test_index, test_name, result_code,"
+            "  elapsed_seconds, faults_exercised) VALUES"
+            "  (1,0,'case_a',5,0.5,2),(1,1,'case_b',5,0.5,2);"
+            "INSERT INTO raw_faults (summary_id, fault_index, result_code,"
+            "  exception_reason, details, source_file, source_line) VALUES"
+            "  (1,0,5,'r','d','alloc.c',10),"
+            "  (1,1,5,'r','d','alloc.c',10),"
+            "  (2,0,5,'r','d','alloc.c',10),"
+            "  (1,2,5,'r','d','free.c',20);",
+            NULL, NULL, NULL));
+
+    HotspotCollector c = {0};
+    int              n = faultline_for_each_hotspot(db, "H", 0, collect_hotspot, &c);
+
+    FL_ASSERT_EQ_INT(2, n);
+    FL_ASSERT_EQ_INT(2, c.count);
+
+    // Worst first: alloc.c:10 with 3 faults across 2 cases.
+    FL_ASSERT_STR_EQ("alloc.c", c.file[0]);
+    FL_ASSERT_EQ_INT(10, c.line[0]);
+    FL_ASSERT_EQ_INT(3, c.failures[0]);
+    FL_ASSERT_EQ_INT(2, c.tests[0]);
+
+    // Then free.c:20 with a single fault in one case.
+    FL_ASSERT_STR_EQ("free.c", c.file[1]);
+    FL_ASSERT_EQ_INT(20, c.line[1]);
+    FL_ASSERT_EQ_INT(1, c.failures[1]);
+    FL_ASSERT_EQ_INT(1, c.tests[1]);
+
+    // The suite filter scopes the query: a non-existent suite yields nothing.
+    HotspotCollector empty = {0};
+    FL_ASSERT_EQ_INT(0, faultline_for_each_hotspot(db, "NoSuchSuite", 0, collect_hotspot,
+                                                   &empty));
 
     sqlite3_close_v2(db);
 }

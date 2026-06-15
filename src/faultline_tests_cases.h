@@ -40,6 +40,7 @@ FL_TYPE_TEST_DECL(TestSchema, schema_counts_successes);
 FL_TYPE_TEST_DECL(TestSchema, schema_tracks_baseline);
 FL_TYPE_TEST_DECL(TestSchema, schema_reports_regressions);
 FL_TYPE_TEST_DECL(TestSchema, schema_reports_trends);
+FL_TYPE_TEST_DECL(TestSchema, schema_reports_hotspots);
 FL_TYPE_TEST_DECL(TestSchema, schema_migrates_v1);
 FL_TYPE_TEST_DECL(TestSchema, schema_invalid_path_throws);
 FL_TYPE_TEST_DECL(TestSchema, schema_permission_denied_throws);

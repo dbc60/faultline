@@ -1161,14 +1161,124 @@ void faultline_show_trends(sqlite3 *db, char const *suite_name, int limit) {
     printf("%-20s %-10s %5s  %7s %8s  %8s %8s  %6s %6s\n", "Suite", "Day", "Runs",
            "Pass%", "Pass d", "Time(s)", "Time d", "Fails", "Fail d");
     printf("%-20s %-10s %5s  %7s %8s  %8s %8s  %6s %6s\n", "--------------------",
-           "----------", "-----", "-------", "--------", "--------", "--------", "------",
-           "------");
+           "----------", "-----", "-------", "--------", "--------", "--------",
+           "------", "------");
 
     int count = faultline_for_each_trend(db, suite_name, limit, print_trend_row, NULL);
     if (count < 0) {
         printf("Error querying trends\n");
     } else if (count == 0) {
         printf("(no trend data)\n");
+    }
+}
+
+/**
+ * @brief Iterate the source locations that produced the most faults
+ *
+ * Groups raw_faults by (source_file, source_line) and reports, per location,
+ * how many faults occurred and how many distinct test cases were affected,
+ * worst first. Computed directly from the recorded faults, so no rollup table
+ * is required. Row string fields are only valid during the callback.
+ *
+ * @param db Database connection
+ * @param suite_name Suite to filter by, or NULL for all suites
+ * @param limit Maximum rows to visit (0 = no limit)
+ * @param fn Callback invoked once per location
+ * @param ctx Opaque pointer passed through to `fn`
+ * @return Number of rows visited, or -1 on a query error
+ */
+int faultline_for_each_hotspot(sqlite3 *db, char const *suite_name, int limit,
+                               FLFaultHotspotFn fn, void *ctx) {
+    if (db == NULL || fn == NULL) {
+        return -1;
+    }
+
+    char const *base_sql
+        = "SELECT rf.source_file, rf.source_line, COUNT(*) AS failure_count, "
+          "       COUNT(DISTINCT rf.summary_id) AS tests_affected "
+          "FROM raw_faults rf "
+          "JOIN raw_test_summaries rts ON rts.id = rf.summary_id "
+          "JOIN raw_test_runs rtr ON rtr.id = rts.run_id "
+          "JOIN test_suites ts ON ts.suite_id = rtr.suite_id "
+          "WHERE (?1 IS NULL OR ts.suite_name = ?1) "
+          "GROUP BY rf.source_file, rf.source_line "
+          "ORDER BY failure_count DESC, rf.source_file, rf.source_line";
+
+    char query[1024];
+    if (limit > 0) {
+        snprintf(query, sizeof query, "%s LIMIT %d;", base_sql, limit);
+    } else {
+        snprintf(query, sizeof query, "%s;", base_sql);
+    }
+
+    sqlite3_stmt *stmt;
+    if (sqlite3_prepare_v2(db, query, -1, &stmt, NULL) != SQLITE_OK) {
+        LOG_WARN(faultline_db, "hotspots query prepare failed: %s", sqlite3_errmsg(db));
+        return -1;
+    }
+
+    if (suite_name != NULL) {
+        sqlite3_bind_text(stmt, 1, suite_name, -1, SQLITE_STATIC);
+    } else {
+        sqlite3_bind_null(stmt, 1);
+    }
+
+    enum {
+        COL_FILE = 0,
+        COL_LINE,
+        COL_FAILURES,
+        COL_TESTS
+    };
+
+    int count = 0;
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        FLFaultHotspot h;
+        h.source_file    = (char const *)sqlite3_column_text(stmt, COL_FILE);
+        h.source_line    = sqlite3_column_int(stmt, COL_LINE);
+        h.failure_count  = sqlite3_column_int64(stmt, COL_FAILURES);
+        h.tests_affected = sqlite3_column_int64(stmt, COL_TESTS);
+
+        fn(&h, ctx);
+        count++;
+    }
+
+    sqlite3_finalize(stmt);
+    return count;
+}
+
+// Print one hotspot row in the "show hotspots" table.
+static void print_hotspot_row(FLFaultHotspot const *h, void *ctx) {
+    (void)ctx;
+    printf("%6lld %6lld  %s:%d\n", (long long)h->failure_count,
+           (long long)h->tests_affected, h->source_file, h->source_line);
+}
+
+/**
+ * @brief Show the source locations that produced the most faults
+ *
+ * Thin presentation wrapper over faultline_for_each_hotspot; see that function
+ * for the aggregation semantics.
+ *
+ * @param db Database connection
+ * @param suite_name Suite to filter by, or NULL for all suites
+ * @param limit Maximum rows to display (0 = no limit)
+ */
+void faultline_show_hotspots(sqlite3 *db, char const *suite_name, int limit) {
+    if (db == NULL) {
+        printf("No database connection available\n");
+        return;
+    }
+
+    printf("\n=== Fault Hotspots ===\n");
+    printf("%6s %6s  %s\n", "Faults", "Tests", "Location");
+    printf("%6s %6s  %s\n", "------", "------", "--------");
+
+    int count
+        = faultline_for_each_hotspot(db, suite_name, limit, print_hotspot_row, NULL);
+    if (count < 0) {
+        printf("Error querying hotspots\n");
+    } else if (count == 0) {
+        printf("(no faults recorded)\n");
     }
 }
 

@@ -96,6 +96,26 @@ typedef void (*FLSuiteTrendFn)(FLSuiteTrend const *trend, void *ctx);
 extern int faultline_for_each_trend(sqlite3 *db, char const *suite_name, int limit,
                                     FLSuiteTrendFn fn, void *ctx);
 
+extern void faultline_show_hotspots(sqlite3 *db, char const *suite_name, int limit);
+
+/**
+ * @brief A source location and how many faults it produced.
+ *
+ * The string field points into the query's storage and is only valid for the
+ * duration of the FLFaultHotspotFn callback.
+ */
+typedef struct FLFaultHotspot {
+    char const *source_file;
+    int         source_line;
+    long long   failure_count;  // total faults recorded at this location
+    long long   tests_affected; // distinct test cases that hit it
+} FLFaultHotspot;
+
+typedef void (*FLFaultHotspotFn)(FLFaultHotspot const *hotspot, void *ctx);
+
+extern int faultline_for_each_hotspot(sqlite3 *db, char const *suite_name, int limit,
+                                      FLFaultHotspotFn fn, void *ctx);
+
 // Main API functions from Stage 6 requirements
 extern void faultline_export_sqlite(FLContext *fctx, char const *db_path);
 extern void faultline_import_sqlite(FLContext *fctx, char const *db_path, int run_id);

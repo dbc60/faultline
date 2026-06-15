@@ -87,7 +87,7 @@ static FormalOption cases_options[] = {
 // Show hotspots options
 static FormalOption hotspots_options[] = {
     {"s", "suite", "Filter by suite name", true, NULL},
-    {"n", "limit", "Limit result count (default: 10)", true, NULL},
+    {"n", "limit", "Limit result count (default: 0=unlimited)", true, NULL},
     {NULL, "format", "Output format (text|json|csv)", true, NULL},
     {"v", "verbose", "Show detailed output", false, NULL},
     {"d", "db", "Database file path", true, NULL},
