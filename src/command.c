@@ -235,11 +235,34 @@ RuntimeCommand *parse_command(FormalCommand const *formals, int argc, char **arg
         return NULL;
     }
 
+    // Permute options and operands (GNU-style) for commands that take no
+    // subcommands, so options may appear before or after positional arguments
+    // (e.g. `run a.dll --db x`). Commands with subcommands keep POSIX ordering:
+    // the first non-option token is the subcommand and ends option scanning.
+    bool   permute          = (cmd->subcommands == NULL);
+    int    positional_count = 0;
+    char **positional_array = NULL;
+    if (permute) {
+        // argc is a safe upper bound on the number of operands.
+        positional_array = malloc(sizeof(char *) * argc);
+        if (positional_array == NULL) {
+            free(option_array);
+            free(runtime_cmd);
+            return NULL;
+        }
+    }
+
     int i = 2; // Start after program name and command name
     while (i < argc) {
-        // Stop if we hit "--"
+        // "--" ends option parsing; everything after it is an operand.
         if (strcmp(argv[i], "--") == 0) {
             i++; // Skip the "--"
+            if (permute) {
+                while (i < argc) {
+                    positional_array[positional_count++] = argv[i];
+                    i++;
+                }
+            }
             break;
         }
 
@@ -248,8 +271,15 @@ RuntimeCommand *parse_command(FormalCommand const *formals, int argc, char **arg
         RuntimeOption *opt = parse_option(cmd, &argv[i], argc - i, &consumed);
 
         if (opt == NULL) {
-            // Not an option, stop parsing options
-            break;
+            // For a command with subcommands, the first non-option token begins
+            // the subcommand, so stop scanning. Without subcommands, collect it
+            // as an operand and keep scanning so later options are recognized.
+            if (!permute) {
+                break;
+            }
+            positional_array[positional_count++] = argv[i];
+            i++;
+            continue;
         }
 
         // Add to option array, growing if necessary
@@ -258,6 +288,7 @@ RuntimeCommand *parse_command(FormalCommand const *formals, int argc, char **arg
             RuntimeOption *new_array = malloc(sizeof(RuntimeOption) * option_capacity);
             if (new_array == NULL) {
                 free(opt);
+                free(positional_array);
                 free(option_array);
                 free(runtime_cmd);
                 return NULL;
@@ -279,6 +310,7 @@ RuntimeCommand *parse_command(FormalCommand const *formals, int argc, char **arg
     // NULL-terminate the options array
     RuntimeOption *final_options = malloc(sizeof(RuntimeOption) * (option_count + 1));
     if (final_options == NULL) {
+        free(positional_array);
         free(option_array);
         free(runtime_cmd);
         return NULL;
@@ -338,18 +370,28 @@ RuntimeCommand *parse_command(FormalCommand const *formals, int argc, char **arg
     }
 
     // Remaining arguments are positional
-    int positional_count = argc - i;
-    if (positional_count > 0) {
-        runtime_cmd->args = malloc(sizeof(char *) * positional_count);
-        if (runtime_cmd->args == NULL) {
-            free(runtime_cmd->options);
-            free(runtime_cmd);
-            return NULL;
+    if (permute) {
+        // Operands gathered during the permuting scan above.
+        if (positional_count > 0) {
+            runtime_cmd->args = positional_array;
+            runtime_cmd->argc = positional_count;
+        } else {
+            free(positional_array);
         }
+    } else {
+        int remaining = argc - i;
+        if (remaining > 0) {
+            runtime_cmd->args = malloc(sizeof(char *) * remaining);
+            if (runtime_cmd->args == NULL) {
+                free(runtime_cmd->options);
+                free(runtime_cmd);
+                return NULL;
+            }
 
-        runtime_cmd->argc = positional_count;
-        for (int j = 0; j < positional_count; j++) {
-            runtime_cmd->args[j] = argv[i + j];
+            runtime_cmd->argc = remaining;
+            for (int j = 0; j < remaining; j++) {
+                runtime_cmd->args[j] = argv[i + j];
+            }
         }
     }
 

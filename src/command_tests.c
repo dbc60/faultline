@@ -233,6 +233,22 @@ FL_TYPE_TEST_SETUP_CLEANUP("parse options and arguments", TestCommand,
     FL_ASSERT_STR_EQ(cmd->args[1], "file2.txt");
 }
 
+FL_TYPE_TEST_SETUP_CLEANUP("parse interspersed options", TestCommand,
+                           test_parse_interspersed_options, setup_command_tests, NULL) {
+    // A command without subcommands permutes options and operands, so an option
+    // after the first positional (like `run a.dll --db x`) is still recognized.
+    char *argv[] = {"program", "options", "file1.txt", "--limit", "5", "file2.txt"};
+    int   argc   = 6;
+
+    RuntimeCommand *cmd = parse_command(t->commands, argc, argv);
+
+    FL_ASSERT_NOT_NULL(cmd);
+    FL_ASSERT_EQ_INT(get_int_option(cmd, "limit", 0), 5);
+    FL_ASSERT_EQ_INT(cmd->argc, 2);
+    FL_ASSERT_STR_EQ(cmd->args[0], "file1.txt");
+    FL_ASSERT_STR_EQ(cmd->args[1], "file2.txt");
+}
+
 FL_TYPE_TEST_SETUP_CLEANUP("parse double-dash separator", TestCommand,
                            test_parse_double_dash_separator, setup_command_tests, NULL) {
     char *argv[] = {"program", "simple", "--", "--not-an-option", "-f"};
@@ -385,6 +401,7 @@ FL_SUITE_ADD_EMBEDDED(test_parse_option_with_argument_equals)
 FL_SUITE_ADD_EMBEDDED(test_parse_multiple_options)
 FL_SUITE_ADD_EMBEDDED(test_parse_positional_arguments)
 FL_SUITE_ADD_EMBEDDED(test_parse_options_and_arguments)
+FL_SUITE_ADD_EMBEDDED(test_parse_interspersed_options)
 FL_SUITE_ADD_EMBEDDED(test_parse_double_dash_separator)
 FL_SUITE_ADD_EMBEDDED(test_parse_subcommand)
 FL_SUITE_ADD_EMBEDDED(test_parse_subcommand_with_options)
