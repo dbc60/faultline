@@ -42,6 +42,9 @@ extern void faultline_show_test_failures(sqlite3 *db, char const *suite_name, in
                                          bool show_all_history);
 extern void faultline_show_run_details(sqlite3 *db, int run_id);
 extern void faultline_show_suite_summary(sqlite3 *db, char const *suite_name);
+extern void faultline_show_suites(sqlite3 *db, int limit, bool verbose);
+extern void faultline_show_cases(sqlite3 *db, char const *suite_name, int limit,
+                                 bool verbose);
 extern void faultline_show_regressions(sqlite3 *db, char const *suite_name, int limit,
                                        double threshold_pct);
 

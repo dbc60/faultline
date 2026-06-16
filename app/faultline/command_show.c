@@ -70,12 +70,12 @@ COMMAND_HANDLER(show_result_cmd) {
  * Options: --limit <N>, --format
  */
 COMMAND_HANDLER(show_suites_cmd) {
-    int limit = get_int_option(cmd, "limit", 10); // default 10
+    ExecutionContext *ectx = (ExecutionContext *)cmd;
 
-    // TODO: Implement faultline_show_suites() in faultline_sqlite.c
-    // For now, print a placeholder message
-    printf("Listing test suites (limit: %d):\n", limit);
-    printf("TODO: Implement suite listing query\n");
+    int  limit   = get_int_option(cmd, "limit", 10); // default 10
+    bool verbose = has_option(cmd, "verbose");
+
+    faultline_show_suites(ectx->db, limit, verbose);
 }
 
 /**
@@ -95,9 +95,10 @@ COMMAND_HANDLER(show_suite_cmd) {
     // Call database function to show suite summary
     faultline_show_suite_summary(ectx->db, suite_name);
 
-    // TODO: Add verbose mode output (historical stats, trend analysis)
+    // Verbose mode lists the suite's test cases beneath the summary. This is the
+    // "show cases" report scoped to one suite, so reuse it rather than duplicate.
     if (verbose) {
-        printf("\n[Verbose mode: detailed statistics would appear here]\n");
+        faultline_show_cases(ectx->db, suite_name, 0, true);
     }
 }
 
@@ -108,16 +109,13 @@ COMMAND_HANDLER(show_suite_cmd) {
  * Options: --suite <name>, --limit <N>, --format
  */
 COMMAND_HANDLER(show_cases_cmd) {
-    char const *suite = get_string_option(cmd, "suite", NULL);
-    int         limit = get_int_option(cmd, "limit", 0); // 0 = unlimited
+    ExecutionContext *ectx = (ExecutionContext *)cmd;
 
-    // TODO: Implement test case catalog query
-    printf("Searching test cases:\n");
-    if (suite != NULL) {
-        printf("  Suite: %s\n", suite);
-    }
-    printf("  Limit: %d\n", limit);
-    printf("TODO: Implement test case catalog query\n");
+    char const *suite   = get_string_option(cmd, "suite", NULL);
+    int         limit   = get_int_option(cmd, "limit", 0); // 0 = unlimited
+    bool        verbose = has_option(cmd, "verbose");
+
+    faultline_show_cases(ectx->db, suite, limit, verbose);
 }
 
 /**

@@ -1705,6 +1705,237 @@ void faultline_show_suite_summary(sqlite3 *db, char const *suite_name) {
     sqlite3_finalize(stmt);
 }
 
+/**
+ * @brief List the registered test suites with their aggregate run health.
+ *
+ * One row per suite in test_suites, with counters aggregated from raw_test_runs
+ * (the test_suites.total_runs/last_run_at columns are not maintained, so the
+ * live runs are the source of truth). Suites that have never been run sort to the
+ * bottom and show zero runs. Verbose mode adds the suite's distinct test-case
+ * count (from test_case_evolution), its first run, average runtime, and total
+ * failures.
+ *
+ * @param db Database connection
+ * @param limit Maximum suites to display (0 = no limit)
+ * @param verbose When true, show the wider statistics set
+ */
+void faultline_show_suites(sqlite3 *db, int limit, bool verbose) {
+    if (db == NULL) {
+        printf("No database connection available\n");
+        return;
+    }
+
+    char const *base_sql;
+    if (verbose) {
+        base_sql = "SELECT ts.suite_name, "
+                   "       COUNT(rtr.id) AS total_runs, "
+                   "       MIN(rtr.timestamp) AS first_run, "
+                   "       MAX(rtr.timestamp) AS last_run, "
+                   "       AVG(rtr.pass_rate) AS avg_pass_rate, "
+                   "       SUM(rtr.total_fault_sites) AS total_faults, "
+                   "       AVG(rtr.total_elapsed_time) AS avg_runtime, "
+                   "       SUM(rtr.tests_failed) AS total_failures, "
+                   "       (SELECT COUNT(*) FROM test_case_evolution tce "
+                   "          WHERE tce.suite_name = ts.suite_name) AS case_count "
+                   "FROM test_suites ts "
+                   "LEFT JOIN raw_test_runs rtr ON rtr.suite_id = ts.suite_id "
+                   "GROUP BY ts.suite_id, ts.suite_name "
+                   "ORDER BY last_run DESC";
+    } else {
+        base_sql = "SELECT ts.suite_name, "
+                   "       COUNT(rtr.id) AS total_runs, "
+                   "       MAX(rtr.timestamp) AS last_run, "
+                   "       AVG(rtr.pass_rate) AS avg_pass_rate, "
+                   "       SUM(rtr.total_fault_sites) AS total_faults "
+                   "FROM test_suites ts "
+                   "LEFT JOIN raw_test_runs rtr ON rtr.suite_id = ts.suite_id "
+                   "GROUP BY ts.suite_id, ts.suite_name "
+                   "ORDER BY last_run DESC";
+    }
+
+    char query[1024];
+    if (limit > 0) {
+        snprintf(query, sizeof query, "%s LIMIT %d;", base_sql, limit);
+    } else {
+        snprintf(query, sizeof query, "%s;", base_sql);
+    }
+
+    sqlite3_stmt *stmt;
+    int           rc = sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        printf("Error preparing query: %s\n", sqlite3_errmsg(db));
+        return;
+    }
+
+    enum {
+        COL_SUITE_NAME = 0,
+        COL_TOTAL_RUNS,
+        COL_MID,    // first_run (verbose) or last_run (non-verbose)
+        COL_4,      // last_run (verbose) or avg_pass_rate (non-verbose)
+        COL_5,      // avg_pass_rate (verbose) or total_faults (non-verbose)
+        COL_FAULTS, // total_faults (verbose only)
+        COL_RUNTIME,
+        COL_FAILURES,
+        COL_CASES
+    };
+
+    printf("\n=== Test Suites ===\n");
+    if (verbose) {
+        printf("%-30s %5s %5s %-19s %-19s %6s %7s %8s %6s\n", "Suite", "Runs", "Cases",
+               "First Run", "Last Run", "Pass%", "Faults", "Time(s)", "Fails");
+        printf("%-30s %5s %5s %-19s %-19s %6s %7s %8s %6s\n",
+               "------------------------------", "-----", "-----", "-------------------",
+               "-------------------", "------", "-------", "--------", "------");
+    } else {
+        printf("%-30s %5s %-19s %6s %7s\n", "Suite", "Runs", "Last Run", "Pass%",
+               "Faults");
+        printf("%-30s %5s %-19s %6s %7s\n", "------------------------------", "-----",
+               "-------------------", "------", "-------");
+    }
+
+    int count = 0;
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        char const *suite_name = (char const *)sqlite3_column_text(stmt, COL_SUITE_NAME);
+        int         total_runs = sqlite3_column_int(stmt, COL_TOTAL_RUNS);
+
+        if (verbose) {
+            char const *first_run = (char const *)sqlite3_column_text(stmt, COL_MID);
+            char const *last_run  = (char const *)sqlite3_column_text(stmt, COL_4);
+            double      pass_rate = sqlite3_column_double(stmt, COL_5);
+            int         faults    = sqlite3_column_int(stmt, COL_FAULTS);
+            double      runtime   = sqlite3_column_double(stmt, COL_RUNTIME);
+            int         failures  = sqlite3_column_int(stmt, COL_FAILURES);
+            int         cases     = sqlite3_column_int(stmt, COL_CASES);
+
+            printf("%-30.30s %5d %5d %-19.19s %-19.19s %5.1f%% %7d %8.3f %6d\n",
+                   suite_name, total_runs, cases, first_run ? first_run : "-",
+                   last_run ? last_run : "-", pass_rate * 100.0, faults, runtime,
+                   failures);
+        } else {
+            char const *last_run  = (char const *)sqlite3_column_text(stmt, COL_MID);
+            double      pass_rate = sqlite3_column_double(stmt, COL_4);
+            int         faults    = sqlite3_column_int(stmt, COL_5);
+
+            printf("%-30.30s %5d %-19.19s %5.1f%% %7d\n", suite_name, total_runs,
+                   last_run ? last_run : "-", pass_rate * 100.0, faults);
+        }
+        count++;
+    }
+
+    if (count == 0) {
+        printf("(no suites recorded)\n");
+    }
+
+    sqlite3_finalize(stmt);
+}
+
+/**
+ * @brief List the test-case catalog from recorded run history.
+ *
+ * Reads test_case_evolution, which holds one row per (suite, test) seen across
+ * all runs, optionally filtered to a single suite. Each row shows how often the
+ * test ran, how often it failed, and its latest fault-site count. Verbose mode
+ * adds the baseline-vs-latest comparison (fault sites and runtime) and the
+ * baseline date, so coverage or runtime drift is visible at a glance.
+ *
+ * test_case_evolution is populated best-effort and was rebuilt on the v1->v2
+ * schema migration, so a database whose suites predate that may list few or no
+ * cases until the suites are run again.
+ *
+ * @param db Database connection
+ * @param suite_name Suite to filter by, or NULL for all suites
+ * @param limit Maximum cases to display (0 = no limit)
+ * @param verbose When true, show the baseline comparison columns
+ */
+void faultline_show_cases(sqlite3 *db, char const *suite_name, int limit, bool verbose) {
+    if (db == NULL) {
+        printf("No database connection available\n");
+        return;
+    }
+
+    char const *base_sql;
+    if (verbose) {
+        base_sql = "SELECT suite_name, test_name, total_appearances, total_failures, "
+                   "       baseline_fault_sites, last_fault_sites, "
+                   "       baseline_execution_time, last_execution_time, baseline_date "
+                   "FROM test_case_evolution "
+                   "WHERE (?1 IS NULL OR suite_name = ?1) "
+                   "ORDER BY suite_name, test_name";
+    } else {
+        base_sql = "SELECT suite_name, test_name, total_appearances, total_failures, "
+                   "       last_fault_sites "
+                   "FROM test_case_evolution "
+                   "WHERE (?1 IS NULL OR suite_name = ?1) "
+                   "ORDER BY suite_name, test_name";
+    }
+
+    sqlite3_stmt *stmt = prepare_suite_report(db, base_sql, suite_name, limit);
+    if (stmt == NULL) {
+        printf("Error preparing query\n");
+        return;
+    }
+
+    enum {
+        COL_SUITE_NAME = 0,
+        COL_TEST_NAME,
+        COL_APPEARANCES,
+        COL_FAILURES,
+        COL_BASE_FAULTS, // verbose
+        COL_LAST_FAULTS, // verbose; non-verbose reuses index 4
+        COL_BASE_TIME,
+        COL_LAST_TIME,
+        COL_BASE_DATE
+    };
+
+    printf("\n=== Test Cases ===\n");
+    if (suite_name != NULL) {
+        printf("Suite: %s\n", suite_name);
+    }
+    if (verbose) {
+        printf("%-25s %-25s %5s %5s %5s %5s %8s %8s %-19s\n", "Suite", "Test", "Runs",
+               "Fails", "Base", "Last", "BTime", "LTime", "Baseline");
+        printf("%-25s %-25s %5s %5s %5s %5s %8s %8s %-19s\n",
+               "-------------------------", "-------------------------", "-----",
+               "-----", "-----", "-----", "--------", "--------", "-------------------");
+    } else {
+        printf("%-25s %-30s %5s %5s %7s\n", "Suite", "Test", "Runs", "Fails", "Faults");
+        printf("%-25s %-30s %5s %5s %7s\n", "-------------------------",
+               "------------------------------", "-----", "-----", "-------");
+    }
+
+    int count = 0;
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        char const *suite = (char const *)sqlite3_column_text(stmt, COL_SUITE_NAME);
+        char const *test  = (char const *)sqlite3_column_text(stmt, COL_TEST_NAME);
+        int         runs  = sqlite3_column_int(stmt, COL_APPEARANCES);
+        int         fails = sqlite3_column_int(stmt, COL_FAILURES);
+
+        if (verbose) {
+            int         base_faults = sqlite3_column_int(stmt, COL_BASE_FAULTS);
+            int         last_faults = sqlite3_column_int(stmt, COL_LAST_FAULTS);
+            double      base_time   = sqlite3_column_double(stmt, COL_BASE_TIME);
+            double      last_time   = sqlite3_column_double(stmt, COL_LAST_TIME);
+            char const *base_date
+                = (char const *)sqlite3_column_text(stmt, COL_BASE_DATE);
+
+            printf("%-25.25s %-25.25s %5d %5d %5d %5d %8.3f %8.3f %-19.19s\n", suite,
+                   test, runs, fails, base_faults, last_faults, base_time, last_time,
+                   base_date ? base_date : "-");
+        } else {
+            int last_faults = sqlite3_column_int(stmt, COL_BASE_FAULTS); // index 4
+            printf("%-25.25s %-30.30s %5d %5d %7d\n", suite, test, runs, fails,
+                   last_faults);
+        }
+        count++;
+    }
+
+    if (count == 0) {
+        printf("(no cases recorded)\n");
+    }
+
+    sqlite3_finalize(stmt);
+}
+
 void faultline_sqlite_migrate_schema(char const *db_path, int current_version) {
     sqlite3 *db;
 
