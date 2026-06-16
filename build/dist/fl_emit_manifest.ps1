@@ -26,15 +26,24 @@
   Space-separated list of service names this package requires. May be empty for
   self-contained packages.
 #>
-[CmdletBinding()]
+[CmdletBinding(DefaultParameterSetName = 'Emit')]
 param(
-    [Parameter(Mandatory = $true)][string]$PackageDir,
-    [Parameter(Mandatory = $true)][string]$Name,
-    [Parameter(Mandatory = $true)][string]$Version,
+    [Parameter(ParameterSetName = 'Help')]
+    [Alias('h')]
+    [switch]$Help,
+
+    [Parameter(ParameterSetName = 'Emit', Mandatory = $true)][string]$PackageDir,
+    [Parameter(ParameterSetName = 'Emit', Mandatory = $true)][string]$Name,
+    [Parameter(ParameterSetName = 'Emit', Mandatory = $true)][string]$Version,
     [string]$Depends = ""
 )
 
 $ErrorActionPreference = "Stop"
+
+if ($Help) {
+    Get-Help $PSCommandPath -Detailed
+    exit 0
+}
 
 # Compute a lowercase SHA-256 hex digest using .NET directly, so we do not
 # depend on Get-FileHash (absent or constrained in some PowerShell hosts).

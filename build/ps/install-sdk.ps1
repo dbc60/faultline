@@ -68,9 +68,13 @@
     Shows what would be copied without making any changes.
 #>
 
-[CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'Low')]
+[CmdletBinding(DefaultParameterSetName = 'Install', SupportsShouldProcess, ConfirmImpact = 'Low')]
 param (
-    [Parameter(Mandatory)]
+    [Parameter(ParameterSetName = 'Help')]
+    [Alias('h')]
+    [switch] $Help,
+
+    [Parameter(ParameterSetName = 'Install', Mandatory)]
     [string] $Prefix,
 
     [string] $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path,
@@ -86,6 +90,11 @@ param (
 
     [switch] $Force
 )
+
+if ($Help) {
+    Get-Help $PSCommandPath -Detailed
+    exit 0
+}
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'

@@ -45,10 +45,16 @@ param(
     [string]$Into = "$PWD\third_party\faultline",
     [Parameter(ParameterSetName = 'Remove')][string]$Remove,
     [Parameter(ParameterSetName = 'List')][switch]$List,
+    [Parameter(ParameterSetName = 'Help')][Alias('h')][switch]$Help,
     [switch]$NoDepCheck
 )
 
 $ErrorActionPreference = "Stop"
+
+if ($Help) {
+    Get-Help $PSCommandPath -Detailed
+    exit 0
+}
 
 # Set-Location/cd updates PowerShell's location but NOT [Environment]::CurrentDirectory,
 # the value .NET file APIs ([System.IO.File]::ReadAllBytes/WriteAllText, etc.) use to
