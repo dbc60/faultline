@@ -49,7 +49,8 @@ IF %build% EQU 1 (
     if exist %DIR_OUT_LIB%\faultline.lib          del %DIR_OUT_LIB%\faultline.lib
 
     REM Compile all library source files
-    cl /c %CommonCompilerFlagsFinal% /wd4200 /wd4115 /DFL_EMBEDDED /I%DIR_INCLUDE% /I%DIR_REPO%\src /I%DIR_THIRD_PARTY% /I%DIR_THIRD_PARTY%\fnv ^
+    cl /c %CommonCompilerFlagsFinal% /wd4200 /wd4115 /DFL_EMBEDDED /I%DIR_INCLUDE% ^
+        /I%DIR_REPO%\src /I%DIR_THIRD_PARTY% /I%DIR_THIRD_PARTY%\fnv ^
         %DIR_REPO%\src\arena.c ^
         %DIR_REPO%\src\arena_dbg.c ^
         %DIR_REPO%\src\arena_malloc.c ^

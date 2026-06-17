@@ -70,7 +70,7 @@ IF %build% EQU 1 (
     )
     cl %CommonCompilerFlagsFinal% /wd4200 /wd4115 /wd4456 /DFL_BUILD_DRIVER ^
     /I%DIR_INCLUDE% /I"%DIR_THIRD_PARTY%" /I"%DIR_THIRD_PARTY%\cwalk\include" ^
-    %DIR_REPO%\app\faultline\main_unity_windows.c ^
+    /I%DIR_REPO%\src %DIR_REPO%\app\faultline\main_unity_windows.c ^
     %DIR_OUT_OBJ%\sqlite3.obj %DIR_OUT_OBJ%\cwalk.obj /Fo:%DIR_OUT_OBJ%\ ^
     /Fd:%DIR_OUT_BIN%\faultline.pdb /Fe:%DIR_OUT_BIN%\faultline.exe /link ^
     %CommonLinkerFlagsFinal% /ENTRY:mainCRTStartup > "%TEMP%\cl_out.tmp"

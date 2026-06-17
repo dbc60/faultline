@@ -10,7 +10,7 @@
  */
 #include "arena.c"
 #include "arena_dbg.c"
-#include "../third_party/fnv/FNV64.c"
+#include "fnv/FNV64.c"
 #include "set.c"
 #include "fault_injector.c"
 #include "buffer.c" // all functions, both static and exported

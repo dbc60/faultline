@@ -33,7 +33,7 @@ IF %build% EQU 1 (
         ECHO Build the %PROJECT_NAME% test suite
     )
     cl %CommonCompilerFlagsFinal% /wd4456 /I%DIR_INCLUDE% /I%DIR_THIRD_PARTY% ^
-    /DDLL_BUILD %DIR_REPO%\src\but_tests.c ^
+    /I%DIR_REPO%\src /DDLL_BUILD %DIR_REPO%\src\but_tests.c ^
     /Fo:%DIR_OUT_OBJ%\ /Fd:%DIR_OUT_LIB%\but_tests.pdb ^
     /LD /link %CommonLinkerFlagsFinal% ^
     /OUT:%DIR_OUT_BIN%\but_tests.dll ^
@@ -70,7 +70,7 @@ IF %build% EQU 1 (
         ECHO Build the %PROJECT_NAME% Driver
     )
     cl %CommonCompilerFlagsFinal% /wd4456 /I%DIR_INCLUDE% /I%DIR_THIRD_PARTY% ^
-    /DFL_BUILD_DRIVER /DFL_EMBEDDED ^
+    /I%DIR_REPO%\src /DFL_BUILD_DRIVER /DFL_EMBEDDED ^
     %DIR_REPO%\app\but\win32_main.c  /Fo:%DIR_OUT_OBJ%\ ^
     /Fd:%DIR_OUT_BIN%\but_driver.pdb /Fe:%DIR_OUT_BIN%\but_driver.exe /link ^
     %CommonLinkerFlagsFinal% /ENTRY:mainCRTStartup > "%TEMP%\cl_out.tmp"

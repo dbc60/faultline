@@ -33,7 +33,7 @@ IF %build% EQU 1 (
     IF %verbose% EQU 1 (
         ECHO Build %PROJECT_NAME%
     )
-    cl %CommonCompilerFlagsFinal% /I%DIR_INCLUDE% ^
+    cl %CommonCompilerFlagsFinal% /I%DIR_INCLUDE% /I%DIR_REPO%\src ^
     %DIR_REPO%\cmd\log_example\main.c  /Fo:%DIR_OUT_OBJ%\ ^
     /Fd:%DIR_OUT_BIN%\log_example.pdb /Fe:%DIR_OUT_BIN%\log_example.exe /link ^
     %CommonLinkerFlagsFinal% /ENTRY:mainCRTStartup > "%TEMP%\cl_out.tmp"

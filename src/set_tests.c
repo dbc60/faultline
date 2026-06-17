@@ -13,7 +13,7 @@
 #include "set.c"
 #include "digital_search_tree.c"
 #include "fault_injector.c"
-#include "../third_party/fnv/FNV64.c"
+#include "fnv/FNV64.c"
 #include "region.c"
 #include "region_node.c"
 #include "region_os.c"
@@ -52,8 +52,8 @@ FL_SETUP_FN(setup_set) {
     t->capacity    = 2039;
     t->max_entries = 2039;
     u32 reserve    = (u32)((sizeof(Set) + t->capacity * sizeof(SetEntry)
-                         + t->max_entries * sizeof(SetEntry))
-                        / arena_granularity());
+                            + t->max_entries * sizeof(SetEntry))
+                           / arena_granularity());
     t->arena       = new_arena(0, reserve);
 }
 
