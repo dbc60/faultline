@@ -11,7 +11,7 @@
 #include "faultline_commands.h" // ExecutionContext, get_faultline_commands, help_cmd
                                 // (transitively: command.h, fl_context.h, arena.h,
                                 //  flp_fault_memory_context.h, sqlite3.h)
-#include "../../src/command.h"  // parse_command, RuntimeCommand, command_error/unknown
+#include "command.h"            // parse_command, RuntimeCommand, command_error/unknown
 #include <faultline/flp_fault_memory_context.h> // FLFaultMemoryContext, flp_init_fault_memory_context
 
 #include <faultline/arena.h>             // Arena, new_arena

@@ -15,7 +15,7 @@
 #include "arena_test.c"
 #include "arena_malloc_test.c"
 #include "buffer.c"
-#include "../third_party/fnv/FNV64.c"
+#include "fnv/FNV64.c"
 #include "set.c"
 #include "fault_injector.c"
 #include "arena_malloc_throw_test.c"

@@ -20,7 +20,7 @@
 #include "fla_memory_service.c"
 #include "faultline_context.c"
 #include "faultline_driver.c"
-#include "../third_party/fnv/FNV64.c"
+#include "fnv/FNV64.c"
 #include "flp_log_service.c"
 #include "region.c"
 #include "region_node.c"

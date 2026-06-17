@@ -67,7 +67,7 @@ IF %build% EQU 1 (
         ECHO Build the %_BTDLL_NAME% test suite
     )
     cl %CommonCompilerFlagsFinal% %_BTDLL_EXTRA% /I%DIR_INCLUDE% /I%DIR_THIRD_PARTY% ^
-    /DDLL_BUILD %DIR_REPO%\src\%_BTDLL_SRC% ^
+    /I%DIR_REPO%\src /DDLL_BUILD %DIR_REPO%\src\%_BTDLL_SRC% ^
     /Fo:%DIR_OUT_OBJ%\ /Fd:%DIR_OUT_LIB%\%_BTDLL_DLL%.pdb ^
     /LD /link %CommonLinkerFlagsFinal% ^
     /OUT:%DIR_OUT_BIN%\%_BTDLL_DLL%.dll ^

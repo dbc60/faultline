@@ -8,7 +8,7 @@
 #include "fla_exception_service.c"
 #include "fla_log_service.c"
 #include "fla_memory_service.c"
-#include "../third_party/fnv/FNV64.c"
+#include "fnv/FNV64.c"
 #include "region.c"
 #include "region_node.c"
 #include "region_os.c"

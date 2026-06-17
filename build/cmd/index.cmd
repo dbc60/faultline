@@ -33,7 +33,7 @@ IF %build% EQU 1 (
     if %verbose% EQU 1 (
         ECHO Build the Generic %PROJECT_NAME% test suite: %*
     )
-    cl %CommonCompilerFlagsFinal% /I%DIR_INCLUDE% /DDLL_BUILD ^
+    cl %CommonCompilerFlagsFinal% /I%DIR_INCLUDE% /I%DIR_REPO%\src /DDLL_BUILD ^
     %DIR_REPO%\src\index_generic_tests.c /Fo:%DIR_OUT_OBJ%\ /Fd:%DIR_OUT_LIB%\index_generic_tests.pdb ^
     /LD /link %CommonLinkerFlagsFinal% ^
     /OUT:%DIR_OUT_BIN%\index_generic_tests.dll ^
@@ -52,7 +52,7 @@ IF %build% EQU 1 (
     if %verbose% EQU 1 (
         ECHO Build the Windows %PROJECT_NAME% test suite: %*
     )
-    cl %CommonCompilerFlagsFinal% /I%DIR_INCLUDE% /DDLL_BUILD ^
+    cl %CommonCompilerFlagsFinal% /I%DIR_INCLUDE% /I%DIR_REPO%\src /DDLL_BUILD ^
     %DIR_REPO%\src\index_windows_tests.c /Fo:%DIR_OUT_OBJ%\ /Fd:%DIR_OUT_LIB%\index_windows_tests.pdb ^
     /LD /link %CommonLinkerFlagsFinal% ^
     /OUT:%DIR_OUT_BIN%\index_windows_tests.dll ^

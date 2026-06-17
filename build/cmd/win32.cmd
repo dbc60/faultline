@@ -34,7 +34,7 @@ IF %build% EQU 1 (
     IF %verbose% EQU 1 (
         ECHO Build %PROJECT_NAME% test suite
     )
-    cl %CommonCompilerFlagsFinal% /I%DIR_INCLUDE% /DDLL_BUILD ^
+    cl %CommonCompilerFlagsFinal% /I%DIR_INCLUDE% /I%DIR_REPO%\src /DDLL_BUILD ^
     "%DIR_REPO%\src\win32_intrinsics_butts.c" ^
     /Fo:%DIR_OUT_OBJ%\ /Fd:%DIR_OUT_BIN%\win32_intrinsics_butts.pdb ^
     /LD /link %CommonLinkerFlagsFinal% ^

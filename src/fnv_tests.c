@@ -20,14 +20,14 @@
 #include <faultline/fl_test.h> // FL_VOID_TEST_SETUP_CLEANUP, FL_SUITE_*, FL_GET_TEST_SUITE
 #include <faultline/fl_try.h> // FL_TRY, FL_CATCH, FL_THROW (resolves to FLA_* in DLL builds)
 
-#include "fl_exception_service.c"       // exception reason constants
-#include "fla_exception_service.c"      // TLS exception service (app-side)
-#include "../third_party/fnv/FNV32.c"   // code under test
-#include "../third_party/fnv/FNV64.c"   // code under test
-#include "../third_party/fnv/FNV128.c"  // code under test
-#include "../third_party/fnv/FNV256.c"  // code under test
-#include "../third_party/fnv/FNV512.c"  // code under test
-#include "../third_party/fnv/FNV1024.c" // code under test
+#include "fl_exception_service.c"  // exception reason constants
+#include "fla_exception_service.c" // TLS exception service (app-side)
+#include "fnv/FNV32.c"             // code under test
+#include "fnv/FNV64.c"             // code under test
+#include "fnv/FNV128.c"            // code under test
+#include "fnv/FNV256.c"            // code under test
+#include "fnv/FNV512.c"            // code under test
+#include "fnv/FNV1024.c"           // code under test
 
 #include <stdint.h>
 #include <string.h>

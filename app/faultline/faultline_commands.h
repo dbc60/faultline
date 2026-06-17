@@ -10,7 +10,7 @@
 #ifndef FAULTLINE_COMMANDS_H_
 #define FAULTLINE_COMMANDS_H_
 
-#include "../../src/command.h"
+#include "command.h"
 #include <faultline/flp_fault_memory_context.h> // FLFaultMemoryContext
 #include <faultline/fl_context.h>
 #include <faultline/arena.h> // Arena
