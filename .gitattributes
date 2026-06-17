@@ -10,6 +10,7 @@
 *.pdb   -text
 *.res   -text
 
-# Windows batch files require CRLF
-*.cmd   text eol=crlf
-*.bat   text eol=crlf
+# Windows batch files require CRLF; treat as binary so git stores the bytes
+# verbatim and never converts line endings in either direction.
+*.cmd   -text
+*.bat   -text
