@@ -23,7 +23,8 @@
 #include <processthreadsapi.h> // for CreateThread, GetExitCodeThread
 #include <stdlib.h>            // for NULL, free, malloc
 #include <synchapi.h>          // for DeleteCriticalSection, EnterCriticalS...
-#include <winbase.h>           // for INFINITE
+#include <time.h>              // for struct timespec
+#include <winbase.h>           // for INFINITE, CreateWaitableTimerEx, SetWaitableTimer
 
 /* --- Windows mutex --- */
 
@@ -88,9 +89,43 @@ int thrd_join(thrd_t thr, int *res) {
     return thrd_success;
 }
 
+/* --- Windows thrd_sleep (lifted from win_timer.c's nanosleep) --- */
+
+#define FL_NS_PER_SEC          1000000000LL
+#define FL_TIMER_RESOLUTION_NS 100 /* Windows waitable timers tick in 100ns units */
+
+int thrd_sleep(const struct timespec *duration, struct timespec *remaining) {
+    LONGLONG intervals
+        = (LONGLONG)duration->tv_sec * (FL_NS_PER_SEC / FL_TIMER_RESOLUTION_NS)
+          + (LONGLONG)duration->tv_nsec / FL_TIMER_RESOLUTION_NS;
+
+    HANDLE h = CreateWaitableTimerEx(NULL, NULL, CREATE_WAITABLE_TIMER_HIGH_RESOLUTION,
+                                     TIMER_ALL_ACCESS);
+    if (h == NULL) {
+        return -2; /* error other than interruption */
+    }
+
+    LARGE_INTEGER due;
+    due.QuadPart = -intervals; /* negative => relative time */
+    if (!SetWaitableTimer(h, &due, 0, NULL, NULL, FALSE)) {
+        CloseHandle(h);
+        return -2;
+    }
+
+    (void)WaitForSingleObject(h, INFINITE); /* not interruptible here */
+    CloseHandle(h);
+
+    if (remaining != NULL) { /* uninterruptible wait => nothing remains */
+        remaining->tv_sec  = 0;
+        remaining->tv_nsec = 0;
+    }
+    return 0;
+}
+
 #elif defined(__unix__) || defined(__APPLE__) || defined(__FreeBSD__)
 
 #include <stdint.h> /* intptr_t */
+#include <time.h>   /* struct timespec, nanosleep */
 
 /* --- POSIX mutex --- */
 
@@ -155,6 +190,12 @@ int thrd_join(thrd_t thr, int *res) {
         *res = (int)(intptr_t)retval;
     }
     return thrd_success;
+}
+
+/* --- POSIX thrd_sleep --- */
+
+int thrd_sleep(const struct timespec *duration, struct timespec *remaining) {
+    return nanosleep(duration, remaining) == 0 ? 0 : -1;
 }
 
 #endif /* platform */

@@ -42,6 +42,8 @@
     "fl_threads.h: unsupported platform - no <threads.h> and no known mutex/thread API"
 #endif
 
+#include <time.h> // struct timespec (for thrd_sleep)
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
@@ -85,6 +87,14 @@ typedef pthread_t thrd_t;
 
 int thrd_create(thrd_t *thr, thrd_start_t func, void *arg);
 int thrd_join(thrd_t thr, int *res);
+
+/* --- thrd_sleep (C11) ---
+ * Provided by <threads.h> on conforming platforms; declared here only for the
+ * polyfill. Follows the C11 contract: 0 on success, -1 if interrupted by a
+ * signal, a value < -1 on any other error. NB: unlike the old win_timer.c
+ * nanosleep, this does NOT throw -- a portability primitive must match the
+ * stdlib thrd_sleep it substitutes for. */
+int thrd_sleep(const struct timespec *duration, struct timespec *remaining);
 
 #if defined(__cplusplus)
 }
