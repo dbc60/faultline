@@ -21,7 +21,7 @@
 #include <faultline/fl_types.h>        // FLFailureType, FLTestPhase
 #include <faultline/fl_result_codes.h> // FL_PASS, etc.
 #include <faultline/fl_exception_service.h> // flp_init_exception_service, fla_set_exception_service_fn
-#include <faultline/fl_log_types.h> // fla_set_log_service_fn, FLA_SET_LOG_SERVICE_STR
+#include <faultline/fl_log_service.h> // fla_set_log_service_fn, FLA_SET_LOG_SERVICE_STR
 #include <faultline/fl_memory_service.h> // fla_set_memory_service_fn, FLA_SET_MEMORY_SERVICE_STR
 #include <flp_log_service.h>             // flp_init_log_service
 #include <flp_memory_service.h>          // flp_init_memory_service

@@ -11,7 +11,7 @@
  * See LICENSE.txt for copyright and licensing information about this file.
  *
  */
-#include <faultline/fl_log_types.h> // FLLogService, FLLogLevel
+#include <faultline/fl_log_service.h> // FLLogService, FLLogLevel
 
 #if defined(__cplusplus)
 extern "C" {

@@ -1,8 +1,8 @@
-#ifndef FL_LOG_TYPES_H_
-#define FL_LOG_TYPES_H_
+#ifndef FL_LOG_SERVICE_H_
+#define FL_LOG_SERVICE_H_
 
 /**
- * @file fl_log_types.h
+ * @file fl_log_service.h
  * @author Douglas Cuthbertson
  * @brief Log service interface shared by platform and application code.
  * @version 0.1
@@ -47,4 +47,4 @@ typedef FLA_SET_LOG_SERVICE_FN(fla_set_log_service_fn);
 }
 #endif
 
-#endif // FL_LOG_TYPES_H_
+#endif // FL_LOG_SERVICE_H_

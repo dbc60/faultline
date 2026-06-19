@@ -25,7 +25,7 @@
 #include "fla_log_service.c"
 
 #include <faultline/fla_log_service.h>
-#include <faultline/fl_log_types.h>
+#include <faultline/fl_log_service.h>
 
 #include <stdarg.h>
 #include <stdio.h>

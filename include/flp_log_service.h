@@ -11,7 +11,7 @@
  * See LICENSE.txt for copyright and licensing information about this file.
  *
  */
-#include <faultline/fl_log_types.h> // FLLogLevel, FL_WRITE_LOG_FN
+#include <faultline/fl_log_service.h> // FLLogLevel, FL_WRITE_LOG_FN
 
 #include <stdio.h> // FILE
 

@@ -22,7 +22,7 @@
 #include <flp_memory_service.h>           // flp_init_memory_service
 #include <flp_log_service.h> // flp_log_init / set_level / cleanup, flp_init_log_service
 #include <faultline/fl_exception_service.h> // fla_set_exception_service_fn, FLA_SET_EXCEPTION_SERVICE_STR, fl_invalid_value
-#include <faultline/fl_log_types.h> // fla_set_log_service_fn, FLA_SET_LOG_SERVICE_STR
+#include <faultline/fl_log_service.h> // fla_set_log_service_fn, FLA_SET_LOG_SERVICE_STR
 #include <faultline/fl_memory_service.h> // fla_set_memory_service_fn, FLA_SET_MEMORY_SERVICE_STR
 #include <faultline/fl_try.h> // FL_TRY/FL_CATCH (flp_ side), flp_init_exception_service
 #include <faultline/fl_log.h> // LOG_INFO/LOG_ERROR (flp_ side)

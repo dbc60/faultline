@@ -7,10 +7,11 @@
  *
  * See LICENSE.txt for copyright and licensing information about this file.
  */
-#include <faultline/fl_log_types.h> // for FLLogService, FLA_SET_LOG_SERVICE_FN
-#include <faultline/fl_macros.h>    // for FL_UNUSED, FL_DECL_SPEC
-#include <stdio.h>                  // for fprintf, stderr
-#include <stdlib.h>                 // for abort
+#include <faultline/fla_log_service.h> // fla_set_log_service declaration
+#include <faultline/fl_log_service.h>  // for FLLogService, FLA_SET_LOG_SERVICE_FN
+#include <faultline/fl_macros.h>       // for FL_UNUSED, FL_DECL_SPEC
+#include <stdio.h>                     // for fprintf, stderr
+#include <stdlib.h>                    // for abort
 
 static FL_WRITE_LOG_FN(default_write) {
     FL_UNUSED(level);

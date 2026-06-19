@@ -8,17 +8,17 @@
  * See LICENSE.txt for copyright and licensing information about this file.
  *
  */
-#include <faultline/fl_log_types.h> // for FLLogLevel, FL_WRITE_LOG_FN, FLLogS...
-#include <faultline/fl_threads.h>   // for mtx_destroy, mtx_init, mtx_lock
-#include <faultline/fl_try.h>       // FL_ASSERT_REASON_IMPL indirectly
+#include <faultline/fl_log_service.h> // for FLLogLevel, FL_WRITE_LOG_FN, FLLogS...
+#include <faultline/fl_threads.h>     // for mtx_destroy, mtx_init, mtx_lock
+#include <faultline/fl_try.h>         // FL_ASSERT_REASON_IMPL indirectly
 #include <faultline/fl_exception_service_assert.h> // FL_ASSERT_NOT_NULL
-#include <flp_log_service.h>        // for FLP_INIT_LOG_SERVICE_FN, flp_con...
-#include <stdarg.h>                 // for va_end, va_list, va_start
-#include <stdbool.h>                // for false, bool, true
-#include <stdio.h>                  // for fprintf, NULL, fflush, FILE, stdout
-#include <stdlib.h>                 // for abort
-#include <string.h>                 // for strrchr, strerror_s
-#include <time.h>                   // for localtime, strftime, time, time_t
+#include <flp_log_service.h> // for FLP_INIT_LOG_SERVICE_FN, flp_con...
+#include <stdarg.h>          // for va_end, va_list, va_start
+#include <stdbool.h>         // for false, bool, true
+#include <stdio.h>           // for fprintf, NULL, fflush, FILE, stdout
+#include <stdlib.h>          // for abort
+#include <string.h>          // for strrchr, strerror_s
+#include <time.h>            // for localtime, strftime, time, time_t
 
 #if defined(_WIN32) || defined(WIN32)
 #ifndef WIN32_LEAN_AND_MEAN
@@ -59,7 +59,7 @@ static FLLogService g_log_service = {
 // Static helpers
 // ---------------------------------------------------------------------------
 
-// Keep these in sync with enum FLLogLevel in fl_log_types.h
+// Keep these in sync with enum FLLogLevel in fl_log_service.h
 static char const *level_names[]
     = {"FATAL", "ERROR", "WARN", "INFO", "VERBOSE", "DEBUG", "TRACE"};
 
