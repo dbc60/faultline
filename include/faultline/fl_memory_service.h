@@ -4,7 +4,7 @@
 /**
  * @file fl_memory_service.h
  * @author Douglas Cuthbertson
- * @brief
+ * @brief an interface for a memory-management service
  * @version 0.2
  * @date 2026-02-23
  *
