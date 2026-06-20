@@ -86,10 +86,10 @@ That service is the least drop-in by nature, and that's fine.
 FaultLine is organized into **6 modular component libraries** that can be used independently:
 
 #### fl_log.lib - Logging System (No Dependencies)
-- Public API: `include/log/log.h`
-- Implementation: `src/log.c`, `src/log_backend.c`
-- Features: Component-based logging with configurable levels and backends
-- Build script: `build/cmd/fl_log_lib.cmd`
+- Public API: `include/faultline/fl_log_service.h` (contract), `include/faultline/fl_log.h` (unified `LOG_*` selector)
+- Implementation: `src/flp_log_service.c` (platform provider), `src/fla_log_service.c` (consumer accessor)
+- Features: Service-based logging with configurable levels and backends, selected per translation unit by `FL_PLATFORM_BUILD`
+- Build script: `build/cmd/log_service.cmd`
 
 #### fl_math.lib - Math Utilities (No Dependencies)
 - Public API: `include/math/math.h`, `include/math/math_windows.h`
@@ -174,16 +174,18 @@ fl_math.lib (no dependencies)
 - Provides test case/suite structures and test execution
 
 **Exception Handling Service**: Custom C exception handling using setjmp/longjmp with service-based architecture.
-- Shared API: `include/fl_exception_service.h` - Service interface (`FLExceptionService` struct with push/pop/throw function pointers), `fl_set_exception_service()`, `fl_init_exception_service()`
-- Types: `include/fl_exception_types.h` - `FLExceptionEnvironment`, `FLExceptionReason`, `FLExceptionState`
-- Assertions: `include/fl_exception_service_assert.h` - `FL_ASSERT_*` macros that throw exceptions
-- Platform side: `include/faultline/flp_exception_service.h` (FLP_TRY/FLP_CATCH macros, calls `flp_push`/`flp_pop`/`flp_throw` directly), `src/flp_exception_service.c` (owns TLS exception stack, implements push/pop/throw)
-- Application side: `include/fla_exception_service.h` (FLA_TRY/FLA_CATCH macros, uses `g_fla_exception_service` TLS function pointers), `src/fla_exception_service.c` (TLS service with default-abort stubs, `fl_set_exception_service()` copies function pointers from driver)
-- Service injection: Driver calls `fl_init_exception_service()` to fill struct, then after `LoadLibrary()` resolves `fl_set_exception_service` via `GetProcAddress` and calls it to inject the service into the DLL
+- Shared API: `include/faultline/fl_exception_service.h` - Service interface (`FLExceptionService` struct with push/pop/throw function pointers)
+- Types: `include/faultline/fl_exception_types.h` - `FLExceptionEnvironment`, `FLExceptionReason`, `FLExceptionState`
+- Unified macros: `include/faultline/fl_try.h` - the **single definition site** for `FL_TRY`/`FL_CATCH*`/`FL_THROW*`/`FL_END_TRY`; selects the platform provider or consumer accessor by `FL_PLATFORM_BUILD`, then defines the family once over the `FL_EXC_PUSH/POP/THROW` hooks
+- Assertions: `include/faultline/fl_exception_service_assert.h` - `FL_ASSERT_*` macros that throw exceptions (includes `fl_try.h`)
+- Platform provider: `include/flp_exception_service.h` (declares `flp_push`/`flp_pop`/`flp_throw`, `flp_init_exception_service`), `src/flp_exception_service.c` (owns TLS exception stack, implements push/pop/throw)
+- Consumer accessor: `include/faultline/fla_exception_service.h` (declares `g_fla_exception_service` and `fla_set_exception_service`), `src/fla_exception_service.c` (TLS service with default-abort stubs)
+- Service injection: Driver calls `flp_init_exception_service()` to fill the struct, then after `LoadLibrary()` resolves `fla_set_exception_service` via `GetProcAddress` and calls it to inject the service into the DLL
 
-**Log Service** (in progress): Logging service following the same platform/application service pattern.
-- Shared API: `include/fl_log_service.h` - Service interface (`FLLogService` struct with write function pointer)
-- Legacy API: `include/log/log.h`, `src/log.c` - Existing monolithic logger being migrated to service pattern
+**Log Service**: Logging service following the same platform-provider/consumer pattern as exceptions.
+- Shared API: `include/faultline/fl_log_service.h` - Service interface (`FLLogService` struct with write function pointer)
+- Unified macros: `include/faultline/fl_log.h` - the **single definition site** for `LOG_*`; selects `flp_write_log` or `g_fla_log_service.write` by `FL_PLATFORM_BUILD`
+- Platform provider: `include/flp_log_service.h`, `src/flp_log_service.c` · Consumer accessor: `include/faultline/fla_log_service.h`, `src/fla_log_service.c`
 
 **Public vs Private Headers**:
 - **Public headers**: In `include/` subdirectories (log/, math/, memory/, collections/, timer/, faultline/)
@@ -263,25 +265,28 @@ Do not rewrite existing history to this style — apply it to new commits only.
 
 ### File Naming Convention
 
-Files use a prefix system to distinguish platform (driver/host) code from application (test suite/guest) code:
+Files use a prefix system marking which side of the service boundary a file belongs to.
+This maps to the **provider/consumer** axis described under **Two architectural axes**
+above (which also covers the separate **core/platform** portability axis):
 
 | Prefix | Meaning | Examples |
 |--------|---------|----------|
-| `fl_` | Shared code (used by both platform and application) | `fl_types.h`, `fl_macros.h` |
-| `flp_` | Platform code (common/cross-platform) | `flp_driver.c`, `flp_loader.c` |
-| `flp_win32_` | Platform code (Windows-specific) | `flp_win32_thread.c` |
-| `flp_linux_` | Platform code (Linux-specific) | `flp_linux_thread.c` |
-| `fla_` | Application code (test suite side) | `fla_assert.h`, `fla_context.c` |
+| `fl_` | Shared contract / portable core (used by both sides) | `fl_macros.h`, `fl_log_service.h`, `fl_try.h` |
+| `flp_` | Platform provider — concrete service implementations | `flp_log_service.c`, `flp_exception_service.c` |
+| `flp_win32_` | Platform provider (Windows-specific) | `flp_win32_thread.c` |
+| `flp_linux_` | Platform provider (Linux-specific) | `flp_linux_thread.c` |
+| `fla_` | Consumer accessor — receives injected services via `g_fla_*` | `fla_log_service.h`, `fla_exception_service.c` |
 
-- **Platform** = infrastructure/host that runs applications (the test driver)
-- **Application** = code that runs within the platform (test suites)
+- **platform** (`flp_`) = OS-specific provider of concrete service implementations
+- **consumer** (`fla_`) = receives services injected into its `g_fla_*` globals (the core itself, or a loaded suite DLL)
+- A translation unit selects which side it compiles against via `FL_PLATFORM_BUILD` (defined → platform provider; undefined → consumer); the unified selector headers (`fl_try.h`, `fl_log.h`, `fl_memory.h`) act on it
 - The third character (`p` or `a`) immediately identifies which side a file belongs to
 - OS-specific prefixes group related files together in directory listings
 
 **Macro prefixes** follow the same convention:
-- `FL_*` - Shared macros (e.g., `FL_ARRAY_COUNT`, `FL_TEST_SUITE`)
-- `FLP_*` - Platform macros (e.g., `FLP_LOAD_DLL`)
-- `FLA_*` - Application macros (e.g., `FLA_ASSERT_TRUE`, `FLA_FAIL`)
+- `FL_*` - Shared macros (e.g., `FL_ARRAY_COUNT`, `FL_TRY`, `LOG_*`)
+- `FLP_*` - Platform-provider macros (e.g., `FLP_INIT_EXCEPTION_SERVICE_FN`)
+- `FLA_*` - Consumer-accessor macros (e.g., `FLA_SET_LOG_SERVICE_FN`)
 
 ## Additional Project Structure
 
