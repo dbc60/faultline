@@ -13,6 +13,7 @@
  */
 #include <faultline/fl_exception_types.h> // FLExceptionEnvironment, FLExceptionReason, fl_exception_handler_fn
 #include <faultline/fl_macros.h> // FL_STR
+#include <stddef.h>              // size_t
 
 #if defined(__cplusplus)
 extern "C" {
@@ -85,7 +86,7 @@ typedef FL_THROW_EXCEPTION_SERVICE_FN(fl_throw_exception_service_fn);
 
 /**
  * @brief FLExceptionService is the interface between the platform/test-driver code and
- * the application/test-suite code.
+ * the consumer/test-suite code.
  *
  * @param push push an exception environment on to a stack
  * @param pop pop and return an exception environment from the top of a stack
@@ -104,7 +105,7 @@ struct FLExceptionService {
     fl_throw_exception_service_fn *volatile throw_exc;
 };
 
-// These definitions are common to both the platform and application implementations
+// These definitions are common to both the platform and consumer implementations
 #define FLA_SET_EXCEPTION_SERVICE_FN(name) \
     void name(FLExceptionService *const svc, size_t size)
 typedef FLA_SET_EXCEPTION_SERVICE_FN(fla_set_exception_service_fn);

@@ -28,7 +28,7 @@ typedef struct FLStopwatch {
 } FLStopwatch;
 
 // Bind a stopwatch to a clock. Initialize inline:
-//     FLStopwatch sw = fl_stopwatch_make(fctx->timer);
+//     FLStopwatch sw = fl_stopwatch_make(timer);
 static inline FLStopwatch fl_stopwatch_make(FLTimerService const *timer) {
     FLStopwatch sw = {.timer = timer, .start = 0, .stop = 0};
     return sw;

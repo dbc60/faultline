@@ -17,6 +17,7 @@
  */
 #include <faultline/fl_abbreviated_types.h> // u64
 #include <faultline/fl_macros.h>            // FL_STR
+#include <stddef.h>                         // size_t
 
 #if defined(__cplusplus)
 extern "C" {

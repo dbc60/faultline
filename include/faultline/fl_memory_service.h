@@ -50,7 +50,7 @@ typedef struct FLMemoryService {
     fl_realloc_fn       *fl_realloc;
 } FLMemoryService;
 
-// These definitions are common to both the platform and application implementations
+// These definitions are common to both the platform and consumer implementations
 #define FLA_SET_MEMORY_SERVICE_FN(name) \
     void name(FLMemoryService *const svc, size_t size)
 typedef FLA_SET_MEMORY_SERVICE_FN(fla_set_memory_service_fn);
