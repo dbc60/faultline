@@ -74,7 +74,14 @@ void flp_log_set_output_path(char const *path);
  */
 FL_WRITE_LOG_FN(flp_write_log);
 
-// Convenience macros
+// Convenience LOG_* macros. These are a per-translation-unit consumer convenience:
+// a TU normally includes exactly one log-service backend (platform or application),
+// selected through fl_log.h, so the unprefixed LOG_* names resolve to that backend.
+// The guard lets a unity build that deliberately includes BOTH service headers
+// (e.g. fl_log_service_tests.c, which exercises both sides) compile without C4005
+// macro redefinition; the first backend header included defines the set.
+#ifndef FL_LOG_CONVENIENCE_MACROS_DEFINED
+#define FL_LOG_CONVENIENCE_MACROS_DEFINED
 #define FLP_LOG_WRITE(level, file, line, id, msg, ...) \
     flp_write_log(level, file, line, id, msg, ##__VA_ARGS__)
 
@@ -107,6 +114,7 @@ FL_WRITE_LOG_FN(flp_write_log);
     FLP_LOG_WRITE(LOG_LEVEL_DEBUG, (FILE), (LINE), (ID), (MSG), ##__VA_ARGS__)
 #define LOG_TRACE_FILE_LINE(ID, FILE, LINE, MSG, ...) \
     FLP_LOG_WRITE(LOG_LEVEL_TRACE, (FILE), (LINE), (ID), (MSG), ##__VA_ARGS__)
+#endif // FL_LOG_CONVENIENCE_MACROS_DEFINED
 
 #if defined(__cplusplus)
 }
