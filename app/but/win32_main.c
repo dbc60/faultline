@@ -14,6 +14,8 @@
 #define FL_BUILD_DRIVER
 #endif
 
+#include <faultline/fl_log.h> // LOG_* (selects flp_ backend via FL_BUILD_DRIVER)
+
 #include "arena.c"
 #include "arena_dbg.c"
 #include "arena_malloc.c"
