@@ -6,7 +6,7 @@ SETLOCAL ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 :: Builds faultline_core.lib -- the OS-free application layer (test driver
 :: + command layer + reporting) as a unity static library.
 ::
-:: Compiled WITHOUT /DFL_BUILD_DRIVER: the core reaches memory/log/exception/
+:: Compiled WITHOUT /DFL_PLATFORM_BUILD: the core reaches memory/log/exception/
 :: timer/file/module capabilities only through services injected via the
 :: FLPlatformAPI, never through platform symbols directly. The platform exe
 :: (faultline_split.cmd) links this lib; dependency direction is platform->core.

@@ -5,7 +5,7 @@
  *
  * See LICENSE.txt for copyright and licensing information about this file.
  *
- * Compiled WITH FL_BUILD_DRIVER (so fl_try.h/fl_log.h select the self-contained
+ * Compiled WITH FL_PLATFORM_BUILD (so fl_try.h/fl_log.h select the self-contained
  * platform service macros) and FL_EMBEDDED. This binary owns the arena and the
  * platform implementations of all three services. It loads demo_suite.dll,
  * injects each service via the DLL's exported fla_set_* entry points — exactly

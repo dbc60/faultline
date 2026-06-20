@@ -22,12 +22,13 @@
 #include "fault_injector_resource.h"        // for injector_resource_set_...
 #include <faultline/fl_test_summary.h>      // for FLTestSummary
 #include <faultline/fl_abbreviated_types.h> // for i64
-#include <faultline/fl_try.h> // for FL_THROW (selects flp or fla based on FL_BUILD_DRIVER)
+#include <faultline/fl_try.h> // for FL_THROW (selects flp or fla based on FL_PLATFORM_BUILD)
 
 FLExceptionReason fault_injector_exception = "fault injected";
 
 FaultInjector *fault_injector_create(Arena *arena) {
-    FaultInjector *injector = arena_malloc_throw(arena, sizeof *injector, __FILE__, __LINE__);
+    FaultInjector *injector
+        = arena_malloc_throw(arena, sizeof *injector, __FILE__, __LINE__);
     fault_injector_init(injector, arena);
     return injector;
 }

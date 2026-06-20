@@ -6,7 +6,7 @@
  * @brief
  */
 
-#if defined(FL_BUILD_DRIVER)
+#if defined(FL_PLATFORM_BUILD)
 #include <flp_memory_service.h> // IWYU pragma: export
 #define FL_MALLOC(SZ)       flp_malloc((SZ), __FILE__, __LINE__)
 #define FL_FREE(PTR)        flp_free((PTR), __FILE__, __LINE__)
@@ -20,6 +20,6 @@
 #define FL_FREE(PTR)        free(PTR)
 #define FL_CALLOC(N, SZ)    calloc((N), (SZ))
 #define FL_REALLOC(PTR, SZ) realloc((PTR), (SZ))
-#endif // FL_BUILD_DRIVER
+#endif // FL_PLATFORM_BUILD
 
 #endif // FL_MEMORY_H_

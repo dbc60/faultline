@@ -7,14 +7,14 @@
  *
  * This header is the single definition site for the LOG_ERROR/LOG_INFO/... family.
  * It selects the log-service backend -- platform (flp_write_log) or application
- * (g_fla_log_service.write) -- by whether FL_BUILD_DRIVER is defined, then defines
+ * (g_fla_log_service.write) -- by whether FL_PLATFORM_BUILD is defined, then defines
  * the LOG_* set once over that backend through FL_LOG_WRITE. A translation unit
  * gets exactly one backend, and the call-site names never carry a platform/
  * application prefix: the side is fixed per TU by the build, not per call.
  */
 #include <faultline/fl_log_service.h> // FLLogLevel, LOG_LEVEL_*
 
-#if defined(FL_BUILD_DRIVER)
+#if defined(FL_PLATFORM_BUILD)
 #include <flp_log_service.h> // IWYU pragma: export -- flp_write_log
 #define FL_LOG_WRITE(level, file, line, id, msg, ...) \
     flp_write_log(level, file, line, id, msg, ##__VA_ARGS__)
@@ -22,7 +22,7 @@
 #include <faultline/fla_log_service.h> // IWYU pragma: export -- g_fla_log_service
 #define FL_LOG_WRITE(level, file, line, id, msg, ...) \
     g_fla_log_service.write(level, file, line, id, msg, ##__VA_ARGS__)
-#endif // FL_BUILD_DRIVER
+#endif // FL_PLATFORM_BUILD
 
 #define LOG_FATAL(ID, MSG, ...) \
     FL_LOG_WRITE(LOG_LEVEL_FATAL, __FILE__, __LINE__, (ID), (MSG), ##__VA_ARGS__)

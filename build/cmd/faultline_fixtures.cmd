@@ -62,7 +62,7 @@ IF %build% EQU 1 (
         ECHO.
         ECHO Build the %PROJECT_NAME% driver test-data DLL
     )
-    cl %CommonCompilerFlagsFinal% /I"%DIR_INCLUDE%" /I"%DIR_THIRD_PARTY%" /DFL_BUILD_DRIVER /DDLL_BUILD ^
+    cl %CommonCompilerFlagsFinal% /I"%DIR_INCLUDE%" /I"%DIR_THIRD_PARTY%" /DFL_PLATFORM_BUILD /DDLL_BUILD ^
     %DIR_REPO%\src\faultline_test_data.c ^
     /Fo:%DIR_OUT_OBJ%\ /Fd:%DIR_OUT_BIN%\faultline_test_data.pdb ^
     /LD /link %CommonLinkerFlagsFinal% ^

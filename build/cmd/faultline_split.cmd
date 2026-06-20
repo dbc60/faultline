@@ -57,7 +57,7 @@ IF %build% EQU 1 (
         ECHO.
         ECHO Build the %PROJECT_NAME% platform layer ^(unity^): faultline.exe
     )
-    cl %CommonCompilerFlagsFinal% /wd4200 /wd4115 /wd4456 /DFL_BUILD_DRIVER ^
+    cl %CommonCompilerFlagsFinal% /wd4200 /wd4115 /wd4456 /DFL_PLATFORM_BUILD ^
     /I%DIR_INCLUDE% /I%DIR_REPO%\src /I"%DIR_THIRD_PARTY%" ^
     /I"%DIR_THIRD_PARTY%\cwalk\include" ^
     %DIR_REPO%\app\faultline\win32_faultline_unity.c ^

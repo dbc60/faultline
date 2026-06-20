@@ -10,11 +10,11 @@
 
 // Must be defined before any headers are included so that fl_log.h and fl_try.h
 // select the platform (driver) implementations of the log and exception services.
-#ifndef FL_BUILD_DRIVER
-#define FL_BUILD_DRIVER
+#ifndef FL_PLATFORM_BUILD
+#define FL_PLATFORM_BUILD
 #endif
 
-#include <faultline/fl_log.h> // LOG_* (selects flp_ backend via FL_BUILD_DRIVER)
+#include <faultline/fl_log.h> // LOG_* (selects flp_ backend via FL_PLATFORM_BUILD)
 
 #include "arena.c"
 #include "arena_dbg.c"

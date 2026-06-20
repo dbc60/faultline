@@ -13,7 +13,7 @@
  * (exception / logging / fault-injecting memory / timer / file / module),
  * builds an FLPlatformAPI, and calls faultline_app_main() in faultline_core.lib.
  *
- * Build it WITH /DFL_BUILD_DRIVER and link faultline_core.lib + the prebuilt
+ * Build it WITH /DFL_PLATFORM_BUILD and link faultline_core.lib + the prebuilt
  * sqlite3.obj / cwalk.obj. Dependency direction is platform -> core only.
  *
  * NOTE: the flp_timer_service.c / flp_file_service.c / flp_module_service.c

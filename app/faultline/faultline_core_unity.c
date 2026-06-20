@@ -13,7 +13,7 @@
  * directly: it allocates, times, logs, throws, opens files, and loads suite
  * modules only through the services handed to it in an FLPlatformAPI.
  *
- * Build it with NO /DFL_BUILD_DRIVER (so FL_MALLOC routes through the injected
+ * Build it with NO /DFL_PLATFORM_BUILD (so FL_MALLOC routes through the injected
  * memory service, not flp_malloc) and with an include path that exposes
  * platform_api.h + faultline/* interface headers but NOT the flp_* headers or
  * <windows.h>. If a platform dependency ever creeps back in, this TU stops
@@ -37,7 +37,7 @@
 /* -- Application-side service accessors ------------------------------------
  * These give the core its OWN g_fla_* service globals + fla_set_* setters,
  * exactly like a suite DLL. faultline_app_main() installs the platform's
- * vtables into them at entry. Compiling this TU WITHOUT /DFL_BUILD_DRIVER makes
+ * vtables into them at entry. Compiling this TU WITHOUT /DFL_PLATFORM_BUILD makes
  * fl_try.h / FL_MALLOC resolve to these fla_ accessors rather than flp_ direct
  * calls -- that is seam #3, achieved by the build flag alone.
  */

@@ -48,10 +48,10 @@ MD "%DIR_SELF%"
 SET FAILS=0
 
 :: =======================================================================
-::  exception_service  — single-binary platform exception service (FL_BUILD_DRIVER)
+::  exception_service  — single-binary platform exception service (FL_PLATFORM_BUILD)
 ::
 ::  The exception_service package ships fl_ + fla_ + flp_. A standalone binary
-::  acts as the platform: build /DFL_BUILD_DRIVER (so fl_try.h selects the
+::  acts as the platform: build /DFL_PLATFORM_BUILD (so fl_try.h selects the
 ::  self-contained flp_ macros) and compile fl_ + flp_ ONLY. The fla_ stub must
 ::  be excluded -- it would both abort at runtime and clash with flp_ on the
 ::  shared exception entry points -- so this block lists sources explicitly
@@ -68,7 +68,7 @@ CALL :IMPORT "%DIR_REPO%\dist\exception_service" "%INTO%"
 IF ERRORLEVEL 1 ( ECHO   [import]  FAILED & SET /A FAILS+=1 & GOTO :after_exc )
 SET OBJ=%INTO%\_obj
 IF NOT EXIST "%OBJ%" MD "%OBJ%"
-cl %CommonCompilerFlagsFinal% /DFL_BUILD_DRIVER /DFL_EMBEDDED /wd4456 ^
+cl %CommonCompilerFlagsFinal% /DFL_PLATFORM_BUILD /DFL_EMBEDDED /wd4456 ^
     /I"%INTO%\include" ^
     "%INTO%\src\fl_exception_service.c" ^
     "%INTO%\src\flp_exception_service.c" ^
@@ -124,7 +124,7 @@ IF ERRORLEVEL 1 ( ECHO   [import]  FAILED & SET /A FAILS+=1 & GOTO :after_mem )
 SET OBJ=%INTO%\_obj
 IF NOT EXIST "%OBJ%" MD "%OBJ%"
 CALL :COLLECT_SRCS "%INTO%\src"
-cl %CommonCompilerFlagsFinal% /experimental:c11atomics /wd4456 /DFL_EMBEDDED /DFL_BUILD_DRIVER ^
+cl %CommonCompilerFlagsFinal% /experimental:c11atomics /wd4456 /DFL_EMBEDDED /DFL_PLATFORM_BUILD ^
     /I"%INTO%\include" /I"%INTO%\src" ^
     !SRCS! ^
     "%INTO%\src\fnv\*.c" ^

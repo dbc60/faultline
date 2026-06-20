@@ -7,13 +7,13 @@
  *
  * This header selects include/log/flp_exception_service.h or
  * include/fla_exception_service.h to provide FL_TRY, FL_CATCH, FL_END_TRY, FL_THROW,
- * etc. macros based on whether FL_BUILD_DRIVER is defined.
+ * etc. macros based on whether FL_PLATFORM_BUILD is defined.
  */
 
-#if defined(FL_BUILD_DRIVER)
+#if defined(FL_PLATFORM_BUILD)
 #include "flp_exception_service.h"           // IWYU pragma: export
 #else                                        // Application/DLL build
 #include <faultline/fla_exception_service.h> // IWYU pragma: export
-#endif                                       // FL_BUILD_DRIVER
+#endif                                       // FL_PLATFORM_BUILD
 
 #endif // FL_TRY_H_
