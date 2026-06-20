@@ -46,7 +46,8 @@
 #include <faultline/flp_memory_context.h>       // FLMemoryContext
 #include <flp_memory_service.h>    // flp_init_memory_service, flp_malloc, ...
 #include <flp_log_service.h>       // flp_log_init_custom, flp_write_log, flp_log_set_*
-#include <flp_exception_service.h> // FL_TRY (flp_ backstop), flp_push/pop/throw
+#include <flp_exception_service.h> // flp_push/pop/throw declarations
+#include <faultline/fl_try.h>      // FL_TRY/FL_CATCH_ALL (selects flp_ backstop)
 #include <faultline/fl_log.h>      // LOG_* (selects flp_ backend via FL_PLATFORM_BUILD)
 
 #include <stdio.h> // NULL

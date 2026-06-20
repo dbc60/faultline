@@ -11,6 +11,7 @@
  * See LICENSE.txt for copyright and licensing information about this file.
  *
  */
+#include <faultline/fl_try.h>               // FL_ASSERT_IMPL, FL_ASSERT_REASON_IMPL, FL_THROW_DETAILS_FILE_LINE
 #include <faultline/fl_exception_service.h> // FL_THROW_EXCEPTION_SERVICE_FN
 #include <faultline/fl_exception_types.h>   // FLExceptionReason, fl_exception_handler_fn
 #include <faultline/fl_macros.h>            // FL_THREAD_LOCAL, FL_UNUSED

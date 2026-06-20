@@ -26,9 +26,10 @@
 
 // Application-side service accessors: installing into these globals is what
 // makes FL_TRY / FL_MALLOC / LOG_* in the core route through the platform.
-#include <faultline/fla_exception_service.h> // fla_set_exception_service, FL_TRY/FL_CATCH
+#include <faultline/fla_exception_service.h> // fla_set_exception_service
 #include <faultline/fla_memory_service.h>    // fla_set_memory_service
 #include <faultline/fla_log_service.h>       // fla_set_log_service
+#include <faultline/fl_try.h>                // FL_TRY/FL_CATCH (selects fla_ backend)
 
 #include <faultline/fl_context.h>     // FLContext, faultline_initialize
 #include <faultline/fl_log.h>         // LOG_ERROR
