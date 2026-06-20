@@ -99,7 +99,8 @@ IF NOT EXIST "%OBJ_EXE%" MD "%OBJ_EXE%"
 :: 3. Build the suite DLL (application side). DLL_BUILD makes FL_DECL_SPEC
 ::    dllexport so fla_set_* are exported; no FL_BUILD_DRIVER, so the unified
 ::    headers select the fla_ shims. The DLL borrows the allocator/logger/
-::    exception engine from the driver at run time, so none are compiled here.
+::    exception implementations from the driver at run time, so none are
+::    compiled here.
 :: -----------------------------------------------------------------------
 ECHO Building demo_suite.dll ...
 cl %CommonCompilerFlagsFinal% /DDLL_BUILD /wd4456 ^

@@ -1,13 +1,14 @@
 # Service Integration Guide
-This guide covers how to wire up FaultLine's three runtime services — **exception handling**, **logging**, and **memory** — when building a new application that follows the platform / application split.
+This guide covers how to wire up FaultLine's runtime services — **exception handling**, **logging**, **memory**, and **timing** — when building a host that loads and drives service consumers.
 
 > To bring the service source into another repository in the first place — and
 > keep it updated as packages change — see the
 > [Service Distribution Guide](service-distribution.md).
 
-**Platform** = the driver executable (or host library) that loads test suites and controls their execution.
+Two axes are in play (see CLAUDE.md → "Two architectural axes"):
 
-**Application** = a test-suite DLL loaded by the platform at runtime.
+- **Portability:** **core** (portable contracts + implementations) vs. **platform** (OS-specific implementations + host). The reusable unit is each service's `fl_*_service.h` contract plus its portable core implementation.
+- **Provider / consumer:** the **host** provides services (`flp_`); a **consumer** receives them (`fla_`). A consumer is usually a test-suite DLL, but the host's own core is a consumer of the services it installs into itself.
 
 ## Background: The Service Pattern
 
@@ -17,7 +18,7 @@ Each service has three layers:
 | ------ | ----------- | ---------------------------------------------------------------------------------------- |
 | `fl_`  | Shared      | Type definitions, function-pointer typedefs, `FLFooService` struct                       |
 | `flp_` | Platform    | Concrete implementations, lifecycle functions, `flp_init_*_service()` injector           |
-| `fla_` | Application | Global service variable (`g_fla_*_service`), default stubs, `fla_set_*_service()` setter |
+| `fla_` | Consumer    | Global service variable (`g_fla_*_service`), default stubs, `fla_set_*_service()` setter |
 
 The injection sequence at runtime is always the same:
 

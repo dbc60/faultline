@@ -1,7 +1,7 @@
 /**
  * @file fl_threads.c
  * @author Douglas Cuthbertson
- * @brief Polyfill implementations for C11 <threads.h> mutex and thread functions.
+ * @brief Compatibility-shim implementations for the C11 <threads.h> mutex and thread subset.
  * @version 0.1
  * @date 2026-02-19
  *
@@ -200,4 +200,4 @@ int thrd_sleep(const struct timespec *duration, struct timespec *remaining) {
 
 #endif /* platform */
 
-#endif /* polyfill needed */
+#endif /* compatibility shim needed */

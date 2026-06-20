@@ -8,12 +8,17 @@
  * @version 0.1
  * @date 2026-02-19
  *
- * Uses <threads.h> directly when the platform provides it. When it does not
- * (e.g., MinGW with MSVCRT runtime), a minimal polyfill is declared here and
- * implemented in src/fl_threads.c. The polyfill covers only the mutex and
- * thread subset used by FaultLine.
+ * Exposes the C11 <threads.h> mutex and thread API regardless of toolchain. When
+ * the toolchain provides <threads.h> this includes it directly; when it does not
+ * (e.g., MinGW with the MSVCRT runtime), a compatibility shim declared here and
+ * implemented in src/fl_threads.c supplies the same names. The shim is partial: it
+ * covers only the commonly used mutex and thread subset, not all of <threads.h>.
  *
- * Supported platforms for the polyfill:
+ * Selection is by capability, not age: the shim activates whenever <threads.h> is
+ * absent (detected via __has_include / __STDC_NO_THREADS__), which includes current
+ * toolchains that simply omit C11 threads.
+ *
+ * Shim backends:
  *   Windows  (_WIN32) : CRITICAL_SECTION + CreateThread
  *   POSIX    (Unix / macOS / FreeBSD) : pthread_mutex_t + pthread_create
  *
@@ -90,7 +95,7 @@ int thrd_join(thrd_t thr, int *res);
 
 /* --- thrd_sleep (C11) ---
  * Provided by <threads.h> on conforming platforms; declared here only for the
- * polyfill. Follows the C11 contract: 0 on success, -1 if interrupted by a
+ * shim. Follows the C11 contract: 0 on success, -1 if interrupted by a
  * signal, a value < -1 on any other error. NB: unlike the old win_timer.c
  * nanosleep, this does NOT throw -- a portability primitive must match the
  * stdlib thrd_sleep it substitutes for. */
@@ -100,6 +105,6 @@ int thrd_sleep(const struct timespec *duration, struct timespec *remaining);
 }
 #endif
 
-#endif /* polyfill */
+#endif /* compatibility shim */
 
 #endif /* FL_THREADS_H_ */
