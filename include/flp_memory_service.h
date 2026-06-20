@@ -18,7 +18,7 @@
 extern "C" {
 #endif
 
-// ── Arena-only service ────────────────────────────────────────────────────────
+// -- Arena-only service --------------------------------------------------------
 
 #define FLP_INIT_MEMORY_SERVICE_FN(name) \
     void name(fla_set_memory_service_fn *fla_set, FLMemoryContext *ctx)
@@ -32,7 +32,7 @@ FL_FREE_POINTER_FN(flp_free_pointer);
 FL_MALLOC_FN(flp_malloc);
 FL_REALLOC_FN(flp_realloc);
 
-// ── Fault-injecting service ───────────────────────────────────────────────────
+// -- Fault-injecting service ---------------------------------------------------
 
 typedef struct FLFaultMemoryContext FLFaultMemoryContext;
 

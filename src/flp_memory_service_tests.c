@@ -18,7 +18,7 @@
 #include "flp_fault_memory_service.c"
 #include <faultline/fl_test.h>
 
-// ── Fault-injecting service fixtures ─────────────────────────────────────────
+// -- Fault-injecting service fixtures -----------------------------------------
 
 typedef struct MemServiceTestCase {
     FLTestCase           tc;
@@ -47,7 +47,7 @@ FL_CLEANUP_FN(flp_cleanup) {
     release_arena(&mtc->ctx.arena);
 }
 
-// ── Arena-only service fixtures ───────────────────────────────────────────────
+// -- Arena-only service fixtures -----------------------------------------------
 
 typedef struct ArenaServiceTestCase {
     FLTestCase      tc;
@@ -73,7 +73,7 @@ FL_CLEANUP_FN(arena_cleanup) {
     release_arena(&atc->ctx.arena);
 }
 
-// ── Compatibility fixtures ────────────────────────────────────────────────────
+// -- Compatibility fixtures ----------------------------------------------------
 
 typedef struct CompatTestCase {
     FLTestCase           tc;
@@ -104,7 +104,7 @@ FL_CLEANUP_FN(compat_cleanup) {
     release_arena(&ctc->arena);
 }
 
-// ── Tests: fault-injecting service ───────────────────────────────────────────
+// -- Tests: fault-injecting service -------------------------------------------
 
 FL_TYPE_TEST_SETUP_CLEANUP("Initialize Fault Service", MemServiceTestCase,
                            initialize_fault_service, flp_setup, flp_cleanup) {
@@ -117,7 +117,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Initialize Fault Service", MemServiceTestCase,
     FL_ASSERT_NOT_NULL(g_fla_memory_service.fl_realloc);
 }
 
-// ── Tests: arena-only service ─────────────────────────────────────────────────
+// -- Tests: arena-only service -------------------------------------------------
 
 FL_TYPE_TEST_SETUP_CLEANUP("Initialize Arena Service", ArenaServiceTestCase,
                            initialize_arena_service, arena_setup, arena_cleanup) {
@@ -150,7 +150,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Arena Malloc OOM Returns Null", ArenaServiceTestCase
     FL_ASSERT_NULL(ptr);
 }
 
-// ── Tests: compatibility ──────────────────────────────────────────────────────
+// -- Tests: compatibility ------------------------------------------------------
 
 // Verify that the same application code works correctly when the arena-only
 // and fault-injecting services are injected in turn, and that the two

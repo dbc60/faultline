@@ -28,7 +28,7 @@ static FLMemoryService g_memory_service = {
     .fl_realloc       = flp_realloc,
 };
 
-// ── Context init ──────────────────────────────────────────────────────────────
+// -- Context init --------------------------------------------------------------
 
 FLP_INIT_MEMORY_CONTEXT_FN(flp_init_memory_context) {
     FL_ASSERT_NOT_NULL(ctx);
@@ -37,7 +37,7 @@ FLP_INIT_MEMORY_CONTEXT_FN(flp_init_memory_context) {
     ctx->arena = arena;
 }
 
-// ── Service init ──────────────────────────────────────────────────────────────
+// -- Service init --------------------------------------------------------------
 
 FLP_INIT_MEMORY_SERVICE_FN(flp_init_memory_service) {
     FL_ASSERT_NOT_NULL(fla_set);
@@ -47,7 +47,7 @@ FLP_INIT_MEMORY_SERVICE_FN(flp_init_memory_service) {
     fla_set(&g_memory_service, sizeof g_memory_service);
 }
 
-// ── Allocator implementations ─────────────────────────────────────────────────
+// -- Allocator implementations -------------------------------------------------
 // Delegate to the non-throwing arena_malloc.c wrappers, which are the canonical
 // layer for translating all arena/region OOM exceptions into a NULL return.
 

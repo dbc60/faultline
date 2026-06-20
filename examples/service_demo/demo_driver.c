@@ -55,7 +55,7 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    // ── Inject the three services into the DLL (order mirrors command_run.c) ──
+    // -- Inject the three services into the DLL (order mirrors command_run.c) --
 
     // Log service (optional): wire the DLL's g_fla_log_service to flp_write_log.
     fla_set_log_service_fn *fla_set_log
