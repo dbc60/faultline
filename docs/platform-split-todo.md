@@ -1,9 +1,9 @@
 # Platform/Core Split — Outstanding Service Work
 
 Pick-up checklist for services conforming to the provider/consumer
-(`flp_`/`fla_`) + portable-contract (`fl_`) layout that the log and exception
-services follow. See **Two architectural axes** and the **Exception/Log Service**
-sections in `CLAUDE.md` for the target pattern.
+(`flp_`/`fla_`) + portable-contract (`fl_`) layout that the log, exception, and
+memory services follow. See **Two architectural axes** and the **Exception/Log
+Service** sections in `CLAUDE.md` for the target pattern.
 
 Status: **A (timer) is done** and now serves as the worked example — it added a
 selector and cross-boundary injection that **B (file service)** can copy. B is
