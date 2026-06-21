@@ -23,8 +23,10 @@
 #include <faultline/fl_exception_service.h> // flp_init_exception_service, fla_set_exception_service_fn
 #include <faultline/fl_log_service.h> // fla_set_log_service_fn, FLA_SET_LOG_SERVICE_STR
 #include <faultline/fl_memory_service.h> // fla_set_memory_service_fn, FLA_SET_MEMORY_SERVICE_STR
-#include <flp_log_service.h>             // flp_init_log_service
-#include <flp_memory_service.h>          // flp_init_memory_service
+#include <faultline/fl_timer_service.h> // fla_set_timer_service_fn, FLA_SET_TIMER_SERVICE_STR
+#include <flp_log_service.h>            // flp_init_log_service
+#include <flp_memory_service.h>         // flp_init_memory_service
+#include <flp_timer_service.h>          // flp_init_timer_service
 
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
@@ -331,6 +333,14 @@ COMMAND_HANDLER(run_cmd) {
                 GetProcAddress(test_suite, FLA_SET_MEMORY_SERVICE_STR);
             if (fla_set_mem != NULL) {
                 flp_init_fault_memory_service(fla_set_mem, ectx->mem_ctx);
+            }
+
+            // Timer service (optional)
+            fla_set_timer_service_fn *fla_set_timer
+                = (fla_set_timer_service_fn *)GetProcAddress(test_suite,
+                                                             FLA_SET_TIMER_SERVICE_STR);
+            if (fla_set_timer != NULL) {
+                flp_init_timer_service(fla_set_timer);
             }
 
             // Run tests

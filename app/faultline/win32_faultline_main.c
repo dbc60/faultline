@@ -37,18 +37,19 @@
 #include <faultline/fl_context.h>     // (FaultInjector forward use)
 
 // Platform service interfaces + implementations (defined earlier in the unity TU)
-#include <faultline/fl_memory_service.h>        // FLMemoryService
 #include <faultline/fl_exception_service.h>     // FLExceptionService
-#include <faultline/fl_log_service.h>           // FLLogService, FLLogLevel
-#include <faultline/fl_timer_service.h>         // FLTimerService
 #include <faultline/fl_file_service.h>          // FLFileService
+#include <faultline/fl_log_service.h>           // FLLogService, FLLogLevel
+#include <faultline/fl_memory_service.h>        // FLMemoryService
+#include <faultline/fl_timer_service.h>         // FLTimerService
 #include <faultline/flp_fault_memory_context.h> // FLFaultMemoryContext
 #include <faultline/flp_memory_context.h>       // FLMemoryContext
-#include <flp_memory_service.h>    // flp_init_memory_service, flp_malloc, ...
-#include <flp_log_service.h>       // flp_log_init_custom, flp_write_log, flp_log_set_*
-#include <flp_exception_service.h> // flp_push/pop/throw declarations
-#include <faultline/fl_try.h>      // FL_TRY/FL_CATCH_ALL (selects flp_ backstop)
-#include <faultline/fl_log.h>      // LOG_* (selects flp_ backend via FL_PLATFORM_BUILD)
+#include <flp_exception_service.h>              // flp_push/pop/throw declarations
+#include <flp_log_service.h>    // flp_log_init_custom, flp_write_log, flp_log_set_*
+#include <flp_memory_service.h> // flp_init_memory_service, flp_malloc, ...
+#include <flp_timer_service.h>  // flp_timer_now, flp_timer_elapsed_seconds
+#include <faultline/fl_try.h>   // FL_TRY/FL_CATCH_ALL (selects flp_ backstop)
+#include <faultline/fl_log.h>   // LOG_* (selects flp_ backend via FL_PLATFORM_BUILD)
 
 #include <stdio.h> // NULL
 

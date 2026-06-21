@@ -13,8 +13,11 @@
 #include "tick_timer.c"            // start_ticks, stop_ticks, elapsed_ticks
 #include "time_timer.c"            // start, stop, elapsed_time
 #include "win_timer.c" // get_100ns_intervals_between_epochs (check_epoch); QueryPerformanceCounter
+#include "flp_timer_service.c" // flp_timer_now, flp_timer_elapsed_seconds, flp_init_timer_service
+#include "fla_timer_service.c" // g_fla_timer_service, fla_set_timer_service
 
 #include <faultline/fl_stopwatch.h> // FLStopwatch, FLTimerService, FLTimestamp
+#include <faultline/fl_timer.h>     // FL_NOW, FL_ELAPSED (consumer-side selector)
 #include <faultline/fl_test.h> // FL_TYPE_TEST_SETUP_CLEANUP, FL_TEST, FL_SUITE_*, FL_GET_TEST_SUITE
 #include <faultline/fl_try.h> // FL_THROW_DETAILS
 
@@ -23,25 +26,11 @@
 
 #include <time.h> // struct timespec
 
-// No fla_ timer-injection machinery exists yet, so this white-box test supplies
-// its own QPC-backed clock for the stopwatch -- the same self-contained pattern
-// by which it includes win_timer.c. Once fla_set_timer_service lands, a suite
-// would receive the platform clock by injection instead.
-static FLTimestamp test_clock_now(void) {
-    LARGE_INTEGER t;
-    QueryPerformanceCounter(&t);
-    return (FLTimestamp)t.QuadPart;
-}
-
-static double test_clock_elapsed_seconds(FLTimestamp start, FLTimestamp end) {
-    LARGE_INTEGER freq;
-    QueryPerformanceFrequency(&freq);
-    return (double)((i64)end - (i64)start) / (double)freq.QuadPart;
-}
-
-static FLTimerService const test_clock = {
-    .now             = test_clock_now,
-    .elapsed_seconds = test_clock_elapsed_seconds,
+// The platform provider under test, surfaced as a service for the stopwatch and
+// the contract tests below -- the same QPC clock the host installs at startup.
+static FLTimerService const provider = {
+    .now             = flp_timer_now,
+    .elapsed_seconds = flp_timer_elapsed_seconds,
 };
 
 typedef struct TimeTest {
@@ -80,7 +69,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Time Timer", TimeTest, test_time_timer, setup_time_t
 
 FL_TYPE_TEST_SETUP_CLEANUP("Stopwatch", TimeTest, test_stopwatch, setup_time_test,
                            fl_default_cleanup) {
-    FLStopwatch     sw  = fl_stopwatch_make(&test_clock);
+    FLStopwatch     sw  = fl_stopwatch_make(&provider);
     struct timespec req = {0, (long)t->sleep};
 
     fl_stopwatch_start(&sw);
@@ -129,10 +118,80 @@ FL_TEST("Epoch Interval", check_epoch) {
     }
 }
 
+// --- Platform timer provider (flp_timer_now / flp_timer_elapsed_seconds) ------
+
+FL_TEST("Timer Now Monotonic", test_timer_now_monotonic) {
+    FLTimestamp first  = flp_timer_now();
+    FLTimestamp second = flp_timer_now();
+    if (second < first) {
+        FL_THROW_DETAILS(fl_test_exception,
+                         "now() went backwards: first %llu, second %llu", (u64)first,
+                         (u64)second);
+    }
+}
+
+FL_TEST("Timer Elapsed Zero", test_timer_elapsed_zero) {
+    FLTimestamp t       = flp_timer_now();
+    double      elapsed = flp_timer_elapsed_seconds(t, t);
+    if (elapsed != 0.0) {
+        FL_THROW_DETAILS(fl_test_exception,
+                         "elapsed over identical samples is %f, expected 0", elapsed);
+    }
+}
+
+FL_TYPE_TEST_SETUP_CLEANUP("Timer Elapsed Over Sleep", TimeTest, test_timer_elapsed,
+                           setup_time_test, fl_default_cleanup) {
+    struct timespec req = {0, (long)t->sleep};
+
+    FLTimestamp start        = flp_timer_now();
+    int         sleep_result = thrd_sleep(&req, NULL);
+    if (sleep_result != 0) {
+        FL_THROW_DETAILS(fl_test_exception, "thrd_sleep failed with %d", sleep_result);
+    }
+    FLTimestamp end = flp_timer_now();
+
+    double actual = flp_timer_elapsed_seconds(start, end);
+    if (actual <= 0.0) { // the clock must have advanced across the sleep
+        FL_THROW_DETAILS(fl_test_exception, "elapsed seconds is %f, expected > 0",
+                         actual);
+    }
+
+    double expected    = (double)t->sleep / NANOSECONDS_PER_SECOND;
+    double upper_bound = expected + t->epsilon;
+    if (actual > upper_bound) {
+        FL_THROW_DETAILS(fl_test_exception, "expected %f, actual %f, upper bound %f",
+                         expected, actual, upper_bound);
+    }
+}
+
+// Exercise the injection wiring itself: install the platform provider into this
+// consumer's g_fla_ global the way the driver does across the DLL boundary, then
+// confirm the ambient FL_NOW / FL_ELAPSED route through it, not the abort stub.
+FL_TEST("Timer Service Injection", test_timer_injection) {
+    flp_init_timer_service(fla_set_timer_service);
+
+    if (g_fla_timer_service.now != flp_timer_now
+        || g_fla_timer_service.elapsed_seconds != flp_timer_elapsed_seconds) {
+        FL_THROW_DETAILS(fl_test_exception,
+                         "injection did not install the platform timer functions");
+    }
+
+    FLTimestamp start = FL_NOW();
+    FLTimestamp end   = FL_NOW();
+    double      secs  = FL_ELAPSED(start, end);
+    if (secs < 0.0) {
+        FL_THROW_DETAILS(fl_test_exception, "FL_ELAPSED returned negative: %f", secs);
+    }
+}
+
 FL_SUITE_BEGIN(ts)
 FL_SUITE_ADD_EMBEDDED(test_time_timer)
 FL_SUITE_ADD_EMBEDDED(test_stopwatch)
 FL_SUITE_ADD_EMBEDDED(test_tick_timer)
+FL_SUITE_ADD_EMBEDDED(test_timer_elapsed)
+FL_SUITE_ADD(test_timer_now_monotonic)
+FL_SUITE_ADD(test_timer_elapsed_zero)
+FL_SUITE_ADD(test_timer_injection)
 FL_SUITE_ADD(check_epoch)
 FL_SUITE_END;
 
