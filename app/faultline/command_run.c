@@ -346,7 +346,7 @@ COMMAND_HANDLER(run_cmd) {
             // Run tests
             fl_get_test_suite_fn *fl_get_test_suite
                 = (fl_get_test_suite_fn *)GetProcAddress(test_suite,
-                                                         "fl_get_test_suite");
+                                                         FL_GET_TEST_SUITE_STR);
             if (fl_get_test_suite != NULL) {
                 FL_TRY {
                     FLTestSuite *ts = fl_get_test_suite();

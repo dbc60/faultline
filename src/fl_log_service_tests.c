@@ -626,10 +626,38 @@ FL_TEST("Thread Id Stable", thread_id_stable) {
 }
 
 // ---------------------------------------------------------------------------
+// Cross-boundary injection
+//
+// The plumbing tests above install a local stub or save/restore
+// g_fla_log_service.write themselves. This one relies entirely on the driver: when
+// it loads this DLL it resolves the exported fla_set_log_service via GetProcAddress
+// and installs the host's log service into g_fla_log_service before any test runs.
+// A pass proves the symbol was exported and the service crossed the DLL boundary;
+// were it missing,
+// g_fla_log_service would still hold the default_write abort stub (static in the
+// included fla_log_service.c). The host installs its own flp_write_log -- a
+// different address from this DLL's copy -- so we assert the stub was replaced
+// rather than pointer identity, then route a write through the injected service.
+//
+// Registered first so it observes the driver's injection before the save/restore
+// plumbing tests touch g_fla_log_service.
+// ---------------------------------------------------------------------------
+
+FL_TEST("Driver Injects Log Service", driver_injects_log_service) {
+    FL_ASSERT_TRUE(g_fla_log_service.write != default_write);
+
+    // Exercise the injected writer; if it were still the abort stub this would
+    // terminate the process. TRACE keeps it out of the default-level output.
+    g_fla_log_service.write(LOG_LEVEL_TRACE, __FILE__, __LINE__, "test",
+                            "cross-boundary log via injected service");
+}
+
+// ---------------------------------------------------------------------------
 // Suite registration
 // ---------------------------------------------------------------------------
 
 FL_SUITE_BEGIN(LogService)
+FL_SUITE_ADD(driver_injects_log_service)
 FL_SUITE_ADD(init_defaults)
 FL_SUITE_ADD(cleanup_flushes_owned_file)
 FL_SUITE_ADD(cleanup_does_not_close_unowned)

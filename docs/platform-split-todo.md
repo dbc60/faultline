@@ -54,23 +54,30 @@ keep because `g_fla_timer_service` now has a reader.
 - ✅ Build (`.sh`): covered transitively — `faultline.sh` compiles the unity TU
   `main_unity_windows.c`, which now `#include`s `flp_timer_service.c`.
 - ✅ Tests: `src/timer_tests.c` extended — provider contract tests (now-monotonic,
-  zero-elapsed, elapsed-over-sleep), an injection test exercising
-  `flp_init_timer_service` → `fla_set_timer_service` → `FL_NOW`/`FL_ELAPSED`, and
-  the stopwatch test repointed at the real provider (the duplicate inline
-  `test_clock` and its stale comment removed). `build\cmd\timer.cmd test` → 8/8 pass.
+  zero-elapsed, elapsed-over-sleep), a cross-boundary injection test that does *not*
+  self-inject but relies on the driver resolving the exported `fla_set_timer_service`
+  and installing the host provider into `g_fla_timer_service` (it asserts the default
+  abort stubs were replaced, then exercises `FL_NOW`/`FL_ELAPSED`), and the stopwatch
+  test repointed at the real provider (the duplicate inline `test_clock` and its
+  stale comment removed). `build\cmd\timer.cmd test` → 8/8 pass.
 
 ### Remaining
-- [ ] Verify the clang/bash builds end-to-end: `./build/bash/timer.sh` (the timer
+- [x] Verify the clang/bash builds end-to-end: `./build/bash/timer.sh` (the timer
   suite's new white-box includes `flp_timer_service.c` / `fla_timer_service.c` must
   resolve under `-I include -I src`) and `./build/bash/all.sh test`.
-- [ ] Legacy triage: `src/win_timer.c`, `src/time_timer.c`, `src/tick_timer.c` are
-  the older v0.2 `fl_timer.lib` impls — decide whether to retire them.
+- [x] Legacy triage: `src/win_timer.c`, `src/time_timer.c`, `src/tick_timer.c` are
+  the older v0.2 `fl_timer.lib` implementations — decide whether to retire them.
 - [ ] Optional: a `timer_service` dist package parallel to the `log_service` /
   `memory_service` dist packages, if the timer is to ship standalone for reuse.
-- [ ] Minor/optional: the `std_faultline.cmd` **test DLL** (consumer side) does not
-  compile `fla_timer_service.c`, so a std-built suite won't export
-  `fla_set_timer_service`; harmless while no such suite consumes the clock
-  (injection is NULL-guarded). Add it only if symmetry is wanted there too.
+- [x] The `std_faultline.cmd` **test DLL** (consumer side) now compiles
+  `fla_timer_service.c`, so the std-built suite exports `fla_set_timer_service` for
+  symmetry with the other consumer accessors it already links.
+- [x] Cross-boundary injection now has real coverage: the timer, log, and memory
+  suites each have a test that does *not* self-inject and asserts the driver
+  replaced the default abort stubs — proving the `fla_set_*_service` symbol is
+  exported and the service crossed the DLL boundary (not just that the setter
+  composes in-process). The exception service needs no such test: it is required of
+  every suite, so the whole run depends on its cross-boundary injection already.
 
 ---
 
@@ -132,7 +139,9 @@ This is why the platform/core split (`win32_faultline_main.c`, `platform_api.h`,
 - [ ] Wire the platform/core split (`win32_faultline_main.c` + `faultline_core`) into
   `all.cmd`/`all.sh` once it compiles, so it's actually built and tested.
 - [ ] Add `src/fl_file_service_tests.c` (round-trip write→read→close on a temp file,
-  error paths), following `fl_log_service_tests.c`.
+  error paths), following `fl_log_service_tests.c`. Include a cross-boundary
+  injection test (assert the driver replaced the default stubs, then exercise the
+  injected service) like the timer/log/memory suites now have.
 - [ ] Verify both builds green.
 
 ---

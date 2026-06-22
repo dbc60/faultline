@@ -38,8 +38,7 @@ typedef struct FLTimerService {
     fl_timer_elapsed_fn *elapsed_seconds; // seconds between two samples
 } FLTimerService;
 
-// Symmetry with the other services, so a consumer that wants timing can be injected
-// the same clock the core uses.
+// These definitions are common to both the platform and consumer implementations
 #define FLA_SET_TIMER_SERVICE_FN(name) void name(FLTimerService *const svc, size_t size)
 typedef FLA_SET_TIMER_SERVICE_FN(fla_set_timer_service_fn);
 #define FLA_SET_TIMER_SERVICE_STR FL_STR(fla_set_timer_service)

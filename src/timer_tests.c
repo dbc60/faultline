@@ -164,21 +164,35 @@ FL_TYPE_TEST_SETUP_CLEANUP("Timer Elapsed Over Sleep", TimeTest, test_timer_elap
     }
 }
 
-// Exercise the injection wiring itself: install the platform provider into this
-// consumer's g_fla_ global the way the driver does across the DLL boundary, then
-// confirm the ambient FL_NOW / FL_ELAPSED route through it, not the abort stub.
-FL_TEST("Timer Service Injection", test_timer_injection) {
-    flp_init_timer_service(fla_set_timer_service);
-
-    if (g_fla_timer_service.now != flp_timer_now
-        || g_fla_timer_service.elapsed_seconds != flp_timer_elapsed_seconds) {
-        FL_THROW_DETAILS(fl_test_exception,
-                         "injection did not install the platform timer functions");
+// Verify cross-boundary injection through the real driver path. When the driver
+// loads this DLL it resolves the exported fla_set_timer_service via GetProcAddress
+// and installs the *host's* timer provider into our g_fla_timer_service before any
+// test runs. This test does NOT self-inject; it relies entirely on that wiring, so
+// a pass proves the symbol was actually exported and the service crossed the DLL
+// boundary. Were the export missing -- or the driver to skip it --
+// g_fla_timer_service would still hold the default abort stubs.
+//
+// The host installs its own flp_timer_now, whose address differs from this DLL's
+// copy, so we do not assert pointer identity against the local provider; we assert
+// the abort stubs were replaced (they are static in the included fla_timer_service.c)
+// and that the injected clock behaves.
+FL_TEST("Timer Service Cross-Boundary Injection", test_timer_cross_boundary) {
+    if (g_fla_timer_service.now == default_now
+        || g_fla_timer_service.elapsed_seconds == default_elapsed_seconds) {
+        FL_THROW_DETAILS(
+            fl_test_exception,
+            "driver did not inject the timer service across the DLL boundary - "
+            "g_fla_timer_service still holds the default abort stubs");
     }
 
     FLTimestamp start = FL_NOW();
     FLTimestamp end   = FL_NOW();
-    double      secs  = FL_ELAPSED(start, end);
+    if (end < start) {
+        FL_THROW_DETAILS(fl_test_exception,
+                         "injected FL_NOW went backwards: first %llu, second %llu",
+                         (u64)start, (u64)end);
+    }
+    double secs = FL_ELAPSED(start, end);
     if (secs < 0.0) {
         FL_THROW_DETAILS(fl_test_exception, "FL_ELAPSED returned negative: %f", secs);
     }
@@ -191,7 +205,7 @@ FL_SUITE_ADD_EMBEDDED(test_tick_timer)
 FL_SUITE_ADD_EMBEDDED(test_timer_elapsed)
 FL_SUITE_ADD(test_timer_now_monotonic)
 FL_SUITE_ADD(test_timer_elapsed_zero)
-FL_SUITE_ADD(test_timer_injection)
+FL_SUITE_ADD(test_timer_cross_boundary)
 FL_SUITE_ADD(check_epoch)
 FL_SUITE_END;
 

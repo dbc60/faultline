@@ -178,7 +178,38 @@ FL_TYPE_TEST_SETUP_CLEANUP("Arena And Fault Service Compatibility", CompatTestCa
     FL_ASSERT_TRUE(arena_malloc_fn != fault_malloc_fn);
 }
 
+// -- Cross-boundary injection --------------------------------------------------
+//
+// Unlike the tests above -- whose setups self-inject a service built from a
+// DLL-local arena -- this one relies entirely on the driver. When it loads this
+// DLL it resolves the exported fla_set_memory_service via GetProcAddress and
+// installs the host's fault-injecting memory service into g_fla_memory_service
+// before any test runs. A pass proves the symbol was exported and the service
+// crossed the DLL boundary; were it missing,
+// g_fla_memory_service would still hold the default_malloc / default_free abort
+// stubs (static in the included fla_memory_service.c). The host installs its own
+// allocator -- a different address from this DLL's copy -- so we assert the stubs
+// were replaced rather than pointer identity, then exercise the injected allocator.
+//
+// Registered first so it observes the driver's injection before any self-injecting
+// setup replaces g_fla_memory_service with a DLL-local one.
+
+FL_TEST("Driver Injects Memory Service", driver_injects_memory_service) {
+    FL_ASSERT_TRUE(g_fla_memory_service.fl_malloc != default_malloc);
+    FL_ASSERT_TRUE(g_fla_memory_service.fl_free != default_free);
+    FL_ASSERT_NOT_NULL(g_fla_memory_service.ctx);
+
+    // Exercise the injected allocator; if these were still the abort stubs the
+    // calls would terminate the process. malloc may legitimately return NULL when
+    // the fault injector forces this site to fail, so guard the free.
+    void *ptr = malloc(64);
+    if (ptr != NULL) {
+        free(ptr);
+    }
+}
+
 FL_SUITE_BEGIN(ts)
+FL_SUITE_ADD(driver_injects_memory_service)
 FL_SUITE_ADD_EMBEDDED(initialize_fault_service)
 FL_SUITE_ADD_EMBEDDED(initialize_arena_service)
 FL_SUITE_ADD_EMBEDDED(arena_malloc_and_free)

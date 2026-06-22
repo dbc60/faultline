@@ -38,8 +38,7 @@ typedef struct FLLogService {
     fl_write_log_fn *write;
 } FLLogService;
 
-// These definitions and declarations are common to both the platform and consumer
-// implementations
+// These definitions are common to both the platform and consumer implementations
 #define FLA_SET_LOG_SERVICE_FN(name) void name(FLLogService *const svc, size_t size)
 typedef FLA_SET_LOG_SERVICE_FN(fla_set_log_service_fn);
 #define FLA_SET_LOG_SERVICE_STR FL_STR(fla_set_log_service)
