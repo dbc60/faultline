@@ -364,8 +364,16 @@ int faultline_record_test_run_start(sqlite3 *db, char const *suite_name,
         return -1;
     }
 
-    int        suite_id = -1;
-    int        run_id   = -1;
+    int suite_id = -1;
+    int run_id   = -1;
+
+    // 0 means the caller never stamped a start time; record the current time
+    // rather than 1970-01-01, which would sort the run to the bottom of every
+    // timestamp-ordered report.
+    if (start_time == 0) {
+        time(&start_time);
+    }
+
     struct tm  tm_result;
     struct tm *tm_info = fl_gmtime(&start_time, &tm_result);
     char       timestamp[32];

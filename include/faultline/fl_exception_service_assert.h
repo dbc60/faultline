@@ -11,7 +11,7 @@
  * See LICENSE.txt for copyright and licensing information about this file.
  *
  */
-#include <faultline/fl_try.h>               // FL_ASSERT_IMPL, FL_ASSERT_REASON_IMPL, FL_THROW_DETAILS_FILE_LINE
+#include <faultline/fl_try.h> // FL_ASSERT_IMPL, FL_ASSERT_REASON_IMPL, FL_THROW_DETAILS_FILE_LINE
 #include <faultline/fl_exception_service.h> // FL_THROW_EXCEPTION_SERVICE_FN
 #include <faultline/fl_exception_types.h>   // FLExceptionReason, fl_exception_handler_fn
 #include <faultline/fl_macros.h>            // FL_THREAD_LOCAL, FL_UNUSED
@@ -54,15 +54,18 @@ FL_THROW_EXCEPTION_SERVICE_FN(fl_throw_assertion);
     } while (0)
 
 /**
- * @brief test an assertion; if it fails throw an exception with a reason and details
+ * @brief test an assertion; if it fails throw an exception with a reason and details.
+ *
+ * The details are formatted into the per-thread scratch buffer (fl_details_buf in
+ * fl_try.h); see that function for the lifetime rules.
  */
-#define FL_ASSERT_DETAILS(e, d, ...)                                     \
-    do {                                                                 \
-        if (!(e)) {                                                      \
-            static FL_THREAD_LOCAL char _details[FL_MAX_DETAILS_LENGTH]; \
-            snprintf(_details, sizeof _details, d, ##__VA_ARGS__);       \
-            fl_throw_assertion((#e), _details, __FILE__, __LINE__);      \
-        }                                                                \
+#define FL_ASSERT_DETAILS(e, d, ...)                                        \
+    do {                                                                    \
+        if (!(e)) {                                                         \
+            char *fl_details_ = fl_details_buf();                           \
+            snprintf(fl_details_, FL_MAX_DETAILS_LENGTH, d, ##__VA_ARGS__); \
+            fl_throw_assertion((#e), fl_details_, __FILE__, __LINE__);      \
+        }                                                                   \
     } while (0)
 
 /**
@@ -76,13 +79,13 @@ FL_THROW_EXCEPTION_SERVICE_FN(fl_throw_assertion);
         }                                               \
     } while (0)
 
-#define FL_ASSERT_DETAILS_FILE_LINE(e, d, FILE, LINE, ...)               \
-    do {                                                                 \
-        if (!(e)) {                                                      \
-            static FL_THREAD_LOCAL char _details[FL_MAX_DETAILS_LENGTH]; \
-            snprintf(_details, sizeof _details, (d), ##__VA_ARGS__);     \
-            fl_throw_assertion((#e), _details, FILE, LINE);              \
-        }                                                                \
+#define FL_ASSERT_DETAILS_FILE_LINE(e, d, FILE, LINE, ...)                    \
+    do {                                                                      \
+        if (!(e)) {                                                           \
+            char *fl_details_ = fl_details_buf();                             \
+            snprintf(fl_details_, FL_MAX_DETAILS_LENGTH, (d), ##__VA_ARGS__); \
+            fl_throw_assertion((#e), fl_details_, FILE, LINE);                \
+        }                                                                     \
     } while (0)
 
 // Unconditional failure

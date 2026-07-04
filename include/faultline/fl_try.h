@@ -15,10 +15,11 @@
  */
 #include <faultline/fl_exception_service.h> // fl_not_implemented, FL_*_EXCEPTION_SERVICE_FN
 #include <faultline/fl_exception_types.h> // FLExceptionEnvironment, FL_ENTERED/THROWN/HANDLED, FL_MAX_DETAILS_LENGTH
-#include <setjmp.h> // setjmp
-#include <stddef.h> // NULL
-#include <stdio.h>  // snprintf
-#include <string.h> // strcmp
+#include <faultline/fl_macros.h> // FL_THREAD_LOCAL, FL_MAYBE_UNUSED
+#include <setjmp.h>              // setjmp
+#include <stddef.h>              // NULL
+#include <stdio.h>               // snprintf
+#include <string.h>              // strcmp
 
 // The push/pop/throw hooks are the only asymmetry between the platform provider and
 // the consumer accessor; everything below is defined once over them.
@@ -174,29 +175,51 @@ _Static_assert(FL_ENTERED == 0, "FL_TRY requires FL_ENTERED == 0");
     FL_EXC_THROW((reason), NULL, (file), (line))
 
 /**
+ * @brief Per-thread scratch buffer for formatting exception details.
+ *
+ * All detail-formatting macros (FL_THROW_DETAILS, FL_THROW_DETAILS_FILE_LINE,
+ * FL_ASSERT_DETAILS, FL_ASSERT_DETAILS_FILE_LINE) share this single buffer per
+ * thread. Consequences:
+ *  - Two threads formatting details concurrently do not race; each has its own
+ *    buffer (subject to FL_THREAD_LOCAL being effective on the target).
+ *  - A details pointer obtained from a caught exception (FL_DETAILS) is valid
+ *    only until the next detail-formatting throw or assertion on the same
+ *    thread. Code that keeps details longer -- e.g., recording them in a test
+ *    result or summary -- must copy the string.
+ * longjmp never crosses threads, so a catch always reads the buffer of the
+ * thread that formatted it.
+ */
+static inline FL_MAYBE_UNUSED char *fl_details_buf(void) {
+    static FL_THREAD_LOCAL char buf[FL_MAX_DETAILS_LENGTH];
+    return buf;
+}
+
+/**
  * @brief FL_THROW_DETAILS throws reason with details.
  *
- * There is a limit of FL_MAX_DETAILS_LENGTH bytes in the buffer used for formatting the
- * reason.
+ * The details are formatted into the per-thread scratch buffer (fl_details_buf),
+ * limited to FL_MAX_DETAILS_LENGTH bytes; see fl_details_buf for the lifetime
+ * rules.
  *
  * @param reason is the FLExceptionReason string that briefly describes the exception.
  * @param details a string that adds details to the reason why the exception was thrown.
  * If there are arguments passed after details, then the details string is a format
  * string.
  */
-#define FL_THROW_DETAILS(reason, details, ...)                         \
-    do {                                                               \
-        static char _details[FL_MAX_DETAILS_LENGTH];                   \
-        snprintf(_details, sizeof _details, (details), ##__VA_ARGS__); \
-        FL_EXC_THROW((reason), _details, __FILE__, __LINE__);          \
+#define FL_THROW_DETAILS(reason, details, ...)                                  \
+    do {                                                                        \
+        char *fl_details_ = fl_details_buf();                                   \
+        snprintf(fl_details_, FL_MAX_DETAILS_LENGTH, (details), ##__VA_ARGS__); \
+        FL_EXC_THROW((reason), fl_details_, __FILE__, __LINE__);                \
     } while (0)
 
 /**
  * @brief throw an exception where the details is a format string with optional format
  * specifiers.
  *
- * There is a limit of FL_MAX_DETAILS_LENGTH bytes in the buffer used for formatting the
- * reason.
+ * The details are formatted into the per-thread scratch buffer (fl_details_buf),
+ * limited to FL_MAX_DETAILS_LENGTH bytes; see fl_details_buf for the lifetime
+ * rules.
  *
  * @param reason is the FLExceptionReason string that briefly describes the exception.
  * @param details  a string that adds details to the reason why the exception was thrown.
@@ -205,11 +228,11 @@ _Static_assert(FL_ENTERED == 0, "FL_TRY requires FL_ENTERED == 0");
  * @param file is the path to the source file where the exception was thrown.
  * @param line is the line number in the source file where the exception was thrown.
  */
-#define FL_THROW_DETAILS_FILE_LINE(reason, details, file, line, ...) \
-    do {                                                             \
-        static char _details[FL_MAX_DETAILS_LENGTH];                 \
-        snprintf(_details, sizeof _details, details, ##__VA_ARGS__); \
-        FL_EXC_THROW((reason), _details, file, line);                \
+#define FL_THROW_DETAILS_FILE_LINE(reason, details, file, line, ...)          \
+    do {                                                                      \
+        char *fl_details_ = fl_details_buf();                                 \
+        snprintf(fl_details_, FL_MAX_DETAILS_LENGTH, details, ##__VA_ARGS__); \
+        FL_EXC_THROW((reason), fl_details_, file, line);                      \
     } while (0)
 
 #define FL_RETHROW \
