@@ -15,9 +15,9 @@
 #include <flp_log_service.h> // for FLP_INIT_LOG_SERVICE_FN, flp_con...
 #include <stdarg.h>          // for va_end, va_list, va_start
 #include <stdbool.h>         // for false, bool, true
-#include <stdio.h>           // for fprintf, NULL, fflush, FILE, stdout
+#include <stdio.h>           // for fprintf, snprintf, NULL, fflush, FILE, stdout
 #include <stdlib.h>          // for abort
-#include <string.h>          // for strrchr, strerror_s
+#include <string.h>          // for strrchr, strerror_s, strerror
 #include <time.h>            // for localtime, strftime, time, time_t
 
 #if defined(_WIN32) || defined(WIN32)
@@ -26,12 +26,16 @@
 #endif
 #include <windows.h>           // IWYU pragma: keep - sets target architecture
 #include <processthreadsapi.h> // for GetCurrentThreadId
-#endif
 
 #define __STDC_WANT_LIB_EXT1__ 1
 #include <corecrt.h> // for errno_t
 #if defined(__clang__) || defined(__GNUC__)
 #include <sec_api/stdio_s.h> // for fopen_s
+#endif
+#else  // POSIX
+#include <errno.h>   // for errno
+#include <pthread.h> // for pthread_self
+#include <stdint.h>  // for uintptr_t
 #endif
 
 FL_WRITE_LOG_FN(flp_write_log);
@@ -156,10 +160,24 @@ void flp_log_set_output_path(char const *path) {
 #ifdef __STDC_LIB_EXT1__
     constraint_handler_t previous_handler = set_constraint_handler_s(constraint_handler);
 #endif
+#if defined(_WIN32) || defined(WIN32)
     errno_t error = fopen_s(&file, path, "a+");
+#else
+    int error = 0;
+    file      = fopen(path, "a+");
+    if (file == NULL) {
+        error = errno;
+    }
+#endif
     if (error != 0) {
         char buf[256] = {0};
+#if defined(_WIN32) || defined(WIN32)
         strerror_s(buf, sizeof buf, error);
+#else
+        // strerror is not thread-safe, but this is a configuration-time call and
+        // the result is copied out immediately.
+        snprintf(buf, sizeof buf, "%s", strerror(error));
+#endif
         fprintf(stderr, "Error: failed to open %s (error: %s); falling back to stdout\n",
                 path, buf);
         file = stdout;
