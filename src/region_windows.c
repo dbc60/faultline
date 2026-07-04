@@ -8,12 +8,13 @@
  *
  * See LICENSE.txt for copyright and licensing information about this file.
  */
-#include <faultline/fl_abbreviated_types.h>        // for u32
+#include <faultline/fl_abbreviated_types.h>        // for u32, u64
 #include <faultline/fl_exception_service_assert.h> // for FL_ASSERT*
 #include <faultline/fl_threads.h>                  // for mtx_init, WIN32_LEAN_AND_MEAN
 #include <faultline/fl_try.h>                      // for FL_THROW_DETAILS, FL_THROW
 #include <stdatomic.h>                             // for atomic_fetch_add
 #include <stddef.h>                                // for size_t, NULL, ptrdiff_t
+#include <stdint.h>                                // for UINT32_MAX
 #include "bits.h"                                  // for ALIGN_UP, ALIGN_DOWN
 #include <faultline/fl_exception_service.h>        // for fl_internal_error
 #include "region.h"                                // for Region, region_initializati...
@@ -43,27 +44,28 @@ Region *new_custom_region(size_t commit, u32 reserve, u32 granularity_multiplier
 
     get_memory_info(&granularity, &page_size);
     if (granularity_multiplier > 1) {
-        applied_granularity = granularity * granularity_multiplier;
-        // detect unsigned overflow
-        if (applied_granularity < granularity) {
+        // The u32 product can exceed 32 bits yet wrap to a plausible-looking
+        // value (e.g., 64 KiB * 65537 wraps to exactly 64 KiB), so compute it
+        // in 64 bits and reject any product that does not fit in a u32.
+        u64 applied = (u64)granularity * granularity_multiplier;
+        if (applied > UINT32_MAX) {
             FL_THROW_DETAILS(region_initialization_failure,
-                             "Granularity overflow - expected applied granularity >= "
-                             "granularity, actual %u < %u",
-                             applied_granularity, granularity);
+                             "granularity %u * multiplier %u overflows 32 bits",
+                             granularity, granularity_multiplier);
         }
+        applied_granularity = (u32)applied;
     } else {
         applied_granularity = granularity;
     }
 
     if (page_size_multiplier > 1) {
-        applied_page_size = page_size * page_size_multiplier;
-        // detect unsigned overflow
-        if (applied_page_size < page_size) {
+        u64 applied = (u64)page_size * page_size_multiplier;
+        if (applied > UINT32_MAX) {
             FL_THROW_DETAILS(region_initialization_failure,
-                             "Page size overflow - expected applied page size >= "
-                             "page size, actual %u < %u",
-                             applied_page_size, page_size);
+                             "page size %u * multiplier %u overflows 32 bits", page_size,
+                             page_size_multiplier);
         }
+        applied_page_size = (u32)applied;
     } else {
         applied_page_size = page_size;
     }
@@ -71,8 +73,8 @@ Region *new_custom_region(size_t commit, u32 reserve, u32 granularity_multiplier
     // final page size must be no larger than the final granularity.
     if (applied_page_size > applied_granularity) {
         FL_THROW_DETAILS(region_initialization_failure,
-                         "Page size >= granularity, actual %u < %u", applied_page_size,
-                         applied_granularity);
+                         "Expected page size <= granularity, actual %u > %u",
+                         applied_page_size, applied_granularity);
     }
 
     // Round up the commit-request to the minimum alignment.
@@ -83,7 +85,7 @@ Region *new_custom_region(size_t commit, u32 reserve, u32 granularity_multiplier
     // of the granularity.
     to_reserve = (size_t)reserve * (size_t)applied_granularity
                  + ALIGN_UP(to_commit, applied_granularity);
-    top = VirtualAlloc(0, to_reserve, MEM_RESERVE, PAGE_NOACCESS);
+    top        = VirtualAlloc(0, to_reserve, MEM_RESERVE, PAGE_NOACCESS);
     if (top == NULL) {
         FL_THROW(region_initialization_failure);
     }

@@ -196,6 +196,49 @@ FL_TEST("Page Size Overflow", test_page_size_overflow) {
     FL_END_TRY;
 }
 
+// A multiplier whose 32-bit product wraps to a value at or above the original
+// granularity looks plausible after the wrap (here the product is
+// 2^32 + granularity, which wraps to exactly granularity); the overflow check
+// must reject it.
+FL_TEST("Granularity Overflow Wraps Past", test_granularity_overflow_wraps_past) {
+    u32 granularity, page_size;
+    get_memory_info(&granularity, &page_size);
+
+    // Wraps u32 to exactly granularity (product = 2^32 + granularity)
+    u32 overflow_mult = (u32)(0x100000000ULL / granularity) + 1;
+
+    FL_TRY {
+        Region *r = new_custom_region(0, 0, overflow_mult, 0);
+        release_region(r);
+        FL_FAIL("Expected region_initialization_failure for granularity overflow");
+    }
+    FL_CATCH(region_initialization_failure) {
+        // expected
+    }
+    FL_END_TRY;
+}
+
+// The page-size analogue: the product wraps to exactly page_size, which also
+// satisfies the page-size <= granularity check, so only the overflow check can
+// reject this multiplier.
+FL_TEST("Page Size Overflow Wraps Past", test_page_size_overflow_wraps_past) {
+    u32 granularity, page_size;
+    get_memory_info(&granularity, &page_size);
+
+    // Wraps u32 to exactly page_size (product = 2^32 + page_size)
+    u32 overflow_mult = (u32)(0x100000000ULL / page_size) + 1;
+
+    FL_TRY {
+        Region *r = new_custom_region(0, 0, 0, overflow_mult);
+        release_region(r);
+        FL_FAIL("Expected region_initialization_failure for page size overflow");
+    }
+    FL_CATCH(region_initialization_failure) {
+        // expected
+    }
+    FL_END_TRY;
+}
+
 FL_TEST("Page Size > Granularity", test_page_gt_granularity) {
     u32 granularity, page_size;
     get_memory_info(&granularity, &page_size);
@@ -472,6 +515,8 @@ FL_SUITE_ADD_EMBEDDED(test_region_to_mem_alignment)
 FL_SUITE_ADD_EMBEDDED(test_available_after_full_commit)
 FL_SUITE_ADD(test_granularity_overflow)
 FL_SUITE_ADD(test_page_size_overflow)
+FL_SUITE_ADD(test_granularity_overflow_wraps_past)
+FL_SUITE_ADD(test_page_size_overflow_wraps_past)
 FL_SUITE_ADD(test_page_gt_granularity)
 FL_SUITE_ADD(test_region_aligned_size)
 FL_SUITE_ADD(test_custom_multiplier_one)
