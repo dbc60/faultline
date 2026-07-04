@@ -716,7 +716,8 @@ void faultline_record_test_summary(sqlite3 *db, int run_id, FLTestSummary *summa
                     Fault *fault = fault_buffer_get(&summary->fault_buffer, f);
                     if (fault != NULL) {
                         LOG_DEBUG(faultline_db,
-                                  "Fault %zu: file=%s, line=%d, reason=%s, resource=%p",
+                                  "Fault %zu: file=%s, line=%d, reason=%s, details=%s, "
+                                  "resource=%p",
                                   f, fault->file ? fault->file : "NULL", fault->line,
                                   fault->reason ? fault->reason : "NULL",
                                   fault->details ? fault->details : "NULL",
