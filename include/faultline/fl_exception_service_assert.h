@@ -125,14 +125,14 @@ FL_THROW_EXCEPTION_SERVICE_FN(fl_throw_assertion);
 #define FL_ASSERT_ZERO_INT32(V)   FL_ASSERT_ZERO_TYPED((V), "%" PRId32)
 #define FL_ASSERT_ZERO_INT64(V)   FL_ASSERT_ZERO_TYPED((V), "%" PRId64)
 #define FL_ASSERT_ZERO_SIZE_T(V)  FL_ASSERT_ZERO_TYPED((V), "%zu")
-#define FL_ASSERT_ZERO_PTRDIFF(V) FL_ASSERT_ZERO_TYPED((V), "%" PRId64)
+#define FL_ASSERT_ZERO_PTRDIFF(V) FL_ASSERT_ZERO_TYPED((V), "%t")
 #define FL_ASSERT_ZERO_UINT(V)    FL_ASSERT_ZERO_TYPED((V), "%u")
 #define FL_ASSERT_ZERO_UINT8(V)   FL_ASSERT_ZERO_TYPED((V), "%" PRIu8)
 #define FL_ASSERT_ZERO_UINT16(V)  FL_ASSERT_ZERO_TYPED((V), "%" PRIu16)
 #define FL_ASSERT_ZERO_UINT32(V)  FL_ASSERT_ZERO_TYPED((V), "%" PRIu32)
 #define FL_ASSERT_ZERO_UINT64(V)  FL_ASSERT_ZERO_TYPED((V), "%" PRIu64)
-#define FL_ASSERT_ZERO_INTPTR(V)  FL_ASSERT_ZERO_TYPED((V), "%" PRId64)
-#define FL_ASSERT_ZERO_UINTPTR(V) FL_ASSERT_ZERO_TYPED((V), "%" PRIu64)
+#define FL_ASSERT_ZERO_INTPTR(V)  FL_ASSERT_ZERO_TYPED((V), "%" PRIdPTR)
+#define FL_ASSERT_ZERO_UINTPTR(V) FL_ASSERT_ZERO_TYPED((V), "%" PRIuPTR)
 
 #define FL_ASSERT_NON_ZERO_TYPED(V, FMT)                                                \
     do {                                                                                \
