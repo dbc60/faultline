@@ -9,13 +9,13 @@
 #include <faultline/fl_log.h>                      // LOG_ERROR, LOG_WARN, LOG_INFO
 #include <faultline/fl_macros.h>                   // FL_UNUSED
 #include <faultline/fl_result_codes.h>             // FL_PASS
-#include <faultline/fl_test.h>                      // FLTestSuite, FLTestCase
-#include <faultline/fl_test_summary.h>             // FLTestSummary, faultline_test_summary_buffer_get
-#include <faultline/fl_try.h>                      // FL_THROW (selects flp_ backstop)
-#include <stdio.h>                                 // FILE, fputs, fputc, FILENAME_MAX
-#include <cwalk/include/cwalk.h>                   // cwk_path_normalize, cwk_path_*
-#include "flp_time.h"                              // fl_gmtime
-#include "output_junit.h"                          // JUnitXML
+#include <faultline/fl_test.h>                     // FLTestSuite, FLTestCase
+#include <faultline/fl_test_summary.h> // FLTestSummary, faultline_test_summary_buffer_get
+#include <faultline/fl_try.h>          // FL_THROW (selects flp_ backstop)
+#include <stdio.h>                     // FILE, fputs, fputc, FILENAME_MAX
+#include <cwalk/include/cwalk.h>       // cwk_path_normalize, cwk_path_*
+#include "flp_time.h"                  // fl_gmtime
+#include "output_junit.h"              // JUnitXML
 
 #define TIMESTAMP_SIZE   32
 #define TIMESTAMP_FORMAT "%Y-%m-%dT%H:%M:%SZ" // ISO 8601 for XML content
@@ -120,7 +120,6 @@ int junit_begin(JUnitXML *junit) {
         size_t     written = fwrite(xml_decl, sizeof(char), length, junit->file);
         if (written < length) {
             LOG_ERROR(JUNIT_MODULE, "wrote %zu bytes, expected %zu", written, length);
-            junit_close(junit);
             rc = -1;
         }
 
@@ -130,7 +129,6 @@ int junit_begin(JUnitXML *junit) {
             if (written < length) {
                 LOG_ERROR(JUNIT_MODULE, "wrote %zu bytes, expected %zu", written,
                           length);
-                junit_close(junit);
                 rc = -1;
             }
         }
@@ -199,8 +197,9 @@ int junit_write(JUnitXML *junit, FLContext *fctx) {
         for (size_t i = 0; i < results_count; i++) {
             FLTestSummary const *summary
                 = faultline_test_summary_buffer_get(&fctx->results, i);
-            char const *case_name
-                = (summary->index < ts->count) ? ts->test_cases[summary->index]->name : "";
+            char const *case_name = (summary->index < ts->count)
+                                        ? ts->test_cases[summary->index]->name
+                                        : "";
 
             fputs("        <testcase name=\"", junit->file);
             xml_write_escaped(junit->file, case_name);
