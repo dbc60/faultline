@@ -692,6 +692,11 @@ void *arena_aligned_alloc_throw(Arena *arena, size_t alignment, size_t size,
 
     arena_free_throw(arena, raw, file, line);
 
+    // Freeing the gap chunk decremented the allocation count, but the aligned chunk
+    // carved from the same allocation is still outstanding; restore the count so the
+    // caller's eventual free balances it instead of underflowing.
+    arena->allocations++;
+
     return (void *)aligned_addr;
 }
 
