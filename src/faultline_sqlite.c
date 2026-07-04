@@ -18,7 +18,7 @@
 #include <sqlite/sqlite3.h>                 // for sqlite3_bind_int, sqlite3_column...
 #include <stdbool.h>                        // for bool
 #include <stdio.h>                          // for printf, NULL, snprintf, size_t
-#include <string.h>                         // for strcpy_s, strrchr, strlen, strcat_s
+#include <string.h>                         // for strcpy_s, strrchr, strlen
 #include <time.h>                           // for time_t
 #include <faultline/fl_abbreviated_types.h> // for u32, i64
 #include <faultline/fl_exception_service.h> // for FL_REASON
@@ -1346,7 +1346,9 @@ void faultline_show_test_failures(sqlite3 *db, char const *suite_name, int limit
         return;
     }
 
-    // Build the base SQL query with optional filtering for recent runs only
+    // Build the base SQL query with optional filtering for recent runs only. The
+    // suite filter is bound as ?1 by prepare_suite_report (NULL means all suites),
+    // like the other report queries, so a suite name is never spliced into the SQL.
     char const *base_sql;
     if (show_all_history) {
         base_sql = "SELECT rtr.id, ts.suite_name, rts.test_name, rts.result_code, "
@@ -1356,8 +1358,9 @@ void faultline_show_test_failures(sqlite3 *db, char const *suite_name, int limit
                    "JOIN raw_test_runs rtr ON rts.run_id = rtr.id "
                    "JOIN test_suites ts ON rtr.suite_id = ts.suite_id "
                    "LEFT JOIN raw_faults rf ON rts.id = rf.summary_id "
-                   "WHERE rts.result_code > 1"; // Exclude FL_NOT_RUN (0) and
-                                                // FL_PASS (1)
+                   "WHERE (?1 IS NULL OR ts.suite_name = ?1) "
+                   "AND rts.result_code > 1 " // Exclude FL_NOT_RUN (0) and FL_PASS (1)
+                   "ORDER BY rtr.timestamp DESC";
     } else {
         // Default: show only failures from the most recent test run per suite
         base_sql = "SELECT rtr.id, ts.suite_name, rts.test_name, rts.result_code, "
@@ -1367,35 +1370,19 @@ void faultline_show_test_failures(sqlite3 *db, char const *suite_name, int limit
                    "JOIN raw_test_runs rtr ON rts.run_id = rtr.id "
                    "JOIN test_suites ts ON rtr.suite_id = ts.suite_id "
                    "LEFT JOIN raw_faults rf ON rts.id = rf.summary_id "
-                   "WHERE rts.result_code > 1 "
+                   "WHERE (?1 IS NULL OR ts.suite_name = ?1) "
+                   "AND rts.result_code > 1 " // Exclude FL_NOT_RUN (0) and FL_PASS (1)
                    "AND rtr.timestamp >= ("
                    "    SELECT MAX(rtr2.timestamp) "
                    "    FROM raw_test_runs rtr2 "
                    "    WHERE rtr2.suite_id = rtr.suite_id"
-                   ")";
+                   ") "
+                   "ORDER BY rtr.timestamp DESC";
     }
 
-    char query[1024]; // Increased buffer size for longer SQL queries with subqueries
-    if (suite_name != NULL) {
-        snprintf(query, sizeof query, "%s AND ts.suite_name = '%s'", base_sql,
-                 suite_name);
-    } else {
-        strcpy_s(query, sizeof query, base_sql);
-    }
-
-    if (limit > 0) {
-        char limit_clause[64];
-        snprintf(limit_clause, sizeof limit_clause,
-                 " ORDER BY rtr.timestamp DESC LIMIT %d", limit);
-        strcat_s(query, sizeof query, limit_clause);
-    } else {
-        strcat_s(query, sizeof query, " ORDER BY rtr.timestamp DESC");
-    }
-
-    sqlite3_stmt *stmt;
-    int           rc = sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
-    if (rc != SQLITE_OK) {
-        printf("Error preparing query: %s\n", sqlite3_errmsg(db));
+    sqlite3_stmt *stmt = prepare_suite_report(db, base_sql, suite_name, limit);
+    if (stmt == NULL) {
+        printf("Error preparing query\n");
         return;
     }
 
