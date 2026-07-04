@@ -10,6 +10,7 @@
 #include <faultline/fla_log_service.h> // fla_set_log_service declaration
 #include <faultline/fl_log_service.h>  // for FLLogService, FLA_SET_LOG_SERVICE_FN
 #include <faultline/fl_macros.h>       // for FL_UNUSED, FL_DECL_SPEC
+#include <stddef.h>                    // for NULL
 #include <stdio.h>                     // for fprintf, stderr
 #include <stdlib.h>                    // for abort
 
@@ -29,11 +30,18 @@ FLLogService g_fla_log_service = {
 };
 
 FL_DECL_SPEC FLA_SET_LOG_SERVICE_FN(fla_set_log_service) {
+    if (svc == NULL) {
+        fprintf(stderr, "invalid log service - NULL service address\n");
+        fflush(stderr);
+        abort();
+    }
     if (size < sizeof(FLLogService)) {
         fprintf(stderr, "invalid log service - expected %zu bytes, received %zu\n",
                 sizeof(FLLogService), size);
         fflush(stderr);
         abort();
     }
-    g_fla_log_service.write = svc->write;
+    // Whole-struct copy: the size check accepts a larger (newer) provider struct,
+    // and copying the whole prefix picks up every field this consumer knows about.
+    g_fla_log_service = *svc;
 }

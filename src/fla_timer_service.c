@@ -10,6 +10,7 @@
 #include <faultline/fla_timer_service.h> // for fla_set_timer_service declaration
 #include <faultline/fl_timer_service.h>  // for FLTimestamp, FLTimerService, etc.
 #include <faultline/fl_macros.h>         // for FL_UNUSED, FL_DECL_SPEC
+#include <stddef.h>                      // for NULL
 #include <stdio.h>                       // for fprintf, stderr
 #include <stdlib.h>                      // for abort
 
@@ -32,6 +33,11 @@ FLTimerService g_fla_timer_service
     = {.now = default_now, .elapsed_seconds = default_elapsed_seconds};
 
 FL_DECL_SPEC FLA_SET_TIMER_SERVICE_FN(fla_set_timer_service) {
+    if (svc == NULL) {
+        fprintf(stderr, "invalid timer service - NULL service address\n");
+        fflush(stderr);
+        abort();
+    }
     if (size < sizeof(FLTimerService)) {
         fprintf(stderr, "invalid timer service - expected %zu bytes, received %zu\n",
                 sizeof(FLTimerService), size);
