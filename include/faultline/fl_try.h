@@ -35,16 +35,29 @@
     g_fla_exception_service.throw_exc(reason, details, file, line)
 #endif // FL_PLATFORM_BUILD
 
+// FL_TRY relies on {0}-initialization of FLExceptionEnvironment leaving state ==
+// FL_ENTERED on setjmp's first return.
+#if defined(__cplusplus)
+static_assert(FL_ENTERED == 0, "FL_TRY requires FL_ENTERED == 0");
+#else
+_Static_assert(FL_ENTERED == 0, "FL_TRY requires FL_ENTERED == 0");
+#endif
+
 /**
  * @brief Start a new try/catch section.
  *
- * FL_TRY creates a local FLExceptionEnvironment on the program stack and pushes it
- * to the top of the exception stack. It then calls setjmp to initialize the local
- * frame's jump buffer and compares the result in fl_env_.state to FL_ENTERED (zero).
- * If so, execution continues with the code in the FL_TRY block.
+ * FL_TRY creates a local FLExceptionEnvironment on the program stack with its state
+ * pre-set to FL_ENTERED (by zero-initialization), pushes it to the top of the
+ * exception stack, and calls setjmp to initialize the frame's jump buffer.
  *
- * If setjmp returns non-zero (FL_THROWN), an exception was thrown via longjmp (see
- * the throw hook). A matching FL_CATCH/FL_CATCH_ALL then sets fl_env_.state to
+ * The setjmp invocation appears only as `setjmp(...) != 0`, one of the contexts
+ * C11 7.13.1.1p4 permits; assigning its result to a variable would be undefined
+ * behavior. On the first return setjmp yields 0, the branch is not taken, and
+ * state remains FL_ENTERED, so execution continues with the code in the FL_TRY
+ * block. When an exception is thrown, longjmp (see the throw hook) returns through
+ * setjmp with a non-zero value and state is set to FL_THROWN. The state member is
+ * volatile-qualified, so that store is preserved across the longjmp (C11
+ * 7.13.2.1p3). A matching FL_CATCH/FL_CATCH_ALL then sets fl_env_.state to
  * FL_HANDLED and runs the handler.
  */
 #define FL_TRY                                               \
@@ -52,7 +65,9 @@
         FLExceptionEnvironment fl_env_ = {0};                \
         fl_env_.reason                 = fl_not_implemented; \
         FL_EXC_PUSH(&fl_env_);                               \
-        fl_env_.state = setjmp(fl_env_.jmp);                 \
+        if (setjmp(fl_env_.jmp) != 0) {                      \
+            fl_env_.state = FL_THROWN;                       \
+        }                                                    \
         if (fl_env_.state == FL_ENTERED) {
 /**
  * @brief Catch a specific exception by pointer identity.
