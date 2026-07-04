@@ -106,8 +106,9 @@ void flp_log_init_custom(FLLogLevel level, char const *path) {
         g_logger.enabled   = true;
         g_logger.min_level = level;
         if (path != NULL) {
+            // flp_log_set_output_path owns close_output: it sets the flag only
+            // when the file actually opened, and clears it on the stdout fallback.
             flp_log_set_output_path(path);
-            g_logger.close_output = true;
         } else {
             g_logger.output       = stdout;
             g_logger.close_output = false;
@@ -162,6 +163,9 @@ void flp_log_set_output_path(char const *path) {
         fprintf(stderr, "Error: failed to open %s (error: %s); falling back to stdout\n",
                 path, buf);
         file = stdout;
+        // stdout is not ours to close; without this, flp_log_cleanup would
+        // fclose(stdout) whenever a stale flag was left set.
+        g_logger.close_output = false;
     } else {
         g_logger.close_output = true;
     }
