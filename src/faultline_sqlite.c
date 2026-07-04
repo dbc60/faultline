@@ -370,7 +370,10 @@ int faultline_record_test_run_start(sqlite3 *db, char const *suite_name,
     struct tm *tm_info = fl_gmtime(&start_time, &tm_result);
     char       timestamp[32];
     if (tm_info) {
-        strftime(timestamp, sizeof(timestamp), "%Y-%m-%dT%H:%M:%SZ", tm_info);
+        // Match SQLite's CURRENT_TIMESTAMP text format (UTC, no 'T'/'Z') so rows
+        // written here and rows written by the column default compare uniformly
+        // in the report queries' raw string comparisons.
+        strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", tm_info);
     }
 
     FL_TRY {
@@ -403,11 +406,10 @@ int faultline_record_test_run_start(sqlite3 *db, char const *suite_name,
             // Create test run record
             char const *insert_run_sql
                 = "INSERT INTO raw_test_runs ("
-                  "    suite_id, test_cases, tests_run, tests_passed, "
-                  "tests_passed_with_leaks, "
-                  "    tests_failed, setups_failed, cleanups_failed, total_fault_sites, "
-                  "    total_elapsed_time"
-                  ") VALUES (?, ?, 0, 0, 0, 0, 0, 0, 0, 0.0);";
+                  "    suite_id, timestamp, test_cases, tests_run, tests_passed, "
+                  "    tests_passed_with_leaks, tests_failed, setups_failed, "
+                  "    cleanups_failed, total_fault_sites, total_elapsed_time"
+                  ") VALUES (?, ?, 0, 0, 0, 0, 0, 0, 0, 0, 0.0);";
 
             rc = sqlite3_prepare_v2(db, insert_run_sql, -1, &stmt, NULL);
             if (rc == SQLITE_OK) {
