@@ -15,14 +15,20 @@
 #include <stdint.h>                                // for SIZE_MAX
 #include <string.h>                                // for NULL, size_t, memcpy
 
-// 12 is an arbitrary number of elements to increase the capacity of a Buffer.
-#define INCREASE_CAPACITY_BY 12
+// Minimum capacity after any growth: a small buffer jumps straight here so its
+// first several puts share one allocation.
+#define BUFFER_MIN_CAPACITY 12
 
 /**
- * @brief increase the capacity of a Buffer by count elements.
+ * @brief increase the capacity of a Buffer so it holds at least count more elements.
+ *
+ * The new capacity is the largest of the required capacity, 1.5x the current
+ * capacity, and BUFFER_MIN_CAPACITY (the latter two only where they still fit in
+ * size_t bytes), so a loop of single-element puts performs O(log n) reallocations
+ * and copies O(n) bytes overall.
  *
  * @param buf the Buffer to enlarge.
- * @param count the number of elements to add to the buf.
+ * @param count the minimum number of elements to add to buf's capacity.
  */
 static void increase_capacity(Buffer *buf, size_t count) {
     FL_ASSERT_NOT_NULL(buf);
@@ -33,16 +39,25 @@ static void increase_capacity(Buffer *buf, size_t count) {
         "buffer capacity overflow: count: %zu, element size: %zu, capacity: %zu", count,
         buf->element_size, buf->capacity);
 
+    size_t new_capacity = buf->capacity + count;
+    size_t geometric    = buf->capacity + buf->capacity / 2;
+    if (geometric > new_capacity && geometric <= SIZE_MAX / buf->element_size) {
+        new_capacity = geometric;
+    }
+    if (new_capacity < BUFFER_MIN_CAPACITY
+        && BUFFER_MIN_CAPACITY <= SIZE_MAX / buf->element_size) {
+        new_capacity = BUFFER_MIN_CAPACITY;
+    }
+
     if (buf->capacity == 0) {
         FL_ASSERT_NULL(buf->mem);
-        buf->mem      = ARENA_MALLOC_THROW(buf->arena, count * buf->element_size);
-        buf->capacity = count;
+        buf->mem = ARENA_MALLOC_THROW(buf->arena, new_capacity * buf->element_size);
     } else {
         FL_ASSERT_NOT_NULL(buf->mem);
         buf->mem = ARENA_REALLOC_THROW(buf->arena, buf->mem,
-                                       (buf->capacity + count) * buf->element_size);
-        buf->capacity += count;
+                                       new_capacity * buf->element_size);
     }
+    buf->capacity = new_capacity;
 }
 
 Buffer *new_buffer(Arena *arena, size_t capacity, size_t element_size) {
@@ -83,7 +98,7 @@ void *buffer_put(Buffer *buf, void const *elem) {
 
     // If the buf is full, increase its capacity.
     if (buf->count == buf->capacity) {
-        increase_capacity(buf, INCREASE_CAPACITY_BY);
+        increase_capacity(buf, 1);
     }
 
     void *p = buf->mem + buf->count * buf->element_size;
@@ -97,7 +112,7 @@ void *buffer_allocate_next_free_slot(Buffer *buf) {
 
     // If the buf is full, increase its capacity.
     if (buf->count == buf->capacity) {
-        increase_capacity(buf, INCREASE_CAPACITY_BY);
+        increase_capacity(buf, 1);
     }
 
     void *p = buf->mem + buf->count * buf->element_size;
