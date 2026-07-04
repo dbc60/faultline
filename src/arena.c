@@ -982,7 +982,7 @@ void *arena_malloc_throw(Arena *arena, size_t request, char const *file, int lin
             mem = CHUNK_TO_MEMORY(ch);
         } else {
             if (!DLIST_IS_EMPTY(&arena->region_list)) {
-                DList      *entry = &arena->region_list;
+                DList      *entry = DLIST_NEXT(&arena->region_list);
                 RegionNode *rn    = NULL;
                 while (entry != &arena->region_list) {
                     rn = FL_CONTAINER_OF(entry, RegionNode, link);
