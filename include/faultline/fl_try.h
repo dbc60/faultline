@@ -14,11 +14,11 @@
  * the same either way.
  */
 #include <faultline/fl_exception_service.h> // fl_not_implemented, FL_*_EXCEPTION_SERVICE_FN
-#include <faultline/fl_exception_types.h>   // FLExceptionEnvironment, FL_ENTERED/THROWN/HANDLED, FL_MAX_DETAILS_LENGTH
-#include <setjmp.h>                         // setjmp
-#include <stddef.h>                         // NULL
-#include <stdio.h>                          // snprintf
-#include <string.h>                         // strcmp
+#include <faultline/fl_exception_types.h> // FLExceptionEnvironment, FL_ENTERED/THROWN/HANDLED, FL_MAX_DETAILS_LENGTH
+#include <setjmp.h> // setjmp
+#include <stddef.h> // NULL
+#include <stdio.h>  // snprintf
+#include <string.h> // strcmp
 
 // The push/pop/throw hooks are the only asymmetry between the platform provider and
 // the consumer accessor; everything below is defined once over them.
