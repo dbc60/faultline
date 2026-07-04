@@ -316,6 +316,10 @@ FL_EXERCISE_TEST(faultline_run_test) {
         test_result_clear(&injection_setup_cleanup);
         test_result_clear(&injection_result);
 
+        // Clear the previous pass's sample so a setup failure in this pass reports
+        // zero elapsed time rather than the prior pass's.
+        test_timer = (WinTimer){0};
+
         FL_TRY {
             rc = run_timed_test(fctx, &test_timer, &injection_setup_cleanup,
                                 &injection_result, FL_INJECTION_PHASE);
