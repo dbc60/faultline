@@ -23,6 +23,9 @@
 #include <faultline/fl_exception_types.h>          // for FLExceptionEnvironment, FL_...
 #include <faultline/fl_macros.h>                   // FL_THREAD_LOCAL
 #include <setjmp.h>                                // for longjmp
+#include <stddef.h>                                // for NULL
+#include <stdio.h>                                 // for fprintf, fflush, stderr
+#include <stdlib.h>                                // for abort
 
 static FL_THREAD_LOCAL FLExceptionEnvironment *g_stack;
 
@@ -44,7 +47,21 @@ FL_POP_EXCEPTION_SERVICE_FN(flp_pop) {
 
 FL_THROW_EXCEPTION_SERVICE_FN(flp_throw) {
     FLExceptionEnvironment *env = g_stack;
-    g_stack                     = env->next;
+
+    // The stack is thread-local, so this fires both for a throw with no enclosing
+    // FL_TRY and for a throw on a thread whose stack was never established. Report
+    // the throw site before dying; a bare null dereference would discard it.
+    if (env == NULL) {
+        fprintf(stderr, "FL_THROW with no enclosing FL_TRY on this thread: %s (%s:%d)\n",
+                reason, file, line);
+        if (details != NULL) {
+            fprintf(stderr, "  details: %s\n", details);
+        }
+        fflush(stderr);
+        abort();
+    }
+
+    g_stack = env->next;
     env->reason                 = reason;
     env->details                = details;
     env->file                   = file;

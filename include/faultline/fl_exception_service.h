@@ -61,11 +61,11 @@ extern FLExceptionReason fl_invalid_address;
 /**
  * @brief Exception handling service provided by the test driver.
  *
- * The driver owns this struct and populates it with:
- * - stack: linked list of exception environments (initially NULL)
- * - handler: function to call when exception stack is empty (unhandled exception)
- * - ctx: driver's opaque context passed to handler
- * - Function pointers for push/pop/throw operations
+ * The driver owns this struct and populates it with the push/pop/throw function
+ * pointers. The exception-environment stack itself is thread-local state owned by
+ * the platform provider, not carried in this struct. Throwing with no environment
+ * pushed on the current thread is a programming error: the provider reports the
+ * throw site to stderr and aborts.
  */
 typedef struct FLExceptionService FLExceptionService;
 
