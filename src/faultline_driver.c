@@ -118,12 +118,13 @@ static FLResultCode run_timed_test(FLContext *fctx, WinTimer *timer,
  *
  */
 FL_EXERCISE_TEST(faultline_run_test) {
-    FaultInjector *injector = fctx->injector;
-    WinTimer       run_timer, test_timer;
-    bool           triggered = false;
+    FaultInjector *injector   = fctx->injector;
+    WinTimer       run_timer  = {0};
+    WinTimer       test_timer = {0}; // stays zero (0 elapsed) if setup fails before start
+    bool           triggered  = false;
     FLTestSummary  summary;
     i64            total_fault_sites = 0;
-    FLResultCode   rc;
+    FLResultCode   rc                = FL_FAIL;
 
     LOG_DEBUG("Run Test", "run test %s", fctx->ts->test_cases[fctx->index]->name);
     if (injector == NULL || !fault_injector_is_initialized(injector)) {
@@ -167,7 +168,7 @@ FL_EXERCISE_TEST(faultline_run_test) {
                             FL_DISCOVERY_PHASE);
     }
     FL_CATCH(setup_failure) {
-        // continue
+        rc = FL_FAIL; // run_timed_test threw before returning, so rc was not assigned
     }
     FL_END_TRY;
 
@@ -320,7 +321,7 @@ FL_EXERCISE_TEST(faultline_run_test) {
                                 &injection_result, FL_INJECTION_PHASE);
         }
         FL_CATCH(setup_failure) {
-            // continue
+            rc = FL_FAIL; // run_timed_test threw before returning, so rc was not assigned
         }
         FL_END_TRY;
 
