@@ -20,6 +20,7 @@
 
 extern FLExceptionReason command_unknown;
 extern FLExceptionReason command_error;
+extern FLExceptionReason command_out_of_memory;
 
 typedef struct RuntimeCommand RuntimeCommand;
 typedef struct FormalCommand  FormalCommand;

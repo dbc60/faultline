@@ -20,8 +20,9 @@
 #include <string.h>                       // for strcmp, strchr
 #include <faultline/fl_exception_types.h> // for FLExceptionReason
 
-FLExceptionReason command_unknown = "unknown command";
-FLExceptionReason command_error   = "command error";
+FLExceptionReason command_unknown       = "unknown command";
+FLExceptionReason command_error         = "command error";
+FLExceptionReason command_out_of_memory = "command parser out of memory";
 
 /**
  * @brief search the array of formals for the named command
@@ -102,6 +103,7 @@ static bool is_option(char const *str) {
  * @param consumed_out set to number of argv elements consumed (1 or 2)
  * @return RuntimeOption* newly allocated RuntimeOption, or NULL if not an option
  * @throw command_error if option is invalid or missing required argument
+ * @throw command_out_of_memory if an allocation fails
  */
 static RuntimeOption *parse_option(FormalCommand const *cmd, char **argv,
                                    int argc_remaining, int *consumed_out) {
@@ -133,7 +135,7 @@ static RuntimeOption *parse_option(FormalCommand const *cmd, char **argv,
             size_t name_len  = equals - option_name;
             char  *name_copy = malloc(name_len + 1);
             if (name_copy == NULL) {
-                return NULL;
+                FL_THROW(command_out_of_memory);
             }
             strncpy_s(name_copy, name_len + 1, option_name, name_len);
             name_copy[name_len] = '\0';
@@ -145,7 +147,7 @@ static RuntimeOption *parse_option(FormalCommand const *cmd, char **argv,
         // Parse short form: -o or -o=value
         char *short_name = malloc(2);
         if (short_name == NULL) {
-            return NULL;
+            FL_THROW(command_out_of_memory);
         }
         short_name[0]  = arg[1];
         short_name[1]  = '\0';
@@ -181,7 +183,7 @@ static RuntimeOption *parse_option(FormalCommand const *cmd, char **argv,
     // Allocate and populate RuntimeOption
     RuntimeOption *runtime_opt = malloc(sizeof(RuntimeOption));
     if (runtime_opt == NULL) {
-        return NULL;
+        FL_THROW(command_out_of_memory);
     }
     runtime_opt->option = formal;
     runtime_opt->arg    = option_arg;
@@ -203,9 +205,10 @@ static RuntimeOption *parse_option(FormalCommand const *cmd, char **argv,
  * @param formals the table of built-in commands
  * @param argc the number of arguments in argv from the command line.
  * @param argv a vector of strings from the command line.
- * @return RuntimeCommand* a freshly allocated RuntimeCommand
+ * @return RuntimeCommand* a freshly allocated RuntimeCommand (never NULL)
  * @throw command_unknown if the command or subcommand is not recognized.
  * @throw command_error if the command, subcommand, or their options can't be parsed.
+ * @throw command_out_of_memory if an allocation fails.
  */
 RuntimeCommand *parse_command(FormalCommand const *formals, int argc, char **argv) {
     if (argc < 2) {
@@ -218,7 +221,7 @@ RuntimeCommand *parse_command(FormalCommand const *formals, int argc, char **arg
     // Allocate RuntimeCommand
     RuntimeCommand *runtime_cmd = malloc(sizeof(RuntimeCommand));
     if (runtime_cmd == NULL) {
-        return NULL;
+        FL_THROW(command_out_of_memory);
     }
 
     runtime_cmd->command    = cmd;
@@ -232,7 +235,7 @@ RuntimeCommand *parse_command(FormalCommand const *formals, int argc, char **arg
     RuntimeOption *option_array    = malloc(sizeof(RuntimeOption) * option_capacity);
     if (option_array == NULL) {
         free(runtime_cmd);
-        return NULL;
+        FL_THROW(command_out_of_memory);
     }
 
     // Permute options and operands (GNU-style) for commands that take no
@@ -248,7 +251,7 @@ RuntimeCommand *parse_command(FormalCommand const *formals, int argc, char **arg
         if (positional_array == NULL) {
             free(option_array);
             free(runtime_cmd);
-            return NULL;
+            FL_THROW(command_out_of_memory);
         }
     }
 
@@ -291,7 +294,7 @@ RuntimeCommand *parse_command(FormalCommand const *formals, int argc, char **arg
                 free(positional_array);
                 free(option_array);
                 free(runtime_cmd);
-                return NULL;
+                FL_THROW(command_out_of_memory);
             }
 
             for (int j = 0; j < option_count; j++) {
@@ -313,7 +316,7 @@ RuntimeCommand *parse_command(FormalCommand const *formals, int argc, char **arg
         free(positional_array);
         free(option_array);
         free(runtime_cmd);
-        return NULL;
+        FL_THROW(command_out_of_memory);
     }
 
     for (int j = 0; j < option_count; j++) {
@@ -344,7 +347,7 @@ RuntimeCommand *parse_command(FormalCommand const *formals, int argc, char **arg
             if (sub_argv == NULL) {
                 free(runtime_cmd->options);
                 free(runtime_cmd);
-                return NULL;
+                FL_THROW(command_out_of_memory);
             }
 
             LOG_VERBOSE("COMMAND",
@@ -360,11 +363,6 @@ RuntimeCommand *parse_command(FormalCommand const *formals, int argc, char **arg
                 = parse_command(cmd->subcommands, argc - i + 1, sub_argv);
             free(sub_argv); // sub_argv elements point into original argv; safe to free
                             // now
-            if (runtime_cmd->subcommand == NULL) {
-                free(runtime_cmd->options);
-                free(runtime_cmd);
-                return NULL;
-            }
             return runtime_cmd;
         }
     }
@@ -385,7 +383,7 @@ RuntimeCommand *parse_command(FormalCommand const *formals, int argc, char **arg
             if (runtime_cmd->args == NULL) {
                 free(runtime_cmd->options);
                 free(runtime_cmd);
-                return NULL;
+                FL_THROW(command_out_of_memory);
             }
 
             runtime_cmd->argc = remaining;
@@ -414,10 +412,11 @@ RuntimeCommand *parse_command(FormalCommand const *formals, int argc, char **arg
  * @param globals NULL-terminated array of options accepted before the command
  * @param argc argument count
  * @param argv argument vector
- * @return RuntimeCommand* the parsed command, or NULL on allocation failure
+ * @return RuntimeCommand* the parsed command (never NULL)
  * @throw command_error if a leading option is unknown, missing its argument, or
  *        not followed by a command
  * @throw command_unknown if the command name is not recognized
+ * @throw command_out_of_memory if an allocation fails
  */
 RuntimeCommand *parse_command_with_globals(FormalCommand const *formals,
                                            FormalOption const *globals, int argc,
@@ -455,7 +454,7 @@ RuntimeCommand *parse_command_with_globals(FormalCommand const *formals,
     // leading options are parsed as the command's own options.
     char **reordered = malloc(sizeof(char *) * argc);
     if (reordered == NULL) {
-        return NULL;
+        FL_THROW(command_out_of_memory);
     }
     int n          = 0;
     reordered[n++] = argv[0];         // program name
