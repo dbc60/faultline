@@ -13,7 +13,8 @@
 #include "command.h"
 #include <faultline/flp_fault_memory_context.h> // FLFaultMemoryContext
 #include <faultline/fl_context.h>
-#include <faultline/arena.h> // Arena
+#include <faultline/fl_log_service.h> // FLLogLevel
+#include <faultline/arena.h>          // Arena
 #include <sqlite/sqlite3.h>
 
 #if defined(__cplusplus)
@@ -47,6 +48,13 @@ typedef struct {
 // Get the faultline command table
 FormalCommand const *get_faultline_commands(void);
 FormalOption const  *get_faultline_global_options(void);
+
+/**
+ * @brief Parse a --log-level option value (error|warn|info|debug) to FLLogLevel.
+ *
+ * NULL or an unrecognized value yields LOG_LEVEL_INFO.
+ */
+FLLogLevel parse_log_level(char const *level_str);
 
 // Top-level command handlers
 COMMAND_HANDLER(run_cmd);

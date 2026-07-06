@@ -164,6 +164,12 @@ static void display_test_results(FLContext *fctx, FLTestSuite *ts) {
         }
     }
 
+    size_t passed_with_leaks = faultline_get_pass_with_leaks_count(fctx);
+    if (passed_with_leaks > 0) {
+        LOG_INFO(fctx->ts->name, "Passed with leaks: %zu of %zu test cases",
+                 passed_with_leaks, run_count);
+    }
+
     setup_failures       = faultline_get_setup_fail_count(fctx);
     test_failures        = faultline_get_fail_count(fctx);
     cleanup_failures     = faultline_get_cleanup_fail_count(fctx);
@@ -245,9 +251,9 @@ static void exercise_test_suite(FLContext *fctx, FLTestSuite *ts, sqlite3 *db,
                                 JUnitXML *junit) {
     int run_id = -1;
 
-    // faultline_begin stamps fctx->run_start_time, so it must run before the run
-    // record is written; faultline_end clears the stamp after each suite, so the
-    // reverse order would record 0 (1970-01-01) as every run's timestamp.
+    // faultline_begin stamps fctx->run_start_time and faultline_end clears it
+    // after each suite, so the stamp must be taken before the run record is
+    // written.
     faultline_begin(fctx, ts);
     if (db != NULL) {
         run_id = faultline_record_test_run_start(db, ts->name, fctx->run_start_time);

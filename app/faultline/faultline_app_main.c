@@ -37,22 +37,9 @@
 #include <faultline/fl_log_service.h> // FLLogLevel
 #include <faultline_sqlite.h> // faultline_init_database, faultline_close_database
 
-#include <stdio.h>  // printf
-#include <string.h> // strcmp
+#include <stdio.h> // printf
 
 static char const *module = "Faultline";
-
-static FLLogLevel parse_log_level(char const *level_str) {
-    if (level_str == NULL)
-        return LOG_LEVEL_INFO;
-    if (strcmp(level_str, "error") == 0)
-        return LOG_LEVEL_ERROR;
-    if (strcmp(level_str, "warn") == 0)
-        return LOG_LEVEL_WARN;
-    if (strcmp(level_str, "debug") == 0)
-        return LOG_LEVEL_DEBUG;
-    return LOG_LEVEL_INFO;
-}
 
 FL_APP_MAIN(faultline_app_main) {
     // Install the platform's services into THIS module's fla_ globals.

@@ -9,6 +9,8 @@
  */
 #include "faultline_commands.h"
 
+#include <string.h> // strcmp
+
 // ============================================================================
 // Option Definitions
 // ============================================================================
@@ -183,4 +185,20 @@ FormalCommand const *get_faultline_commands(void) {
 FormalOption const *get_faultline_global_options(void) {
     // Options accepted before the command (e.g. `faultline --db x show ...`).
     return common_options;
+}
+
+FLLogLevel parse_log_level(char const *level_str) {
+    if (level_str == NULL) {
+        return LOG_LEVEL_INFO;
+    }
+    if (strcmp(level_str, "error") == 0) {
+        return LOG_LEVEL_ERROR;
+    }
+    if (strcmp(level_str, "warn") == 0) {
+        return LOG_LEVEL_WARN;
+    }
+    if (strcmp(level_str, "debug") == 0) {
+        return LOG_LEVEL_DEBUG;
+    }
+    return LOG_LEVEL_INFO;
 }
