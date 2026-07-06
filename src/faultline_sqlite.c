@@ -306,7 +306,7 @@ sqlite3 *faultline_init_database(char const *db_path) {
     if (rc != SQLITE_OK) {
         char details[256];
         snprintf(details, sizeof details, "Failed to open database '%s': %s", db_path,
-                 sqlite3_errmsg(db));
+                 db ? sqlite3_errmsg(db) : sqlite3_errstr(rc));
         sqlite3_close_v2(db);
         LOG_ERROR(faultline_db, "%s", details);
         FL_THROW_DETAILS(faultline_db_create_failed, "sqlite3: %s", details);
@@ -846,12 +846,21 @@ void faultline_show_recent_runs(sqlite3 *db, int limit) {
         int         id         = sqlite3_column_int(stmt, COL_ID);
         char const *suite_name = (char const *)sqlite3_column_text(stmt, COL_SUITE_NAME);
         char const *timestamp  = (char const *)sqlite3_column_text(stmt, COL_TIMESTAMP);
-        int         test_cases = sqlite3_column_int(stmt, COL_TEST_CASES);
-        int         tests_run  = sqlite3_column_int(stmt, COL_TESTS_RUN);
-        int         tests_passed = sqlite3_column_int(stmt, COL_TESTS_PASSED);
-        double      elapsed_time = sqlite3_column_double(stmt, COL_ELAPSED_TIME);
-        double      pass_rate    = sqlite3_column_double(stmt, COL_PASS_RATE);
-        int         fault_sites  = sqlite3_column_int(stmt, COL_FAULT_SITES);
+
+        // A NULL column (SQL NULL or an OOM inside sqlite3_column_text) must not
+        // reach strncpy_s/strlen, which abort on NULL under MSVC.
+        if (suite_name == NULL) {
+            suite_name = "(null)";
+        }
+        if (timestamp == NULL) {
+            timestamp = "(null)";
+        }
+        int    test_cases   = sqlite3_column_int(stmt, COL_TEST_CASES);
+        int    tests_run    = sqlite3_column_int(stmt, COL_TESTS_RUN);
+        int    tests_passed = sqlite3_column_int(stmt, COL_TESTS_PASSED);
+        double elapsed_time = sqlite3_column_double(stmt, COL_ELAPSED_TIME);
+        double pass_rate    = sqlite3_column_double(stmt, COL_PASS_RATE);
+        int    fault_sites  = sqlite3_column_int(stmt, COL_FAULT_SITES);
 
         // Truncate timestamp to remove seconds
         char short_timestamp[20];
@@ -1943,7 +1952,7 @@ void faultline_sqlite_migrate_schema(char const *db_path, int current_version) {
     if (rc != SQLITE_OK) {
         // Clear: database doesn't exist or not readable
         char details[256];
-        strcpy_s(details, sizeof details, sqlite3_errmsg(db));
+        strcpy_s(details, sizeof details, db ? sqlite3_errmsg(db) : sqlite3_errstr(rc));
         sqlite3_close_v2(db);
         FL_THROW_DETAILS(faultline_db_not_found, "sqlite3: %s", details);
     }
@@ -1968,7 +1977,7 @@ void faultline_export_sqlite(FLContext *fctx, char const *db_path) {
     if (rc != SQLITE_OK) {
         // Clear error handling - know exactly what failed
         char details[256];
-        strcpy_s(details, sizeof details, sqlite3_errmsg(db));
+        strcpy_s(details, sizeof details, db ? sqlite3_errmsg(db) : sqlite3_errstr(rc));
         sqlite3_close_v2(db);
         FL_THROW_DETAILS(faultline_db_create_failed, "sqlite3: %s", details);
     }
@@ -1989,7 +1998,7 @@ void faultline_import_sqlite(FLContext *fctx, char const *db_path, int run_id) {
     if (rc != SQLITE_OK) {
         // Clear: database doesn't exist or not readable
         char details[256];
-        strcpy_s(details, sizeof details, sqlite3_errmsg(db));
+        strcpy_s(details, sizeof details, db ? sqlite3_errmsg(db) : sqlite3_errstr(rc));
         sqlite3_close_v2(db);
         FL_THROW_DETAILS(faultline_db_not_found, "sqlite3: %s", details);
     }
