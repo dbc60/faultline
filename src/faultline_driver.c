@@ -155,7 +155,7 @@ FL_EXERCISE_TEST(faultline_run_test) {
     // faults. Also collect metrics for this "main run"
 
     // Get the number of resources allocated before the test case is exercised
-    i64 initial_resources = fault_injector_get_allocation_index(injector);
+    i64 initial_resources = fault_injector_get_allocated_count(injector);
 
     // Prepare to capture discovery phase results
     TestResult setup_cleanup_result, discovery_result;
@@ -305,7 +305,7 @@ FL_EXERCISE_TEST(faultline_run_test) {
         }
 
         // Get the number of resources allocated before the test case is exercised
-        initial_resources = fault_injector_get_allocation_index(injector);
+        initial_resources = fault_injector_get_allocated_count(injector);
 
         // enable the fault and set the throw count
         fault_injector_enable(injector);
