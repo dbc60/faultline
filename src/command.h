@@ -120,6 +120,11 @@ struct RuntimeCommand {
 // Command parsing
 RuntimeCommand *parse_command(FormalCommand const *formals, int argc, char **argv);
 
+// Release a RuntimeCommand built by parse_command or parse_command_with_globals,
+// including its options array, positional-argument array, and subcommand chain.
+// NULL is accepted and ignored.
+void free_command(RuntimeCommand *cmd);
+
 // Like parse_command, but first consumes any leading options that match
 // `globals` (options given before the command name). Pass NULL for `globals` to
 // get parse_command's behavior.
