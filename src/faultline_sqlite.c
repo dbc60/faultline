@@ -532,7 +532,7 @@ void faultline_record_test_run_complete(sqlite3 *db, int run_id, FLContext *fctx
             sqlite3_bind_int(stmt, PARAM_TESTS_RUN, (int)tests_run);
             sqlite3_bind_int(stmt, PARAM_TESTS_PASSED, (int)tests_passed);
             sqlite3_bind_int(stmt, PARAM_TESTS_PASSED_WITH_LEAKS,
-                             0); // calculated separately
+                             (int)faultline_get_pass_with_leaks_count(fctx));
             sqlite3_bind_int(stmt, PARAM_TESTS_FAILED, (int)test_failures);
             sqlite3_bind_int(stmt, PARAM_SETUPS_FAILED, (int)setup_failures);
             sqlite3_bind_int(stmt, PARAM_CLEANUPS_FAILED, (int)cleanup_failures);

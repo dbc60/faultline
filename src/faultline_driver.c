@@ -118,13 +118,13 @@ static FLResultCode run_timed_test(FLContext *fctx, WinTimer *timer,
  *
  */
 FL_EXERCISE_TEST(faultline_run_test) {
-    FaultInjector *injector   = fctx->injector;
-    WinTimer       run_timer  = {0};
-    WinTimer       test_timer = {0}; // stays zero (0 elapsed) if setup fails before start
-    bool           triggered  = false;
-    FLTestSummary  summary;
-    i64            total_fault_sites = 0;
-    FLResultCode   rc                = FL_FAIL;
+    FaultInjector *injector  = fctx->injector;
+    WinTimer       run_timer = {0};
+    WinTimer      test_timer = {0}; // stays zero (0 elapsed) if setup fails before start
+    bool          triggered  = false;
+    FLTestSummary summary;
+    i64           total_fault_sites = 0;
+    FLResultCode  rc                = FL_FAIL;
 
     LOG_DEBUG("Run Test", "run test %s", fctx->ts->test_cases[fctx->index]->name);
     if (injector == NULL || !fault_injector_is_initialized(injector)) {
@@ -264,9 +264,6 @@ FL_EXERCISE_TEST(faultline_run_test) {
         case FL_PASS:
             fctx->tests_passed++;
             break;
-        case FL_LEAK:
-            fctx->tests_passed_with_leaks++;
-            break;
         default:
             // fctx->tests_failed already incremented in run_timed_test.
             break;
@@ -325,7 +322,8 @@ FL_EXERCISE_TEST(faultline_run_test) {
                                 &injection_result, FL_INJECTION_PHASE);
         }
         FL_CATCH(setup_failure) {
-            rc = FL_FAIL; // run_timed_test threw before returning, so rc was not assigned
+            rc = FL_FAIL; // run_timed_test threw before returning, so rc was not
+                          // assigned
         }
         FL_END_TRY;
 
@@ -432,9 +430,15 @@ FL_EXERCISE_TEST(faultline_run_test) {
         fault_injector_advance_threshold(injector);
     }
 
-    // Count this test case as failed at most once, only if discovery didn't already.
-    if (summary.code != FL_PASS && !discovery_counted_test_failure) {
-        fctx->tests_failed++;
+    // Count this test case in exactly one bucket: passed (implicit), passed with leaks,
+    // or failed, and as failed at most once, only if discovery didn't already count it.
+    if (!discovery_counted_test_failure) {
+        if (summary.code == FL_LEAK) {
+            // The test body passed; the injected faults exposed resource leaks.
+            fctx->tests_passed_with_leaks++;
+        } else if (summary.code != FL_PASS) {
+            fctx->tests_failed++;
+        }
     }
 
     stop_win(&run_timer);

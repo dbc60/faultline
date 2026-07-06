@@ -322,18 +322,33 @@ static inline FL_GET_RUN_COUNT(faultline_get_run_count) {
 typedef FL_GET_PASS_COUNT(faultline_get_pass_count_fn);
 
 /**
- * @brief retrieve the number of tests that passed.
+ * @brief retrieve the number of tests that passed cleanly.
  *
- * tests_failed is now incremented at most once per test case, so undeflow of
- * (fctx->count - failures) is unlikely, but the check (failures >= fctx->count) ensures
- * the pass count will always report a reasonable value.
+ * Passed, passed-with-leaks, and failed are disjoint buckets: a test that passed but
+ * leaked resources is counted only by tests_passed_with_leaks, not here. tests_failed is
+ * incremented at most once per test case, so underflow of the subtraction is unlikely,
+ * but the guard ensures the pass count always reports a reasonable value.
  *
  * @param fctx a test context.
  * @return  the number of tests that passed.
  */
 static inline FL_GET_PASS_COUNT(faultline_get_pass_count) {
-    size_t failures = fctx->tests_failed + fctx->setups_failed + fctx->cleanups_failed;
-    return failures >= fctx->count ? 0 : fctx->count - failures;
+    size_t non_passing = fctx->tests_failed + fctx->setups_failed + fctx->cleanups_failed
+                         + fctx->tests_passed_with_leaks;
+    return non_passing >= fctx->count ? 0 : fctx->count - non_passing;
+}
+
+#define FL_GET_PASS_WITH_LEAKS_COUNT(name) size_t name(FLContext const *fctx)
+typedef FL_GET_PASS_WITH_LEAKS_COUNT(faultline_get_pass_with_leaks_count_fn);
+
+/**
+ * @brief retrieve the number of tests that passed but leaked resources.
+ *
+ * @param fctx a test context.
+ * @return the number of tests that passed with leaks.
+ */
+static inline FL_GET_PASS_WITH_LEAKS_COUNT(faultline_get_pass_with_leaks_count) {
+    return fctx->tests_passed_with_leaks;
 }
 
 #define FL_GET_FAIL_COUNT(name) size_t name(FLContext const *fctx)
