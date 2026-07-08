@@ -200,7 +200,7 @@ static void display_test_results(FLContext *fctx, FLTestSuite *ts) {
     }
 
     LOG_INFO(fctx->ts->name, "Tests Run: %zu", run_count);
-    LOG_INFO(fctx->ts->name, "Test Results Recorded: %u", results_count);
+    LOG_INFO(fctx->ts->name, "Test Results Recorded: %zu", results_count);
 
     if (total_faults_exercised > 0) {
         LOG_INFO(fctx->ts->name, "Fault Site Coverage: %lld fault sites exercised",
