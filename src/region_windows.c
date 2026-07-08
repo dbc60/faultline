@@ -123,7 +123,7 @@ size_t commit(Region *region, size_t to_commit) {
     // VirtualAlloc can fail under memory pressure; treat it as a recoverable OOM.
     if (commit_address == NULL) {
         FL_THROW_DETAILS(region_out_of_memory,
-                         "Error %d: region 0x%p failed to commit %zu bytes at 0x%p; "
+                         "Error %lu: region 0x%p failed to commit %zu bytes at 0x%p; "
                          "reserved(%zu), committed(%zu)",
                          GetLastError(), region, to_commit, end_committed,
                          REGION_BYTES_RESERVED(region), REGION_BYTES_COMMITTED(region));
@@ -271,7 +271,7 @@ size_t region_available_bytes(Region const *region) {
     // bytes is the number of bytes written to memory_info
     bytes = VirtualQuery(reserved, &memory_info, sizeof memory_info);
     FL_ASSERT_DETAILS(bytes != 0,
-                      "VirtualQuery failed to retrieve info on address 0x%p: %u",
+                      "VirtualQuery failed to retrieve info on address 0x%p: %lu",
                       reserved, GetLastError());
 
     base = memory_info.BaseAddress;
