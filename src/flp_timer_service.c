@@ -11,15 +11,24 @@
 #include <faultline/fl_timer_service.h> // FLTimerService
 #include <faultline/fl_try.h> // FL_ASSERT_REASON_IMPL used by FL_ASSERT_NOT_NULL
 #include <faultline/fl_exception_service_assert.h> // FL_ASSERT_NOT_NULL
+#include <faultline/fl_exception_types.h>          // FLExceptionReason
 #include <flp_timer_service.h>                     // FLP_INIT_TIMER_SERVICE_FN, flp_init_timer_service
 
-#include <profileapi.h> // QueryPerformanceCounter, QueryPerformanceFrequency
+#include <errhandlingapi.h> // GetLastError
+#include <minwindef.h>      // DWORD
+#include <profileapi.h>     // QueryPerformanceCounter, QueryPerformanceFrequency
+
+static FLExceptionReason query_frequency_failure
+    = "failed to query performance counter frequency";
 
 static double flp_seconds_per_tick(void) {
     static double s = 0.0; // frequency is fixed at boot; query once
     if (s == 0.0) {
         LARGE_INTEGER f;
-        QueryPerformanceFrequency(&f);
+        if (!QueryPerformanceFrequency(&f) || f.QuadPart == 0) {
+            DWORD error = GetLastError();
+            FL_THROW_DETAILS(query_frequency_failure, "error %lu", error);
+        }
         s = 1.0 / (double)f.QuadPart;
     }
     return s;

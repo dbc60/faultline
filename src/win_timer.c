@@ -36,6 +36,25 @@ struct timespec;
 
 static FLExceptionReason create_timer_failure = "failed to create waitable timer";
 static FLExceptionReason set_timer_failure    = "failed to set waitable timer";
+static FLExceptionReason query_frequency_failure
+    = "failed to query performance counter frequency";
+
+// The performance counter frequency is fixed at boot and identical across
+// processors, so query it once and cache it. A failure is not cached, so a
+// later call retries rather than serving a poisoned value.
+static LONGLONG win_timer_frequency(void) {
+    static LONGLONG cached = 0;
+
+    if (cached == 0) {
+        LARGE_INTEGER frequency;
+        if (!QueryPerformanceFrequency(&frequency) || frequency.QuadPart == 0) {
+            DWORD error = GetLastError();
+            FL_THROW_DETAILS(query_frequency_failure, "error %lu", error);
+        }
+        cached = frequency.QuadPart;
+    }
+    return cached;
+}
 
 void start_win(WinTimer *t) {
     QueryPerformanceCounter(&t->start);
@@ -52,11 +71,8 @@ i64 elapsed_win_ticks(WinTimer *t) {
 }
 
 double elapsed_win_seconds(WinTimer *t) {
-    LARGE_INTEGER frequency;
-    if (!QueryPerformanceFrequency(&frequency)) {
-        FL_THROW(create_timer_failure);
-    }
-    return (double)(t->stop.QuadPart - t->start.QuadPart) / frequency.QuadPart;
+    return (double)(t->stop.QuadPart - t->start.QuadPart)
+           / (double)win_timer_frequency();
 }
 
 /**
@@ -85,7 +101,7 @@ int nanosleep(const struct timespec *duration, struct timespec *rem) {
                               TIMER_ALL_ACCESS);
     if (h == NULL) {
         DWORD error = GetLastError();
-        FL_THROW_DETAILS(create_timer_failure, "error %d", error);
+        FL_THROW_DETAILS(create_timer_failure, "error %lu", error);
     }
 
     // Set timer properties, negative values represent a relative time
@@ -93,7 +109,7 @@ int nanosleep(const struct timespec *duration, struct timespec *rem) {
     if (!SetWaitableTimer(h, &li, 0, NULL, NULL, FALSE)) {
         CloseHandle(h);
         DWORD error = GetLastError();
-        FL_THROW_DETAILS(set_timer_failure, "error %d", error);
+        FL_THROW_DETAILS(set_timer_failure, "error %lu", error);
     }
 
     // Start & wait for the timer
