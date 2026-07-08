@@ -166,7 +166,7 @@ FL_TEST("Init Custom With Path", init_custom_with_path) {
     // init_custom with a non-NULL path opens the file itself and takes ownership.
     flp_log_init_custom(LOG_LEVEL_TRACE, path);
     FL_ASSERT_TRUE(g_logger.close_output);
-    FL_ASSERT_EQ_INT((int)g_logger.min_level, (int)LOG_LEVEL_TRACE);
+    FL_ASSERT_EQ_INT((int)g_logger.max_level, (int)LOG_LEVEL_TRACE);
 
     flp_write_log(LOG_LEVEL_INFO, __FILE__, __LINE__, "test", "custom path msg");
     size_t n = read_output(path, buf, sizeof buf);
@@ -179,7 +179,7 @@ FL_TEST("Init Custom Null Path Stdout", init_custom_null_path_stdout) {
     flp_log_init_custom(LOG_LEVEL_WARN, NULL);
     FL_ASSERT_EQ_PTR((void *)g_logger.output, (void *)stdout);
     FL_ASSERT_FALSE(g_logger.close_output);
-    FL_ASSERT_EQ_INT((int)g_logger.min_level, (int)LOG_LEVEL_WARN);
+    FL_ASSERT_EQ_INT((int)g_logger.max_level, (int)LOG_LEVEL_WARN);
     flp_log_cleanup();
 }
 
@@ -188,7 +188,7 @@ FL_TEST("Init Is Idempotent", init_is_idempotent) {
     // and must not overwrite the configured level.
     flp_log_init_custom(LOG_LEVEL_WARN, NULL);
     flp_log_init_custom(LOG_LEVEL_TRACE, NULL);
-    FL_ASSERT_EQ_INT((int)g_logger.min_level, (int)LOG_LEVEL_WARN);
+    FL_ASSERT_EQ_INT((int)g_logger.max_level, (int)LOG_LEVEL_WARN);
     flp_log_cleanup();
 }
 

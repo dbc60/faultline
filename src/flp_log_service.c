@@ -47,7 +47,7 @@ FL_WRITE_LOG_FN(flp_write_log);
 typedef struct {
     bool       close_output;
     bool       enabled;
-    FLLogLevel min_level;
+    FLLogLevel max_level;
     FILE      *output;
     mtx_t      mutex;
     bool       initialized;
@@ -108,7 +108,7 @@ static void constraint_handler(char const *restrict msg, void *restrict ptr,
 void flp_log_init_custom(FLLogLevel level, char const *path) {
     if (!g_logger.initialized) {
         g_logger.enabled   = true;
-        g_logger.min_level = level;
+        g_logger.max_level = level;
         if (path != NULL) {
             // flp_log_set_output_path owns close_output: it sets the flag only
             // when the file actually opened, and clears it on the stdout fallback.
@@ -147,7 +147,7 @@ void flp_log_cleanup(void) {
 }
 
 void flp_log_set_level(FLLogLevel level) {
-    g_logger.min_level = level;
+    g_logger.max_level = level;
 }
 
 void flp_log_set_output(FILE *file) {
@@ -199,7 +199,7 @@ void flp_log_set_output_path(char const *path) {
 // ---------------------------------------------------------------------------
 
 FL_WRITE_LOG_FN(flp_write_log) {
-    if (!g_logger.enabled || level > g_logger.min_level) {
+    if (!g_logger.enabled || level > g_logger.max_level) {
         return;
     }
 
