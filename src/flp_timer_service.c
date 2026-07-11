@@ -18,7 +18,7 @@
 #include <minwindef.h>      // DWORD
 #include <profileapi.h>     // QueryPerformanceCounter, QueryPerformanceFrequency
 
-static FLExceptionReason query_frequency_failure
+static FLExceptionReason flp_timer_query_frequency_failure
     = "failed to query performance counter frequency";
 
 static double flp_seconds_per_tick(void) {
@@ -27,7 +27,7 @@ static double flp_seconds_per_tick(void) {
         LARGE_INTEGER f;
         if (!QueryPerformanceFrequency(&f) || f.QuadPart == 0) {
             DWORD error = GetLastError();
-            FL_THROW_DETAILS(query_frequency_failure, "error %lu", error);
+            FL_THROW_DETAILS(flp_timer_query_frequency_failure, "error %lu", error);
         }
         s = 1.0 / (double)f.QuadPart;
     }

@@ -163,137 +163,224 @@ FL_THROW_EXCEPTION_SERVICE_FN(fl_throw_assertion);
 #define FL_ASSERT_NON_ZERO_INTPTR(V)  FL_ASSERT_NON_ZERO_TYPED((V), "%" PRIdPTR)
 #define FL_ASSERT_NON_ZERO_UINTPTR(V) FL_ASSERT_NON_ZERO_TYPED((V), "%" PRIuPTR)
 
-// Base macro used to implement all typed binary assertions (==, !=, <, etc.)
-#define FL_ASSERT_BINOP_TYPED(lhs, rhs, op, op_str, fmt)                        \
+// Base macro used to implement all typed binary assertions (==, !=, <, etc.).
+// lhs and rhs are captured into temporaries of the given type so each is
+// evaluated exactly once, whether the assertion passes or fails. Callers must
+// still avoid arguments whose type differs from `type` in a way that would lose
+// information when narrowed to it.
+#define FL_ASSERT_BINOP_TYPED(type, lhs, rhs, op, op_str, fmt)                  \
     do {                                                                        \
-        if (!((lhs)op(rhs))) {                                                  \
+        type fl_lhs_ = (lhs);                                                   \
+        type fl_rhs_ = (rhs);                                                   \
+        if (!(fl_lhs_ op fl_rhs_)) {                                            \
             FL_ASSERT_IMPL("Expected: " fmt " " op_str " " fmt ". Actual: " fmt \
                            " and " fmt,                                         \
-                           (lhs), (rhs), (lhs), (rhs));                         \
+                           fl_lhs_, fl_rhs_, fl_lhs_, fl_rhs_);                 \
         }                                                                       \
     } while (0)
 
 // Caveat: %c formats a null byte invisibly; consider using FL_ASSERT_*_INT instead
-#define FL_ASSERT_EQ_CHAR(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, ==, "==", "%c")
-#define FL_ASSERT_NEQ_CHAR(V1, V2) FL_ASSERT_BINOP_TYPED(V1, V2, !=, "!=", "%c")
-#define FL_ASSERT_LT_CHAR(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, <, "<", "%c")
-#define FL_ASSERT_LE_CHAR(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, <=, "<=", "%c")
-#define FL_ASSERT_GT_CHAR(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, >, ">", "%c")
-#define FL_ASSERT_GE_CHAR(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, >=, ">=", "%c")
+#define FL_ASSERT_EQ_CHAR(V1, V2)  FL_ASSERT_BINOP_TYPED(char, V1, V2, ==, "==", "%c")
+#define FL_ASSERT_NEQ_CHAR(V1, V2) FL_ASSERT_BINOP_TYPED(char, V1, V2, !=, "!=", "%c")
+#define FL_ASSERT_LT_CHAR(V1, V2)  FL_ASSERT_BINOP_TYPED(char, V1, V2, <, "<", "%c")
+#define FL_ASSERT_LE_CHAR(V1, V2)  FL_ASSERT_BINOP_TYPED(char, V1, V2, <=, "<=", "%c")
+#define FL_ASSERT_GT_CHAR(V1, V2)  FL_ASSERT_BINOP_TYPED(char, V1, V2, >, ">", "%c")
+#define FL_ASSERT_GE_CHAR(V1, V2)  FL_ASSERT_BINOP_TYPED(char, V1, V2, >=, ">=", "%c")
 
-#define FL_ASSERT_EQ_INT(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, ==, "==", "%d")
-#define FL_ASSERT_NEQ_INT(V1, V2) FL_ASSERT_BINOP_TYPED(V1, V2, !=, "!=", "%d")
-#define FL_ASSERT_LT_INT(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, <, "<", "%d")
-#define FL_ASSERT_LE_INT(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, <=, "<=", "%d")
-#define FL_ASSERT_GT_INT(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, >, ">", "%d")
-#define FL_ASSERT_GE_INT(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, >=, ">=", "%d")
+#define FL_ASSERT_EQ_INT(V1, V2)  FL_ASSERT_BINOP_TYPED(int, V1, V2, ==, "==", "%d")
+#define FL_ASSERT_NEQ_INT(V1, V2) FL_ASSERT_BINOP_TYPED(int, V1, V2, !=, "!=", "%d")
+#define FL_ASSERT_LT_INT(V1, V2)  FL_ASSERT_BINOP_TYPED(int, V1, V2, <, "<", "%d")
+#define FL_ASSERT_LE_INT(V1, V2)  FL_ASSERT_BINOP_TYPED(int, V1, V2, <=, "<=", "%d")
+#define FL_ASSERT_GT_INT(V1, V2)  FL_ASSERT_BINOP_TYPED(int, V1, V2, >, ">", "%d")
+#define FL_ASSERT_GE_INT(V1, V2)  FL_ASSERT_BINOP_TYPED(int, V1, V2, >=, ">=", "%d")
 
-#define FL_ASSERT_EQ_SINT(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, ==, "==", "%d")
-#define FL_ASSERT_NEQ_SINT(V1, V2) FL_ASSERT_BINOP_TYPED(V1, V2, !=, "!=", "%d")
-#define FL_ASSERT_LT_SINT(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, <, "<", "%d")
-#define FL_ASSERT_LE_SINT(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, <=, "<=", "%d")
-#define FL_ASSERT_GT_SINT(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, >, ">", "%d")
-#define FL_ASSERT_GE_SINT(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, >=, ">=", "%d")
+#define FL_ASSERT_EQ_SINT(V1, V2)  FL_ASSERT_BINOP_TYPED(int, V1, V2, ==, "==", "%d")
+#define FL_ASSERT_NEQ_SINT(V1, V2) FL_ASSERT_BINOP_TYPED(int, V1, V2, !=, "!=", "%d")
+#define FL_ASSERT_LT_SINT(V1, V2)  FL_ASSERT_BINOP_TYPED(int, V1, V2, <, "<", "%d")
+#define FL_ASSERT_LE_SINT(V1, V2)  FL_ASSERT_BINOP_TYPED(int, V1, V2, <=, "<=", "%d")
+#define FL_ASSERT_GT_SINT(V1, V2)  FL_ASSERT_BINOP_TYPED(int, V1, V2, >, ">", "%d")
+#define FL_ASSERT_GE_SINT(V1, V2)  FL_ASSERT_BINOP_TYPED(int, V1, V2, >=, ">=", "%d")
 
-#define FL_ASSERT_EQ_INT8(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, ==, "==", "%" PRId8)
-#define FL_ASSERT_NEQ_INT8(V1, V2) FL_ASSERT_BINOP_TYPED(V1, V2, !=, "!=", "%" PRId8)
-#define FL_ASSERT_LT_INT8(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, <, "<", "%" PRId8)
-#define FL_ASSERT_LE_INT8(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, <=, "<=", "%" PRId8)
-#define FL_ASSERT_GT_INT8(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, >, ">", "%" PRId8)
-#define FL_ASSERT_GE_INT8(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, >=, ">=", "%" PRId8)
+#define FL_ASSERT_EQ_INT8(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(int8_t, V1, V2, ==, "==", "%" PRId8)
+#define FL_ASSERT_NEQ_INT8(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(int8_t, V1, V2, !=, "!=", "%" PRId8)
+#define FL_ASSERT_LT_INT8(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(int8_t, V1, V2, <, "<", "%" PRId8)
+#define FL_ASSERT_LE_INT8(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(int8_t, V1, V2, <=, "<=", "%" PRId8)
+#define FL_ASSERT_GT_INT8(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(int8_t, V1, V2, >, ">", "%" PRId8)
+#define FL_ASSERT_GE_INT8(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(int8_t, V1, V2, >=, ">=", "%" PRId8)
 
-#define FL_ASSERT_EQ_INT16(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, ==, "==", "%" PRId16)
-#define FL_ASSERT_NEQ_INT16(V1, V2) FL_ASSERT_BINOP_TYPED(V1, V2, !=, "!=", "%" PRId16)
-#define FL_ASSERT_LT_INT16(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, <, "<", "%" PRId16)
-#define FL_ASSERT_LE_INT16(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, <=, "<=", "%" PRId16)
-#define FL_ASSERT_GT_INT16(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, >, ">", "%" PRId16)
-#define FL_ASSERT_GE_INT16(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, >=, ">=", "%" PRId16)
+#define FL_ASSERT_EQ_INT16(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(int16_t, V1, V2, ==, "==", "%" PRId16)
+#define FL_ASSERT_NEQ_INT16(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(int16_t, V1, V2, !=, "!=", "%" PRId16)
+#define FL_ASSERT_LT_INT16(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(int16_t, V1, V2, <, "<", "%" PRId16)
+#define FL_ASSERT_LE_INT16(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(int16_t, V1, V2, <=, "<=", "%" PRId16)
+#define FL_ASSERT_GT_INT16(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(int16_t, V1, V2, >, ">", "%" PRId16)
+#define FL_ASSERT_GE_INT16(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(int16_t, V1, V2, >=, ">=", "%" PRId16)
 
-#define FL_ASSERT_EQ_INT32(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, ==, "==", "%" PRId32)
-#define FL_ASSERT_NEQ_INT32(V1, V2) FL_ASSERT_BINOP_TYPED(V1, V2, !=, "!=", "%" PRId32)
-#define FL_ASSERT_LT_INT32(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, <, "<", "%" PRId32)
-#define FL_ASSERT_LE_INT32(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, <=, "<=", "%" PRId32)
-#define FL_ASSERT_GT_INT32(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, >, ">", "%" PRId32)
-#define FL_ASSERT_GE_INT32(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, >=, ">=", "%" PRId32)
+#define FL_ASSERT_EQ_INT32(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(int32_t, V1, V2, ==, "==", "%" PRId32)
+#define FL_ASSERT_NEQ_INT32(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(int32_t, V1, V2, !=, "!=", "%" PRId32)
+#define FL_ASSERT_LT_INT32(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(int32_t, V1, V2, <, "<", "%" PRId32)
+#define FL_ASSERT_LE_INT32(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(int32_t, V1, V2, <=, "<=", "%" PRId32)
+#define FL_ASSERT_GT_INT32(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(int32_t, V1, V2, >, ">", "%" PRId32)
+#define FL_ASSERT_GE_INT32(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(int32_t, V1, V2, >=, ">=", "%" PRId32)
 
-#define FL_ASSERT_EQ_INT64(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, ==, "==", "%" PRId64)
-#define FL_ASSERT_NEQ_INT64(V1, V2) FL_ASSERT_BINOP_TYPED(V1, V2, !=, "!=", "%" PRId64)
-#define FL_ASSERT_LT_INT64(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, <, "<", "%" PRId64)
-#define FL_ASSERT_LE_INT64(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, <=, "<=", "%" PRId64)
-#define FL_ASSERT_GT_INT64(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, >, ">", "%" PRId64)
-#define FL_ASSERT_GE_INT64(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, >=, ">=", "%" PRId64)
+#define FL_ASSERT_EQ_INT64(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(int64_t, V1, V2, ==, "==", "%" PRId64)
+#define FL_ASSERT_NEQ_INT64(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(int64_t, V1, V2, !=, "!=", "%" PRId64)
+#define FL_ASSERT_LT_INT64(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(int64_t, V1, V2, <, "<", "%" PRId64)
+#define FL_ASSERT_LE_INT64(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(int64_t, V1, V2, <=, "<=", "%" PRId64)
+#define FL_ASSERT_GT_INT64(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(int64_t, V1, V2, >, ">", "%" PRId64)
+#define FL_ASSERT_GE_INT64(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(int64_t, V1, V2, >=, ">=", "%" PRId64)
 
 // Caveat: %c formats a null byte invisibly; consider using FL_ASSERT_*_UINT instead
-#define FL_ASSERT_EQ_UCHAR(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, ==, "==", "%c")
-#define FL_ASSERT_NEQ_UCHAR(V1, V2) FL_ASSERT_BINOP_TYPED(V1, V2, !=, "!=", "%c")
-#define FL_ASSERT_LT_UCHAR(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, <, "<", "%c")
-#define FL_ASSERT_LE_UCHAR(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, <=, "<=", "%c")
-#define FL_ASSERT_GT_UCHAR(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, >, ">", "%c")
-#define FL_ASSERT_GE_UCHAR(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, >=, ">=", "%c")
+#define FL_ASSERT_EQ_UCHAR(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(unsigned char, V1, V2, ==, "==", "%c")
+#define FL_ASSERT_NEQ_UCHAR(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(unsigned char, V1, V2, !=, "!=", "%c")
+#define FL_ASSERT_LT_UCHAR(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(unsigned char, V1, V2, <, "<", "%c")
+#define FL_ASSERT_LE_UCHAR(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(unsigned char, V1, V2, <=, "<=", "%c")
+#define FL_ASSERT_GT_UCHAR(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(unsigned char, V1, V2, >, ">", "%c")
+#define FL_ASSERT_GE_UCHAR(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(unsigned char, V1, V2, >=, ">=", "%c")
 
-#define FL_ASSERT_EQ_UINT(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, ==, "==", "%u")
-#define FL_ASSERT_NEQ_UINT(V1, V2) FL_ASSERT_BINOP_TYPED(V1, V2, !=, "!=", "%u")
-#define FL_ASSERT_LT_UINT(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, <, "<", "%u")
-#define FL_ASSERT_LE_UINT(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, <=, "<=", "%u")
-#define FL_ASSERT_GT_UINT(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, >, ">", "%u")
-#define FL_ASSERT_GE_UINT(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, >=, ">=", "%u")
+#define FL_ASSERT_EQ_UINT(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(unsigned int, V1, V2, ==, "==", "%u")
+#define FL_ASSERT_NEQ_UINT(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(unsigned int, V1, V2, !=, "!=", "%u")
+#define FL_ASSERT_LT_UINT(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(unsigned int, V1, V2, <, "<", "%u")
+#define FL_ASSERT_LE_UINT(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(unsigned int, V1, V2, <=, "<=", "%u")
+#define FL_ASSERT_GT_UINT(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(unsigned int, V1, V2, >, ">", "%u")
+#define FL_ASSERT_GE_UINT(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(unsigned int, V1, V2, >=, ">=", "%u")
 
-#define FL_ASSERT_EQ_SIZE_T(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, ==, "==", "%zu")
-#define FL_ASSERT_NEQ_SIZE_T(V1, V2) FL_ASSERT_BINOP_TYPED(V1, V2, !=, "!=", "%zu")
-#define FL_ASSERT_LT_SIZE_T(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, <, "<", "%zu")
-#define FL_ASSERT_LE_SIZE_T(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, <=, "<=", "%zu")
-#define FL_ASSERT_GT_SIZE_T(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, >, ">", "%zu")
-#define FL_ASSERT_GE_SIZE_T(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, >=, ">=", "%zu")
+#define FL_ASSERT_EQ_SIZE_T(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(size_t, V1, V2, ==, "==", "%zu")
+#define FL_ASSERT_NEQ_SIZE_T(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(size_t, V1, V2, !=, "!=", "%zu")
+#define FL_ASSERT_LT_SIZE_T(V1, V2) FL_ASSERT_BINOP_TYPED(size_t, V1, V2, <, "<", "%zu")
+#define FL_ASSERT_LE_SIZE_T(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(size_t, V1, V2, <=, "<=", "%zu")
+#define FL_ASSERT_GT_SIZE_T(V1, V2) FL_ASSERT_BINOP_TYPED(size_t, V1, V2, >, ">", "%zu")
+#define FL_ASSERT_GE_SIZE_T(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(size_t, V1, V2, >=, ">=", "%zu")
 
-#define FL_ASSERT_EQ_PTRDIFF(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, ==, "==", "%td")
-#define FL_ASSERT_NEQ_PTRDIFF(V1, V2) FL_ASSERT_BINOP_TYPED(V1, V2, !=, "!=", "%td")
-#define FL_ASSERT_LT_PTRDIFF(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, <, "<", "%td")
-#define FL_ASSERT_LE_PTRDIFF(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, <=, "<=", "%td")
-#define FL_ASSERT_GT_PTRDIFF(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, >, ">", "%td")
-#define FL_ASSERT_GE_PTRDIFF(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, >=, ">=", "%td")
+#define FL_ASSERT_EQ_PTRDIFF(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(ptrdiff_t, V1, V2, ==, "==", "%td")
+#define FL_ASSERT_NEQ_PTRDIFF(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(ptrdiff_t, V1, V2, !=, "!=", "%td")
+#define FL_ASSERT_LT_PTRDIFF(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(ptrdiff_t, V1, V2, <, "<", "%td")
+#define FL_ASSERT_LE_PTRDIFF(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(ptrdiff_t, V1, V2, <=, "<=", "%td")
+#define FL_ASSERT_GT_PTRDIFF(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(ptrdiff_t, V1, V2, >, ">", "%td")
+#define FL_ASSERT_GE_PTRDIFF(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(ptrdiff_t, V1, V2, >=, ">=", "%td")
 
-#define FL_ASSERT_EQ_UINT8(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, ==, "==", "%" PRIu8)
-#define FL_ASSERT_NEQ_UINT8(V1, V2) FL_ASSERT_BINOP_TYPED(V1, V2, !=, "!=", "%" PRIu8)
-#define FL_ASSERT_LT_UINT8(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, <, "<", "%" PRIu8)
-#define FL_ASSERT_LE_UINT8(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, <=, "<=", "%" PRIu8)
-#define FL_ASSERT_GT_UINT8(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, >, ">", "%" PRIu8)
-#define FL_ASSERT_GE_UINT8(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, >=, ">=", "%" PRIu8)
+#define FL_ASSERT_EQ_UINT8(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(uint8_t, V1, V2, ==, "==", "%" PRIu8)
+#define FL_ASSERT_NEQ_UINT8(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(uint8_t, V1, V2, !=, "!=", "%" PRIu8)
+#define FL_ASSERT_LT_UINT8(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(uint8_t, V1, V2, <, "<", "%" PRIu8)
+#define FL_ASSERT_LE_UINT8(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(uint8_t, V1, V2, <=, "<=", "%" PRIu8)
+#define FL_ASSERT_GT_UINT8(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(uint8_t, V1, V2, >, ">", "%" PRIu8)
+#define FL_ASSERT_GE_UINT8(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(uint8_t, V1, V2, >=, ">=", "%" PRIu8)
 
-#define FL_ASSERT_EQ_UINT16(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, ==, "==", "%" PRIu16)
-#define FL_ASSERT_NEQ_UINT16(V1, V2) FL_ASSERT_BINOP_TYPED(V1, V2, !=, "!=", "%" PRIu16)
-#define FL_ASSERT_LT_UINT16(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, <, "<", "%" PRIu16)
-#define FL_ASSERT_LE_UINT16(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, <=, "<=", "%" PRIu16)
-#define FL_ASSERT_GT_UINT16(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, >, ">", "%" PRIu16)
-#define FL_ASSERT_GE_UINT16(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, >=, ">=", "%" PRIu16)
+#define FL_ASSERT_EQ_UINT16(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(uint16_t, V1, V2, ==, "==", "%" PRIu16)
+#define FL_ASSERT_NEQ_UINT16(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(uint16_t, V1, V2, !=, "!=", "%" PRIu16)
+#define FL_ASSERT_LT_UINT16(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(uint16_t, V1, V2, <, "<", "%" PRIu16)
+#define FL_ASSERT_LE_UINT16(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(uint16_t, V1, V2, <=, "<=", "%" PRIu16)
+#define FL_ASSERT_GT_UINT16(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(uint16_t, V1, V2, >, ">", "%" PRIu16)
+#define FL_ASSERT_GE_UINT16(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(uint16_t, V1, V2, >=, ">=", "%" PRIu16)
 
-#define FL_ASSERT_EQ_UINT32(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, ==, "==", "%" PRIu32)
-#define FL_ASSERT_NEQ_UINT32(V1, V2) FL_ASSERT_BINOP_TYPED(V1, V2, !=, "!=", "%" PRIu32)
-#define FL_ASSERT_LT_UINT32(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, <, "<", "%" PRIu32)
-#define FL_ASSERT_LE_UINT32(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, <=, "<=", "%" PRIu32)
-#define FL_ASSERT_GT_UINT32(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, >, ">", "%" PRIu32)
-#define FL_ASSERT_GE_UINT32(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, >=, ">=", "%" PRIu32)
+#define FL_ASSERT_EQ_UINT32(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(uint32_t, V1, V2, ==, "==", "%" PRIu32)
+#define FL_ASSERT_NEQ_UINT32(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(uint32_t, V1, V2, !=, "!=", "%" PRIu32)
+#define FL_ASSERT_LT_UINT32(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(uint32_t, V1, V2, <, "<", "%" PRIu32)
+#define FL_ASSERT_LE_UINT32(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(uint32_t, V1, V2, <=, "<=", "%" PRIu32)
+#define FL_ASSERT_GT_UINT32(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(uint32_t, V1, V2, >, ">", "%" PRIu32)
+#define FL_ASSERT_GE_UINT32(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(uint32_t, V1, V2, >=, ">=", "%" PRIu32)
 
-#define FL_ASSERT_EQ_UINT64(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, ==, "==", "%" PRIu64)
-#define FL_ASSERT_NEQ_UINT64(V1, V2) FL_ASSERT_BINOP_TYPED(V1, V2, !=, "!=", "%" PRIu64)
-#define FL_ASSERT_LT_UINT64(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, <, "<", "%" PRIu64)
-#define FL_ASSERT_LE_UINT64(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, <=, "<=", "%" PRIu64)
-#define FL_ASSERT_GT_UINT64(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, >, ">", "%" PRIu64)
-#define FL_ASSERT_GE_UINT64(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, >=, ">=", "%" PRIu64)
+#define FL_ASSERT_EQ_UINT64(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(uint64_t, V1, V2, ==, "==", "%" PRIu64)
+#define FL_ASSERT_NEQ_UINT64(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(uint64_t, V1, V2, !=, "!=", "%" PRIu64)
+#define FL_ASSERT_LT_UINT64(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(uint64_t, V1, V2, <, "<", "%" PRIu64)
+#define FL_ASSERT_LE_UINT64(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(uint64_t, V1, V2, <=, "<=", "%" PRIu64)
+#define FL_ASSERT_GT_UINT64(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(uint64_t, V1, V2, >, ">", "%" PRIu64)
+#define FL_ASSERT_GE_UINT64(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(uint64_t, V1, V2, >=, ">=", "%" PRIu64)
 
-#define FL_ASSERT_EQ_INTPTR(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, ==, "==", "%" PRIdPTR)
-#define FL_ASSERT_NEQ_INTPTR(V1, V2) FL_ASSERT_BINOP_TYPED(V1, V2, !=, "!=", "%" PRIdPTR)
-#define FL_ASSERT_LT_INTPTR(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, <, "<", "%" PRIdPTR)
-#define FL_ASSERT_LE_INTPTR(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, <=, "<=", "%" PRIdPTR)
-#define FL_ASSERT_GT_INTPTR(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, >, ">", "%" PRIdPTR)
-#define FL_ASSERT_GE_INTPTR(V1, V2)  FL_ASSERT_BINOP_TYPED(V1, V2, >=, ">=", "%" PRIdPTR)
+#define FL_ASSERT_EQ_INTPTR(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(intptr_t, V1, V2, ==, "==", "%" PRIdPTR)
+#define FL_ASSERT_NEQ_INTPTR(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(intptr_t, V1, V2, !=, "!=", "%" PRIdPTR)
+#define FL_ASSERT_LT_INTPTR(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(intptr_t, V1, V2, <, "<", "%" PRIdPTR)
+#define FL_ASSERT_LE_INTPTR(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(intptr_t, V1, V2, <=, "<=", "%" PRIdPTR)
+#define FL_ASSERT_GT_INTPTR(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(intptr_t, V1, V2, >, ">", "%" PRIdPTR)
+#define FL_ASSERT_GE_INTPTR(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(intptr_t, V1, V2, >=, ">=", "%" PRIdPTR)
 
-#define FL_ASSERT_EQ_UINTPTR(V1, V2) FL_ASSERT_BINOP_TYPED(V1, V2, ==, "==", "%" PRIuPTR)
+#define FL_ASSERT_EQ_UINTPTR(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(uintptr_t, V1, V2, ==, "==", "%" PRIuPTR)
 #define FL_ASSERT_NEQ_UINTPTR(V1, V2) \
-    FL_ASSERT_BINOP_TYPED(V1, V2, !=, "!=", "%" PRIuPTR)
-#define FL_ASSERT_LT_UINTPTR(V1, V2) FL_ASSERT_BINOP_TYPED(V1, V2, <, "<", "%" PRIuPTR)
-#define FL_ASSERT_LE_UINTPTR(V1, V2) FL_ASSERT_BINOP_TYPED(V1, V2, <=, "<=", "%" PRIuPTR)
-#define FL_ASSERT_GT_UINTPTR(V1, V2) FL_ASSERT_BINOP_TYPED(V1, V2, >, ">", "%" PRIuPTR)
-#define FL_ASSERT_GE_UINTPTR(V1, V2) FL_ASSERT_BINOP_TYPED(V1, V2, >=, ">=", "%" PRIuPTR)
+    FL_ASSERT_BINOP_TYPED(uintptr_t, V1, V2, !=, "!=", "%" PRIuPTR)
+#define FL_ASSERT_LT_UINTPTR(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(uintptr_t, V1, V2, <, "<", "%" PRIuPTR)
+#define FL_ASSERT_LE_UINTPTR(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(uintptr_t, V1, V2, <=, "<=", "%" PRIuPTR)
+#define FL_ASSERT_GT_UINTPTR(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(uintptr_t, V1, V2, >, ">", "%" PRIuPTR)
+#define FL_ASSERT_GE_UINTPTR(V1, V2) \
+    FL_ASSERT_BINOP_TYPED(uintptr_t, V1, V2, >=, ">=", "%" PRIuPTR)
 
 // Pointer checks
 #define FL_ASSERT_NULL(PTR)                                                       \
