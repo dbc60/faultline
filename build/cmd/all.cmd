@@ -18,7 +18,7 @@ CALL %DIR_CMD%\setup.cmd %*
 
 set "args="
 for %%A in (%*) do (
-    if /I not "%%~A"=="test" if /I not "%%~A"=="clean" if /I not "%%~A"=="cleanall" (
+    if /I not "%%~A"=="test" if /I not "%%~A"=="clean" if /I not "%%~A"=="cleanall" if /I not "%%~A"=="cleanplat" (
         set "args=!args! %%~A"
     )
     if /I "%%~A"=="test" (

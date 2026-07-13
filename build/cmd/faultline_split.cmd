@@ -11,10 +11,8 @@ SETLOCAL ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 :: Pipeline:
 ::   1. faultline_fixtures.cmd  -> sqlite3.obj / cwalk.obj / faultline_test_data.dll
 ::   2. faultline_core.cmd      -> faultline_core.lib (the OS-free app layer)
-::   3. this script             -> win32_faultline.exe (the platform layer)
-::
-:: See faultline_core.cmd for the prerequisite seam refactors; until those land
-:: this build will not link (the core will reference platform symbols directly).
+::   3. faultline.cmd           -> faultline_tests.dll (only when testing and missing)
+::   4. this script             -> faultline.exe (the platform layer)
 
 SET PROJECT_NAME="Faultline Split"
 SET PROJECT_NAME=%PROJECT_NAME:"=%
@@ -32,6 +30,20 @@ IF NOT "%release%"=="" (
     )
 )
 
+:: Sub-builds must not repeat the clean this script's setup already performed --
+:: a nested setup.cmd would wipe the fixtures rebuilt below. Forward the
+:: configuration options but strip the clean/test verbs (test maps to build),
+:: the same filtering all.cmd uses.
+set "args="
+for %%A in (%*) do (
+    if /I not "%%~A"=="test" if /I not "%%~A"=="clean" if /I not "%%~A"=="cleanall" if /I not "%%~A"=="cleanplat" (
+        set "args=!args! %%~A"
+    )
+    if /I "%%~A"=="test" (
+        set "args=!args! build"
+    )
+)
+
 :: Shared fixtures (sqlite3.obj / cwalk.obj) must exist before the link step.
 IF %build% EQU 1 IF NOT EXIST %DIR_OUT_OBJ%\sqlite3.obj (
     CALL %DIR_CMD%\faultline_fixtures.cmd build
@@ -40,7 +52,15 @@ IF %build% EQU 1 IF NOT EXIST %DIR_OUT_OBJ%\sqlite3.obj (
 
 :: Build the OS-free application layer first.
 IF %build% EQU 1 (
-    CALL %DIR_CMD%\faultline_core.cmd %*
+    CALL %DIR_CMD%\faultline_core.cmd !args!
+    IF ERRORLEVEL 1 GOTO :ERROR
+)
+
+:: The test step below runs faultline_tests.dll; after a clean it is gone.
+:: faultline.cmd rebuilds it (and the monolithic faultline.exe, which the link
+:: below then overwrites with the split exe -- keep this call before the link).
+IF %test% EQU 1 IF NOT EXIST %DIR_OUT_BIN%\faultline_tests.dll (
+    CALL %DIR_CMD%\faultline.cmd !args!
     IF ERRORLEVEL 1 GOTO :ERROR
 )
 
