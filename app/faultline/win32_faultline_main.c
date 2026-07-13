@@ -39,7 +39,7 @@
 #include <faultline/fl_exception_service.h>     // FLExceptionService
 #include <faultline/fl_file_service.h>          // FLFileService
 #include <faultline/fl_log_service.h>           // FLLogService, FLLogLevel
-#include <faultline/macros.h>                   // FL_UNUSED
+#include <faultline/fl_macros.h>                // FL_UNUSED
 #include <faultline/fl_memory_service.h>        // FLMemoryService
 #include <faultline/fl_timer_service.h>         // FLTimerService
 #include <faultline/flp_fault_memory_context.h> // FLFaultMemoryContext
