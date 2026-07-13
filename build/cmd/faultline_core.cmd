@@ -43,7 +43,7 @@ IF %build% EQU 1 (
     if %verbose% EQU 1 (
         ECHO Build %PROJECT_NAME% ^(unity, OS-free^): faultline_core.lib
     )
-    cl %CommonCompilerFlagsFinal% /wd4200 /wd4115 /wd4456 /c ^
+    cl %CommonCompilerFlagsFinal% /wd4200 /wd4115 /wd4456 /DFL_EMBEDDED /c ^
     /I%DIR_INCLUDE% /I%DIR_REPO%\src /I"%DIR_THIRD_PARTY%" ^
     /I"%DIR_THIRD_PARTY%\cwalk\include" ^
     %DIR_REPO%\app\faultline\faultline_core_unity.c ^

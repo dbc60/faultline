@@ -16,7 +16,7 @@ SETLOCAL ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 :: See faultline_core.cmd for the prerequisite seam refactors; until those land
 :: this build will not link (the core will reference platform symbols directly).
 
-SET PROJECT_NAME="Faultline (split)"
+SET PROJECT_NAME="Faultline Split"
 SET PROJECT_NAME=%PROJECT_NAME:"=%
 TITLE %PROJECT_NAME%
 

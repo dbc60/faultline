@@ -5,9 +5,10 @@ Pick-up checklist for services conforming to the provider/consumer
 memory services follow. See **Two architectural axes** and the **Exception/Log
 Service** sections in `CLAUDE.md` for the target pattern.
 
-Status: **A (timer) is done** and now serves as the worked example — it added a
-selector and cross-boundary injection that **B (file service)** can copy. B is
-the remaining blocker for wiring the platform/core split into `all.cmd`/`all.sh`.
+Status: **A (timer) and B (file service) are done**, and **C (module service +
+split assembly)** now builds and runs: `faultline_split.cmd` produces a working
+split driver. What remains is C's tail — seams #1/#2/#4, build-script polish,
+and wiring the split into `all.cmd`/`all.sh`.
 
 Header location convention: `fl_*_service.h` / `fla_*_service.h` live in
 `include/faultline/`; the `flp_*_service.h` provider headers live in `include/`
@@ -81,78 +82,60 @@ keep because `g_fla_timer_service` now has a reader.
 
 ---
 
-## B. `fl_file_service.h` — file-service contract (greenfield)
+## B. `fl_file_service.h` — file-service contract ✅ (done)
 
-Barely exists: only `platform_api.h`'s references. Blocks wiring the platform/core
-split into `all.cmd`/`all.sh`.
+Completed, beyond the original scope. Contract (`fl_file_service.h`,
+`fl_file_types.h`), provider (`flp_file_service.h`, `flp_file_service.c` — Win32
+`CreateFileW` with UTF-8→UTF-16 conversion and extended-length path support),
+consumer accessor (`fla_file_service.h`, `fla_file_service.c`), an `fl_file.h`
+selector, an async contract sketch (`fl_async_file_service.h`), tests
+(`flp_file_service_tests.c` — 10/10 incl. cross-boundary injection, 6 fault
+sites), and build wiring (`file_service.cmd` / `file_service.sh`, run by
+`all.cmd` / `all.sh`; `std_faultline.cmd` compiles the provider). Injection is
+wired in `command_run.c`; `faultline_app_main` installs `platform->file`.
 
-### Current state
-- ❌ `include/faultline/fl_file_service.h` does not exist, yet `platform_api.h:20`
-  includes it and `:72` declares `FLFileService *file`.
-- ❌ `src/flp_file_service.c` does not exist (referenced in
-  `win32_faultline_unity.c:19` comment and `win32_faultline_main.c:26` prereqs).
-- ❌ No `flp_file_service.h` / `fla_file_service.h`.
-- ✅ Only the intent exists: `win32_faultline_main.c:110–114` assembles
-  `FLFileService file = { .open=flp_file_open, .read=flp_file_read,
-  .write=flp_file_write, .close=flp_file_close }`.
-
-This is why the platform/core split (`win32_faultline_main.c`, `platform_api.h`,
-`faultline_core`) is not yet wired into `all.cmd` — it can't compile until this lands.
-
-### Design decisions to settle first (block the contract)
-- [ ] Opaque handle: `typedef struct FLFile FLFile;` wrapping a Win32 `HANDLE`
-  (and `FILE*`/`fd` on other hosts). Never exposed to consumers.
-- [ ] `open` signature & mode: path + a portable mode enum/flags (read/write/append,
-  create/truncate, text/binary). Returns `FLFile*` or `NULL`.
-- [ ] Error model: does `open` failure return `NULL` or throw via the exception
-  service? Do `read`/`write` return bytes transferred or status + out-param?
-  Recommend return-bytes + `NULL`/short-count, keeping the contract free of an
-  exception-service dependency so it stays drop-in; the *caller* decides whether to throw.
-- [ ] Scope of v1: open/read/write/close only (matching `platform_api.h`). Defer
-  seek/tell/flush/size/stat to a later rev — note but don't block.
-- [ ] Fault-injection: out of scope for v1. Note as a future parallel to the
-  fault-*memory* service (a `flp_fault_file_service` injected only into suites) if
-  I/O failure injection is ever wanted.
-
-### Checklist (mirror the log/exception layout)
-- [ ] `include/faultline/fl_file_service.h` (contract): `FLFile` opaque;
-  `FL_FILE_OPEN_FN`/`FL_FILE_READ_FN`/`FL_FILE_WRITE_FN`/`FL_FILE_CLOSE_FN`
-  typedefs; `FLFileService` struct of those pointers; `FLA_SET_FILE_SERVICE_FN` +
-  `FLA_SET_FILE_SERVICE_STR`. Neutral vocabulary (caller/consumer); `#include <stddef.h>`
-  for `size_t`.
-- [ ] `include/flp_file_service.h` (provider): declare `flp_file_open/read/write/close`
-  and (optionally) `flp_init_file_service` / `FLP_INIT_FILE_SERVICE_FN`.
-- [ ] `include/faultline/fla_file_service.h` (consumer accessor):
-  `g_fla_file_service`, `fla_set_file_service`.
-- [ ] `src/flp_file_service.c` (Win32 impl): `CreateFileA`/`ReadFile`/`WriteFile`/
-  `CloseHandle`; `FLFile` wraps `HANDLE`.
-- [ ] `src/fla_file_service.c` (consumer TLS service + default-abort/stub writers +
-  `fla_set_file_service`).
-- [ ] No `fl_file.h` selector unless file convenience macros are added — likely not;
-  called through the struct like the timer.
-- [ ] `win32_faultline_main.c`: add `#include <flp_file_service.h>` (assembly at
-  110–114 already exists).
-- [ ] `win32_faultline_unity.c`: already references `flp_file_service.c` — confirm
-  the include lands once the file exists.
-- [ ] Build scripts (`.cmd` **and** `.sh`): compile `flp_file_service.c` /
-  `fla_file_service.c`; add a `file_service` dist package if the other services ship one.
-- [ ] Wire the platform/core split (`win32_faultline_main.c` + `faultline_core`) into
-  `all.cmd`/`all.sh` once it compiles, so it's actually built and tested.
-- [ ] Add `src/fl_file_service_tests.c` (round-trip write→read→close on a temp file,
-  error paths), following `fl_log_service_tests.c`. Include a cross-boundary
-  injection test (assert the driver replaced the default stubs, then exercise the
-  injected service) like the timer/log/memory suites now have.
-- [ ] Verify both builds green.
+### Deferred (noted, not blocking)
+- [ ] seek/tell/flush/size/stat — later rev of the contract.
+- [ ] Fault-injecting file service (`flp_fault_file_service`, parallel to fault
+  memory) if I/O failure injection is ever wanted.
+- [ ] Optional `file_service` / `timer_service` dist packages parallel to the
+  `log_service` / `memory_service` ones.
 
 ---
 
-## Suggested order
+## C. Module service + split assembly ✅ builds and runs (tail remains)
 
-1. ~~**A** (timer provider header)~~ — done; proved the pattern (and added the
-   selector + injection the file service can now copy).
-2. **B** design decisions (error model + open mode are the crux).
-3. **B** contract → provider/consumer headers → impls → tests → build wiring.
-   Mirror the timer's finished shape: contract `fl_*` + `fla_*` in
-   `include/faultline/`, provider `flp_*` in `include/`, optional `fl_file.h`
-   selector only if file convenience macros are wanted (timer added one; file
-   likely doesn't need it), injection in `command_run.c` + `faultline_app_main.c`.
+The last `platform_api.h` gap. Done (2026-07-11):
+- ✅ `include/flp_module_service.h` + `src/flp_module_service.c`: `flp_load_module`
+  / `flp_resolve_symbol` / `flp_unload_module` (wrap `LoadLibraryA` /
+  `GetProcAddress` / `FreeLibrary`; opaque `FLModule` *is* the `HMODULE`) and
+  `flp_inject_services` (the full fla_set_* resolution dance, fault-memory context
+  bound via `flp_module_service_init`).
+- ✅ `command_run.c` seam: suite mechanics behind `suite_load` / `suite_inject` /
+  `suite_symbol` / `suite_unload` / `suite_injector` — direct Win32 + `flp_init_*`
+  under `FL_PLATFORM_BUILD` (monolith), `ectx->platform->*` otherwise (split core).
+- ✅ `ExecutionContext.platform` added; `faultline_app_main` fills it and installs
+  all five services (file included) into the core's `fla_` globals.
+- ✅ Core unity gained `fla_timer_service.c` / `fla_file_service.c`;
+  `faultline_core.cmd` compiles with `/DFL_EMBEDDED` (fla setters are embedded,
+  not dllimport).
+- ✅ One-definition fix: `flp_exception_service.c` guards `fl_throw_assertion`
+  behind `!defined(FLP_OMIT_FL_THROW_ASSERTION)`; the split host defines it so the
+  consumer-side copy (via injected service) is the one linked.
+- ✅ Verified: `faultline_split.cmd` builds; split driver ran timer / assert /
+  file-service suites (100%, faults injected); full monolith `all.cmd test` green
+  (23 suites, 100%).
+
+### Remaining
+- [ ] Seam #1: `faultline_driver.c` still times via `start_win`/`elapsed_win_seconds`
+  (resolves from the platform lib at link — works, but violates the dependency
+  direction). Move to the injected `FLTimerService`.
+- [ ] Seam #2: driver still allocates via `arena_malloc_throw` on the platform arena.
+- [ ] Seam #4: `output_junit.c` writes via `fopen`/`fprintf` (portable CRT, so it
+  links, but should route through `FLFileService`).
+- [ ] `faultline_split.cmd` emits `/Fe:faultline.exe` — same name/path as the
+  monolith's output, so each build overwrites the other. Decide the split exe's
+  name (script comments say `win32_faultline.exe`).
+- [ ] Bash counterparts: no `faultline_core.sh` / `faultline_split.sh` yet.
+- [ ] Wire the split into `all.cmd`/`all.sh` (after the name collision is settled)
+  so it's built and tested continuously.

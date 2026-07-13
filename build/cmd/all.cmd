@@ -146,6 +146,11 @@ if errorlevel 1 (
     GOTO :ERROR
 )
 
+call %DIR_CMD%\file_service.cmd !args!
+if errorlevel 1 (
+    GOTO :ERROR
+)
+
 IF NOT EXIST test MD test
 copy /y %DIR_OUT_BIN%\*.exe test\ > NUL
 copy /y %DIR_OUT_BIN%\*.dll test\ > NUL
@@ -184,8 +189,9 @@ if %test% EQU 1 (
         command_tests.dll ^
         faultline_tests.dll ^
         malloc_cleanup_config_tests.dll ^
-        flp_memory_service_tests.dll
-    .\faultline.exe show results --limit 22
+        flp_memory_service_tests.dll ^
+        flp_file_service_tests.dll
+    .\faultline.exe show results --limit 23
     popd
 )
 GOTO :SUCCESS

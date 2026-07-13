@@ -21,28 +21,32 @@
 extern "C" {
 #endif
 
+typedef struct FLPlatformAPI FLPlatformAPI;
+
 /**
  * @brief Execution context passed to all command handlers.
  *
- * IMPORTANT: RuntimeCommand must be the first field so that handlers can safely
- * cast between `const RuntimeCommand *cmd` (their parameter type) and
- * `ExecutionContext *` to access the driver fields. main() builds one of these,
- * copies the parsed RuntimeCommand into the `cmd` member, fills the remaining
- * fields, and dispatches via `cmd.command->handler((RuntimeCommand *)&exec_ctx)`.
+ * IMPORTANT: RuntimeCommand must be the first field so that handlers can safely cast
+ * between `const RuntimeCommand *cmd` (their parameter type) and `ExecutionContext *` to
+ * access the driver fields. main() builds one of these, copies the parsed RuntimeCommand
+ * into the `cmd` member, fills the remaining fields, and dispatches via
+ * `cmd.command->handler((RuntimeCommand *)&exec_ctx)`.
  *
  * Lifetime: Created once in main(), passed to all command handlers.
  * Ownership: main() owns the context; handlers borrow but do not take ownership.
  * Database: db may be NULL if --no-db was specified or db init failed.
  */
 typedef struct {
-    RuntimeCommand cmd;       // MUST be first - enables handler type-pun
+    RuntimeCommand cmd;       // Must be first - enables handler type-pun
     sqlite3       *db;        // Database connection (may be NULL)
     FLContext     *fctx;      // Test execution context (run command only)
     int            log_level; // Configured logging level
     Arena         *arena;     // owned by main(), borrowed by command handlers
     FLFaultMemoryContext
-               *mem_ctx;        // initialized from arena, borrowed by command handlers
-    char const *junit_xml_path; // path to output for writing JUNIT XML
+                        *mem_ctx; // initialized from arena, borrowed by command handlers
+    char const          *junit_xml_path; // path to output for writing JUNIT XML
+    FLPlatformAPI const *platform; // split core's OS access; NULL in the monolithic
+                                   // driver, which reaches the OS directly
 } ExecutionContext;
 
 // Get the faultline command table
@@ -52,7 +56,7 @@ FormalOption const  *get_faultline_global_options(void);
 /**
  * @brief Parse a --log-level option value (error|warn|info|debug) to FLLogLevel.
  *
- * NULL or an unrecognized value yields LOG_LEVEL_INFO.
+ * NULL or an unrecognized value defaults to LOG_LEVEL_INFO.
  */
 FLLogLevel parse_log_level(char const *level_str);
 

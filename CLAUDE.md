@@ -24,8 +24,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **FaultLine with database**: `faultline.exe --db results.sqlite <test_suites>` - Store results in SQLite database
 
 ### Code Formatting
-- **Clang-format configuration**: `clang-config.yaml` contains the project's formatting rules
-- Format follows a custom style with 4-space indentation, 129-column limit, and specific alignment rules
+- **Clang-format configuration**: `.clang-format` contains the project's formatting rules
+- Format follows a custom style with 4-space indentation, 89-column limit, and specific alignment rules
 
 ### Documentation Generation
 - **Generate docs**: `doxygen Doxyfile` - Generates HTML documentation in `docs/html/`

@@ -4,11 +4,14 @@
 /**
  * @file platform_api.h
  * @author Douglas Cuthbertson
- * @brief The contract between the Faultline platform layer (win32_faultline.exe)
- * and the application layer (faultline_core). The platform fills in an
- * FLPlatformAPI and hands it to faultline_app_main(); the application layer
- * reaches every OS capability — memory, exceptions, logging, timing, files, and
- * module loading — only through this struct. The application TU must never
+ * @brief The contract between the Faultline platform layer (win32_faultline.exe) and the
+ * application layer (faultline_core).
+ * @version 0.1
+ * @date 2026-06-20
+ *
+ * The platform fills in an FLPlatformAPI and hands it to faultline_app_main(); the
+ * application layer reaches every OS capability — memory, exceptions, logging, timing,
+ * files, and module loading — only through this struct. The application TU must never
  * include <Windows.h>; this header is its sole window onto the platform.
  *
  * See LICENSE.txt for copyright and licensing information about this file.
@@ -44,18 +47,19 @@ typedef FL_MODULE_UNLOAD_FN(fl_module_unload_fn);
 
 // -- Service injection into a loaded suite -------------------------------------
 // Encapsulates the GetProcAddress("fla_set_*") + flp_init_*_service() dance that
-// command_run.c does today. CRUCIALLY, this is where the FAULT-INJECTING memory
-// service is wired in — it is injected only into suites, never exposed on this
-// struct, so the framework can't fault-inject its own bookkeeping. The platform
-// owns the flp_* impls and the fault-memory context, so injection stays
-// entirely platform-side. Returns false if the suite is missing a *required*
-// service (exception handling).
+// command_run.c does today. CRUCIALLY, this is where the FAULT-INJECTING memory service
+// is wired in. It is injected only into suites, never exposed on this struct, so the
+// framework can't fault-inject its own bookkeeping. The platform owns the flp_*
+// implementations and the fault-memory context, so injection stays entirely
+// platform-side. Returns false if the suite is missing a required service (e.g.,
+// exception handling).
 #define FL_INJECT_SERVICES_FN(name) bool name(FLModule *suite)
 typedef FL_INJECT_SERVICES_FN(fl_inject_services_fn);
 
 // -- Logging configuration -----------------------------------------------------
 // The log sink (level + destination file) is a platform-owned resource. The
-// application parses the user's --log-level/--log-file and hands them back here.
+// application parses --log-level/--log-file from the command line and passes them back
+// here.
 #define FL_CONFIGURE_LOG_FN(name) void name(FLLogLevel level, char const *path)
 typedef FL_CONFIGURE_LOG_FN(fl_configure_log_fn);
 
@@ -71,7 +75,7 @@ typedef struct FLPlatformAPI {
     FLTimerService     *timer;
     FLFileService      *file;
 
-    // Shared infrastructure the driver uses directly (both core-layer types):
+    // Shared infrastructure the driver uses directly (both are core-layer):
     //   arena    — OS-backed application arena, owned by the platform.
     //   injector — the fault-injector instance that backs the fault-memory
     //              service; the driver drives this same instance
@@ -88,9 +92,8 @@ typedef struct FLPlatformAPI {
     // Platform-owned resource configuration.
     fl_configure_log_fn *configure_log;
 
-    // Opaque pointer to the platform's own state (currently the
-    // FLFaultMemoryContext). The application treats it as a token and never
-    // dereferences it.
+    // Opaque pointer to the platform's own state (currently the FLFaultMemoryContext).
+    // The application treats it as a token and never dereferences it.
     void *platform;
 } FLPlatformAPI;
 

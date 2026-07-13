@@ -7,27 +7,26 @@
  *
  * See LICENSE.txt for copyright and licensing information about this file.
  *
- * The platform layer's entry point. It owns the OS relationship: it creates the
- * arena, the fault injector, and the two memory bindings (plain + injecting),
- * builds the service vtables, assembles an FLPlatformAPI, and hands control to
- * faultline_app_main() in faultline_core.lib. All OS coupling stops here.
+ * The platform layer's entry point. It owns the OS relationship: it creates the arena,
+ * the fault injector, and the two memory bindings (plain + injecting), builds the
+ * service vtables, assembles an FLPlatformAPI, and hands control to faultline_app_main()
+ * in faultline_core.lib. All OS coupling stops here.
  *
- * PLAIN vs INJECTING split (the part not to overlook):
+ * PLAIN vs INJECTING split:
  *   - flp_memory_service.c (plain)        -> bound to `arena`, no injection.
- *     Exposed as platform.memory; the core installs it for its OWN allocations.
+ *     Exposed as platform.memory; the core installs it for its own allocations.
  *   - flp_fault_memory_service.c (inject) -> bound to `arena` + `injector`.
- *     Pushed into suite DLLs by flp_inject_services(); NEVER installed into the
+ *     Pushed into suite DLLs by flp_inject_services(); it is never installed into the
  *     core, so the framework can't fault-inject its own bookkeeping.
- * These live in separate TUs with separate static contexts, so binding one does
- * not disturb the other.
+ * These live in separate TUs with separate static contexts, so binding one does not
+ * disturb the other.
  *
- * PREREQUISITES (new platform files referenced here):
+ * Platform services assembled here and where they come from:
  *   - flp_timer_service.c  : flp_timer_now / flp_timer_elapsed_seconds
  *   - flp_file_service.c   : flp_file_open / read / write / close
  *   - flp_module_service.c : flp_load_module / flp_resolve_symbol /
  *                            flp_unload_module / flp_inject_services /
  *                            flp_module_service_init
- *   - include/platform_api.h : FLPlatformAPI, faultline_app_main
  *   - flp_configure_log (small wrapper, defined below)
  */
 #include <platform_api.h> // FLPlatformAPI, faultline_app_main
@@ -40,6 +39,7 @@
 #include <faultline/fl_exception_service.h>     // FLExceptionService
 #include <faultline/fl_file_service.h>          // FLFileService
 #include <faultline/fl_log_service.h>           // FLLogService, FLLogLevel
+#include <faultline/macros.h>                   // FL_UNUSED
 #include <faultline/fl_memory_service.h>        // FLMemoryService
 #include <faultline/fl_timer_service.h>         // FLTimerService
 #include <faultline/flp_fault_memory_context.h> // FLFaultMemoryContext
@@ -48,6 +48,8 @@
 #include <flp_log_service.h>    // flp_log_init_custom, flp_write_log, flp_log_set_*
 #include <flp_memory_service.h> // flp_init_memory_service, flp_malloc, ...
 #include <flp_timer_service.h>  // flp_timer_now, flp_timer_elapsed_seconds
+#include <flp_file_service.h>   // flp_file_open, flp_file_read, flp_file_write, ...
+#include <flp_module_service.h> // flp_load_module, flp_inject_services, ...
 #include <faultline/fl_try.h>   // FL_TRY/FL_CATCH_ALL (selects flp_ backstop)
 #include <faultline/fl_log.h>   // LOG_* (selects flp_ backend via FL_PLATFORM_BUILD)
 
@@ -55,16 +57,16 @@
 
 static char const *module = "Faultline";
 
-// No-op setter: flp_init_*_service() wants a non-NULL setter, but at host setup
-// we only want the side effect of binding the static context; nothing to inject
-// into yet (suites get injected later via flp_inject_services).
+// No-op setter: flp_init_*_service() wants a non-NULL setter, but at host setup we only
+// want the side effect of binding the static context; nothing to inject into yet (suites
+// get injected later via flp_inject_services).
 static FLA_SET_MEMORY_SERVICE_FN(noop_fla_set_memory_service) {
-    (void)svc;
-    (void)size;
+    FL_UNUSED(svc);
+    FL_UNUSED(size);
 }
 
-// Logging level/destination are platform-owned; the core asks us to apply the
-// user's parsed choices through this callback (FLPlatformAPI.configure_log).
+// Logging level/destination are platform-owned; the core asks us to apply the user's
+// parsed choices through this callback (FLPlatformAPI.configure_log).
 static void flp_configure_log(FLLogLevel level, char const *path) {
     flp_log_set_level(level);
     if (path != NULL) {

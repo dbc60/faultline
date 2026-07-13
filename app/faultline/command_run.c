@@ -20,13 +20,17 @@
 #include <faultline_sqlite.h>          // faultline_record_test_run_start, etc.
 #include <faultline/fl_types.h>        // FLFailureType, FLTestPhase
 #include <faultline/fl_result_codes.h> // FL_PASS, etc.
-#include <faultline/fl_exception_service.h> // flp_init_exception_service, fla_set_exception_service_fn
+#if defined(FL_PLATFORM_BUILD)
+// Monolithic driver: the platform's service implementations live in this binary, so
+// test-suite loading and injection are direct Win32 + flp_init_* calls.
+#include <faultline/fl_exception_service.h> // fla_set_exception_service_fn, FLA_SET_EXCEPTION_SERVICE_STR
 #include <faultline/fl_log_service.h> // fla_set_log_service_fn, FLA_SET_LOG_SERVICE_STR
 #include <faultline/fl_memory_service.h> // fla_set_memory_service_fn, FLA_SET_MEMORY_SERVICE_STR
 #include <faultline/fl_timer_service.h> // fla_set_timer_service_fn, FLA_SET_TIMER_SERVICE_STR
 #include <faultline/fl_file_service.h> // fla_set_file_service_fn, FLA_SET_FILE_SERVICE_STR
+#include <flp_exception_service.h>     // flp_init_exception_service
 #include <flp_log_service.h>           // flp_init_log_service
-#include <flp_memory_service.h>        // flp_init_memory_service
+#include <flp_memory_service.h>        // flp_init_fault_memory_service
 #include <flp_timer_service.h>         // flp_init_timer_service
 #include <flp_file_service.h>          // flp_init_file_service
 
@@ -34,9 +38,18 @@
 #define WIN32_LEAN_AND_MEAN
 #endif
 #include <Windows.h> // LoadLibraryA, GetProcAddress, FreeLibrary, HMODULE
+#else
+// Split core: all module mechanics route through the platform API the host handed to
+// faultline_app_main(); no OS symbol is named here.
+#include <platform_api.h> // FLPlatformAPI, FLModule
+#endif
 
+#include <stdbool.h> // bool, true, false
+#include <stdint.h>  // uintptr_t
 #include <stdio.h>
 #include <string.h>
+
+#define COMMAND_MODULE_NAME "Faultline Run"
 
 static char const *failure_type_to_string(FLFailureType type) {
     switch (type) {
@@ -287,6 +300,115 @@ static void exercise_test_suite(FLContext *fctx, FLTestSuite *ts, sqlite3 *db,
     faultline_end(fctx);
 }
 
+// -- Suite module mechanics -----------------------------------------------------------
+// The run command loads suite modules, injects the platform's services, resolves the
+// test suite's entry point, and unloads. The monolithic driver (FL_PLATFORM_BUILD) holds
+// the platform symbols itself, so the mechanics are direct OS calls plus the flp_init_*
+// injection dance; the split core routes them through ectx->platform.
+
+#if defined(FL_PLATFORM_BUILD)
+
+typedef HMODULE SuiteHandle;
+
+static SuiteHandle suite_load(ExecutionContext *ectx, char const *path) {
+    static char const module[] = COMMAND_MODULE_NAME;
+    (void)ectx;
+
+    HMODULE m = LoadLibraryA(path);
+    if (m == NULL) {
+        LOG_ERROR(module, "Failed to load \"%s\", error=%lu", path, GetLastError());
+    }
+    return m;
+}
+
+// Inject the driver's services through the fla_set_*_service symbols the test suite
+// exports. Returns false if the suite is missing a required service (exception
+// handling). The memory service injected here is the FAULT-INJECTING binding.
+static bool suite_inject(ExecutionContext *ectx, SuiteHandle suite) {
+    // Log service (optional)
+    fla_set_log_service_fn *fla_set_log
+        = (fla_set_log_service_fn *)GetProcAddress(suite, FLA_SET_LOG_SERVICE_STR);
+    if (fla_set_log != NULL) {
+        flp_init_log_service(fla_set_log);
+    }
+
+    // Exception service (required)
+    fla_set_exception_service_fn *fla_set_exc
+        = (fla_set_exception_service_fn *)GetProcAddress(suite,
+                                                         FLA_SET_EXCEPTION_SERVICE_STR);
+    if (fla_set_exc == NULL) {
+        return false;
+    }
+    flp_init_exception_service(fla_set_exc);
+
+    // Memory service (optional)
+    fla_set_memory_service_fn *fla_set_mem
+        = (fla_set_memory_service_fn *)GetProcAddress(suite, FLA_SET_MEMORY_SERVICE_STR);
+    if (fla_set_mem != NULL) {
+        flp_init_fault_memory_service(fla_set_mem, ectx->mem_ctx);
+    }
+
+    // Timer service (optional)
+    fla_set_timer_service_fn *fla_set_timer
+        = (fla_set_timer_service_fn *)GetProcAddress(suite, FLA_SET_TIMER_SERVICE_STR);
+    if (fla_set_timer != NULL) {
+        flp_init_timer_service(fla_set_timer);
+    }
+
+    // File service (optional)
+    fla_set_file_service_fn *fla_set_file
+        = (fla_set_file_service_fn *)GetProcAddress(suite, FLA_SET_FILE_SERVICE_STR);
+    if (fla_set_file != NULL) {
+        flp_init_file_service(fla_set_file);
+    }
+
+    return true;
+}
+
+static void *suite_symbol(ExecutionContext *ectx, SuiteHandle suite,
+                          char const *symbol) {
+    (void)ectx;
+    // The uintptr_t intermediate performs the function-to-data pointer conversion that
+    // FARPROC requires (C4152 under /W4 otherwise).
+    return (void *)(uintptr_t)GetProcAddress(suite, symbol);
+}
+
+static void suite_unload(ExecutionContext *ectx, SuiteHandle suite) {
+    (void)ectx;
+    FreeLibrary(suite);
+}
+
+static FaultInjector *suite_injector(ExecutionContext *ectx) {
+    return ectx->mem_ctx->fi;
+}
+
+#else // split core: route through the platform API
+
+typedef FLModule *SuiteHandle;
+
+static SuiteHandle suite_load(ExecutionContext *ectx, char const *path) {
+    return ectx->platform->load_module(path);
+}
+
+static bool suite_inject(ExecutionContext *ectx, SuiteHandle suite) {
+    return ectx->platform->inject_services(suite);
+}
+
+static void *suite_symbol(ExecutionContext *ectx, SuiteHandle suite,
+                          char const *symbol) {
+    return ectx->platform->resolve_symbol(suite, symbol);
+}
+
+static void suite_unload(ExecutionContext *ectx, SuiteHandle suite) {
+    ectx->platform->unload_module(suite);
+}
+
+static FaultInjector *suite_injector(ExecutionContext *ectx) {
+    return ectx->platform->injector;
+}
+
+#endif // FL_PLATFORM_BUILD
+
 /**
  * @brief Handler for "run" command
  *
@@ -298,7 +420,7 @@ COMMAND_HANDLER(run_cmd) {
     FLContext        *fctx             = ectx->fctx;
     int               test_suite_count = cmd->argc;
     int               loaded           = 0;
-    static char const module[]         = "Faultline Run";
+    static char const module[]         = COMMAND_MODULE_NAME;
 
     if (test_suite_count == 0) {
         LOG_ERROR(module, "No test suite paths provided");
@@ -313,66 +435,29 @@ COMMAND_HANDLER(run_cmd) {
     FL_TRY {
         for (int i = 0; i < test_suite_count; i++) {
             char const *dll_path   = cmd->args[i];
-            HMODULE     test_suite = LoadLibraryA(dll_path);
+            SuiteHandle test_suite = suite_load(ectx, dll_path);
             if (test_suite == NULL) {
-                LOG_ERROR(module, "Failed to load \"%s\", error=%lu", dll_path,
-                          GetLastError());
+                LOG_ERROR(module, "Failed to load \"%s\"", dll_path);
                 continue;
             }
 
-            // Log service (optional)
-            fla_set_log_service_fn *fla_set_log
-                = (fla_set_log_service_fn *)GetProcAddress(test_suite,
-                                                           FLA_SET_LOG_SERVICE_STR);
-            if (fla_set_log != NULL) {
-                flp_init_log_service(fla_set_log);
-            }
-
-            // Exception service (required)
-            fla_set_exception_service_fn *fla_set_exc = (fla_set_exception_service_fn *)
-                GetProcAddress(test_suite, FLA_SET_EXCEPTION_SERVICE_STR);
-            if (fla_set_exc == NULL) {
+            if (!suite_inject(ectx, test_suite)) {
                 LOG_ERROR(module, "\"%s\" has no exception service - skipping",
                           dll_path);
-                FreeLibrary(test_suite);
+                suite_unload(ectx, test_suite);
                 continue;
-            }
-            flp_init_exception_service(fla_set_exc);
-
-            // Memory service (optional)
-            fla_set_memory_service_fn *fla_set_mem = (fla_set_memory_service_fn *)
-                GetProcAddress(test_suite, FLA_SET_MEMORY_SERVICE_STR);
-            if (fla_set_mem != NULL) {
-                flp_init_fault_memory_service(fla_set_mem, ectx->mem_ctx);
-            }
-
-            // Timer service (optional)
-            fla_set_timer_service_fn *fla_set_timer
-                = (fla_set_timer_service_fn *)GetProcAddress(test_suite,
-                                                             FLA_SET_TIMER_SERVICE_STR);
-            if (fla_set_timer != NULL) {
-                flp_init_timer_service(fla_set_timer);
-            }
-
-            // File service (optional)
-            fla_set_file_service_fn *fla_set_file
-                = (fla_set_file_service_fn *)GetProcAddress(test_suite,
-                                                            FLA_SET_FILE_SERVICE_STR);
-            if (fla_set_file != NULL) {
-                flp_init_file_service(fla_set_file);
             }
 
             // Run tests
             fl_get_test_suite_fn *fl_get_test_suite
-                = (fl_get_test_suite_fn *)GetProcAddress(test_suite,
-                                                         FL_GET_TEST_SUITE_STR);
+                = (fl_get_test_suite_fn *)(uintptr_t)suite_symbol(ectx, test_suite,
+                                                                  FL_GET_TEST_SUITE_STR);
             if (fl_get_test_suite != NULL) {
                 FL_TRY {
                     FLTestSuite *ts = fl_get_test_suite();
                     faultline_initialize(fctx, ts, ectx->arena);
-                    fctx->injector
-                        = ectx->mem_ctx
-                              ->fi; // restore after memset in faultline_initialize
+                    fctx->injector = suite_injector(
+                        ectx); // restore after memset in faultline_initialize
                     exercise_test_suite(fctx, ts, ectx->db, &junit);
                 }
                 FL_CATCH_ALL {
@@ -385,7 +470,7 @@ COMMAND_HANDLER(run_cmd) {
                 LOG_ERROR(module, "\"%s\" does not export fl_get_test_suite", dll_path);
             }
 
-            FreeLibrary(test_suite);
+            suite_unload(ectx, test_suite);
         }
     }
     FL_FINALLY {

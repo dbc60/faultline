@@ -8,9 +8,9 @@
  * This file provides the default implementations for the FLExceptionService
  * function pointers (push, pop, throw) and a convenience initializer.
  *
- * The driver creates an FLExceptionService, calls fl_exception_service_init()
- * to populate it with default implementations, then injects it into test DLLs
- * via fla_set_exception_service().
+ * The driver creates an FLExceptionService, calls fl_exception_service_init() to
+ * populate it with default implementations, then injects it into test DLLs via
+ * fla_set_exception_service().
  *
  * Test code uses FL_TRY macros which access the service via g_fla_exception_service, a
  * TLS-based global instance of FLExceptionService.
@@ -48,9 +48,9 @@ FL_POP_EXCEPTION_SERVICE_FN(flp_pop) {
 FL_THROW_EXCEPTION_SERVICE_FN(flp_throw) {
     FLExceptionEnvironment *env = g_stack;
 
-    // The stack is thread-local, so this fires both for a throw with no enclosing
-    // FL_TRY and for a throw on a thread whose stack was never established. Report
-    // the throw site before dying; a bare null dereference would discard it.
+    // The stack is thread-local, so this fires both for a throw with no enclosing FL_TRY
+    // and for a throw on a thread whose stack was never established. Report the throw
+    // site before dying; a bare null dereference would discard it.
     if (env == NULL) {
         fprintf(stderr, "FL_THROW with no enclosing FL_TRY on this thread: %s (%s:%d)\n",
                 reason, file, line);
@@ -61,17 +61,22 @@ FL_THROW_EXCEPTION_SERVICE_FN(flp_throw) {
         abort();
     }
 
-    g_stack = env->next;
-    env->reason                 = reason;
-    env->details                = details;
-    env->file                   = file;
-    env->line                   = line;
+    g_stack      = env->next;
+    env->reason  = reason;
+    env->details = details;
+    env->file    = file;
+    env->line    = line;
     longjmp(env->jmp, FL_THROWN);
 }
 
+// A binary that also links the consumer accessor (fla_exception_service.c) gets
+// fl_throw_assertion from there (routing asserts through the injected service) and
+// defines FLP_OMIT_FL_THROW_ASSERTION to keep this copy out of the link.
+#if !defined(FLP_OMIT_FL_THROW_ASSERTION)
 FL_THROW_EXCEPTION_SERVICE_FN(fl_throw_assertion) {
     flp_throw(reason, details, file, line);
 }
+#endif
 
 /**
  * @brief Connect the platform and application side of the exception service
