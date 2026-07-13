@@ -7,14 +7,14 @@
  *
  * See LICENSE.txt for copyright and licensing information about this file.
  *
- * Verifies the platform-side file service (flp_file_service.c): service
- * plumbing, positional read/write round-trips, open-failure handling, and the
- * UTF-8 -> UTF-16 path conversion.
+ * Verifies the platform-side file service (flp_file_service.c): service plumbing,
+ * positional read/write round-trips, open-failure handling, and the UTF-8 -> UTF-16 path
+ * conversion.
  *
- * The driver injects an FLFileService via fla_set_file_service() when it loads
- * this DLL, so the cross-boundary test observes the host's install while the
- * round-trip tests exercise the provider directly. The driver also injects an
- * FLExceptionService, so FL_ASSERT macros throw exceptions caught by the driver.
+ * The driver injects an FLFileService via fla_set_file_service() when it loads this DLL,
+ * so the cross-boundary test observes the host's install while the round-trip tests
+ * exercise the provider directly. The driver also injects an FLExceptionService, so
+ * FL_ASSERT macros throw exceptions caught by the driver.
  */
 
 #include <faultline/fl_exception_service_assert.h> // FL_ASSERT_* macros
@@ -41,8 +41,8 @@ static void next_path(char *path, size_t size) {
     snprintf(path, size, "fl_file_test_%d.tmp", ++tmp_counter);
 }
 
-// Delete a UTF-8-named file. Routes through DeleteFileW so non-ASCII names
-// (and ordinary ASCII ones, which are valid UTF-8) are both handled.
+// Delete a UTF-8-named file. Routes through DeleteFileW so non-ASCII names (and ordinary
+// ASCII ones, which are valid UTF-8) are both handled.
 static void delete_path(char const *path) {
     WCHAR w[MAX_PATH];
     if (MultiByteToWideChar(CP_UTF8, 0, path, -1, w, MAX_PATH) != 0) {
@@ -62,18 +62,17 @@ static void write_file(char const *path, void const *data, size_t len) {
 // ---------------------------------------------------------------------------
 // Cross-boundary injection
 //
-// This relies entirely on the driver: when it loads this DLL it resolves the
-// exported fla_set_file_service via GetProcAddress and installs the host's file
-// service into g_fla_file_service before any test runs. A pass proves the symbol
-// was exported and the service crossed the DLL boundary; were it missing,
-// g_fla_file_service would still hold the default_file_* abort stubs (static in
-// the included fla_file_service.c). The host installs its own flp_file_* copies --
-// different addresses from this DLL's -- so we assert the stubs were replaced
-// rather than pointer identity, then round-trip a file through the injected
-// service.
+// This relies entirely on the driver: when it loads this DLL it resolves the exported
+// fla_set_file_service via GetProcAddress and installs the host's file service into
+// g_fla_file_service before any test runs. A pass proves the symbol was exported and the
+// service crossed the DLL boundary; were it missing, g_fla_file_service would still hold
+// the default_file_* abort stubs (static in the included fla_file_service.c). The host
+// installs its own flp_file_* copies -- different addresses from this DLL's -- so we
+// assert the stubs were replaced rather than pointer identity, then round-trip a file
+// through the injected service.
 //
-// Registered first so it observes the driver's injection before the plumbing
-// test below self-injects this DLL's own provider into g_fla_file_service.
+// Registered first so it observes the driver's injection before the plumbing test below
+// self-injects this DLL's own provider into g_fla_file_service.
 // ---------------------------------------------------------------------------
 
 FL_TEST("Driver Injects File Service", driver_injects_file_service) {
@@ -162,8 +161,8 @@ FL_TEST("Positional Read", positional_read) {
     delete_path(path);
 }
 
-// An FL_FILE_APPEND handle ignores the write offset: every write lands at end
-// of file, so two writes that both name offset 0 produce concatenated data.
+// An FL_FILE_APPEND handle ignores the write offset: every write lands at end of file,
+// so two writes that both name offset 0 produce concatenated data.
 FL_TEST("Append Ignores Offset", append_ignores_offset) {
     char path[256];
     next_path(path, sizeof path);
@@ -186,8 +185,8 @@ FL_TEST("Append Ignores Offset", append_ignores_offset) {
     delete_path(path);
 }
 
-// Two positional writes in one session land at the offsets named, not at a
-// running file pointer.
+// Two positional writes in one session land at the offsets named, not at a running file
+// pointer.
 FL_TEST("Positional Write", positional_write) {
     char path[256];
     next_path(path, sizeof path);
@@ -230,8 +229,8 @@ FL_TEST("Open Invalid Mode Returns Null", open_invalid_mode_returns_null) {
 // UTF-8 path handling
 // ---------------------------------------------------------------------------
 
-// A non-ASCII UTF-8 path round-trips, exercising the CreateFileW conversion.
-// The "\xC3\xA9" bytes are the UTF-8 encoding of U+00E9 (e-acute).
+// A non-ASCII UTF-8 path round-trips, exercising the CreateFileW conversion. The
+// "\xC3\xA9" bytes are the UTF-8 encoding of U+00E9 (e-acute).
 FL_TEST("Utf8 Path Round Trip", utf8_path_round_trip) {
     char const path[] = "fl_file_test_caf\xC3\xA9.tmp";
 
@@ -254,12 +253,11 @@ FL_TEST("Utf8 Path Round Trip", utf8_path_round_trip) {
 // Long-path handling
 // ---------------------------------------------------------------------------
 
-// The provider accepts paths longer than MAX_PATH by opening them in
-// extended-length (\\?\) form. The test builds a directory chain deep enough
-// that the relative path exceeds MAX_PATH, round-trips a file at the bottom
-// through the provider, and removes the chain deepest-first. The directories
-// are created and deleted with explicit \\?\ paths; only the file open goes
-// through the provider's own conversion.
+// The provider accepts paths longer than MAX_PATH by opening them in extended-length
+// (\\?\) form. The test builds a directory chain deep enough that the relative path
+// exceeds MAX_PATH, round-trips a file at the bottom through the provider, and removes
+// the chain deepest-first. The directories are created and deleted with explicit
+// \\?\ paths; only the file open goes through the provider's own conversion.
 FL_TEST("Long Path Round Trip", long_path_round_trip) {
     char const seg[] = "fl_long_path_segment_0123456789"; // 31 chars per level
     int const  depth = 10;                                // > 300 chars of path

@@ -52,11 +52,10 @@ static DWORD dword_transfer_size(size_t bytes) {
  * @brief Open a path whose UTF-16 form exceeds MAX_PATH.
  *
  * CreateFileW rejects unprefixed paths longer than MAX_PATH; the extended-length
- * \\?\ form lifts that limit but bypasses the Win32 path parser, so the path must
- * be absolute, backslash-separated, and free of . and .. components.
- * GetFullPathNameW supplies that normalization. A network path's leading "\\" is
- * replaced by the \\?\UNC\ prefix; a path that already carries \\?\ is passed
- * through unchanged.
+ * \\?\ form lifts that limit but bypasses the Win32 path parser, so the path must be
+ * absolute, backslash-separated, and free of . and .. components. GetFullPathNameW
+ * supplies that normalization. A network path's leading "\\" is replaced by the
+ * \\?\UNC\ prefix; a path that already carries \\?\ is passed through unchanged.
  *
  * @param path the UTF-8 path from the caller
  * @param wlen the UTF-16 length of path in WCHARs, including the terminator

@@ -71,7 +71,6 @@ FL_DECL_SPEC FLA_SET_FILE_SERVICE_FN(fla_set_file_service) {
         fflush(stderr);
         abort();
     }
-    // Whole-struct copy: the size check accepts a larger (newer) provider struct,
-    // and copying the whole prefix picks up every field this consumer knows about.
+
     g_fla_file_service = *svc;
 }

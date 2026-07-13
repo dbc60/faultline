@@ -20,16 +20,15 @@ extern "C" {
 typedef struct FLFaultMemoryContext FLFaultMemoryContext;
 
 /**
- * @brief Bind the fault-injecting memory context that flp_inject_services()
- * pushes into suites. Call once at host setup, before any suite is injected.
+ * @brief Bind the fault-injecting memory context that flp_inject_services() pushes into
+ * suites. Call once at host setup, before any suite is injected.
  */
 #define FLP_MODULE_SERVICE_INIT_FN(name) void name(FLFaultMemoryContext *fault_ctx)
 typedef FLP_MODULE_SERVICE_INIT_FN(flp_module_service_init_fn);
 FLP_MODULE_SERVICE_INIT_FN(flp_module_service_init);
 
 /**
- * @brief Platform-side implementation to load a module by path. Returns NULL on
- * failure.
+ * @brief Platform-side implementation to load a module by path. Returns NULL on failure.
  */
 FL_MODULE_LOAD_FN(flp_load_module);
 
@@ -46,8 +45,8 @@ FL_MODULE_UNLOAD_FN(flp_unload_module);
 
 /**
  * @brief Inject the platform's services into a loaded suite through the
- * fla_set_*_service symbols it exports. Returns false if the suite is missing a
- * required service (exception handling).
+ * fla_set_*_service symbols it exports. Returns false if the suite is missing a required
+ * service (exception handling).
  */
 FL_INJECT_SERVICES_FN(flp_inject_services);
 
