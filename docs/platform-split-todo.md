@@ -148,13 +148,23 @@ monolith `all.cmd test` green (23 suites, 100%).
   file-service suites (100%, faults injected); full monolith `all.cmd test` green
   (23 suites, 100%).
 
+### Split exe name + continuous build ✅ done (2026-07-14)
+- ✅ The split exe is `win32_faultline.exe` (matching the `win32_faultline_*.c`
+  host sources); the monolith keeps `faultline.exe`. The two builds no longer
+  overwrite each other.
+- ✅ `all.cmd` builds the split (after `std_faultline.cmd`) and its test step runs
+  a split smoke — driver / file-service / timer suites through
+  `win32_faultline.exe` — after the monolith run, so every `all.cmd test`
+  exercises both hosts. Verified: monolith 23 suites 100%; smoke 3 suites 100%
+  with 6 faults injected across the DLL boundary.
+
 ### Remaining
 - [ ] Seam #2: driver still allocates via `arena_malloc_throw` on the platform arena.
+  One call site (the injector allocation in `faultline_driver.c`). Decide: route it
+  through the injected (non-fault-injecting) memory service, or accept the arena as
+  the deliberately shared core-layer type that `FLPlatformAPI.arena` exposes.
 - [ ] Seam #4: `output_junit.c` writes via `fopen`/`fprintf` (portable CRT, so it
-  links, but should route through `FLFileService`).
-- [ ] `faultline_split.cmd` emits `/Fe:faultline.exe` — same name/path as the
-  monolith's output, so each build overwrites the other. Decide the split exe's
-  name (script comments say `win32_faultline.exe`).
-- [ ] Bash counterparts: no `faultline_core.sh` / `faultline_split.sh` yet.
-- [ ] Wire the split into `all.cmd`/`all.sh` (after the name collision is settled)
-  so it's built and tested continuously.
+  links, but should route through `FLFileService`; needs a small buffered-formatting
+  layer since the service has no formatted-output primitive).
+- [ ] Bash counterparts: no `faultline_core.sh` / `faultline_split.sh` yet; wire the
+  split into `all.sh` once they exist.

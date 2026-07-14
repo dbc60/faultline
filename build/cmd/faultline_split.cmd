@@ -3,16 +3,17 @@ SETLOCAL ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 
 :: See LICENSE.txt for copyright and licensing information about this file.
 ::
-:: Split-architecture build of faultline.exe: compiles the Win32 platform layer
-:: (win32_faultline_unity.c) and links it against faultline_core.lib plus the
-:: prebuilt sqlite3.obj / cwalk.obj. This is the platform/app counterpart to the
-:: monolithic faultline.cmd, which is left intact for the current architecture.
+:: Split-architecture build of win32_faultline.exe: compiles the Win32 platform
+:: layer (win32_faultline_unity.c) and links it against faultline_core.lib plus
+:: the prebuilt sqlite3.obj / cwalk.obj. This is the platform/app counterpart to
+:: the monolithic faultline.cmd, which is left intact for the current
+:: architecture.
 ::
 :: Pipeline:
 ::   1. faultline_fixtures.cmd  -> sqlite3.obj / cwalk.obj / faultline_test_data.dll
 ::   2. faultline_core.cmd      -> faultline_core.lib (the OS-free app layer)
 ::   3. faultline.cmd           -> faultline_tests.dll (only when testing and missing)
-::   4. this script             -> faultline.exe (the platform layer)
+::   4. this script             -> win32_faultline.exe (the platform layer)
 
 SET PROJECT_NAME="Faultline Split"
 SET PROJECT_NAME=%PROJECT_NAME:"=%
@@ -57,8 +58,7 @@ IF %build% EQU 1 (
 )
 
 :: The test step below runs faultline_tests.dll; after a clean it is gone.
-:: faultline.cmd rebuilds it (and the monolithic faultline.exe, which the link
-:: below then overwrites with the split exe -- keep this call before the link).
+:: faultline.cmd rebuilds it (and, alongside, the monolithic faultline.exe).
 IF %test% EQU 1 IF NOT EXIST %DIR_OUT_BIN%\faultline_tests.dll (
     CALL %DIR_CMD%\faultline.cmd !args!
     IF ERRORLEVEL 1 GOTO :ERROR
@@ -75,7 +75,7 @@ if %timed% EQU 1 (
 IF %build% EQU 1 (
     IF %verbose% EQU 1 (
         ECHO.
-        ECHO Build the %PROJECT_NAME% platform layer ^(unity^): faultline.exe
+        ECHO Build the %PROJECT_NAME% platform layer ^(unity^): win32_faultline.exe
     )
     cl %CommonCompilerFlagsFinal% /wd4200 /wd4115 /wd4456 /DFL_PLATFORM_BUILD ^
     /I%DIR_INCLUDE% /I%DIR_REPO%\src /I"%DIR_THIRD_PARTY%" ^
@@ -83,7 +83,7 @@ IF %build% EQU 1 (
     %DIR_REPO%\app\faultline\win32_faultline_unity.c ^
     %DIR_OUT_LIB%\faultline_core.lib ^
     %DIR_OUT_OBJ%\sqlite3.obj %DIR_OUT_OBJ%\cwalk.obj /Fo:%DIR_OUT_OBJ%\ ^
-    /Fd:%DIR_OUT_BIN%\faultline.pdb /Fe:%DIR_OUT_BIN%\faultline.exe /link ^
+    /Fd:%DIR_OUT_BIN%\win32_faultline.pdb /Fe:%DIR_OUT_BIN%\win32_faultline.exe /link ^
     %CommonLinkerFlagsFinal% /ENTRY:mainCRTStartup > "%TEMP%\cl_out.tmp"
     if errorlevel 1 (
         type "%TEMP%\cl_out.tmp"
@@ -104,8 +104,8 @@ if %test% EQU 1 (
         ECHO.
     )
     pushd %DIR_OUT_BIN%
-    .\faultline.exe run faultline_tests.dll
-    .\faultline.exe show results --limit 1
+    .\win32_faultline.exe run faultline_tests.dll
+    .\win32_faultline.exe show results --limit 1
     popd
 )
 GOTO :SUCCESS

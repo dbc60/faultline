@@ -1,7 +1,7 @@
 /**
  * @file win32_faultline_unity.c
  * @author Douglas Cuthbertson
- * @brief Unity build of the Win32 platform layer -> faultline.exe
+ * @brief Unity build of the Win32 platform layer -> the split host executable
  * @version 0.1
  * @date 2026-06-16
  *
