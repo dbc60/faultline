@@ -5,10 +5,11 @@ Pick-up checklist for services conforming to the provider/consumer
 memory services follow. See **Two architectural axes** and the **Exception/Log
 Service** sections in `CLAUDE.md` for the target pattern.
 
-Status: **A (timer) and B (file service) are done**, and **C (module service +
-split assembly)** now builds and runs: `faultline_split.cmd` produces a working
-split driver. What remains is C's tail — seams #1/#2/#4, build-script polish,
-and wiring the split into `all.cmd`/`all.sh`.
+Status: **complete (2026-07-14).** A (timer), B (file service), and C (module
+service + split assembly) are done, including all four seams, the
+`win32_faultline.exe` naming, and continuous build/test of the split in both
+`all.cmd` and `all.sh`. What's left below is deferred/optional work only (dist
+packages, async file service, seek/tell/flush contract rev).
 
 Header location convention: `fl_*_service.h` / `fla_*_service.h` live in
 `include/faultline/`; the `flp_*_service.h` provider headers live in `include/`
@@ -192,6 +193,23 @@ contract. `JUnitXML.file` is now `FLFile *`. Verified: both hosts emit structura
 identical, well-formed XML; rewriting an existing file truncates cleanly;
 `all.cmd test` green (monolith 23 suites + split smoke, 100%).
 
+### Bash/clang counterparts ✅ done (2026-07-14)
+- ✅ `build/bash/faultline_core.sh` compiles `faultline_core_unity.c` (no
+  `FL_PLATFORM_BUILD`, with `FL_EMBEDDED`) to `faultline_core.o` — the clang build
+  links objects directly, so the object is the unit where the cmd build archives
+  `faultline_core.lib`.
+- ✅ `build/bash/faultline_split.sh` builds `win32_faultline.exe`
+  (`win32_faultline_unity.c` + `faultline_core.o` + shared `sqlite3.o`/`cwalk.o`),
+  with the same guards as the cmd script: rebuild fixtures only when missing,
+  forward filtered args to sub-builds (no nested re-clean), and rebuild
+  `faultline_tests.dll` via `faultline.sh` when testing after a clean.
+- ✅ `all.sh` builds the split after `faultline.sh` and runs the same
+  driver/file-service/timer smoke through `win32_faultline.exe` as `all.cmd`.
+- ✅ Verified: `faultline_split.sh test` and `test clean` both 27/27;
+  `all.sh test` green (monolith 23 suites 100%, split smoke 3 suites 100% with
+  6 faults injected across the DLL boundary).
+
 ### Remaining
-- [ ] Bash counterparts: no `faultline_core.sh` / `faultline_split.sh` yet; wire the
-  split into `all.sh` once they exist.
+None — the platform/core split work is complete. Deferred/optional items live in
+their sections above (dist packages for timer/file services, the async file
+service contract, seek/tell/flush/size/stat, a fault-injecting file service).

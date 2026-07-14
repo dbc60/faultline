@@ -52,6 +52,7 @@ bash "$SCRIPT_DIR/fault_injector.sh"        "${_forward_args[@]}"
 bash "$SCRIPT_DIR/fl_assert.sh"             "${_forward_args[@]}"
 bash "$SCRIPT_DIR/command.sh"               "${_forward_args[@]}"
 bash "$SCRIPT_DIR/faultline.sh"             "${_forward_args[@]}"
+bash "$SCRIPT_DIR/faultline_split.sh"       "${_forward_args[@]}"
 bash "$SCRIPT_DIR/malloc_cleanup_config.sh" "${_forward_args[@]}"
 bash "$SCRIPT_DIR/memory_service.sh"        "${_forward_args[@]}"
 bash "$SCRIPT_DIR/file_service.sh"          "${_forward_args[@]}"
@@ -116,6 +117,12 @@ if [[ $_has_test -eq 1 ]]; then
         flp_memory_service_tests.dll \
         flp_file_service_tests.dll
     ./faultline.exe show results --limit 23
+    # Split-architecture smoke: the same suites driven through the split host.
+    ./win32_faultline.exe run \
+        faultline_tests.dll \
+        flp_file_service_tests.dll \
+        timer_tests.dll
+    ./win32_faultline.exe show results --limit 3
     popd > /dev/null
 fi
 
