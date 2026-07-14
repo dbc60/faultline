@@ -15,7 +15,6 @@
  */
 #include <faultline/arena.h>           // Arena, ARENA_MALLOC_THROW
 #include <faultline/buffer.h>          // Buffer API
-#include <faultline/timer.h>           // WinTimer
 #include <faultline/fault.h>           // Fault
 #include <faultline/fl_result_codes.h> // FLResultCode
 #include <faultline/fl_types.h>        // FLTestPhase, FLFailureType
