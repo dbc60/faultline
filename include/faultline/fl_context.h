@@ -20,7 +20,6 @@
 #include <stdbool.h>                               // for bool, true, false
 #include <string.h>                                // for size_t, memset
 #include <time.h>                                  // for time_t, time
-#include <faultline/timer.h>                       // for WinTimer
 #include <faultline/arena.h>                       // for Arena
 #include <faultline/buffer.h>                      // for buffer_clear, DEFINE_TYPED_...
 #include <faultline/fault_site.h>                  // for fault_site_buffer_count
@@ -31,50 +30,6 @@ extern "C" {
 #endif
 
 typedef struct Arena Arena;
-
-/**
- * @brief Define WinTimerBuffer, a typed buffer object. This macro defines the following
- * functions:
- *
- *  init_clock_timer_buffer(WinTimerBuffer *buf, size_t capacity, void *mem)
- *  new_clock_timer_buffer(size_t capacity)
- *  destroy_clock_timer_buffer(WinTimerBuffer *buf)
- *  clock_timer_buffer_put(WinTimerBuffer *buf, WinTimer const *item)
- *  clock_timer_buffer_get(WinTimerBuffer *buf, size_t index)
- *  clock_timer_buffer_count(WinTimerBuffer *buf)
- *  clock_timer_buffer_clear(WinTimerBuffer *buf)
- *  clock_timer_buffer_clear_and_release(WinTimerBuffer *buf)
- *  clock_timer_buffer_allocate_next_free_slot(WinTimerBuffer *buf)
- *  clock_timer_buffer_copy(WinTimerBuffer *dst, WinTimerBuffer *src)
- */
-DEFINE_TYPED_BUFFER(WinTimer, clock_timer)
-
-typedef struct ElapsedTime {
-    i64    index;   ///< index of the test case
-    double seconds; ///< elapsed time in seconds
-} ElapsedTime;
-
-static inline void elapsed_time_init(ElapsedTime *elapsed, i64 index, double seconds) {
-    elapsed->index   = index;
-    elapsed->seconds = seconds;
-}
-
-/**
- * @brief Define ElapsedTimeBuffer, a typed buffer object. This macro defines the
- * following functions:
- *
- *  init_elapsed_time_buffer(ElapsedTimeBuffer *buf, size_t capacity, void *mem)
- *  new_elapsed_time_buffer(size_t capacity)
- *  destroy_elapsed_time_buffer(ElapsedTimeBuffer *buf)
- *  elapsed_time_buffer_put(ElapsedTimeBuffer *buf, ElapsedTime const *item)
- *  elapsed_time_buffer_get(ElapsedTimeBuffer *buf, size_t index)
- *  elapsed_time_buffer_count(ElapsedTimeBuffer *buf)
- *  elapsed_time_buffer_clear(ElapsedTimeBuffer *buf)
- *  elapsed_time_buffer_clear_and_release(ElapsedTimeBuffer *buf)
- *  elapsed_time_buffer_allocate_next_free_slot(ElapsedTimeBuffer *buf)
- *  elapsed_time_buffer_copy(ElapsedTimeBuffer *dst, ElapsedTimeBuffer *src)
- */
-DEFINE_TYPED_BUFFER(ElapsedTime, elapsed_time)
 
 /**
  * @brief Fault injection testing context.
@@ -94,10 +49,8 @@ typedef struct {
     size_t       setups_failed;           ///< number of tests that failed setup
     size_t       cleanups_failed;         ///< tests that failed cleanup
     time_t       run_start_time;          ///< UTC time when testing starts
-    ElapsedTimeBuffer
-        elapsed_times;            ///< a buffer of elapsed times, one for each test case
-    FLTestSummaryBuffer results;  ///< a resizable buffer of test results
-    FaultInjector      *injector; ///< the FaultInjector for the test suite
+    FLTestSummaryBuffer results;          ///< a resizable buffer of test results
+    FaultInjector      *injector;         ///< the FaultInjector for the test suite
     FaultSiteBuffer     fault_sites; ///< the FaultSites collected for each test case
     bool                initialized; ///< whether the context has been initialized
 } FLContext;
@@ -125,7 +78,6 @@ static inline FL_INITIALIZE(faultline_initialize) {
     fctx->arena = arena;
     fctx->ts    = ts;
     init_faultline_test_summary_buffer(&fctx->results, fctx->arena, 0);
-    init_elapsed_time_buffer(&fctx->elapsed_times, fctx->arena, 0);
     init_fault_site_buffer(&fctx->fault_sites, fctx->arena, 0);
     fctx->initialized = true;
 }
@@ -181,7 +133,6 @@ typedef FL_END(faultline_end_fn);
 static inline FL_END(faultline_end) {
     // Clear result buffers
     buffer_clear(&fctx->results);
-    buffer_clear(&fctx->elapsed_times);
     buffer_clear(&fctx->fault_sites);
 
     // Reset all test counters

@@ -119,15 +119,13 @@ static FLResultCode run_timed_test(FLContext *fctx, FLStopwatch *timer,
  *
  */
 FL_EXERCISE_TEST(faultline_run_test) {
-    FaultInjector *injector = fctx->injector;
-    // A made-but-never-started watch reads 0 elapsed: test_timer stays that way if
-    // setup fails before the test body starts it.
-    FLStopwatch   run_timer  = fl_stopwatch_make(FL_TIMER_SERVICE());
-    FLStopwatch   test_timer = fl_stopwatch_make(FL_TIMER_SERVICE());
-    bool          triggered  = false;
-    FLTestSummary summary;
-    i64           total_fault_sites = 0;
-    FLResultCode  rc                = FL_FAIL;
+    FaultInjector *injector   = fctx->injector;
+    FLStopwatch    run_timer  = fl_stopwatch_make(FL_TIMER_SERVICE());
+    FLStopwatch    test_timer = fl_stopwatch_make(FL_TIMER_SERVICE());
+    bool           triggered  = false;
+    FLTestSummary  summary;
+    i64            total_fault_sites = 0;
+    FLResultCode   rc                = FL_FAIL;
 
     LOG_DEBUG("Run Test", "run test %s", fctx->ts->test_cases[fctx->index]->name);
     if (injector == NULL || !fault_injector_is_initialized(injector)) {
@@ -177,11 +175,6 @@ FL_EXERCISE_TEST(faultline_run_test) {
 
     fctx->tests_run++;
     bool discovery_counted_test_failure = discovery_result.unexpected_exception;
-
-    // record the elapsed time for the test case
-    ElapsedTime *elapsed
-        = elapsed_time_buffer_allocate_next_free_slot(&fctx->elapsed_times);
-    elapsed_time_init(elapsed, fctx->index, fl_stopwatch_elapsed_seconds(&test_timer));
 
     // Record total number of fault sites discovered
     total_fault_sites = fault_injector_get_site_count(injector);
