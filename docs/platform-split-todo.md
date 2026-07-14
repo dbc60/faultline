@@ -179,8 +179,19 @@ axis-1 doctrine; what's OS-specific is its *paging backing*. So:
   with `/DFL_EMBEDDED` so the linked core's plain (non-dllimport) setters match.
 - Verified: split `faultline_split.cmd test` 27/27; `std_faultline` builds;
   `all.cmd test` green (monolith 23 suites 100%, split smoke 3 suites 100%).
-- [ ] Seam #4: `output_junit.c` writes via `fopen`/`fprintf` (portable CRT, so it
-  links, but should route through `FLFileService`; needs a small buffered-formatting
-  layer since the service has no formatted-output primitive).
+### Seam #4 (JUnit output) ✅ done (2026-07-14)
+`output_junit.c` writes through the file service (`FL_FILE_OPEN/WRITE/CLOSE` via the
+`fl_file.h` selector) instead of `fopen_s`/`fprintf`. A small buffered accumulator
+(`JUnitOut`, local to the file) batches the short XML fragments into one service
+write per KB and tracks the running offset, since the service has no formatted-output
+primitive and its writes are positional; `out_printf` handles bounded content
+(numbers, timestamps) while unbounded strings go through the chunking
+`out_puts`/`xml_write_escaped`. `junit_begin` opens with `FL_FILE_WRITE`
+(create/truncate), replacing the old `remove()`+append — deletion never entered the
+contract. `JUnitXML.file` is now `FLFile *`. Verified: both hosts emit structurally
+identical, well-formed XML; rewriting an existing file truncates cleanly;
+`all.cmd test` green (monolith 23 suites + split smoke, 100%).
+
+### Remaining
 - [ ] Bash counterparts: no `faultline_core.sh` / `faultline_split.sh` yet; wire the
   split into `all.sh` once they exist.

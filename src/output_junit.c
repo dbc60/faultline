@@ -1,7 +1,4 @@
-#if defined(__clang__) || defined(__GNUC__)
-#include <sec_api/string_s.h> // IWYU pragma: keep for strncpy_s
-#endif
-#include <string.h>                                // strlen, strncpy_s
+#include <string.h>                                // strlen, memcpy
 #include <time.h>                                  // time_t, struct tm, time, strftime
 #include <faultline/arena.h>                       // Arena
 #include <faultline/fl_context.h>                  // FLContext
@@ -12,7 +9,12 @@
 #include <faultline/fl_test.h>                     // FLTestSuite, FLTestCase
 #include <faultline/fl_test_summary.h> // FLTestSummary, faultline_test_summary_buffer_get
 #include <faultline/fl_try.h>          // FL_THROW (selects flp_ backstop)
-#include <stdio.h>                     // FILE, fputs, fputc, FILENAME_MAX
+#include <faultline/fl_file.h>         // FL_FILE_OPEN/WRITE/CLOSE (selects backend)
+#include <faultline/fl_file_types.h>   // FLFile, FL_FILE_WRITE, FL_FILE_APPEND
+#include <stdarg.h>                    // va_list, va_start, va_end
+#include <stdbool.h>                   // bool, true, false
+#include <stdint.h>                    // uint64_t
+#include <stdio.h>                     // vsnprintf
 #include <cwalk/include/cwalk.h>       // cwk_path_normalize, cwk_path_*
 #include "flp_time.h"                  // fl_gmtime
 #include "output_junit.h"              // JUnitXML
@@ -23,7 +25,78 @@
 
 FLExceptionReason const junit_open_failure = "failed to open junit file";
 
-static void xml_write_escaped(FILE *file, char const *str) {
+// -- Buffered writer over the file service ---------------------------------------------
+// FLFileService has no formatted-output primitive and each of its writes is a whole
+// service call, so this small accumulator batches the many short XML fragments into
+// one write per JUNIT_OUT_CAP bytes. It tracks the running offset for handles whose
+// writes are positional (FL_FILE_WRITE mode); an FL_FILE_APPEND handle ignores it.
+#define JUNIT_OUT_CAP 1024
+
+typedef struct JUnitOut {
+    FLFile  *file;
+    uint64_t offset; // next write position (ignored by append handles)
+    size_t   len;    // bytes buffered
+    bool     failed; // a service write came up short
+    char     buf[JUNIT_OUT_CAP];
+} JUnitOut;
+
+static void out_init(JUnitOut *out, FLFile *file) {
+    out->file   = file;
+    out->offset = 0;
+    out->len    = 0;
+    out->failed = false;
+}
+
+static void out_flush(JUnitOut *out) {
+    if (out->len > 0) {
+        size_t written = FL_FILE_WRITE(out->file, out->buf, out->len, out->offset);
+        if (written < out->len) {
+            LOG_ERROR(JUNIT_MODULE, "wrote %zu bytes, expected %zu", written, out->len);
+            out->failed = true;
+        }
+        out->offset += written;
+        out->len = 0;
+    }
+}
+
+static void out_write(JUnitOut *out, char const *data, size_t size) {
+    while (size > 0) {
+        if (out->len == JUNIT_OUT_CAP) {
+            out_flush(out);
+        }
+        size_t space = JUNIT_OUT_CAP - out->len;
+        size_t chunk = size < space ? size : space;
+        memcpy(out->buf + out->len, data, chunk);
+        out->len += chunk;
+        data += chunk;
+        size -= chunk;
+    }
+}
+
+static void out_puts(JUnitOut *out, char const *str) {
+    out_write(out, str, strlen(str));
+}
+
+static void out_char(JUnitOut *out, char c) {
+    out_write(out, &c, 1);
+}
+
+// Formatted output for bounded content (numbers, timestamps, fixed text). Unbounded
+// strings (test names, failure details) go through out_puts / xml_write_escaped.
+static void out_printf(JUnitOut *out, char const *fmt, ...) {
+    char    tmp[512];
+    va_list args;
+
+    va_start(args, fmt);
+    int needed = vsnprintf(tmp, sizeof tmp, fmt, args);
+    va_end(args);
+
+    FL_ASSERT_GT_INT(needed, -1);
+    FL_ASSERT_LT_INT(needed, (int)sizeof tmp);
+    out_write(out, tmp, (size_t)needed);
+}
+
+static void xml_write_escaped(JUnitOut *out, char const *str) {
     if (!str) {
         return;
     }
@@ -31,40 +104,40 @@ static void xml_write_escaped(FILE *file, char const *str) {
     for (; *str; ++str) {
         switch (*str) {
         case '&':
-            fputs("&amp;", file);
+            out_puts(out, "&amp;");
             break;
         case '<':
-            fputs("&lt;", file);
+            out_puts(out, "&lt;");
             break;
         case '>':
-            fputs("&gt;", file);
+            out_puts(out, "&gt;");
             break;
         case '"':
-            fputs("&quot;", file);
+            out_puts(out, "&quot;");
             break;
         default:
-            fputc(*str, file);
+            out_char(out, *str);
             break;
         }
     }
 }
 
-static void junit_open(JUnitXML *junit) {
+static void junit_open(JUnitXML *junit, FLFileMode mode) {
     if (junit->file != NULL) {
         // already opened
         return;
     }
 
-    int err = fopen_s(&junit->file, junit->path, "a");
-    if (err != 0) {
-        LOG_ERROR(JUNIT_MODULE, "error opening file \"%s\": %d", junit->path, err);
+    junit->file = FL_FILE_OPEN(junit->path, mode);
+    if (junit->file == NULL) {
+        LOG_ERROR(JUNIT_MODULE, "error opening file \"%s\"", junit->path);
         FL_THROW(junit_open_failure);
     }
 }
 
 static void junit_close(JUnitXML *junit) {
     FL_ASSERT_NOT_NULL(junit->file);
-    (void)fclose(junit->file);
+    FL_FILE_CLOSE(junit->file);
     junit->file = NULL;
 }
 
@@ -112,28 +185,16 @@ void destroy_junit(JUnitXML *junit) {
 int junit_begin(JUnitXML *junit) {
     int rc = 0;
     if (junit->path != NULL) {
-        remove(junit->path); // delete any existing file so we start fresh
-        junit_open(junit);
-        char const xml_decl[]       = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
-        char const testsuites_tag[] = "<testsuites>\n";
-        size_t     length           = sizeof xml_decl - 1;
-        size_t     written = fwrite(xml_decl, sizeof(char), length, junit->file);
-        if (written < length) {
-            LOG_ERROR(JUNIT_MODULE, "wrote %zu bytes, expected %zu", written, length);
-            rc = -1;
-        }
-
-        if (rc == 0) {
-            length  = sizeof testsuites_tag - 1;
-            written = fwrite(testsuites_tag, sizeof(char), length, junit->file);
-            if (written < length) {
-                LOG_ERROR(JUNIT_MODULE, "wrote %zu bytes, expected %zu", written,
-                          length);
-                rc = -1;
-            }
-        }
-
+        // FL_FILE_WRITE truncates on open (create-always), so a stale file from a
+        // previous run is discarded without a separate delete step.
+        junit_open(junit, FL_FILE_WRITE);
+        JUnitOut out;
+        out_init(&out, junit->file);
+        out_puts(&out, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
+        out_puts(&out, "<testsuites>\n");
+        out_flush(&out);
         junit_close(junit);
+        rc = out.failed ? -1 : 0;
     }
 
     return rc;
@@ -142,24 +203,24 @@ int junit_begin(JUnitXML *junit) {
 int junit_end(JUnitXML *junit) {
     int rc = 0;
     if (junit->path != NULL) {
-        junit_open(junit);
-        char const close_testsuites_tag[] = "</testsuites>\n";
-        size_t     length                 = sizeof close_testsuites_tag - 1;
-        size_t written = fwrite(close_testsuites_tag, sizeof(char), length, junit->file);
-        if (written != length) {
-            LOG_ERROR(JUNIT_MODULE, "wrote %zu bytes, expected %zu", written, length);
-            rc = -1;
-        }
-
+        junit_open(junit, FL_FILE_APPEND);
+        JUnitOut out;
+        out_init(&out, junit->file);
+        out_puts(&out, "</testsuites>\n");
+        out_flush(&out);
         junit_close(junit);
+        rc = out.failed ? -1 : 0;
     }
 
     return rc;
 }
 
 int junit_write(JUnitXML *junit, FLContext *fctx) {
+    int rc = 0;
     if (junit->path != NULL) {
-        junit_open(junit);
+        junit_open(junit, FL_FILE_APPEND);
+        JUnitOut out;
+        out_init(&out, junit->file);
         FLTestSuite *ts                    = fctx->ts;
         double       total_elapsed_seconds = 0.0;
         size_t       results_count         = faultline_get_results_count(fctx);
@@ -175,20 +236,20 @@ int junit_write(JUnitXML *junit, FLContext *fctx) {
         } else {
             timestamp[0] = '\0';
         }
-        fputs("    <testsuite name=\"", junit->file);
-        xml_write_escaped(junit->file, ts->name);
-        fputs("\"\n               classname=\"", junit->file);
-        xml_write_escaped(junit->file, ts->name);
-        fprintf(junit->file,
-                "\"\n"
-                "               tests=\"%zu\"\n"
-                "               failures=\"%zu\"\n"
-                "               errors=\"%zu\"\n"
-                "               time=\"%.3f\"\n"
-                "               timestamp=\"%s\">\n",
-                fctx->tests_run, fctx->tests_failed,
-                fctx->setups_failed + fctx->cleanups_failed, total_elapsed_seconds,
-                timestamp);
+        out_puts(&out, "    <testsuite name=\"");
+        xml_write_escaped(&out, ts->name);
+        out_puts(&out, "\"\n               classname=\"");
+        xml_write_escaped(&out, ts->name);
+        out_printf(&out,
+                   "\"\n"
+                   "               tests=\"%zu\"\n"
+                   "               failures=\"%zu\"\n"
+                   "               errors=\"%zu\"\n"
+                   "               time=\"%.3f\"\n"
+                   "               timestamp=\"%s\">\n",
+                   fctx->tests_run, fctx->tests_failed,
+                   fctx->setups_failed + fctx->cleanups_failed, total_elapsed_seconds,
+                   timestamp);
 
         // Emit one <testcase> per result. JUnit consumers (the CI test reporter)
         // count individual <testcase> elements, not the testsuite's tests=
@@ -201,28 +262,30 @@ int junit_write(JUnitXML *junit, FLContext *fctx) {
                                         ? ts->test_cases[summary->index]->name
                                         : "";
 
-            fputs("        <testcase name=\"", junit->file);
-            xml_write_escaped(junit->file, case_name);
-            fputs("\" classname=\"", junit->file);
-            xml_write_escaped(junit->file, ts->name);
-            fprintf(junit->file, "\" time=\"%.3f\"", summary->elapsed_seconds);
+            out_puts(&out, "        <testcase name=\"");
+            xml_write_escaped(&out, case_name);
+            out_puts(&out, "\" classname=\"");
+            xml_write_escaped(&out, ts->name);
+            out_printf(&out, "\" time=\"%.3f\"", summary->elapsed_seconds);
 
             if (summary->code == FL_PASS) {
-                fputs("/>\n", junit->file);
+                out_puts(&out, "/>\n");
             } else {
-                fputs(">\n            <failure message=\"", junit->file);
-                xml_write_escaped(junit->file,
+                out_puts(&out, ">\n            <failure message=\"");
+                xml_write_escaped(&out,
                                   summary->reason ? summary->reason : "test failed");
-                fprintf(junit->file, "\" type=\"FLResultCode %d\">", (int)summary->code);
-                xml_write_escaped(junit->file, summary->details);
-                fputs("</failure>\n        </testcase>\n", junit->file);
+                out_printf(&out, "\" type=\"FLResultCode %d\">", (int)summary->code);
+                xml_write_escaped(&out, summary->details);
+                out_puts(&out, "</failure>\n        </testcase>\n");
             }
         }
 
-        fputs("    </testsuite>\n", junit->file);
+        out_puts(&out, "    </testsuite>\n");
+        out_flush(&out);
 
         junit_close(junit);
+        rc = out.failed ? -1 : 0;
     }
 
-    return 0;
+    return rc;
 }
