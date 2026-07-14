@@ -26,6 +26,14 @@ typedef FLP_INIT_TIMER_SERVICE_FN(flp_init_timer_service_fn);
 FLP_INIT_TIMER_SERVICE_FN(flp_init_timer_service);
 
 /**
+ * @brief The platform's timer service instance -- the same one flp_init_timer_service
+ * injects into consumers. Lets platform-side code bind an FLStopwatch to the active
+ * clock (via FL_TIMER_SERVICE in fl_timer.h) instead of re-composing over the bare
+ * functions below.
+ */
+FLTimerService const *flp_timer_service(void);
+
+/**
  * @brief Platform-side implementation to get the current time as an FLTimestamp object.
  */
 FL_TIMER_NOW_FN(flp_timer_now);

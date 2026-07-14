@@ -42,8 +42,10 @@ keep because `g_fla_timer_service` now has a reader.
   matching the sibling `flp_` headers. `flp_timer_service.c` includes it (IWYU).
 - ✅ Selector: `include/faultline/fl_timer.h` — `FL_NOW` / `FL_ELAPSED`, a
   one-to-one analog of `fl_log.h`: direct calls to `flp_timer_*` on the platform
-  side (`FL_PLATFORM_BUILD`), `g_fla_timer_service.*` on the consumer side. No
-  `FL_TIMER_SERVICE`/`FL_STOPWATCH` surface — the selector resolves *calls* only.
+  side (`FL_PLATFORM_BUILD`), `g_fla_timer_service.*` on the consumer side. The
+  original "calls only" scoping was revisited during seam #1 (see C below):
+  `FL_TIMER_SERVICE()` now also names the active service instance on either side,
+  so `FLStopwatch` can bind to it in dual-built TUs.
 - ✅ Injection wired: `command_run.c` resolves `FLA_SET_TIMER_SERVICE_STR` and
   calls `flp_init_timer_service` per loaded suite (NULL-guarded);
   `faultline_app_main.c` installs `platform->timer` into the core's
@@ -105,7 +107,27 @@ wired in `command_run.c`; `faultline_app_main` installs `platform->file`.
 
 ## C. Module service + split assembly ✅ builds and runs (tail remains)
 
-The last `platform_api.h` gap. Done (2026-07-11):
+### Seam #1 (timing) ✅ done (2026-07-13)
+`faultline_driver.c` no longer times via `start_win`/`elapsed_win_seconds`; it uses
+`FLStopwatch` bound to the active timer service. Getting there exposed a service-design
+gap: the consumer side had an ambient instance (`g_fla_timer_service`) but the platform
+provider kept its instance static, exporting only bare functions — so `FLStopwatch`
+(which binds a service *pointer*) couldn't be used in a dual-built TU. Fixed by making
+the active service a first-class value on both sides: `flp_timer_service()` returns the
+provider's instance, and `fl_timer.h` gained `FL_TIMER_SERVICE()` (→ `flp_timer_service()`
+under `FL_PLATFORM_BUILD`, `&g_fla_timer_service` otherwise). The driver binds with
+`fl_stopwatch_make(FL_TIMER_SERVICE())` — note a zero-initialized `FLStopwatch` has a
+NULL service pointer, so watches are made (not `{0}`-reset), preserving the
+"never-started reads 0 elapsed" behavior. Fixture wiring followed the driver:
+`faultline_test_data.c` gained `flp_timer_service.c` (platform side) and
+`faultline_tests_unity.c` gained `fla_timer_service.c` (consumer side); `win_timer.c`
+stays in both only for its `nanosleep`/`gettimeofday` polyfills. Also fixed a
+pre-existing bad include in `win32_faultline_main.c` (`faultline/macros.h` →
+`faultline/fl_macros.h`) that had been blocking `faultline_split.cmd`. Verified: split
+driver ran timer / driver / file-service suites (100%, non-zero timings, 6 faults);
+monolith `all.cmd test` green (23 suites, 100%).
+
+### Module service + assembly. Done (2026-07-11):
 - ✅ `include/flp_module_service.h` + `src/flp_module_service.c`: `flp_load_module`
   / `flp_resolve_symbol` / `flp_unload_module` (wrap `LoadLibraryA` /
   `GetProcAddress` / `FreeLibrary`; opaque `FLModule` *is* the `HMODULE`) and
@@ -127,9 +149,6 @@ The last `platform_api.h` gap. Done (2026-07-11):
   (23 suites, 100%).
 
 ### Remaining
-- [ ] Seam #1: `faultline_driver.c` still times via `start_win`/`elapsed_win_seconds`
-  (resolves from the platform lib at link — works, but violates the dependency
-  direction). Move to the injected `FLTimerService`.
 - [ ] Seam #2: driver still allocates via `arena_malloc_throw` on the platform arena.
 - [ ] Seam #4: `output_junit.c` writes via `fopen`/`fprintf` (portable CRT, so it
   links, but should route through `FLFileService`).

@@ -49,6 +49,10 @@ static FLTimerService g_timer_service = {
     .elapsed_seconds = flp_timer_elapsed_seconds,
 };
 
+FLTimerService const *flp_timer_service(void) {
+    return &g_timer_service;
+}
+
 FLP_INIT_TIMER_SERVICE_FN(flp_init_timer_service) {
     FL_ASSERT_NOT_NULL(fla_set);
     fla_set(&g_timer_service, sizeof g_timer_service);
