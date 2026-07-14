@@ -158,11 +158,27 @@ monolith `all.cmd test` green (23 suites, 100%).
   exercises both hosts. Verified: monolith 23 suites 100%; smoke 3 suites 100%
   with 6 faults injected across the DLL boundary.
 
-### Remaining
-- [ ] Seam #2: driver still allocates via `arena_malloc_throw` on the platform arena.
-  One call site (the injector allocation in `faultline_driver.c`). Decide: route it
-  through the injected (non-fault-injecting) memory service, or accept the arena as
-  the deliberately shared core-layer type that `FLPlatformAPI.arena` exposes.
+### Seam #2 (allocation) ✅ resolved (2026-07-14) — by moving the line, not the call
+Routing the driver's one allocation through the injected memory service was rejected:
+the platform memory service is itself arena-backed (`flp_malloc` == `arena_malloc` on
+the same arena), the arena is the core's pervasive substrate (buffers, summaries, the
+injector's own API take `Arena *`), and the swap would have traded an explicit
+parameter for an ambient global. The arena is portable core code by the project's own
+axis-1 doctrine; what's OS-specific is its *paging backing*. So:
+- The portable memory stack (`region.c`, `region_node.c`, `arena.c`, `arena_dbg.c`,
+  `arena_malloc.c`) moved from the platform unity into `faultline_core_unity.c`; the
+  platform TU keeps only `region_os.c` (the per-OS paging dispatch). A port
+  reprovides `region_<os>.c` and keeps the stack — exactly the documented reuse story.
+- The driver's alloc+init pair collapsed to the existing `fault_injector_create()`;
+  `faultline_driver.c` no longer includes `arena.h`.
+- **Bootstrap-injection gotcha (matters for ports):** the core-compiled arena logs and
+  throws through the core's embedded `g_fla_*` services, which are default-abort stubs
+  until installed. The host must call `flp_init_log_service(fla_set_log_service)` and
+  `flp_init_exception_service(fla_set_exception_service)` *before* its first core call
+  (`new_arena`); `faultline_app_main` installs the full set later. The host TU compiles
+  with `/DFL_EMBEDDED` so the linked core's plain (non-dllimport) setters match.
+- Verified: split `faultline_split.cmd test` 27/27; `std_faultline` builds;
+  `all.cmd test` green (monolith 23 suites 100%, split smoke 3 suites 100%).
 - [ ] Seam #4: `output_junit.c` writes via `fopen`/`fprintf` (portable CRT, so it
   links, but should route through `FLFileService`; needs a small buffered-formatting
   layer since the service has no formatted-output primitive).

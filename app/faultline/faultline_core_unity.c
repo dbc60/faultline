@@ -9,9 +9,10 @@
  *
  * This translation unit is the "application layer" half of the platform/app split. It
  * contains the test driver, the command layer, and result reporting -- everything that
- * acts ON test suites. It must not call OS-specific function directly: it allocates,
- * times, logs, throws, opens files, and loads suite modules only through the services
- * handed to it in an FLPlatformAPI.
+ * acts ON test suites. It must not call OS-specific functions directly: it times, logs,
+ * throws, opens files, and loads suite modules only through the services handed to it
+ * in an FLPlatformAPI, and it allocates from the portable arena stack compiled below,
+ * whose one OS-specific piece (the region paging provider) the platform reprovides.
  *
  * Build it with NO /DFL_PLATFORM_BUILD (so FL_MALLOC routes through the injected
  * memory service, not flp_malloc) and with /DFL_EMBEDDED (the fla_ accessors are
@@ -19,6 +20,18 @@
  * dependency ever creeps back in, this TU stops compiling -- that is the
  * enforced "clean dependency direction".
  */
+
+/* -- Portable memory stack -------------------------------------------------------------
+ * The arena and its region backing are portable core code; the only OS-specific
+ * piece is the paging provider (region_os.c -> VirtualAlloc et al.), which the
+ * platform TU compiles and the linker resolves into region.c's calls here. A port
+ * reprovides region_<os>.c and keeps this stack unchanged.
+ */
+#include "region.c"
+#include "region_node.c"
+#include "arena.c"
+#include "arena_dbg.c"
+#include "arena_malloc.c"
 
 /* -- Portable foundations --------------------------------------------------- */
 #include "fnv/FNV64.c"

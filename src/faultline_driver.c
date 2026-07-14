@@ -25,7 +25,6 @@
 #include <faultline/fl_test_summary.h>      // for FLTestSummary
 #include <faultline/fl_exception_service.h> // for FL_REASON, FL_DETAILS
 #include <faultline/fl_exception_types.h>   // for FLExceptionReason
-#include <faultline/arena.h>                // for arena_malloc_throw
 #include "fault_injector_internal.h"        // for fault_injector_get_all...
 #include "faultline_test_result.h"          // for test_result_clear, Tes...
 
@@ -129,10 +128,8 @@ FL_EXERCISE_TEST(faultline_run_test) {
 
     LOG_DEBUG("Run Test", "run test %s", fctx->ts->test_cases[fctx->index]->name);
     if (injector == NULL || !fault_injector_is_initialized(injector)) {
-        fctx->injector = arena_malloc_throw(fctx->arena, sizeof *fctx->injector,
-                                            __FILE__, __LINE__);
+        fctx->injector = fault_injector_create(fctx->arena);
         injector       = fctx->injector;
-        fault_injector_init(injector, fctx->arena);
     } else {
         fault_injector_reset(injector);
     }

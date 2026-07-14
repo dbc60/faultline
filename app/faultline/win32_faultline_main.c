@@ -39,6 +39,12 @@
 #include <faultline/fl_exception_service.h>     // FLExceptionService
 #include <faultline/fl_file_service.h>          // FLFileService
 #include <faultline/fl_log_service.h>           // FLLogService, FLLogLevel
+
+// The core lib's embedded consumer accessors (built with FL_EMBEDDED, so plain
+// functions): the host installs log + exception into them before the first core
+// call. This TU must also compile with /DFL_EMBEDDED so these declarations match.
+#include <faultline/fla_exception_service.h> // fla_set_exception_service
+#include <faultline/fla_log_service.h>       // fla_set_log_service
 #include <faultline/fl_macros.h>                // FL_UNUSED
 #include <faultline/fl_memory_service.h>        // FLMemoryService
 #include <faultline/fl_timer_service.h>         // FLTimerService
@@ -75,9 +81,17 @@ static void flp_configure_log(FLLogLevel level, char const *path) {
 }
 
 int main(int argc, char **argv) {
-    Arena *arena = new_arena(0, 0);
-
+    // The arena/region stack and the fault injector are core-lib code: they log and
+    // throw through the core's embedded g_fla_* services. Install the platform's log
+    // and exception services before the first core call (new_arena below), or those
+    // calls hit the default-abort stubs. faultline_app_main() later installs the full
+    // service set from the FLPlatformAPI; these two installs are the bootstrap that
+    // makes the code between here and there safe.
     flp_log_init_custom(LOG_LEVEL_INFO, "faultline.log");
+    flp_init_log_service(fla_set_log_service);
+    flp_init_exception_service(fla_set_exception_service);
+
+    Arena *arena = new_arena(0, 0);
 
     // -- Fault-injecting memory (for suites) ----------------------------------
     FaultInjector       *injector  = fault_injector_create(arena);

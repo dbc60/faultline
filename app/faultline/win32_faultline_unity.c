@@ -17,13 +17,12 @@
  * sqlite3.obj / cwalk.obj. Dependency direction is platform -> core only.
  */
 
-/* -- Memory infrastructure (OS-backed) -------------------------------------- */
-#include "region.c"
-#include "region_node.c"
+/* -- OS paging provider ---------------------------------------------------------------
+ * The portable memory stack (region.c / arena.c / ...) lives in faultline_core.lib;
+ * only the paging provider it dispatches to is OS-specific and belongs here. A port
+ * reprovides region_<os>.c and keeps the rest.
+ */
 #include "region_os.c" /* dispatches to region_windows.c -> VirtualAlloc */
-#include "arena.c"
-#include "arena_dbg.c"
-#include "arena_malloc.c"
 
 /* -- OS primitives ---------------------------------------------------------- */
 #include "fl_threads.c"
