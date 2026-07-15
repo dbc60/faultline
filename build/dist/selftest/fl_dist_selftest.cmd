@@ -137,6 +137,77 @@ IF ERRORLEVEL 1 ( ECHO   [run]     FAILED & SET /A FAILS+=1 & GOTO :after_mem )
 ECHO   [ok]
 :after_mem
 
+:: =======================================================================
+::  timer_service  — consumer-side injection over its exception_service dependency
+:: =======================================================================
+ECHO.
+ECHO ============================================================
+ECHO  timer_service
+ECHO ============================================================
+CALL "%DIR_CMDS%\exception_service_dist.cmd" > NUL
+IF ERRORLEVEL 1 ( ECHO   [dist]    FAILED & SET /A FAILS+=1 & GOTO :after_timer )
+CALL "%DIR_CMDS%\timer_service_dist.cmd" > NUL
+IF ERRORLEVEL 1 ( ECHO   [dist]    FAILED & SET /A FAILS+=1 & GOTO :after_timer )
+SET INTO=%DIR_SELF%\timer
+:: timer_service declares SVC_DEPENDS=exception_service: import the dependency
+:: first, then layer the package into the same tree (fl_import checks the dep).
+CALL :IMPORT "%DIR_REPO%\dist\exception_service" "%INTO%"
+IF ERRORLEVEL 1 ( ECHO   [import]  FAILED & SET /A FAILS+=1 & GOTO :after_timer )
+CALL :IMPORT_ADD "%DIR_REPO%\dist\timer_service" "%INTO%"
+IF ERRORLEVEL 1 ( ECHO   [import]  FAILED & SET /A FAILS+=1 & GOTO :after_timer )
+SET OBJ=%INTO%\_obj
+IF NOT EXIST "%OBJ%" MD "%OBJ%"
+:: Consumer mode (no FL_PLATFORM_BUILD): fl_timer.h reads g_fla_timer_service.
+:: fla_exception_service.c supplies fl_throw_assertion; flp_exception_service.c
+:: is deliberately NOT compiled (one definition per binary).
+cl %CommonCompilerFlagsFinal% /DFL_EMBEDDED /wd4456 ^
+    /I"%INTO%\include" ^
+    "%INTO%\src\fl_exception_service.c" ^
+    "%INTO%\src\fla_exception_service.c" ^
+    "%INTO%\src\flp_timer_service.c" ^
+    "%INTO%\src\fla_timer_service.c" ^
+    "%HERE%\timer_consumer_test.c" ^
+    /Fo:"%OBJ%\\" /Fd:"%INTO%\timer_consumer.pdb" /Fe:"%INTO%\timer_consumer.exe" ^
+    /link %CommonLinkerFlagsFinal% /ENTRY:mainCRTStartup > "%CL_LOG%" 2>&1
+IF ERRORLEVEL 1 ( ECHO   [compile] FAILED & TYPE "%CL_LOG%" & SET /A FAILS+=1 & GOTO :after_timer )
+"%INTO%\timer_consumer.exe"
+IF ERRORLEVEL 1 ( ECHO   [run]     FAILED & SET /A FAILS+=1 & GOTO :after_timer )
+ECHO   [ok]
+:after_timer
+
+:: =======================================================================
+::  file_service  — single-binary platform assembly over its memory_service dependency
+:: =======================================================================
+ECHO.
+ECHO ============================================================
+ECHO  file_service
+ECHO ============================================================
+CALL "%DIR_CMDS%\memory_service_dist.cmd" > NUL
+IF ERRORLEVEL 1 ( ECHO   [dist]    FAILED & SET /A FAILS+=1 & GOTO :after_file )
+CALL "%DIR_CMDS%\file_service_dist.cmd" > NUL
+IF ERRORLEVEL 1 ( ECHO   [dist]    FAILED & SET /A FAILS+=1 & GOTO :after_file )
+SET INTO=%DIR_SELF%\file
+:: file_service declares SVC_DEPENDS=memory_service: import the dependency
+:: first, then layer the package into the same tree (fl_import checks the dep).
+CALL :IMPORT "%DIR_REPO%\dist\memory_service" "%INTO%"
+IF ERRORLEVEL 1 ( ECHO   [import]  FAILED & SET /A FAILS+=1 & GOTO :after_file )
+CALL :IMPORT_ADD "%DIR_REPO%\dist\file_service" "%INTO%"
+IF ERRORLEVEL 1 ( ECHO   [import]  FAILED & SET /A FAILS+=1 & GOTO :after_file )
+SET OBJ=%INTO%\_obj
+IF NOT EXIST "%OBJ%" MD "%OBJ%"
+CALL :COLLECT_SRCS "%INTO%\src"
+cl %CommonCompilerFlagsFinal% /experimental:c11atomics /wd4456 /DFL_EMBEDDED /DFL_PLATFORM_BUILD ^
+    /I"%INTO%\include" /I"%INTO%\src" ^
+    !SRCS! ^
+    "%HERE%\file_consumer_test.c" ^
+    /Fo:"%OBJ%\\" /Fd:"%INTO%\file_consumer.pdb" /Fe:"%INTO%\file_consumer.exe" ^
+    /link %CommonLinkerFlagsFinal% /ENTRY:mainCRTStartup > "%CL_LOG%" 2>&1
+IF ERRORLEVEL 1 ( ECHO   [compile] FAILED & TYPE "%CL_LOG%" & SET /A FAILS+=1 & GOTO :after_file )
+"%INTO%\file_consumer.exe"
+IF ERRORLEVEL 1 ( ECHO   [run]     FAILED & SET /A FAILS+=1 & GOTO :after_file )
+ECHO   [ok]
+:after_file
+
 IF EXIST "%CL_LOG%" DEL "%CL_LOG%" 2> NUL
 
 ECHO.
@@ -157,6 +228,15 @@ EXIT /B 1
 :: -----------------------------------------------------------------------
 :IMPORT
 IF EXIST "%~2" RD /S /Q "%~2"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%DIR_DIST%\fl_import.ps1" -From "%~1" -Into "%~2"
+EXIT /B %ERRORLEVEL%
+
+:: -----------------------------------------------------------------------
+:: :IMPORT_ADD <from-package-dir> <into-tree>  — layer a package into an
+:: existing tree WITHOUT wiping, so a dependency imported by :IMPORT survives
+:: (this is how a dependent package lands on top of its dependency).
+:: -----------------------------------------------------------------------
+:IMPORT_ADD
 powershell -NoProfile -ExecutionPolicy Bypass -File "%DIR_DIST%\fl_import.ps1" -From "%~1" -Into "%~2"
 EXIT /B %ERRORLEVEL%
 

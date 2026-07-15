@@ -71,8 +71,9 @@ keep because `g_fla_timer_service` now has a reader.
   resolve under `-I include -I src`) and `./build/bash/all.sh test`.
 - [x] Legacy triage: `src/win_timer.c`, `src/time_timer.c`, `src/tick_timer.c` are
   the older v0.2 `fl_timer.lib` implementations — decide whether to retire them.
-- [ ] Optional: a `timer_service` dist package parallel to the `log_service` /
-  `memory_service` dist packages, if the timer is to ship standalone for reuse.
+- [x] `timer_service` dist package (2026-07-14): `timer_service_dist.cmd`, the
+  first package to use `SVC_DEPENDS` (depends on `exception_service` instead of
+  bundling it). Covered by `fl_dist_selftest.cmd`'s consumer-mode injection test.
 - [x] The `std_faultline.cmd` **test DLL** (consumer side) now compiles
   `fla_timer_service.c`, so the std-built suite exports `fla_set_timer_service` for
   symmetry with the other consumer accessors it already links.
@@ -101,8 +102,10 @@ wired in `command_run.c`; `faultline_app_main` installs `platform->file`.
 - [ ] seek/tell/flush/size/stat — later rev of the contract.
 - [ ] Fault-injecting file service (`flp_fault_file_service`, parallel to fault
   memory) if I/O failure injection is ever wanted.
-- [ ] Optional `file_service` / `timer_service` dist packages parallel to the
-  `log_service` / `memory_service` ones.
+- [x] `file_service` / `timer_service` dist packages (2026-07-14):
+  `file_service_dist.cmd` depends on `memory_service` (which now also ships the
+  `fl_memory.h` selector the provider compiles against); `timer_service_dist.cmd`
+  depends on `exception_service`. Both covered by `fl_dist_selftest.cmd`.
 
 ---
 
@@ -210,6 +213,7 @@ identical, well-formed XML; rewriting an existing file truncates cleanly;
   6 faults injected across the DLL boundary).
 
 ### Remaining
-None — the platform/core split work is complete. Deferred/optional items live in
-their sections above (dist packages for timer/file services, the async file
-service contract, seek/tell/flush/size/stat, a fault-injecting file service).
+None — the platform/core split work is complete, and the timer/file dist
+packages shipped 2026-07-14. Deferred/optional items live in their sections
+above (the async file service contract, seek/tell/flush/size/stat, a
+fault-injecting file service).

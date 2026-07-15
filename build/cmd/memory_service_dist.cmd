@@ -148,6 +148,7 @@ COPY /Y "%DIR_INC%\size.h"                          "%DIR_DIST%\include\faultlin
 :: Public headers from include\faultline\ — memory service
 :: -----------------------------------------------------------------------
 ECHO Copying memory service public headers...
+COPY /Y "%DIR_INC%\fl_memory.h"                     "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\fl_memory_service.h"             "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\fla_memory_service.h"            "%DIR_DIST%\include\faultline\" > NUL
 
