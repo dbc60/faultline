@@ -52,7 +52,7 @@ if [[ $build -eq 1 ]]; then
     # --- faultline_test_data.dll ---
     [[ $verbose -eq 1 ]] && echo "Build $PROJECT_NAME driver test-data DLL"
 
-    "$CLANG" $COMMON_COMPILER_FLAGS -DDLL_BUILD -DFL_BUILD_DRIVER \
+    "$CLANG" $COMMON_COMPILER_FLAGS -DDLL_BUILD -DFL_PLATFORM_BUILD \
         -I "$DIR_INCLUDE" -I "$DIR_THIRD_PARTY" \
         -c "$DIR_REPO/src/faultline_test_data.c" \
         -o "$DIR_OUT_OBJ/faultline_test_data.o" \
@@ -69,8 +69,8 @@ if [[ $build -eq 1 ]]; then
     # Unity TU: main_unity_windows.c pulls in the implementation sources and the
     # command handlers; main_windows.c is now just the CLI entry point and no
     # longer aggregates the implementation.
-    "$CLANG" $COMMON_COMPILER_FLAGS -DFL_BUILD_DRIVER -DFL_EMBEDDED \
-        -I "$DIR_INCLUDE" -I "$DIR_THIRD_PARTY" -I "$DIR_THIRD_PARTY/cwalk/include" \
+    "$CLANG" $COMMON_COMPILER_FLAGS -DFL_PLATFORM_BUILD -DFL_EMBEDDED \
+        -I "$DIR_INCLUDE" -I "$DIR_THIRD_PARTY" -I "$DIR_THIRD_PARTY/cwalk/include" -I "$DIR_REPO/src" \
         -c "$DIR_REPO/app/faultline/main_unity_windows.c" \
         -o "$DIR_OUT_OBJ/faultline_main.o" \
         -MJ "$DIR_OUT_OBJ/faultline_main.json"

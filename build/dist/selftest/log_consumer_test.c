@@ -25,7 +25,8 @@
 #include "fla_log_service.c"
 
 #include <faultline/fla_log_service.h>
-#include <faultline/fl_log_types.h>
+#include <faultline/fl_log_service.h>
+#include <faultline/fl_log.h> // LOG_* (selects fla_ backend; no FL_PLATFORM_BUILD)
 
 #include <stdarg.h>
 #include <stdio.h>

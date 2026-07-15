@@ -170,7 +170,7 @@ COPY /Y "%DIR_INC%\fl_exception_service.h"          "%DIR_DIST%\include\faultlin
 COPY /Y "%DIR_INC%\fl_exception_service_assert.h"   "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\fl_exception_types.h"            "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\fl_log.h"                        "%DIR_DIST%\include\faultline\" > NUL
-COPY /Y "%DIR_INC%\fl_log_types.h"                  "%DIR_DIST%\include\faultline\" > NUL
+COPY /Y "%DIR_INC%\fl_log_service.h"                "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\fl_macros.h"                     "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\fl_threads.h"                    "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\fl_try.h"                        "%DIR_DIST%\include\faultline\" > NUL
@@ -190,7 +190,6 @@ COPY /Y "%DIR_INC%\fl_result_codes.h"               "%DIR_DIST%\include\faultlin
 COPY /Y "%DIR_INC%\fl_test_summary.h"               "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\fl_types.h"                      "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\set.h"                           "%DIR_DIST%\include\faultline\" > NUL
-COPY /Y "%DIR_INC%\timer.h"                         "%DIR_DIST%\include\faultline\" > NUL
 
 :: -----------------------------------------------------------------------
 :: Public headers from include\ (not include\faultline\)

@@ -25,6 +25,7 @@
 #include "fl_threads.c" // mtx_init, mtx_lock, mtx_unlock, mtx_destroy
 #include "fla_exception_service.c"
 #include "fla_log_service.c"
+#include "fla_timer_service.c" // g_fla_timer_service for the driver's injected timing
 #include "fnv/FNV64.c"
 #include "region.c"
 #include "region_node.c"

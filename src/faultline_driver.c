@@ -19,12 +19,12 @@
 #include <faultline/fl_try.h>               // for FL_END_TRY, FL_TRY
 #include <stdbool.h>                        // for true, bool, false
 #include <stddef.h>                         // for NULL, size_t
-#include <faultline/timer.h>                // for elapsed_win_seconds
+#include <faultline/fl_timer.h>             // for FL_TIMER_SERVICE
+#include <faultline/fl_stopwatch.h>         // for FLStopwatch, fl_stopwatch_*
 #include <faultline/fault_site.h>           // for fault_site_buffer_copy
 #include <faultline/fl_test_summary.h>      // for FLTestSummary
 #include <faultline/fl_exception_service.h> // for FL_REASON, FL_DETAILS
 #include <faultline/fl_exception_types.h>   // for FLExceptionReason
-#include <faultline/arena.h>                // for arena_malloc_throw
 #include "fault_injector_internal.h"        // for fault_injector_get_all...
 #include "faultline_test_result.h"          // for test_result_clear, Tes...
 
@@ -42,7 +42,7 @@ static FLExceptionReason setup_failure = "setup failed";
  * injection phase exercises the test case against injected faults.
  * @return FLResultCode
  */
-static FLResultCode run_timed_test(FLContext *fctx, WinTimer *timer,
+static FLResultCode run_timed_test(FLContext *fctx, FLStopwatch *timer,
                                    TestResult *setup_cleanup_result,
                                    TestResult *test_result, FLTestPhase phase) {
     FLTestCase  *tc = fctx->ts->test_cases[fctx->index];
@@ -69,7 +69,7 @@ static FLResultCode run_timed_test(FLContext *fctx, WinTimer *timer,
     if (rc == FL_PASS) {
         // exercise the test case
         FL_TRY {
-            start_win(timer);
+            fl_stopwatch_start(timer);
             tc->test(tc);
         }
         FL_CATCH_ALL {
@@ -83,7 +83,7 @@ static FLResultCode run_timed_test(FLContext *fctx, WinTimer *timer,
             }
         }
         FL_FINALLY {
-            stop_win(timer);
+            fl_stopwatch_stop(timer);
         }
         FL_END_TRY;
     }
@@ -118,19 +118,18 @@ static FLResultCode run_timed_test(FLContext *fctx, WinTimer *timer,
  *
  */
 FL_EXERCISE_TEST(faultline_run_test) {
-    FaultInjector *injector = fctx->injector;
-    WinTimer       run_timer, test_timer;
-    bool           triggered = false;
+    FaultInjector *injector   = fctx->injector;
+    FLStopwatch    run_timer  = fl_stopwatch_make(FL_TIMER_SERVICE());
+    FLStopwatch    test_timer = fl_stopwatch_make(FL_TIMER_SERVICE());
+    bool           triggered  = false;
     FLTestSummary  summary;
     i64            total_fault_sites = 0;
-    FLResultCode   rc;
+    FLResultCode   rc                = FL_FAIL;
 
     LOG_DEBUG("Run Test", "run test %s", fctx->ts->test_cases[fctx->index]->name);
     if (injector == NULL || !fault_injector_is_initialized(injector)) {
-        fctx->injector = arena_malloc_throw(fctx->arena, sizeof *fctx->injector,
-                                            __FILE__, __LINE__);
+        fctx->injector = fault_injector_create(fctx->arena);
         injector       = fctx->injector;
-        fault_injector_init(injector, fctx->arena);
     } else {
         fault_injector_reset(injector);
     }
@@ -140,7 +139,7 @@ FL_EXERCISE_TEST(faultline_run_test) {
     init_faultline_test_summary(&summary, fctx->arena, (u32)fctx->index, FL_PASS, NULL,
                                 NULL);
 
-    start_win(&run_timer);
+    fl_stopwatch_start(&run_timer);
     LOG_VERBOSE("Run Test", "started run timer");
 
     /*
@@ -154,7 +153,7 @@ FL_EXERCISE_TEST(faultline_run_test) {
     // faults. Also collect metrics for this "main run"
 
     // Get the number of resources allocated before the test case is exercised
-    i64 initial_resources = fault_injector_get_allocation_index(injector);
+    i64 initial_resources = fault_injector_get_allocated_count(injector);
 
     // Prepare to capture discovery phase results
     TestResult setup_cleanup_result, discovery_result;
@@ -167,17 +166,12 @@ FL_EXERCISE_TEST(faultline_run_test) {
                             FL_DISCOVERY_PHASE);
     }
     FL_CATCH(setup_failure) {
-        // continue
+        rc = FL_FAIL; // run_timed_test threw before returning, so rc was not assigned
     }
     FL_END_TRY;
 
     fctx->tests_run++;
     bool discovery_counted_test_failure = discovery_result.unexpected_exception;
-
-    // record the elapsed time for the test case
-    ElapsedTime *elapsed
-        = elapsed_time_buffer_allocate_next_free_slot(&fctx->elapsed_times);
-    elapsed_time_init(elapsed, fctx->index, elapsed_win_seconds(&test_timer));
 
     // Record total number of fault sites discovered
     total_fault_sites = fault_injector_get_site_count(injector);
@@ -246,7 +240,7 @@ FL_EXERCISE_TEST(faultline_run_test) {
                                      ? failed_discovery_result->failure_type
                                      : FL_FAILURE_NONE;
     faultline_update_summary_phase_info(&summary, FL_DISCOVERY_PHASE, failure_type,
-                                        elapsed_win_seconds(&test_timer));
+                                        fl_stopwatch_elapsed_seconds(&test_timer));
 
     // Record detailed failure information if there was a failure during discovery
     if (rc != FL_PASS && failed_discovery_result) {
@@ -262,9 +256,6 @@ FL_EXERCISE_TEST(faultline_run_test) {
         switch (rc) {
         case FL_PASS:
             fctx->tests_passed++;
-            break;
-        case FL_LEAK:
-            fctx->tests_passed_with_leaks++;
             break;
         default:
             // fctx->tests_failed already incremented in run_timed_test.
@@ -304,7 +295,7 @@ FL_EXERCISE_TEST(faultline_run_test) {
         }
 
         // Get the number of resources allocated before the test case is exercised
-        initial_resources = fault_injector_get_allocation_index(injector);
+        initial_resources = fault_injector_get_allocated_count(injector);
 
         // enable the fault and set the throw count
         fault_injector_enable(injector);
@@ -315,12 +306,17 @@ FL_EXERCISE_TEST(faultline_run_test) {
         test_result_clear(&injection_setup_cleanup);
         test_result_clear(&injection_result);
 
+        // Clear the previous pass's sample so a setup failure in this pass reports
+        // zero elapsed time rather than the prior pass's.
+        test_timer = fl_stopwatch_make(FL_TIMER_SERVICE());
+
         FL_TRY {
             rc = run_timed_test(fctx, &test_timer, &injection_setup_cleanup,
                                 &injection_result, FL_INJECTION_PHASE);
         }
         FL_CATCH(setup_failure) {
-            // continue
+            rc = FL_FAIL; // run_timed_test threw before returning, so rc was not
+                          // assigned
         }
         FL_END_TRY;
 
@@ -336,7 +332,7 @@ FL_EXERCISE_TEST(faultline_run_test) {
          */
         if (triggered) {
             i64    fault_index    = fault_injector_get_threshold(injector);
-            double injection_time = elapsed_win_seconds(&test_timer);
+            double injection_time = fl_stopwatch_elapsed_seconds(&test_timer);
 
             // Validate injection result for debugging
             faultline_validate_test_result(&injection_result);
@@ -427,16 +423,22 @@ FL_EXERCISE_TEST(faultline_run_test) {
         fault_injector_advance_threshold(injector);
     }
 
-    // Count this test case as failed at most once, only if discovery didn't already.
-    if (summary.code != FL_PASS && !discovery_counted_test_failure) {
-        fctx->tests_failed++;
+    // Count this test case in exactly one bucket: passed (implicit), passed with leaks,
+    // or failed, and as failed at most once, only if discovery didn't already count it.
+    if (!discovery_counted_test_failure) {
+        if (summary.code == FL_LEAK) {
+            // The test body passed; the injected faults exposed resource leaks.
+            fctx->tests_passed_with_leaks++;
+        } else if (summary.code != FL_PASS) {
+            fctx->tests_failed++;
+        }
     }
 
-    stop_win(&run_timer);
+    fl_stopwatch_stop(&run_timer);
     LOG_VERBOSE("Run Test", "stopped run timer");
 
     // Store the elapsed time and total fault sites in the result object
-    summary.elapsed_seconds  = elapsed_win_seconds(&run_timer);
+    summary.elapsed_seconds  = fl_stopwatch_elapsed_seconds(&run_timer);
     summary.faults_exercised = total_fault_sites;
 
     // Store the final summary with all results from discovery and injection phases

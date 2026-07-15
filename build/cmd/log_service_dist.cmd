@@ -66,7 +66,7 @@ COPY /Y "%DIR_SRC%\fla_log_service.c"        "%DIR_DIST%\src\" > NUL
 ECHO Copying public headers...
 COPY /Y "%DIR_INC%\fla_log_service.h"        "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\fl_log.h"                 "%DIR_DIST%\include\faultline\" > NUL
-COPY /Y "%DIR_INC%\fl_log_types.h"           "%DIR_DIST%\include\faultline\" > NUL
+COPY /Y "%DIR_INC%\fl_log_service.h"         "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\fl_macros.h"              "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\fl_threads.h"               "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\fl_try.h"                   "%DIR_DIST%\include\faultline\" > NUL

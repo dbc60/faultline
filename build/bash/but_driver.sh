@@ -32,7 +32,7 @@ if [[ $build -eq 1 ]]; then
     # --- but_test_data.dll ---
     [[ $verbose -eq 1 ]] && echo "Build $PROJECT_NAME driver test-data DLL"
 
-    "$CLANG" $COMMON_COMPILER_FLAGS -DDLL_BUILD -DFL_BUILD_DRIVER \
+    "$CLANG" $COMMON_COMPILER_FLAGS -DDLL_BUILD -DFL_PLATFORM_BUILD \
         -I "$DIR_INCLUDE" -I "$DIR_THIRD_PARTY" \
         -c "$DIR_REPO/src/but_test_data.c" \
         -o "$DIR_OUT_OBJ/but_test_data.o" \
@@ -46,8 +46,8 @@ if [[ $build -eq 1 ]]; then
     # --- but_driver.exe ---
     [[ $verbose -eq 1 ]] && echo "Build $PROJECT_NAME Driver"
 
-    "$CLANG" $COMMON_COMPILER_FLAGS -DFL_BUILD_DRIVER -DFL_EMBEDDED \
-        -I "$DIR_INCLUDE" -I "$DIR_THIRD_PARTY" \
+    "$CLANG" $COMMON_COMPILER_FLAGS -DFL_PLATFORM_BUILD -DFL_EMBEDDED \
+        -I "$DIR_INCLUDE" -I "$DIR_THIRD_PARTY" -I "$DIR_REPO/src" \
         -c "$DIR_REPO/app/but/win32_main.c" \
         -o "$DIR_OUT_OBJ/win32_main.o" \
         -MJ "$DIR_OUT_OBJ/win32_main.json"

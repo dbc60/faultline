@@ -24,14 +24,21 @@ The distribution system solves both with a **manifest** (the authoritative file 
 | `build/cmd/*_dist.cmd`            | Collect one service's files into `dist\<pkg>\` and emit its manifest |
 | `build/dist/fl_emit_manifest.ps1` | Hash every file in a package dir and write `manifest.txt`            |
 
-The four packages:
+The six packages:
 
-| Build script                    | Package dir                 | Service name           | Notes                                                         |
-| ------------------------------- | --------------------------- | ---------------------- | ------------------------------------------------------------- |
-| `log_service_dist.cmd`          | `dist\log_service`          | `log_service`          | Log service, both sides                                       |
-| `exception_service_dist.cmd`    | `dist\exception_service`    | `exception_service`    | Exception service, both sides (driver `flp_` + DLL `fla_`); self-contained for single binaries via `/DFL_BUILD_DRIVER`. |
-| `memory_service_dist.cmd`       | `dist\memory_service`       | `memory_service`       | Arena-only memory service (no fault injection): arena + platform exception+log + both service sides. Build `/DFL_BUILD_DRIVER`. |
-| `fault_memory_service_dist.cmd` | `dist\fault_memory_service` | `fault_memory_service` | Fault-injecting memory service: arena + fault injector + platform exception+log + app-side memory service. Build `/DFL_BUILD_DRIVER`. |
+| Build script                    | Package dir                 | Service name           | Depends on          | Notes                                                         |
+| ------------------------------- | --------------------------- | ---------------------- | ------------------- | ------------------------------------------------------------- |
+| `log_service_dist.cmd`          | `dist\log_service`          | `log_service`          | —                   | Log service, both sides                                       |
+| `exception_service_dist.cmd`    | `dist\exception_service`    | `exception_service`    | —                   | Exception service, both sides (driver `flp_` + DLL `fla_`); self-contained for single binaries via `/DFL_BUILD_DRIVER`. |
+| `memory_service_dist.cmd`       | `dist\memory_service`       | `memory_service`       | —                   | Arena-only memory service (no fault injection): arena + platform exception+log + both service sides. Build `/DFL_BUILD_DRIVER`. |
+| `fault_memory_service_dist.cmd` | `dist\fault_memory_service` | `fault_memory_service` | —                   | Fault-injecting memory service: arena + fault injector + platform exception+log + app-side memory service. Build `/DFL_BUILD_DRIVER`. |
+| `timer_service_dist.cmd`        | `dist\timer_service`        | `timer_service`        | `exception_service` | Monotonic timer service, both sides, plus the `FLStopwatch` composition and the `fl_timer.h` selector. First package to use `SVC_DEPENDS`: it ships only its own files. |
+| `file_service_dist.cmd`         | `dist\file_service`         | `file_service`         | `memory_service`    | Positional file service, both sides, plus the `fl_file.h` selector and the async contract sketch. The provider allocates through `FL_MALLOC`, supplied by `memory_service`. |
+
+The first four packages are **self-contained** (they bundle the shared sources they
+need; refcounting makes the overlap safe). The timer and file packages instead
+declare dependencies: import the dependency into the same tree first, or the
+importer refuses (see below).
 
 Note the package **directory** and the **service name** recorded in the manifest are set independently — a script can register under a name that differs from its directory.
 

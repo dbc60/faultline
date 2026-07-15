@@ -166,7 +166,7 @@ FL_TEST("Init Custom With Path", init_custom_with_path) {
     // init_custom with a non-NULL path opens the file itself and takes ownership.
     flp_log_init_custom(LOG_LEVEL_TRACE, path);
     FL_ASSERT_TRUE(g_logger.close_output);
-    FL_ASSERT_EQ_INT((int)g_logger.min_level, (int)LOG_LEVEL_TRACE);
+    FL_ASSERT_EQ_INT((int)g_logger.max_level, (int)LOG_LEVEL_TRACE);
 
     flp_write_log(LOG_LEVEL_INFO, __FILE__, __LINE__, "test", "custom path msg");
     size_t n = read_output(path, buf, sizeof buf);
@@ -179,7 +179,7 @@ FL_TEST("Init Custom Null Path Stdout", init_custom_null_path_stdout) {
     flp_log_init_custom(LOG_LEVEL_WARN, NULL);
     FL_ASSERT_EQ_PTR((void *)g_logger.output, (void *)stdout);
     FL_ASSERT_FALSE(g_logger.close_output);
-    FL_ASSERT_EQ_INT((int)g_logger.min_level, (int)LOG_LEVEL_WARN);
+    FL_ASSERT_EQ_INT((int)g_logger.max_level, (int)LOG_LEVEL_WARN);
     flp_log_cleanup();
 }
 
@@ -188,7 +188,7 @@ FL_TEST("Init Is Idempotent", init_is_idempotent) {
     // and must not overwrite the configured level.
     flp_log_init_custom(LOG_LEVEL_WARN, NULL);
     flp_log_init_custom(LOG_LEVEL_TRACE, NULL);
-    FL_ASSERT_EQ_INT((int)g_logger.min_level, (int)LOG_LEVEL_WARN);
+    FL_ASSERT_EQ_INT((int)g_logger.max_level, (int)LOG_LEVEL_WARN);
     flp_log_cleanup();
 }
 
@@ -626,10 +626,38 @@ FL_TEST("Thread Id Stable", thread_id_stable) {
 }
 
 // ---------------------------------------------------------------------------
+// Cross-boundary injection
+//
+// The plumbing tests above install a local stub or save/restore
+// g_fla_log_service.write themselves. This one relies entirely on the driver: when
+// it loads this DLL it resolves the exported fla_set_log_service via GetProcAddress
+// and installs the host's log service into g_fla_log_service before any test runs.
+// A pass proves the symbol was exported and the service crossed the DLL boundary;
+// were it missing,
+// g_fla_log_service would still hold the default_write abort stub (static in the
+// included fla_log_service.c). The host installs its own flp_write_log -- a
+// different address from this DLL's copy -- so we assert the stub was replaced
+// rather than pointer identity, then route a write through the injected service.
+//
+// Registered first so it observes the driver's injection before the save/restore
+// plumbing tests touch g_fla_log_service.
+// ---------------------------------------------------------------------------
+
+FL_TEST("Driver Injects Log Service", driver_injects_log_service) {
+    FL_ASSERT_TRUE(g_fla_log_service.write != default_write);
+
+    // Exercise the injected writer; if it were still the abort stub this would
+    // terminate the process. TRACE keeps it out of the default-level output.
+    g_fla_log_service.write(LOG_LEVEL_TRACE, __FILE__, __LINE__, "test",
+                            "cross-boundary log via injected service");
+}
+
+// ---------------------------------------------------------------------------
 // Suite registration
 // ---------------------------------------------------------------------------
 
 FL_SUITE_BEGIN(LogService)
+FL_SUITE_ADD(driver_injects_log_service)
 FL_SUITE_ADD(init_defaults)
 FL_SUITE_ADD(cleanup_flushes_owned_file)
 FL_SUITE_ADD(cleanup_does_not_close_unowned)

@@ -1,10 +1,10 @@
-#ifndef FL_LOG_TYPES_H_
-#define FL_LOG_TYPES_H_
+#ifndef FL_LOG_SERVICE_H_
+#define FL_LOG_SERVICE_H_
 
 /**
- * @file fl_log_types.h
+ * @file fl_log_service.h
  * @author Douglas Cuthbertson
- * @brief Log service interface shared by platform and application code.
+ * @brief Log service interface shared by platform and consumer code.
  * @version 0.1
  * @date 2026-02-09
  *
@@ -12,6 +12,7 @@
  *
  */
 #include <faultline/fl_macros.h> // FL_DECL_SPEC
+#include <stddef.h>              // size_t
 
 #if defined(__cplusplus)
 extern "C" {
@@ -37,8 +38,7 @@ typedef struct FLLogService {
     fl_write_log_fn *write;
 } FLLogService;
 
-// These definitions and declarations are common to both the platform and application
-// implementations
+// These definitions are common to both the platform and consumer implementations
 #define FLA_SET_LOG_SERVICE_FN(name) void name(FLLogService *const svc, size_t size)
 typedef FLA_SET_LOG_SERVICE_FN(fla_set_log_service_fn);
 #define FLA_SET_LOG_SERVICE_STR FL_STR(fla_set_log_service)
@@ -47,4 +47,4 @@ typedef FLA_SET_LOG_SERVICE_FN(fla_set_log_service_fn);
 }
 #endif
 
-#endif // FL_LOG_TYPES_H_
+#endif // FL_LOG_SERVICE_H_

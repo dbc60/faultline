@@ -33,7 +33,7 @@ static FLMemoryService g_fault_memory_service = {
     .fl_realloc       = flp_fault_realloc,
 };
 
-// ── Context init ──────────────────────────────────────────────────────────────
+// -- Context init --------------------------------------------------------------
 
 FLP_INIT_FAULT_MEMORY_CONTEXT_FN(flp_init_fault_memory_context) {
     FL_ASSERT_NOT_NULL(ctx);
@@ -44,7 +44,7 @@ FLP_INIT_FAULT_MEMORY_CONTEXT_FN(flp_init_fault_memory_context) {
     ctx->fi    = fi;
 }
 
-// ── Service init ──────────────────────────────────────────────────────────────
+// -- Service init --------------------------------------------------------------
 
 FLP_INIT_FAULT_MEMORY_SERVICE_FN(flp_init_fault_memory_service) {
     FL_ASSERT_NOT_NULL(fla_set);
@@ -55,7 +55,7 @@ FLP_INIT_FAULT_MEMORY_SERVICE_FN(flp_init_fault_memory_service) {
     fla_set(&g_fault_memory_service, sizeof g_fault_memory_service);
 }
 
-// ── Allocator implementations ─────────────────────────────────────────────────
+// -- Allocator implementations -------------------------------------------------
 
 FL_ALIGNED_ALLOC_FN(flp_fault_aligned_alloc) {
     void volatile *mem = NULL;

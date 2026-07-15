@@ -260,6 +260,7 @@ struct FLTestSuite {
  */
 #define FL_GET_TEST_SUITE_FN(name) FLTestSuite *name(void)
 typedef FL_GET_TEST_SUITE_FN(fl_get_test_suite_fn);
+#define FL_GET_TEST_SUITE_STR FL_STR(fl_get_test_suite)
 
 /**
  * @brief The function that returns the address of a FLTestSuite instance.

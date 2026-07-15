@@ -8,17 +8,17 @@
  * See LICENSE.txt for copyright and licensing information about this file.
  *
  */
-#include <faultline/fl_log_types.h> // for FLLogLevel, FL_WRITE_LOG_FN, FLLogS...
-#include <faultline/fl_threads.h>   // for mtx_destroy, mtx_init, mtx_lock
-#include <faultline/fl_try.h>       // FL_ASSERT_REASON_IMPL indirectly
+#include <faultline/fl_log_service.h> // for FLLogLevel, FL_WRITE_LOG_FN, FLLogS...
+#include <faultline/fl_threads.h>     // for mtx_destroy, mtx_init, mtx_lock
+#include <faultline/fl_try.h>         // FL_ASSERT_REASON_IMPL indirectly
 #include <faultline/fl_exception_service_assert.h> // FL_ASSERT_NOT_NULL
-#include <flp_log_service.h>        // for FLP_INIT_LOG_SERVICE_FN, flp_con...
-#include <stdarg.h>                 // for va_end, va_list, va_start
-#include <stdbool.h>                // for false, bool, true
-#include <stdio.h>                  // for fprintf, NULL, fflush, FILE, stdout
-#include <stdlib.h>                 // for abort
-#include <string.h>                 // for strrchr, strerror_s
-#include <time.h>                   // for localtime, strftime, time, time_t
+#include <flp_log_service.h> // for FLP_INIT_LOG_SERVICE_FN, flp_con...
+#include <stdarg.h>          // for va_end, va_list, va_start
+#include <stdbool.h>         // for false, bool, true
+#include <stdio.h>           // for fprintf, snprintf, NULL, fflush, FILE, stdout
+#include <stdlib.h>          // for abort
+#include <string.h>          // for strrchr, strerror_s, strerror
+#include <time.h>            // for localtime, strftime, time, time_t
 
 #if defined(_WIN32) || defined(WIN32)
 #ifndef WIN32_LEAN_AND_MEAN
@@ -26,12 +26,16 @@
 #endif
 #include <windows.h>           // IWYU pragma: keep - sets target architecture
 #include <processthreadsapi.h> // for GetCurrentThreadId
-#endif
 
 #define __STDC_WANT_LIB_EXT1__ 1
 #include <corecrt.h> // for errno_t
 #if defined(__clang__) || defined(__GNUC__)
 #include <sec_api/stdio_s.h> // for fopen_s
+#endif
+#else  // POSIX
+#include <errno.h>   // for errno
+#include <pthread.h> // for pthread_self
+#include <stdint.h>  // for uintptr_t
 #endif
 
 FL_WRITE_LOG_FN(flp_write_log);
@@ -43,7 +47,7 @@ FL_WRITE_LOG_FN(flp_write_log);
 typedef struct {
     bool       close_output;
     bool       enabled;
-    FLLogLevel min_level;
+    FLLogLevel max_level;
     FILE      *output;
     mtx_t      mutex;
     bool       initialized;
@@ -59,7 +63,7 @@ static FLLogService g_log_service = {
 // Static helpers
 // ---------------------------------------------------------------------------
 
-// Keep these in sync with enum FLLogLevel in fl_log_types.h
+// Keep these in sync with enum FLLogLevel in fl_log_service.h
 static char const *level_names[]
     = {"FATAL", "ERROR", "WARN", "INFO", "VERBOSE", "DEBUG", "TRACE"};
 
@@ -104,10 +108,11 @@ static void constraint_handler(char const *restrict msg, void *restrict ptr,
 void flp_log_init_custom(FLLogLevel level, char const *path) {
     if (!g_logger.initialized) {
         g_logger.enabled   = true;
-        g_logger.min_level = level;
+        g_logger.max_level = level;
         if (path != NULL) {
+            // flp_log_set_output_path owns close_output: it sets the flag only
+            // when the file actually opened, and clears it on the stdout fallback.
             flp_log_set_output_path(path);
-            g_logger.close_output = true;
         } else {
             g_logger.output       = stdout;
             g_logger.close_output = false;
@@ -142,7 +147,7 @@ void flp_log_cleanup(void) {
 }
 
 void flp_log_set_level(FLLogLevel level) {
-    g_logger.min_level = level;
+    g_logger.max_level = level;
 }
 
 void flp_log_set_output(FILE *file) {
@@ -155,13 +160,30 @@ void flp_log_set_output_path(char const *path) {
 #ifdef __STDC_LIB_EXT1__
     constraint_handler_t previous_handler = set_constraint_handler_s(constraint_handler);
 #endif
+#if defined(_WIN32) || defined(WIN32)
     errno_t error = fopen_s(&file, path, "a+");
+#else
+    int error = 0;
+    file      = fopen(path, "a+");
+    if (file == NULL) {
+        error = errno;
+    }
+#endif
     if (error != 0) {
         char buf[256] = {0};
+#if defined(_WIN32) || defined(WIN32)
         strerror_s(buf, sizeof buf, error);
+#else
+        // strerror is not thread-safe, but this is a configuration-time call and
+        // the result is copied out immediately.
+        snprintf(buf, sizeof buf, "%s", strerror(error));
+#endif
         fprintf(stderr, "Error: failed to open %s (error: %s); falling back to stdout\n",
                 path, buf);
         file = stdout;
+        // stdout is not ours to close; without this, flp_log_cleanup would
+        // fclose(stdout) whenever a stale flag was left set.
+        g_logger.close_output = false;
     } else {
         g_logger.close_output = true;
     }
@@ -177,7 +199,7 @@ void flp_log_set_output_path(char const *path) {
 // ---------------------------------------------------------------------------
 
 FL_WRITE_LOG_FN(flp_write_log) {
-    if (!g_logger.enabled || level > g_logger.min_level) {
+    if (!g_logger.enabled || level > g_logger.max_level) {
         return;
     }
 

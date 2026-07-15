@@ -20,8 +20,9 @@
 #include <string.h>                       // for strcmp, strchr
 #include <faultline/fl_exception_types.h> // for FLExceptionReason
 
-FLExceptionReason command_unknown = "unknown command";
-FLExceptionReason command_error   = "command error";
+FLExceptionReason command_unknown       = "unknown command";
+FLExceptionReason command_error         = "command error";
+FLExceptionReason command_out_of_memory = "command parser out of memory";
 
 /**
  * @brief search the array of formals for the named command
@@ -102,6 +103,7 @@ static bool is_option(char const *str) {
  * @param consumed_out set to number of argv elements consumed (1 or 2)
  * @return RuntimeOption* newly allocated RuntimeOption, or NULL if not an option
  * @throw command_error if option is invalid or missing required argument
+ * @throw command_out_of_memory if an allocation fails
  */
 static RuntimeOption *parse_option(FormalCommand const *cmd, char **argv,
                                    int argc_remaining, int *consumed_out) {
@@ -133,7 +135,7 @@ static RuntimeOption *parse_option(FormalCommand const *cmd, char **argv,
             size_t name_len  = equals - option_name;
             char  *name_copy = malloc(name_len + 1);
             if (name_copy == NULL) {
-                return NULL;
+                FL_THROW(command_out_of_memory);
             }
             strncpy_s(name_copy, name_len + 1, option_name, name_len);
             name_copy[name_len] = '\0';
@@ -145,7 +147,7 @@ static RuntimeOption *parse_option(FormalCommand const *cmd, char **argv,
         // Parse short form: -o or -o=value
         char *short_name = malloc(2);
         if (short_name == NULL) {
-            return NULL;
+            FL_THROW(command_out_of_memory);
         }
         short_name[0]  = arg[1];
         short_name[1]  = '\0';
@@ -181,12 +183,27 @@ static RuntimeOption *parse_option(FormalCommand const *cmd, char **argv,
     // Allocate and populate RuntimeOption
     RuntimeOption *runtime_opt = malloc(sizeof(RuntimeOption));
     if (runtime_opt == NULL) {
-        return NULL;
+        FL_THROW(command_out_of_memory);
     }
     runtime_opt->option = formal;
     runtime_opt->arg    = option_arg;
 
     return runtime_opt;
+}
+
+void free_command(RuntimeCommand *cmd) {
+    if (cmd == NULL) {
+        return;
+    }
+
+    free_command(cmd->subcommand);
+    if (cmd->options != NULL) {
+        free(cmd->options);
+    }
+    if (cmd->args != NULL) {
+        free(cmd->args);
+    }
+    free(cmd);
 }
 
 /**
@@ -200,12 +217,17 @@ static RuntimeOption *parse_option(FormalCommand const *cmd, char **argv,
  * 5. Store remaining argc/argv as positional args
  * 6. Return constructed RuntimeCommand
  *
+ * Exception safety: when any throw propagates out of this function, the partially built
+ * command and all working storage have been released.
+ *
  * @param formals the table of built-in commands
  * @param argc the number of arguments in argv from the command line.
  * @param argv a vector of strings from the command line.
- * @return RuntimeCommand* a freshly allocated RuntimeCommand
+ * @return RuntimeCommand* a freshly allocated RuntimeCommand; release it with
+ * free_command
  * @throw command_unknown if the command or subcommand is not recognized.
  * @throw command_error if the command, subcommand, or their options can't be parsed.
+ * @throw command_out_of_memory if an allocation fails.
  */
 RuntimeCommand *parse_command(FormalCommand const *formals, int argc, char **argv) {
     if (argc < 2) {
@@ -218,182 +240,188 @@ RuntimeCommand *parse_command(FormalCommand const *formals, int argc, char **arg
     // Allocate RuntimeCommand
     RuntimeCommand *runtime_cmd = malloc(sizeof(RuntimeCommand));
     if (runtime_cmd == NULL) {
-        return NULL;
+        FL_THROW(command_out_of_memory);
     }
 
     runtime_cmd->command    = cmd;
+    runtime_cmd->options    = NULL;
     runtime_cmd->subcommand = NULL;
     runtime_cmd->args       = NULL;
     runtime_cmd->argc       = 0;
 
-    // Parse options - collect them in a dynamic array first
-    int            option_count    = 0;
-    int            option_capacity = 8;
-    RuntimeOption *option_array    = malloc(sizeof(RuntimeOption) * option_capacity);
-    if (option_array == NULL) {
-        free(runtime_cmd);
-        return NULL;
-    }
+    // Working storage not yet owned by runtime_cmd. Everything in the FL_TRY block below
+    // can throw (each allocation, parse_option, and the subcommand recursion), so these
+    // are volatile-qualified: they are written between setjmp and longjmp and read by
+    // the catch block, which releases them and the partially built runtime_cmd before
+    // rethrowing. Each pointer is cleared as its ownership transfers so the catch block
+    // never frees an object twice.
+    RuntimeOption *volatile option_array = NULL;
+    char **volatile positional_array     = NULL;
+    char **volatile sub_argv             = NULL;
 
-    // Permute options and operands (GNU-style) for commands that take no
-    // subcommands, so options may appear before or after positional arguments
-    // (e.g. `run a.dll --db x`). Commands with subcommands keep POSIX ordering:
-    // the first non-option token is the subcommand and ends option scanning.
-    bool   permute          = (cmd->subcommands == NULL);
-    int    positional_count = 0;
-    char **positional_array = NULL;
-    if (permute) {
-        // argc is a safe upper bound on the number of operands.
-        positional_array = malloc(sizeof(char *) * argc);
-        if (positional_array == NULL) {
-            free(option_array);
-            free(runtime_cmd);
-            return NULL;
+    // Permute options and operands (GNU-style) for commands that take no subcommands, so
+    // options may appear before or after positional arguments (e.g. `run a.dll --db x`).
+    // Commands with subcommands keep POSIX ordering: the first non-option token is the
+    // subcommand and ends option scanning.
+    bool permute          = (cmd->subcommands == NULL);
+    int  positional_count = 0;
+    int  option_count     = 0;
+    int  option_capacity  = 8;
+
+    FL_TRY {
+        // Parse options - collect them in a dynamic array first
+        option_array = malloc(sizeof(RuntimeOption) * option_capacity);
+        if (option_array == NULL) {
+            FL_THROW(command_out_of_memory);
         }
-    }
 
-    int i = 2; // Start after program name and command name
-    while (i < argc) {
-        // "--" ends option parsing; everything after it is an operand.
-        if (strcmp(argv[i], "--") == 0) {
-            i++; // Skip the "--"
-            if (permute) {
-                while (i < argc) {
-                    positional_array[positional_count++] = argv[i];
-                    i++;
+        if (permute) {
+            // argc is a safe upper bound on the number of operands.
+            positional_array = malloc(sizeof(char *) * argc);
+            if (positional_array == NULL) {
+                FL_THROW(command_out_of_memory);
+            }
+        }
+
+        int i = 2; // Start after program name and command name
+        while (i < argc) {
+            // "--" ends option parsing; everything after it is an operand.
+            if (strcmp(argv[i], "--") == 0) {
+                i++; // Skip the "--"
+                if (permute) {
+                    while (i < argc) {
+                        positional_array[positional_count++] = argv[i];
+                        i++;
+                    }
+                }
+                break;
+            }
+
+            // Try to parse as option
+            int            consumed;
+            RuntimeOption *opt = parse_option(cmd, &argv[i], argc - i, &consumed);
+
+            if (opt == NULL) {
+                // For a command with subcommands, the first non-option token begins the
+                // subcommand, so stop scanning. Without subcommands, collect it as an
+                // operand and keep scanning so later options are recognized.
+                if (!permute) {
+                    break;
+                }
+                positional_array[positional_count++] = argv[i];
+                i++;
+                continue;
+            }
+
+            // Add to option array, growing if necessary
+            if (option_count >= option_capacity) {
+                option_capacity *= 2;
+                RuntimeOption *new_array
+                    = realloc(option_array, sizeof(RuntimeOption) * option_capacity);
+                if (new_array == NULL) {
+                    free(opt); // loop-local; the catch block cannot reach it
+                    FL_THROW(command_out_of_memory);
+                }
+                option_array = new_array;
+            }
+
+            option_array[option_count++] = *opt;
+            free(opt);
+            i += consumed;
+        }
+
+        // NULL-terminate the options array
+        RuntimeOption *final_options
+            = realloc(option_array, sizeof(RuntimeOption) * (option_count + 1));
+        if (final_options == NULL) {
+            FL_THROW(command_out_of_memory);
+        }
+        option_array         = NULL;
+        runtime_cmd->options = final_options; // owned by runtime_cmd from here
+
+        runtime_cmd->options[option_count].option = NULL; // NULL terminator
+        runtime_cmd->options[option_count].arg    = NULL;
+
+        // Check if there's a subcommand
+        bool parsed_subcommand = false;
+        if (i < argc && cmd->subcommands != NULL) {
+            // Try to find a subcommand
+            FormalCommand const *subcmd = NULL;
+            for (int j = 0; cmd->subcommands[j].name != NULL; j++) {
+                if (strcmp(cmd->subcommands[j].name, argv[i]) == 0) {
+                    subcmd = &cmd->subcommands[j];
+                    break;
                 }
             }
-            break;
-        }
 
-        // Try to parse as option
-        int            consumed;
-        RuntimeOption *opt = parse_option(cmd, &argv[i], argc - i, &consumed);
+            if (subcmd != NULL) {
+                // Parse subcommand recursively
+                // Create new argv starting with "program subcommand ..."
+                sub_argv = malloc(sizeof(char *) * (argc - i + 1));
+                if (sub_argv == NULL) {
+                    FL_THROW(command_out_of_memory);
+                }
 
-        if (opt == NULL) {
-            // For a command with subcommands, the first non-option token begins
-            // the subcommand, so stop scanning. Without subcommands, collect it
-            // as an operand and keep scanning so later options are recognized.
-            if (!permute) {
-                break;
-            }
-            positional_array[positional_count++] = argv[i];
-            i++;
-            continue;
-        }
+                LOG_VERBOSE("COMMAND",
+                            "subcommand: program name=%s, i=%d, subcommand name=%s",
+                            argv[0], i, argv[i]);
+                sub_argv[0] = argv[0]; // program name
+                sub_argv[1] = argv[i]; // subcommand name
+                for (int j = i + 1; j < argc; j++) {
+                    sub_argv[j - i + 1] = argv[j];
+                }
 
-        // Add to option array, growing if necessary
-        if (option_count >= option_capacity) {
-            option_capacity *= 2;
-            RuntimeOption *new_array = malloc(sizeof(RuntimeOption) * option_capacity);
-            if (new_array == NULL) {
-                free(opt);
-                free(positional_array);
-                free(option_array);
-                free(runtime_cmd);
-                return NULL;
-            }
-
-            for (int j = 0; j < option_count; j++) {
-                new_array[j] = option_array[j];
-            }
-
-            free(option_array);
-            option_array = new_array;
-        }
-
-        option_array[option_count++] = *opt;
-        free(opt);
-        i += consumed;
-    }
-
-    // NULL-terminate the options array
-    RuntimeOption *final_options = malloc(sizeof(RuntimeOption) * (option_count + 1));
-    if (final_options == NULL) {
-        free(positional_array);
-        free(option_array);
-        free(runtime_cmd);
-        return NULL;
-    }
-
-    for (int j = 0; j < option_count; j++) {
-        final_options[j] = option_array[j];
-    }
-
-    final_options[option_count].option = NULL; // NULL terminator
-    final_options[option_count].arg    = NULL;
-    runtime_cmd->options               = final_options;
-    free(option_array); // option_array has been copied into final_options; no longer
-                        // needed
-
-    // Check if there's a subcommand
-    if (i < argc && cmd->subcommands != NULL) {
-        // Try to find a subcommand
-        FormalCommand const *subcmd = NULL;
-        for (int j = 0; cmd->subcommands[j].name != NULL; j++) {
-            if (strcmp(cmd->subcommands[j].name, argv[i]) == 0) {
-                subcmd = &cmd->subcommands[j];
-                break;
+                runtime_cmd->subcommand
+                    = parse_command(cmd->subcommands, argc - i + 1, sub_argv);
+                free(sub_argv); // sub_argv elements point into original argv; safe
+                                // to free now
+                sub_argv          = NULL;
+                parsed_subcommand = true;
             }
         }
 
-        if (subcmd != NULL) {
-            // Parse subcommand recursively
-            // Create new argv starting with "program subcommand ..."
-            char **sub_argv = malloc(sizeof(char *) * (argc - i + 1));
-            if (sub_argv == NULL) {
-                free(runtime_cmd->options);
-                free(runtime_cmd);
-                return NULL;
-            }
+        if (!parsed_subcommand) {
+            // Remaining arguments are positional
+            if (permute) {
+                // Operands gathered during the permuting scan above.
+                if (positional_count > 0) {
+                    runtime_cmd->args = positional_array;
+                    runtime_cmd->argc = positional_count;
+                    positional_array  = NULL; // owned by runtime_cmd from here
+                } else {
+                    free(positional_array);
+                    positional_array = NULL;
+                }
+            } else {
+                int remaining = argc - i;
+                if (remaining > 0) {
+                    runtime_cmd->args = malloc(sizeof(char *) * remaining);
+                    if (runtime_cmd->args == NULL) {
+                        FL_THROW(command_out_of_memory);
+                    }
 
-            LOG_VERBOSE("COMMAND",
-                        "subcommand: program name=%s, i=%d, subcommand name=%s", argv[0],
-                        i, argv[i]);
-            sub_argv[0] = argv[0]; // program name
-            sub_argv[1] = argv[i]; // subcommand name
-            for (int j = i + 1; j < argc; j++) {
-                sub_argv[j - i + 1] = argv[j];
+                    runtime_cmd->argc = remaining;
+                    for (int j = 0; j < remaining; j++) {
+                        runtime_cmd->args[j] = argv[i + j];
+                    }
+                }
             }
-
-            runtime_cmd->subcommand
-                = parse_command(cmd->subcommands, argc - i + 1, sub_argv);
-            free(sub_argv); // sub_argv elements point into original argv; safe to free
-                            // now
-            if (runtime_cmd->subcommand == NULL) {
-                free(runtime_cmd->options);
-                free(runtime_cmd);
-                return NULL;
-            }
-            return runtime_cmd;
         }
     }
-
-    // Remaining arguments are positional
-    if (permute) {
-        // Operands gathered during the permuting scan above.
-        if (positional_count > 0) {
-            runtime_cmd->args = positional_array;
-            runtime_cmd->argc = positional_count;
-        } else {
+    FL_CATCH_ALL {
+        if (sub_argv != NULL) {
+            free(sub_argv);
+        }
+        if (positional_array != NULL) {
             free(positional_array);
         }
-    } else {
-        int remaining = argc - i;
-        if (remaining > 0) {
-            runtime_cmd->args = malloc(sizeof(char *) * remaining);
-            if (runtime_cmd->args == NULL) {
-                free(runtime_cmd->options);
-                free(runtime_cmd);
-                return NULL;
-            }
-
-            runtime_cmd->argc = remaining;
-            for (int j = 0; j < remaining; j++) {
-                runtime_cmd->args[j] = argv[i + j];
-            }
+        if (option_array != NULL) {
+            free(option_array);
         }
+        free_command(runtime_cmd);
+        FL_RETHROW;
     }
+    FL_END_TRY;
 
     return runtime_cmd;
 }
@@ -414,10 +442,11 @@ RuntimeCommand *parse_command(FormalCommand const *formals, int argc, char **arg
  * @param globals NULL-terminated array of options accepted before the command
  * @param argc argument count
  * @param argv argument vector
- * @return RuntimeCommand* the parsed command, or NULL on allocation failure
+ * @return RuntimeCommand* the parsed command
  * @throw command_error if a leading option is unknown, missing its argument, or
  *        not followed by a command
  * @throw command_unknown if the command name is not recognized
+ * @throw command_out_of_memory if an allocation fails
  */
 RuntimeCommand *parse_command_with_globals(FormalCommand const *formals,
                                            FormalOption const *globals, int argc,
@@ -455,7 +484,7 @@ RuntimeCommand *parse_command_with_globals(FormalCommand const *formals,
     // leading options are parsed as the command's own options.
     char **reordered = malloc(sizeof(char *) * argc);
     if (reordered == NULL) {
-        return NULL;
+        FL_THROW(command_out_of_memory);
     }
     int n          = 0;
     reordered[n++] = argv[0];         // program name
@@ -467,9 +496,20 @@ RuntimeCommand *parse_command_with_globals(FormalCommand const *formals,
         reordered[n++] = argv[j]; // everything after the command
     }
 
-    RuntimeCommand *cmd = parse_command(formals, n, reordered);
+    // reordered is only scaffolding for the nested parse; release it whether the
+    // parse returns or throws.
+    RuntimeCommand *parsed = NULL;
+    FL_TRY {
+        parsed = parse_command(formals, n, reordered);
+    }
+    FL_CATCH_ALL {
+        free(reordered);
+        FL_RETHROW;
+    }
+    FL_END_TRY;
+
     free(reordered);
-    return cmd;
+    return parsed;
 }
 
 /**

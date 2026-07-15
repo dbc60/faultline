@@ -19,7 +19,7 @@
 
 /// Assert two flag64 values are equal, displaying hex on failure.
 #define ASSERT_EQ_HEX64(EXPECTED, ACTUAL) \
-    FL_ASSERT_BINOP_TYPED((flag64)(EXPECTED), (flag64)(ACTUAL), ==, "==", "0x%016llX")
+    FL_ASSERT_BINOP_TYPED(flag64, EXPECTED, ACTUAL, ==, "==", "0x%016llX")
 
 // ---------------------------------------------------------------------------
 // ALIGN_UP

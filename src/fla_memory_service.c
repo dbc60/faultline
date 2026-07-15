@@ -78,6 +78,11 @@ FLMemoryService g_fla_memory_service = {
 };
 
 FL_DECL_SPEC FLA_SET_MEMORY_SERVICE_FN(fla_set_memory_service) {
+    if (svc == NULL) {
+        fprintf(stderr, "invalid memory service - NULL service address\n");
+        fflush(stderr);
+        abort();
+    }
     if (size < sizeof(FLMemoryService)) {
         fprintf(stderr, "invalid memory service - expected %zu bytes, received %zu\n",
                 sizeof(FLMemoryService), size);

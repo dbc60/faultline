@@ -19,19 +19,19 @@ demo_driver.exe  (platform side)              demo_suite.dll  (application side)
   owns the arena + flp_ service impls           uses malloc/free, LOG_*, FL_TRY
   flp_log_init()                                  via the injected fla_ shims
   new_arena() + flp_init_memory_context()
-  LoadLibrary("demo_suite.dll")  ───────────►   exports fla_set_log_service
+  LoadLibrary("demo_suite.dll")  ----------->   exports fla_set_log_service
   GetProcAddress("fla_set_log_service")          exports fla_set_exception_service
   GetProcAddress("fla_set_exception_service")    exports fla_set_memory_service
   GetProcAddress("fla_set_memory_service")       exports demo_run / demo_throw_uncaught
-  flp_init_log_service(...)       ──inject──►
-  flp_init_exception_service(...) ──inject──►
-  flp_init_memory_service(...)    ──inject──►
+  flp_init_log_service(...)       --inject-->
+  flp_init_exception_service(...) --inject-->
+  flp_init_memory_service(...)    --inject-->
   FL_TRY { demo_run(); demo_throw_uncaught(); }
   FL_CATCH_STR(fl_invalid_value) { ... }
 ```
 
 `demo_suite.dll` contains **none** of the allocator, logger, or exception
-engine. Its `malloc`/`free`, `LOG_*`, and `FL_TRY`/`FL_THROW` all call function
+services. Its `malloc`/`free`, `LOG_*`, and `FL_TRY`/`FL_THROW` all call function
 pointers that the driver fills in at run time. Two behaviours are demonstrated:
 
 1. **`demo_run`** allocates a buffer from the driver's arena, logs through the

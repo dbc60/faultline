@@ -18,7 +18,7 @@
 #include <sqlite/sqlite3.h>                 // for sqlite3_bind_int, sqlite3_column...
 #include <stdbool.h>                        // for bool
 #include <stdio.h>                          // for printf, NULL, snprintf, size_t
-#include <string.h>                         // for strcpy_s, strrchr, strlen, strcat_s
+#include <string.h>                         // for strcpy_s, strrchr, strlen
 #include <time.h>                           // for time_t
 #include <faultline/fl_abbreviated_types.h> // for u32, i64
 #include <faultline/fl_exception_service.h> // for FL_REASON
@@ -306,7 +306,7 @@ sqlite3 *faultline_init_database(char const *db_path) {
     if (rc != SQLITE_OK) {
         char details[256];
         snprintf(details, sizeof details, "Failed to open database '%s': %s", db_path,
-                 sqlite3_errmsg(db));
+                 db ? sqlite3_errmsg(db) : sqlite3_errstr(rc));
         sqlite3_close_v2(db);
         LOG_ERROR(faultline_db, "%s", details);
         FL_THROW_DETAILS(faultline_db_create_failed, "sqlite3: %s", details);
@@ -364,13 +364,24 @@ int faultline_record_test_run_start(sqlite3 *db, char const *suite_name,
         return -1;
     }
 
-    int        suite_id = -1;
-    int        run_id   = -1;
+    int suite_id = -1;
+    int run_id   = -1;
+
+    // 0 means the caller never stamped a start time; record the current time
+    // rather than 1970-01-01, which would sort the run to the bottom of every
+    // timestamp-ordered report.
+    if (start_time == 0) {
+        time(&start_time);
+    }
+
     struct tm  tm_result;
     struct tm *tm_info = fl_gmtime(&start_time, &tm_result);
     char       timestamp[32];
     if (tm_info) {
-        strftime(timestamp, sizeof(timestamp), "%Y-%m-%dT%H:%M:%SZ", tm_info);
+        // Match SQLite's CURRENT_TIMESTAMP text format (UTC, no 'T'/'Z') so rows
+        // written here and rows written by the column default compare uniformly
+        // in the report queries' raw string comparisons.
+        strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", tm_info);
     }
 
     FL_TRY {
@@ -403,11 +414,10 @@ int faultline_record_test_run_start(sqlite3 *db, char const *suite_name,
             // Create test run record
             char const *insert_run_sql
                 = "INSERT INTO raw_test_runs ("
-                  "    suite_id, test_cases, tests_run, tests_passed, "
-                  "tests_passed_with_leaks, "
-                  "    tests_failed, setups_failed, cleanups_failed, total_fault_sites, "
-                  "    total_elapsed_time"
-                  ") VALUES (?, ?, 0, 0, 0, 0, 0, 0, 0, 0.0);";
+                  "    suite_id, timestamp, test_cases, tests_run, tests_passed, "
+                  "    tests_passed_with_leaks, tests_failed, setups_failed, "
+                  "    cleanups_failed, total_fault_sites, total_elapsed_time"
+                  ") VALUES (?, ?, 0, 0, 0, 0, 0, 0, 0, 0, 0.0);";
 
             rc = sqlite3_prepare_v2(db, insert_run_sql, -1, &stmt, NULL);
             if (rc == SQLITE_OK) {
@@ -522,7 +532,7 @@ void faultline_record_test_run_complete(sqlite3 *db, int run_id, FLContext *fctx
             sqlite3_bind_int(stmt, PARAM_TESTS_RUN, (int)tests_run);
             sqlite3_bind_int(stmt, PARAM_TESTS_PASSED, (int)tests_passed);
             sqlite3_bind_int(stmt, PARAM_TESTS_PASSED_WITH_LEAKS,
-                             0); // calculated separately
+                             (int)faultline_get_pass_with_leaks_count(fctx));
             sqlite3_bind_int(stmt, PARAM_TESTS_FAILED, (int)test_failures);
             sqlite3_bind_int(stmt, PARAM_SETUPS_FAILED, (int)setup_failures);
             sqlite3_bind_int(stmt, PARAM_CLEANUPS_FAILED, (int)cleanup_failures);
@@ -714,7 +724,8 @@ void faultline_record_test_summary(sqlite3 *db, int run_id, FLTestSummary *summa
                     Fault *fault = fault_buffer_get(&summary->fault_buffer, f);
                     if (fault != NULL) {
                         LOG_DEBUG(faultline_db,
-                                  "Fault %zu: file=%s, line=%d, reason=%s, resource=%p",
+                                  "Fault %zu: file=%s, line=%d, reason=%s, details=%s, "
+                                  "resource=%p",
                                   f, fault->file ? fault->file : "NULL", fault->line,
                                   fault->reason ? fault->reason : "NULL",
                                   fault->details ? fault->details : "NULL",
@@ -835,12 +846,21 @@ void faultline_show_recent_runs(sqlite3 *db, int limit) {
         int         id         = sqlite3_column_int(stmt, COL_ID);
         char const *suite_name = (char const *)sqlite3_column_text(stmt, COL_SUITE_NAME);
         char const *timestamp  = (char const *)sqlite3_column_text(stmt, COL_TIMESTAMP);
-        int         test_cases = sqlite3_column_int(stmt, COL_TEST_CASES);
-        int         tests_run  = sqlite3_column_int(stmt, COL_TESTS_RUN);
-        int         tests_passed = sqlite3_column_int(stmt, COL_TESTS_PASSED);
-        double      elapsed_time = sqlite3_column_double(stmt, COL_ELAPSED_TIME);
-        double      pass_rate    = sqlite3_column_double(stmt, COL_PASS_RATE);
-        int         fault_sites  = sqlite3_column_int(stmt, COL_FAULT_SITES);
+
+        // A NULL column (SQL NULL or an OOM inside sqlite3_column_text) must not
+        // reach strncpy_s/strlen, which abort on NULL under MSVC.
+        if (suite_name == NULL) {
+            suite_name = "(null)";
+        }
+        if (timestamp == NULL) {
+            timestamp = "(null)";
+        }
+        int    test_cases   = sqlite3_column_int(stmt, COL_TEST_CASES);
+        int    tests_run    = sqlite3_column_int(stmt, COL_TESTS_RUN);
+        int    tests_passed = sqlite3_column_int(stmt, COL_TESTS_PASSED);
+        double elapsed_time = sqlite3_column_double(stmt, COL_ELAPSED_TIME);
+        double pass_rate    = sqlite3_column_double(stmt, COL_PASS_RATE);
+        int    fault_sites  = sqlite3_column_int(stmt, COL_FAULT_SITES);
 
         // Truncate timestamp to remove seconds
         char short_timestamp[20];
@@ -1343,7 +1363,9 @@ void faultline_show_test_failures(sqlite3 *db, char const *suite_name, int limit
         return;
     }
 
-    // Build the base SQL query with optional filtering for recent runs only
+    // Build the base SQL query with optional filtering for recent runs only. The
+    // suite filter is bound as ?1 by prepare_suite_report (NULL means all suites),
+    // like the other report queries, so a suite name is never spliced into the SQL.
     char const *base_sql;
     if (show_all_history) {
         base_sql = "SELECT rtr.id, ts.suite_name, rts.test_name, rts.result_code, "
@@ -1353,8 +1375,9 @@ void faultline_show_test_failures(sqlite3 *db, char const *suite_name, int limit
                    "JOIN raw_test_runs rtr ON rts.run_id = rtr.id "
                    "JOIN test_suites ts ON rtr.suite_id = ts.suite_id "
                    "LEFT JOIN raw_faults rf ON rts.id = rf.summary_id "
-                   "WHERE rts.result_code > 1"; // Exclude FL_NOT_RUN (0) and
-                                                // FL_PASS (1)
+                   "WHERE (?1 IS NULL OR ts.suite_name = ?1) "
+                   "AND rts.result_code > 1 " // Exclude FL_NOT_RUN (0) and FL_PASS (1)
+                   "ORDER BY rtr.timestamp DESC";
     } else {
         // Default: show only failures from the most recent test run per suite
         base_sql = "SELECT rtr.id, ts.suite_name, rts.test_name, rts.result_code, "
@@ -1364,35 +1387,19 @@ void faultline_show_test_failures(sqlite3 *db, char const *suite_name, int limit
                    "JOIN raw_test_runs rtr ON rts.run_id = rtr.id "
                    "JOIN test_suites ts ON rtr.suite_id = ts.suite_id "
                    "LEFT JOIN raw_faults rf ON rts.id = rf.summary_id "
-                   "WHERE rts.result_code > 1 "
+                   "WHERE (?1 IS NULL OR ts.suite_name = ?1) "
+                   "AND rts.result_code > 1 " // Exclude FL_NOT_RUN (0) and FL_PASS (1)
                    "AND rtr.timestamp >= ("
                    "    SELECT MAX(rtr2.timestamp) "
                    "    FROM raw_test_runs rtr2 "
                    "    WHERE rtr2.suite_id = rtr.suite_id"
-                   ")";
+                   ") "
+                   "ORDER BY rtr.timestamp DESC";
     }
 
-    char query[1024]; // Increased buffer size for longer SQL queries with subqueries
-    if (suite_name != NULL) {
-        snprintf(query, sizeof query, "%s AND ts.suite_name = '%s'", base_sql,
-                 suite_name);
-    } else {
-        strcpy_s(query, sizeof query, base_sql);
-    }
-
-    if (limit > 0) {
-        char limit_clause[64];
-        snprintf(limit_clause, sizeof limit_clause,
-                 " ORDER BY rtr.timestamp DESC LIMIT %d", limit);
-        strcat_s(query, sizeof query, limit_clause);
-    } else {
-        strcat_s(query, sizeof query, " ORDER BY rtr.timestamp DESC");
-    }
-
-    sqlite3_stmt *stmt;
-    int           rc = sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
-    if (rc != SQLITE_OK) {
-        printf("Error preparing query: %s\n", sqlite3_errmsg(db));
+    sqlite3_stmt *stmt = prepare_suite_report(db, base_sql, suite_name, limit);
+    if (stmt == NULL) {
+        printf("Error preparing query\n");
         return;
     }
 
@@ -1945,7 +1952,7 @@ void faultline_sqlite_migrate_schema(char const *db_path, int current_version) {
     if (rc != SQLITE_OK) {
         // Clear: database doesn't exist or not readable
         char details[256];
-        strcpy_s(details, sizeof details, sqlite3_errmsg(db));
+        strcpy_s(details, sizeof details, db ? sqlite3_errmsg(db) : sqlite3_errstr(rc));
         sqlite3_close_v2(db);
         FL_THROW_DETAILS(faultline_db_not_found, "sqlite3: %s", details);
     }
@@ -1970,7 +1977,7 @@ void faultline_export_sqlite(FLContext *fctx, char const *db_path) {
     if (rc != SQLITE_OK) {
         // Clear error handling - know exactly what failed
         char details[256];
-        strcpy_s(details, sizeof details, sqlite3_errmsg(db));
+        strcpy_s(details, sizeof details, db ? sqlite3_errmsg(db) : sqlite3_errstr(rc));
         sqlite3_close_v2(db);
         FL_THROW_DETAILS(faultline_db_create_failed, "sqlite3: %s", details);
     }
@@ -1991,7 +1998,7 @@ void faultline_import_sqlite(FLContext *fctx, char const *db_path, int run_id) {
     if (rc != SQLITE_OK) {
         // Clear: database doesn't exist or not readable
         char details[256];
-        strcpy_s(details, sizeof details, sqlite3_errmsg(db));
+        strcpy_s(details, sizeof details, db ? sqlite3_errmsg(db) : sqlite3_errstr(rc));
         sqlite3_close_v2(db);
         FL_THROW_DETAILS(faultline_db_not_found, "sqlite3: %s", details);
     }

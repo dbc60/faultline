@@ -5,7 +5,7 @@
  *
  * See LICENSE.txt for copyright and licensing information about this file.
  *
- * Compiled WITH FL_BUILD_DRIVER (so fl_try.h/fl_log.h select the self-contained
+ * Compiled WITH FL_PLATFORM_BUILD (so fl_try.h/fl_log.h select the self-contained
  * platform service macros) and FL_EMBEDDED. This binary owns the arena and the
  * platform implementations of all three services. It loads demo_suite.dll,
  * injects each service via the DLL's exported fla_set_* entry points — exactly
@@ -22,7 +22,7 @@
 #include <flp_memory_service.h>           // flp_init_memory_service
 #include <flp_log_service.h> // flp_log_init / set_level / cleanup, flp_init_log_service
 #include <faultline/fl_exception_service.h> // fla_set_exception_service_fn, FLA_SET_EXCEPTION_SERVICE_STR, fl_invalid_value
-#include <faultline/fl_log_types.h> // fla_set_log_service_fn, FLA_SET_LOG_SERVICE_STR
+#include <faultline/fl_log_service.h> // fla_set_log_service_fn, FLA_SET_LOG_SERVICE_STR
 #include <faultline/fl_memory_service.h> // fla_set_memory_service_fn, FLA_SET_MEMORY_SERVICE_STR
 #include <faultline/fl_try.h> // FL_TRY/FL_CATCH (flp_ side), flp_init_exception_service
 #include <faultline/fl_log.h> // LOG_INFO/LOG_ERROR (flp_ side)
@@ -55,7 +55,7 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    // ── Inject the three services into the DLL (order mirrors command_run.c) ──
+    // -- Inject the three services into the DLL (order mirrors command_run.c) --
 
     // Log service (optional): wire the DLL's g_fla_log_service to flp_write_log.
     fla_set_log_service_fn *fla_set_log

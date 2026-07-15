@@ -14,6 +14,7 @@
 #include <faultline/dlist.h>                       // for DLIST_IS_EMPTY, DLIST_NEXT
 #include <faultline/fl_abbreviated_types.h>        // for flag64
 #include <faultline/fl_exception_service_assert.h> // for assert
+#include <faultline/fl_log.h>                      // for LOG_DEBUG
 #include <faultline/fl_macros.h>                   // for FL_CONTAINER_OF
 #include <faultline/fl_try.h>                      // for FL_THROW_DETAILS, FL_THROW
 #include <stddef.h>                                // for NULL, size_t

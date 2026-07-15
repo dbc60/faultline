@@ -13,6 +13,7 @@
  */
 #include <faultline/fl_exception_types.h> // FLExceptionEnvironment, FLExceptionReason, fl_exception_handler_fn
 #include <faultline/fl_macros.h> // FL_STR
+#include <stddef.h>              // size_t
 
 #if defined(__cplusplus)
 extern "C" {
@@ -60,11 +61,11 @@ extern FLExceptionReason fl_invalid_address;
 /**
  * @brief Exception handling service provided by the test driver.
  *
- * The driver owns this struct and populates it with:
- * - stack: linked list of exception environments (initially NULL)
- * - handler: function to call when exception stack is empty (unhandled exception)
- * - ctx: driver's opaque context passed to handler
- * - Function pointers for push/pop/throw operations
+ * The driver owns this struct and populates it with the push/pop/throw function
+ * pointers. The exception-environment stack itself is thread-local state owned by
+ * the platform provider, not carried in this struct. Throwing with no environment
+ * pushed on the current thread is a programming error: the provider reports the
+ * throw site to stderr and aborts.
  */
 typedef struct FLExceptionService FLExceptionService;
 
@@ -85,7 +86,7 @@ typedef FL_THROW_EXCEPTION_SERVICE_FN(fl_throw_exception_service_fn);
 
 /**
  * @brief FLExceptionService is the interface between the platform/test-driver code and
- * the application/test-suite code.
+ * the consumer/test-suite code.
  *
  * @param push push an exception environment on to a stack
  * @param pop pop and return an exception environment from the top of a stack
@@ -104,7 +105,7 @@ struct FLExceptionService {
     fl_throw_exception_service_fn *volatile throw_exc;
 };
 
-// These definitions are common to both the platform and application implementations
+// These definitions are common to both the platform and consumer implementations
 #define FLA_SET_EXCEPTION_SERVICE_FN(name) \
     void name(FLExceptionService *const svc, size_t size)
 typedef FLA_SET_EXCEPTION_SERVICE_FN(fla_set_exception_service_fn);

@@ -64,11 +64,14 @@ FL_TYPE_TEST_SETUP_CLEANUP("increase capacity", TestWithArena, test_increase_cap
                            setup_with_arena, cleanup_with_arena) {
     Buffer buf = {0};
     init_buffer(&buf, t->arena, 0, ELEMENT_SIZE);
+    // A small request lands on the growth floor.
     increase_capacity(&buf, 1);
-    FL_ASSERT_EQ_SIZE_T(buf.capacity, SIZE_T_ONE);
+    FL_ASSERT_EQ_SIZE_T(buf.capacity, (size_t)BUFFER_MIN_CAPACITY);
     FL_ASSERT_NOT_NULL(buf.mem);
+    // 1.5x geometric growth exceeds the requested two extra elements.
     increase_capacity(&buf, 2);
-    FL_ASSERT_EQ_SIZE_T(buf.capacity, (size_t)3);
+    FL_ASSERT_EQ_SIZE_T(buf.capacity,
+                        (size_t)(BUFFER_MIN_CAPACITY + BUFFER_MIN_CAPACITY / 2));
     FL_ASSERT_NOT_NULL(buf.mem);
     ARENA_FREE_THROW(t->arena, buf.mem);
 }
@@ -130,8 +133,9 @@ FL_TYPE_TEST_SETUP_CLEANUP("put grow", TestArray, test_put_grow, setup_buf,
     p = buffer_put(t->buf, &value);
     FL_ASSERT_NOT_NULL(p);
     FL_ASSERT_TRUE(buffer_count(t->buf) == BUFFER_CAPACITY + 1);
-    FL_ASSERT_DETAILS(t->buf->capacity == INCREASE_CAPACITY_BY + BUFFER_CAPACITY,
-                      "buffer capacity should be 20, but is %zu", t->buf->capacity);
+    // 1.5x geometric growth
+    FL_ASSERT_DETAILS(t->buf->capacity == BUFFER_CAPACITY + BUFFER_CAPACITY / 2,
+                      "buffer capacity should be 15, but is %zu", t->buf->capacity);
 }
 
 FL_TYPE_TEST_SETUP_CLEANUP("get", TestArray, test_get, setup_buf, cleanup_buf) {
@@ -159,7 +163,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("get grow", TestArray, test_get_grow, setup_buf,
     int *p = buffer_put(t->buf, &value);
     FL_ASSERT_NOT_NULL(p);
     FL_ASSERT_TRUE(buffer_count(t->buf) == BUFFER_CAPACITY + 1);
-    FL_ASSERT_TRUE(t->buf->capacity == INCREASE_CAPACITY_BY + BUFFER_CAPACITY);
+    FL_ASSERT_TRUE(t->buf->capacity == BUFFER_CAPACITY + BUFFER_CAPACITY / 2);
     int *q = buffer_get(t->buf, BUFFER_CAPACITY);
     FL_ASSERT_NOT_NULL(q);
     FL_ASSERT_EQ_PTR(q, p);
@@ -207,8 +211,8 @@ FL_TYPE_TEST_SETUP_CLEANUP("put from zero capacity", TestWithArena,
     FL_ASSERT_NOT_NULL(p);
     FL_ASSERT_EQ_INT(*p, value);
     FL_ASSERT_EQ_SIZE_T(buffer_count(buf), SIZE_T_ONE);
-    FL_ASSERT_DETAILS(buf->capacity == INCREASE_CAPACITY_BY,
-                      "capacity should be %d, but is %zu", INCREASE_CAPACITY_BY,
+    FL_ASSERT_DETAILS(buf->capacity == BUFFER_MIN_CAPACITY,
+                      "capacity should be %d, but is %zu", BUFFER_MIN_CAPACITY,
                       buf->capacity);
 
     destroy_buffer(buf);
@@ -241,7 +245,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("allocate next free slot grow", TestArray,
     FL_ASSERT_NOT_NULL(slot);
     FL_ASSERT_EQ_SIZE_T(buffer_count(t->buf), (size_t)BUFFER_CAPACITY + 1);
     FL_ASSERT_EQ_SIZE_T(t->buf->capacity,
-                        (size_t)BUFFER_CAPACITY + INCREASE_CAPACITY_BY);
+                        (size_t)(BUFFER_CAPACITY + BUFFER_CAPACITY / 2));
 }
 
 // --- buffer_clear ---
@@ -377,11 +381,12 @@ FL_TYPE_TEST_SETUP_CLEANUP("get out of bounds", TestWithArena, test_get_out_of_b
 
 FL_TYPE_TEST_SETUP_CLEANUP("put double grow", TestArray, test_put_double_grow, setup_buf,
                            cleanup_buf) {
-    // First grow: count reaches BUFFER_CAPACITY      -> capacity: 10 -> 22
-    // Second grow: count reaches BUFFER_CAPACITY + INCREASE_CAPACITY_BY -> capacity: 22
-    // -> 34
-    size_t const target = BUFFER_CAPACITY + INCREASE_CAPACITY_BY + 1;
-    int          value  = 42;
+    // First grow: count reaches BUFFER_CAPACITY -> capacity grows 1.5x (10 -> 15)
+    // Second grow: count reaches the first grown capacity -> 1.5x again (15 -> 22)
+    size_t const first_grown  = BUFFER_CAPACITY + BUFFER_CAPACITY / 2;
+    size_t const second_grown = first_grown + first_grown / 2;
+    size_t const target       = first_grown + 1;
+    int          value        = 42;
 
     for (size_t i = 0; i < target; i++) {
         int *p = buffer_put(t->buf, &value);
@@ -390,9 +395,8 @@ FL_TYPE_TEST_SETUP_CLEANUP("put double grow", TestArray, test_put_double_grow, s
     }
 
     FL_ASSERT_EQ_SIZE_T(buffer_count(t->buf), target);
-    FL_ASSERT_DETAILS(t->buf->capacity == BUFFER_CAPACITY + 2 * INCREASE_CAPACITY_BY,
-                      "capacity should be %zu, but is %zu",
-                      (size_t)(BUFFER_CAPACITY + 2 * INCREASE_CAPACITY_BY),
+    FL_ASSERT_DETAILS(t->buf->capacity == second_grown,
+                      "capacity should be %zu, but is %zu", second_grown,
                       t->buf->capacity);
 }
 

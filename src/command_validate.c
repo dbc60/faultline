@@ -10,6 +10,7 @@
  */
 #include "command.h"
 #include <faultline/fl_memory.h>
+#include <faultline/fl_try.h> // FL_THROW
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
@@ -39,6 +40,9 @@ static void add_option(RuntimeCommand *cmd, FormalOption const *option,
 
     // Allocate new array with room for one more option plus sentinel
     RuntimeOption *new_options = FL_MALLOC(sizeof(RuntimeOption) * (option_count + 2));
+    if (new_options == NULL) {
+        FL_THROW(command_out_of_memory);
+    }
 
     // Copy existing options
     for (int i = 0; i < option_count; i++) {

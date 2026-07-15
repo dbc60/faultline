@@ -692,6 +692,11 @@ void *arena_aligned_alloc_throw(Arena *arena, size_t alignment, size_t size,
 
     arena_free_throw(arena, raw, file, line);
 
+    // Freeing the gap chunk decremented the allocation count, but the aligned chunk
+    // carved from the same allocation is still outstanding; restore the count so the
+    // caller's eventual free balances it instead of underflowing.
+    arena->allocations++;
+
     return (void *)aligned_addr;
 }
 
@@ -982,7 +987,7 @@ void *arena_malloc_throw(Arena *arena, size_t request, char const *file, int lin
             mem = CHUNK_TO_MEMORY(ch);
         } else {
             if (!DLIST_IS_EMPTY(&arena->region_list)) {
-                DList      *entry = &arena->region_list;
+                DList      *entry = DLIST_NEXT(&arena->region_list);
                 RegionNode *rn    = NULL;
                 while (entry != &arena->region_list) {
                     rn = FL_CONTAINER_OF(entry, RegionNode, link);

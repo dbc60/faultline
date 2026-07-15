@@ -68,7 +68,7 @@ IF %build% EQU 1 (
         ECHO.
         ECHO Build the Faultline Test Program ^(unity^): faultline.exe
     )
-    cl %CommonCompilerFlagsFinal% /wd4200 /wd4115 /wd4456 /DFL_BUILD_DRIVER ^
+    cl %CommonCompilerFlagsFinal% /wd4200 /wd4115 /wd4456 /DFL_PLATFORM_BUILD ^
     /I%DIR_INCLUDE% /I"%DIR_THIRD_PARTY%" /I"%DIR_THIRD_PARTY%\cwalk\include" ^
     /I%DIR_REPO%\src %DIR_REPO%\app\faultline\main_unity_windows.c ^
     %DIR_OUT_OBJ%\sqlite3.obj %DIR_OUT_OBJ%\cwalk.obj /Fo:%DIR_OUT_OBJ%\ ^

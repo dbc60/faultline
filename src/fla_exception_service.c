@@ -17,6 +17,7 @@
 #include <faultline/fla_exception_service.h>
 #include <faultline/fl_exception_service_assert.h> // for fl_throw_assertion
 #include <faultline/fl_macros.h>                   // for FL_UNUSED, FL_DECL_SPEC
+#include <stddef.h>                                // for NULL
 #include <stdio.h>                                 // for fflush, fprintf, stderr
 #include <stdlib.h>                                // for abort
 #include <faultline/fl_exception_service.h>        // for FLExceptionService, FL_THRO...
@@ -53,6 +54,11 @@ FLExceptionService g_fla_exception_service = {
 };
 
 FL_DECL_SPEC FLA_SET_EXCEPTION_SERVICE_FN(fla_set_exception_service) {
+    if (svc == NULL) {
+        fprintf(stderr, "invalid exception service - NULL service address\n");
+        fflush(stderr);
+        abort();
+    }
     if (size < sizeof(FLExceptionService)) {
         fprintf(stderr, "invalid exception service - expected %zu bytes, received %zu\n",
                 sizeof(FLExceptionService), size);

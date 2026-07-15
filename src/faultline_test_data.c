@@ -22,6 +22,7 @@
 #include "faultline_driver.c"
 #include "fnv/FNV64.c"
 #include "flp_log_service.c"
+#include "flp_timer_service.c" // flp_timer_now/elapsed_seconds for the driver's timing
 #include "region.c"
 #include "region_node.c"
 #include "region_os.c"

@@ -138,7 +138,7 @@ COPY /Y "%DIR_INC%\fl_exception_service.h"          "%DIR_DIST%\include\faultlin
 COPY /Y "%DIR_INC%\fl_exception_service_assert.h"   "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\fl_exception_types.h"            "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\fl_log.h"                        "%DIR_DIST%\include\faultline\" > NUL
-COPY /Y "%DIR_INC%\fl_log_types.h"                  "%DIR_DIST%\include\faultline\" > NUL
+COPY /Y "%DIR_INC%\fl_log_service.h"                "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\fl_macros.h"                     "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\fl_threads.h"                    "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\fl_try.h"                        "%DIR_DIST%\include\faultline\" > NUL
@@ -148,6 +148,7 @@ COPY /Y "%DIR_INC%\size.h"                          "%DIR_DIST%\include\faultlin
 :: Public headers from include\faultline\ — memory service
 :: -----------------------------------------------------------------------
 ECHO Copying memory service public headers...
+COPY /Y "%DIR_INC%\fl_memory.h"                     "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\fl_memory_service.h"             "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\fla_memory_service.h"            "%DIR_DIST%\include\faultline\" > NUL
 

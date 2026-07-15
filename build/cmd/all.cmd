@@ -18,7 +18,7 @@ CALL %DIR_CMD%\setup.cmd %*
 
 set "args="
 for %%A in (%*) do (
-    if /I not "%%~A"=="test" if /I not "%%~A"=="clean" if /I not "%%~A"=="cleanall" (
+    if /I not "%%~A"=="test" if /I not "%%~A"=="clean" if /I not "%%~A"=="cleanall" if /I not "%%~A"=="cleanplat" (
         set "args=!args! %%~A"
     )
     if /I "%%~A"=="test" (
@@ -131,6 +131,11 @@ if errorlevel 1 (
     GOTO :ERROR
 )
 
+call %DIR_CMD%\faultline_split.cmd !args!
+if errorlevel 1 (
+    GOTO :ERROR
+)
+
 call %DIR_CMD%\malloc_cleanup_config.cmd !args!
 if errorlevel 1 (
     GOTO :ERROR
@@ -142,6 +147,11 @@ if errorlevel 1 (
 )
 
 call %DIR_CMD%\memory_service.cmd !args!
+if errorlevel 1 (
+    GOTO :ERROR
+)
+
+call %DIR_CMD%\file_service.cmd !args!
 if errorlevel 1 (
     GOTO :ERROR
 )
@@ -184,8 +194,16 @@ if %test% EQU 1 (
         command_tests.dll ^
         faultline_tests.dll ^
         malloc_cleanup_config_tests.dll ^
-        flp_memory_service_tests.dll
-    .\faultline.exe show results --limit 22
+        flp_memory_service_tests.dll ^
+        flp_file_service_tests.dll
+    .\faultline.exe show results --limit 23
+    REM Split-architecture smoke: the same suites driven through the split host.
+    REM Its log goes to faultline.log; the results table shows the runs.
+    .\win32_faultline.exe run ^
+        faultline_tests.dll ^
+        flp_file_service_tests.dll ^
+        timer_tests.dll
+    .\win32_faultline.exe show results --limit 3
     popd
 )
 GOTO :SUCCESS

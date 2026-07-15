@@ -34,14 +34,14 @@ RegionNode *new_region_node(size_t commit, u32 reserve) {
     size_t       top_size  = committed - REGION_ALIGNED_SIZE - REGION_NODE_ALIGNED_SIZE
                       - CHUNK_SENTINEL_SIZE;
 
-    CHUNK_SET_SENTINEL(rl->top);
-
     free_chunk_init(rl->top, top_size, true);
     // Ensure the sentinel is never consolidated with top by setting its in-use bit. Note
     // the size is set to zero to indicate that the arena in which this region node is
     // contained should attempt to extend itself the next time it can't satisfy an
     // allocation request from top, the fast chunk or its free bins.
-    CHUNK_SET_INUSE(CHUNK_NEXT(rl->top));
+    Chunk *sentinel = CHUNK_NEXT(rl->top);
+    sentinel->size  = 0;
+    CHUNK_SET_INUSE(sentinel);
 
     return rl;
 }

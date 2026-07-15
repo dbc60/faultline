@@ -24,6 +24,7 @@
 #include "fla_memory_service.c"
 
 #include <faultline/fl_abbreviated_types.h> // u16, u32, u64
+#include <faultline/fl_log.h>               // LOG_* (selects fla_ backend)
 #include <faultline/fl_test.h>              // FLTestCase
 
 // Typed-set wrapper for int, exercised by test_typed_set.

@@ -97,9 +97,10 @@ IF NOT EXIST "%OBJ_EXE%" MD "%OBJ_EXE%"
 
 :: -----------------------------------------------------------------------
 :: 3. Build the suite DLL (application side). DLL_BUILD makes FL_DECL_SPEC
-::    dllexport so fla_set_* are exported; no FL_BUILD_DRIVER, so the unified
+::    dllexport so fla_set_* are exported; no FL_PLATFORM_BUILD, so the unified
 ::    headers select the fla_ shims. The DLL borrows the allocator/logger/
-::    exception engine from the driver at run time, so none are compiled here.
+::    exception implementations from the driver at run time, so none are
+::    compiled here.
 :: -----------------------------------------------------------------------
 ECHO Building demo_suite.dll ...
 cl %CommonCompilerFlagsFinal% /DDLL_BUILD /wd4456 ^
@@ -114,13 +115,13 @@ cl %CommonCompilerFlagsFinal% /DDLL_BUILD /wd4456 ^
 IF ERRORLEVEL 1 ( ECHO   [compile] demo_suite.dll FAILED & TYPE "%CL_LOG%" & GOTO :FAIL )
 
 :: -----------------------------------------------------------------------
-:: 4. Build the driver exe (platform side). FL_BUILD_DRIVER selects the flp_
+:: 4. Build the driver exe (platform side). FL_PLATFORM_BUILD selects the flp_
 ::    macros; FL_EMBEDDED makes FL_DECL_SPEC empty (single binary). Compile the
 ::    flp_/fl_ sources plus the arena; exclude region_windows.c (unity-included
 ::    by region_os.c) and every fla_ source (the DLL owns those).
 :: -----------------------------------------------------------------------
 ECHO Building demo_driver.exe ...
-cl %CommonCompilerFlagsFinal% /experimental:c11atomics /DFL_BUILD_DRIVER /DFL_EMBEDDED /wd4456 ^
+cl %CommonCompilerFlagsFinal% /experimental:c11atomics /DFL_PLATFORM_BUILD /DFL_EMBEDDED /wd4456 ^
     /I"%TREE%\include" /I"%TREE%\src" ^
     "%TREE%\src\fl_exception_service.c" ^
     "%TREE%\src\flp_exception_service.c" ^

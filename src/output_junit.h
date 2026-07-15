@@ -11,9 +11,9 @@
  * See LICENSE.txt for copyright and licensing information about this file.
  *
  */
-#include <faultline/arena.h>      // Arena
-#include <faultline/fl_context.h> // FLContext
-#include <stdio.h>                // FILE
+#include <faultline/arena.h>         // Arena
+#include <faultline/fl_context.h>    // FLContext
+#include <faultline/fl_file_types.h> // FLFile
 
 /**
  * @brief determine what to free in destroy_junit
@@ -28,7 +28,7 @@ typedef struct {
     Arena           *arena;   ///* the arena to use for allocations
     char            *path;    ///< the path to a file to store JUNIT XML data
     size_t           size;    ///< size of path buffer in bytes
-    FILE            *file;    ///< handle to a file
+    FLFile          *file;    ///< file-service handle (NULL when closed)
     JUnitReleaseType release; ///< true if allocated by new_junit, false otherwise
 } JUnitXML;
 

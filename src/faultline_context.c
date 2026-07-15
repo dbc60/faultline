@@ -52,8 +52,13 @@ FL_GET_RESULT_CODE(faultline_get_result_code) {
             i++;
         }
 
-        FLTestSummary *result = faultline_test_summary_buffer_get(&fctx->results, i);
-        if (i < buffer_count(&fctx->results) && result->index == index) {
+        // The scan may have run off the end, so check the bound before fetching:
+        // buffer_get throws on an out-of-range index.
+        FLTestSummary *result
+            = (i < buffer_count(&fctx->results))
+                  ? faultline_test_summary_buffer_get(&fctx->results, i)
+                  : NULL;
+        if (result != NULL && result->index == index) {
             // We have a match
             frc = result->code;
         } else {

@@ -11,7 +11,7 @@
  * See LICENSE.txt for copyright and licensing information about this file.
  *
  */
-#include <faultline/fl_log_types.h> // FLLogLevel, FL_WRITE_LOG_FN
+#include <faultline/fl_log_service.h> // FLLogLevel, FL_WRITE_LOG_FN
 
 #include <stdio.h> // FILE
 
@@ -73,40 +73,6 @@ void flp_log_set_output_path(char const *path);
  * @brief Platform-side write implementation for the log service.
  */
 FL_WRITE_LOG_FN(flp_write_log);
-
-// Convenience macros
-#define FLP_LOG_WRITE(level, file, line, id, msg, ...) \
-    flp_write_log(level, file, line, id, msg, ##__VA_ARGS__)
-
-#define LOG_FATAL(ID, MSG, ...) \
-    FLP_LOG_WRITE(LOG_LEVEL_FATAL, __FILE__, __LINE__, (ID), (MSG), ##__VA_ARGS__)
-#define LOG_ERROR(ID, MSG, ...) \
-    FLP_LOG_WRITE(LOG_LEVEL_ERROR, __FILE__, __LINE__, (ID), (MSG), ##__VA_ARGS__)
-#define LOG_WARN(ID, MSG, ...) \
-    FLP_LOG_WRITE(LOG_LEVEL_WARN, __FILE__, __LINE__, (ID), (MSG), ##__VA_ARGS__)
-#define LOG_INFO(ID, MSG, ...) \
-    FLP_LOG_WRITE(LOG_LEVEL_INFO, __FILE__, __LINE__, (ID), (MSG), ##__VA_ARGS__)
-#define LOG_VERBOSE(ID, MSG, ...) \
-    FLP_LOG_WRITE(LOG_LEVEL_VERBOSE, __FILE__, __LINE__, (ID), (MSG), ##__VA_ARGS__)
-#define LOG_DEBUG(ID, MSG, ...) \
-    FLP_LOG_WRITE(LOG_LEVEL_DEBUG, __FILE__, __LINE__, (ID), (MSG), ##__VA_ARGS__)
-#define LOG_TRACE(ID, MSG, ...) \
-    FLP_LOG_WRITE(LOG_LEVEL_TRACE, __FILE__, __LINE__, (ID), (MSG), ##__VA_ARGS__)
-
-#define LOG_FATAL_FILE_LINE(ID, FILE, LINE, MSG, ...) \
-    FLP_LOG_WRITE(LOG_LEVEL_FATAL, (FILE), (LINE), (ID), (MSG), ##__VA_ARGS__)
-#define LOG_ERROR_FILE_LINE(ID, FILE, LINE, MSG, ...) \
-    FLP_LOG_WRITE(LOG_LEVEL_ERROR, (FILE), (LINE), (ID), (MSG), ##__VA_ARGS__)
-#define LOG_WARN_FILE_LINE(ID, FILE, LINE, MSG, ...) \
-    FLP_LOG_WRITE(LOG_LEVEL_WARN, (FILE), (LINE), (ID), (MSG), ##__VA_ARGS__)
-#define LOG_INFO_FILE_LINE(ID, FILE, LINE, MSG, ...) \
-    FLP_LOG_WRITE(LOG_LEVEL_INFO, (FILE), (LINE), (ID), (MSG), ##__VA_ARGS__)
-#define LOG_VERBOSE_FILE_LINE(ID, FILE, LINE, MSG, ...) \
-    FLP_LOG_WRITE(LOG_LEVEL_VERBOSE, (FILE), (LINE), (ID), (MSG), ##__VA_ARGS__)
-#define LOG_DEBUG_FILE_LINE(ID, FILE, LINE, MSG, ...) \
-    FLP_LOG_WRITE(LOG_LEVEL_DEBUG, (FILE), (LINE), (ID), (MSG), ##__VA_ARGS__)
-#define LOG_TRACE_FILE_LINE(ID, FILE, LINE, MSG, ...) \
-    FLP_LOG_WRITE(LOG_LEVEL_TRACE, (FILE), (LINE), (ID), (MSG), ##__VA_ARGS__)
 
 #if defined(__cplusplus)
 }

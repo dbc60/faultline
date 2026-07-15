@@ -17,11 +17,9 @@
 #include <fnv/FNV64.h>                      // for FNV64block
 #include <fnv/FNVErrorCodes.h>              // for fnvSuccess
 #include <faultline/arena.h>                // for ARENA_FREE_THROW, ARENA_CALLOC_THROW
-#include <faultline/size.h>                 // for SIZE_T_SIZE
 #include <stdbool.h>                        // for bool, false, true
 #include <stdint.h>                         // for uint8_t
 #include <string.h>                         // for size_t, memcmp, memcpy
-#include "bits.h"                           // for ALIGN_UP
 #include <faultline/fl_exception_types.h>   // for FLExceptionReason
 
 FLExceptionReason set_release_bucket_not_allowed
@@ -47,8 +45,6 @@ Set *new_set_custom(Arena *arena, size_t capacity, size_t element_size, hash_fn_
     if (capacity == 0) {
         capacity = SET_DEFAULT_CAPACITY;
     }
-
-    element_size = ALIGN_UP(element_size, SIZE_T_SIZE);
 
     // Allocate a Set plus capacity buckets where each bucket is a SetEntry
     Set *set = ARENA_CALLOC_THROW(arena, 1, sizeof(*set) + capacity * sizeof(SetEntry));

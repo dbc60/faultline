@@ -153,3 +153,38 @@ FL_TYPE_TEST_SETUP_CLEANUP("Aligned Alloc - Throw on Zero Alignment", TestReques
 
     FL_ASSERT_DETAILS(threw, "Expected exception for zero alignment");
 }
+
+// Verify the allocation count stays balanced through aligned allocations. The
+// gap-split path internally frees the gap chunk, which decrements the count that
+// the initial malloc incremented; the implementation must restore it so one
+// aligned allocation reads as exactly one outstanding allocation and the caller's
+// free returns the count to baseline instead of underflowing it. The first
+// allocation in a fresh arena takes the gap path (see the 32-byte test above);
+// the varied alignments and sizes cover both the gap and no-gap paths.
+FL_TYPE_TEST_SETUP_CLEANUP("Aligned Alloc - Balanced Allocation Count", TestRequest,
+                           test_aligned_alloc_count_balanced, setup_small_range,
+                           cleanup) {
+    size_t const alignments[] = {32, 64, 128};
+    size_t const baseline     = arena_allocation_count(t->arena);
+
+    for (size_t a = 0; a < sizeof alignments / sizeof alignments[0]; a++) {
+        for (size_t size = CHUNK_ALIGNMENT; size <= 256; size += CHUNK_ALIGNMENT) {
+            void *mem = arena_aligned_alloc_throw(t->arena, alignments[a], size,
+                                                  __FILE__, __LINE__);
+
+            size_t after_alloc = arena_allocation_count(t->arena);
+            FL_ASSERT_DETAILS(after_alloc == baseline + 1,
+                              "Expected count %zu after aligned alloc (alignment %zu, "
+                              "size %zu), got %zu",
+                              baseline + 1, alignments[a], size, after_alloc);
+
+            arena_free_throw(t->arena, mem, __FILE__, __LINE__);
+
+            size_t after_free = arena_allocation_count(t->arena);
+            FL_ASSERT_DETAILS(after_free == baseline,
+                              "Expected count %zu after free (alignment %zu, size %zu), "
+                              "got %zu",
+                              baseline, alignments[a], size, after_free);
+        }
+    }
+}

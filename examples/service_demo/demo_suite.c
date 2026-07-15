@@ -6,7 +6,7 @@
  * See LICENSE.txt for copyright and licensing information about this file.
  *
  * This translation unit is compiled into demo_suite.dll WITHOUT
- * FL_BUILD_DRIVER, so:
+ * FL_PLATFORM_BUILD, so:
  *   - fl_log.h selects the application-side LOG_* macros (route through the
  *     injected g_fla_log_service),
  *   - fl_try.h selects the application-side FL_TRY/FL_CATCH/FL_THROW macros
@@ -82,7 +82,6 @@ FL_SPEC_EXPORT int demo_run(void) {
  * (longjmp into the driver's setjmp frame).
  */
 FL_SPEC_EXPORT void demo_throw_uncaught(void) {
-    LOG_INFO(module,
-             "demo_throw_uncaught: throwing fl_invalid_value, NOT catching it");
+    LOG_INFO(module, "demo_throw_uncaught: throwing fl_invalid_value, NOT catching it");
     FL_THROW(fl_invalid_value);
 }

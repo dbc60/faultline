@@ -27,7 +27,6 @@
 
 // LOG2(ARENA_MIN_LARGE_CHUNK)
 #define ARENA_LOG2_MIN_LARGE_CHUNK 10
-#define ARENA_DETAILS_SIZE         256
 
 /// runtime checks
 #define ARENA_RTCHECK(EXP, FILE, LINE)                         \
@@ -37,13 +36,12 @@
         }                                                      \
     } while (0)
 
-#define ARENA_RTCHECK_VA(EXP, FILE, LINE, fmt, ...)              \
-    do {                                                         \
-        if (!(EXP)) {                                            \
-            static char details[ARENA_DETAILS_SIZE];             \
-            snprintf(details, sizeof details, fmt, __VA_ARGS__); \
-            fl_throw(fl_internal_error, details, FILE, LINE);    \
-        }                                                        \
+#define ARENA_RTCHECK_VA(EXP, FILE, LINE, fmt, ...)                              \
+    do {                                                                         \
+        if (!(EXP)) {                                                            \
+            FL_THROW_DETAILS_FILE_LINE(fl_internal_error, fmt, FILE, LINE,       \
+                                       ##__VA_ARGS__);                           \
+        }                                                                        \
     } while (0)
 
 /// the maximum size of a chunk that can fit into a small bin

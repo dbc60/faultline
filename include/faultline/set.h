@@ -150,7 +150,7 @@ struct Set {
     }                                                                                  \
                                                                                        \
     static inline FL_MAYBE_UNUSED bool PRE##_set_contains(VT##Set const *set,          \
-                                                          VT const      *element) {         \
+                                                          VT const      *element) {    \
         return set_contains((Set const *)set, element);                                \
     }                                                                                  \
                                                                                        \
@@ -179,6 +179,11 @@ struct Set {
 /**
  * @brief Hash the value and return the hash in the *hash parameter.
  *
+ * This default hashes the value as element_size raw bytes, so an element type
+ * containing padding must be zero-initialized (e.g. with = {0} or memset) before
+ * insert and lookup — indeterminate padding bytes make logically equal values
+ * hash differently. Supply a custom hash function to hash by field instead.
+ *
  * @param set
  * @param value
  * @return 64-bit hash of value
@@ -188,6 +193,10 @@ u64 set_do_hash(Set const *set, void const *value);
 
 /**
  * @brief Compare a and b, return true if they match and false otherwise.
+ *
+ * This default compares the values as element_size raw bytes, so the same
+ * zero-initialization rule as set_do_hash applies to element types containing
+ * padding. Supply a custom compare function to compare by field instead.
  *
  * @param set
  * @param a
@@ -247,6 +256,10 @@ Set *new_set_custom(Arena *arena, size_t capacity, size_t element_size, hash_fn_
 
 /**
  * @brief Create a set object with the default hash and compare functions.
+ *
+ * The defaults treat values as element_size raw bytes; see set_do_hash and
+ * set_compare for the zero-initialization rule this imposes on element types
+ * containing padding.
  *
  * @param capacity
  * @param element_size

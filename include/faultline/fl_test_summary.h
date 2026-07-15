@@ -13,8 +13,8 @@
  * This header defines structures and functions for storing and accessing test execution
  * summaries, including failure information, timing data, and fault injection results.
  */
+#include <faultline/arena.h>           // Arena, ARENA_MALLOC_THROW
 #include <faultline/buffer.h>          // Buffer API
-#include <faultline/timer.h>           // WinTimer
 #include <faultline/fault.h>           // Fault
 #include <faultline/fl_result_codes.h> // FLResultCode
 #include <faultline/fl_types.h>        // FLTestPhase, FLFailureType
@@ -23,6 +23,7 @@
 #include <faultline/fl_abbreviated_types.h> // u32
 
 #include <stddef.h> // size_t
+#include <string.h> // strlen, memcpy
 
 #if defined(__cplusplus)
 extern "C" {
@@ -71,13 +72,36 @@ typedef struct FLTestSummary {
 DEFINE_TYPED_BUFFER(FLTestSummary, faultline_test_summary)
 
 /**
+ * @brief Copy exception details into arena-owned storage.
+ *
+ * Details formatted by the throw/assert macros live in a per-thread scratch
+ * buffer (fl_details_buf) that the next detail-formatting throw overwrites. A
+ * summary outlives many subsequent throws -- it is read at the end of the suite
+ * run -- so it must own its copy. Reason strings and file names are address
+ * tokens and string literals, which are stable and need no copy.
+ *
+ * @param arena the arena that owns the copy (the summary's arena)
+ * @param details the details to copy; NULL or empty yields ""
+ * @return an arena-owned copy of details, or "" when there are none
+ */
+static inline char const *faultline_details_copy(Arena *arena, char const *details) {
+    if (details == NULL || details[0] == '\0') {
+        return "";
+    }
+    size_t len  = strlen(details) + 1;
+    char  *copy = ARENA_MALLOC_THROW(arena, len);
+    memcpy(copy, details, len);
+    return copy;
+}
+
+/**
  * @brief initialize a new FLTestSummary object
  *
  * @param summary a test summary to be initialized
  * @param index the index of the test case
  * @param status the result code for the test case
  * @param reason the exception thrown on the main path
- * @param details optional details about a thrown exception
+ * @param details optional details about a thrown exception (copied into arena)
  */
 static inline void init_faultline_test_summary(FLTestSummary *summary, Arena *arena,
                                                u32 index, FLResultCode status,
@@ -86,7 +110,7 @@ static inline void init_faultline_test_summary(FLTestSummary *summary, Arena *ar
     summary->index            = index;
     summary->code             = status;
     summary->reason           = reason;
-    summary->details          = details ? details : "";
+    summary->details          = faultline_details_copy(arena, details);
     summary->elapsed_seconds  = 0.0;
     summary->faults_exercised = 0;
     init_fault_buffer(&summary->fault_buffer, arena, 0);
@@ -114,7 +138,11 @@ faultline_test_summary_add_fault(FLTestSummary *summary, i64 index, FLResultCode
                                  void const *resource, FLExceptionReason reason,
                                  char const *details, char const *file, int line) {
     Fault *fault = fault_buffer_allocate_next_free_slot(&summary->fault_buffer);
-    init_fault(fault, index, code, resource, reason, details, file, line);
+    // Copy details into the summary's arena: the summary is read at end of run,
+    // long after the per-thread scratch buffer behind most details pointers has
+    // been overwritten by later throws.
+    init_fault(fault, index, code, resource, reason,
+               faultline_details_copy(summary->fault_buffer.arena, details), file, line);
 }
 
 #if defined(__cplusplus)

@@ -5,7 +5,7 @@
  * @file fl_abbreviated_types.h
  * @author Douglas Cuthbertson
  * @brief platform-wide type definitions and macros.
- * @version 0.1.0
+ * @version 0.1
  * @date 2022-01-24
  *
  * See LICENSE.txt for copyright and licensing information about this file.

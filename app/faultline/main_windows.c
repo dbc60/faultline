@@ -24,37 +24,17 @@
 #include <flp_memory_service.h> // flp_init_fault_memory_service
 #include <faultline_sqlite.h>   // faultline_init_database, faultline_close_database
 
-#include <stdio.h>  // printf
-#include <string.h> // strcmp
+#include <stdio.h> // printf
 
 static char const *module = "Faultline";
 
 // No-op fla_set for the unity build: flp_init_memory_service requires a non-NULL
 // setter, but DLL injection is handled per-suite in command_run.c. The main exe
-// uses FL_BUILD_DRIVER, so FL_MALLOC routes directly through flp_malloc, not through
+// uses FL_PLATFORM_BUILD, so FL_MALLOC routes directly through flp_malloc, not through
 // g_fla_memory_service.
 static FLA_SET_MEMORY_SERVICE_FN(noop_fla_set_memory_service) {
     (void)svc;
     (void)size;
-}
-
-/**
- * @brief Parse --log-level option string to FLLogLevel enum.
- */
-static FLLogLevel parse_log_level(char const *level_str) {
-    if (level_str == NULL) {
-        return LOG_LEVEL_INFO;
-    }
-    if (strcmp(level_str, "error") == 0) {
-        return LOG_LEVEL_ERROR;
-    }
-    if (strcmp(level_str, "warn") == 0) {
-        return LOG_LEVEL_WARN;
-    }
-    if (strcmp(level_str, "debug") == 0) {
-        return LOG_LEVEL_DEBUG;
-    }
-    return LOG_LEVEL_INFO;
 }
 
 int main(int argc, char **argv) {

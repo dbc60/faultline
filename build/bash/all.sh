@@ -52,8 +52,10 @@ bash "$SCRIPT_DIR/fault_injector.sh"        "${_forward_args[@]}"
 bash "$SCRIPT_DIR/fl_assert.sh"             "${_forward_args[@]}"
 bash "$SCRIPT_DIR/command.sh"               "${_forward_args[@]}"
 bash "$SCRIPT_DIR/faultline.sh"             "${_forward_args[@]}"
+bash "$SCRIPT_DIR/faultline_split.sh"       "${_forward_args[@]}"
 bash "$SCRIPT_DIR/malloc_cleanup_config.sh" "${_forward_args[@]}"
 bash "$SCRIPT_DIR/memory_service.sh"        "${_forward_args[@]}"
+bash "$SCRIPT_DIR/file_service.sh"          "${_forward_args[@]}"
 
 # Copy build artifacts to test/ directory (mirrors new.cmd behavior)
 if [[ $build -eq 1 ]]; then
@@ -112,8 +114,15 @@ if [[ $_has_test -eq 1 ]]; then
         command_tests.dll \
         faultline_tests.dll \
         malloc_cleanup_config_tests.dll \
-        flp_memory_service_tests.dll
-    ./faultline.exe show results --limit 22
+        flp_memory_service_tests.dll \
+        flp_file_service_tests.dll
+    ./faultline.exe show results --limit 23
+    # Split-architecture smoke: the same suites driven through the split host.
+    ./win32_faultline.exe run \
+        faultline_tests.dll \
+        flp_file_service_tests.dll \
+        timer_tests.dll
+    ./win32_faultline.exe show results --limit 3
     popd > /dev/null
 fi
 

@@ -10,9 +10,11 @@
 
 // Must be defined before any headers are included so that fl_log.h and fl_try.h
 // select the platform (driver) implementations of the log and exception services.
-#ifndef FL_BUILD_DRIVER
-#define FL_BUILD_DRIVER
+#ifndef FL_PLATFORM_BUILD
+#define FL_PLATFORM_BUILD
 #endif
+
+#include <faultline/fl_log.h> // LOG_* (selects flp_ backend via FL_PLATFORM_BUILD)
 
 #include "arena.c"
 #include "arena_dbg.c"
@@ -28,6 +30,7 @@
 #include "flp_log_service.c"
 #include "flp_memory_service.c"
 #include "flp_fault_memory_service.c"
+#include "flp_file_service.c"
 #include "fnv/FNV64.c"
 #include "region.c"
 #include "region_node.c"
@@ -186,7 +189,7 @@ int main(int argc, char **argv) {
                 DWORD lastError = GetLastError();
                 printf("Failed to load test suite %s, error = %lu\n", ts_path,
                        lastError);
-                LOG_ERROR("Failed to load test suite %s, error = %lu\n", ts_path,
+                LOG_ERROR(module, "Failed to load test suite %s, error = %lu\n", ts_path,
                           lastError);
                 continue;
             }
@@ -216,6 +219,14 @@ int main(int argc, char **argv) {
             // the memory service is optional
             if (fla_set_memory_service != NULL) {
                 flp_init_fault_memory_service(fla_set_memory_service, &flmctx);
+            }
+
+            fla_set_file_service_fn *fla_set_file_service
+                = (fla_set_file_service_fn *)GetProcAddress(test_suite,
+                                                            FLA_SET_FILE_SERVICE_STR);
+            // the file service is optional
+            if (fla_set_file_service != NULL) {
+                flp_init_file_service(fla_set_file_service);
             }
 
             fl_get_test_suite
