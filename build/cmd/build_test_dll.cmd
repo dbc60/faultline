@@ -47,11 +47,17 @@ TITLE %_BTDLL_NAME%
 CALL %_BTDLL_DIR%\options.cmd %_BTDLL_ARGS%
 CALL %_BTDLL_DIR%\setup.cmd %_BTDLL_ARGS%
 
-:: Track release option so we can pass it to but_driver.cmd if needed
-SET "REL_OPT="
-IF NOT "%release%"=="" (
-    if %release% EQU 1 (
-        SET REL_OPT=release
+:: The nested driver bootstrap below must not repeat this script's clean and
+:: must land in the same configuration (release/x86/vs version). Forward the
+:: options but strip the clean/test verbs (test maps to build), the same
+:: filtering all.cmd uses.
+set "args="
+for %%A in (%_BTDLL_ARGS%) do (
+    if /I not "%%~A"=="test" if /I not "%%~A"=="clean" if /I not "%%~A"=="cleanall" if /I not "%%~A"=="cleanplat" (
+        set "args=!args! %%~A"
+    )
+    if /I "%%~A"=="test" (
+        set "args=!args! build"
     )
 )
 
@@ -83,7 +89,7 @@ IF %build% EQU 1 (
 
 if %test% EQU 1 (
     IF NOT EXIST "%DIR_OUT_BIN%\faultline.exe" (
-        call %_BTDLL_DIR%\faultline.cmd build %REL_OPT%
+        call %_BTDLL_DIR%\faultline.cmd !args!
         if errorlevel 1 (
             GOTO :_btdll_error
         )

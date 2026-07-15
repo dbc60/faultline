@@ -25,12 +25,6 @@ SET DIR_LOCAL=%DIR_CMD%\local
 CALL %DIR_CMD%\options.cmd %*
 CALL %DIR_CMD%\setup.cmd %*
 
-IF NOT "%release%"=="" (
-    if %release% EQU 1 (
-        SET REL_OPT=release
-    )
-)
-
 :: Sub-builds must not repeat the clean this script's setup already performed --
 :: a nested setup.cmd would wipe the fixtures rebuilt below. Forward the
 :: configuration options but strip the clean/test verbs (test maps to build),
@@ -46,8 +40,10 @@ for %%A in (%*) do (
 )
 
 :: Shared fixtures (sqlite3.obj / cwalk.obj) must exist before the link step.
+:: Forward the filtered options so the fixtures land in the same configuration
+:: (release/x86/vs version) this script is building.
 IF %build% EQU 1 IF NOT EXIST %DIR_OUT_OBJ%\sqlite3.obj (
-    CALL %DIR_CMD%\faultline_fixtures.cmd build
+    CALL %DIR_CMD%\faultline_fixtures.cmd !args!
     IF ERRORLEVEL 1 GOTO :ERROR
 )
 

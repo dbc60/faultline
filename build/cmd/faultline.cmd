@@ -20,10 +20,17 @@ CALL %DIR_CMD%\options.cmd %*
 
 CALL %DIR_CMD%\setup.cmd %*
 
-:: The build defaults to debug unless release is explicitly passed in
-IF NOT "%release%"=="" (
-    if %release% EQU 1 (
-        SET REL_OPT=release
+:: The nested fixtures build must not repeat the clean this script's setup
+:: already performed, and it must land in the same configuration (release/x86/
+:: vs version). Forward the options but strip the clean/test verbs (test maps
+:: to build), the same filtering all.cmd uses.
+set "args="
+for %%A in (%*) do (
+    if /I not "%%~A"=="test" if /I not "%%~A"=="clean" if /I not "%%~A"=="cleanall" if /I not "%%~A"=="cleanplat" (
+        set "args=!args! %%~A"
+    )
+    if /I "%%~A"=="test" (
+        set "args=!args! build"
     )
 )
 
@@ -32,7 +39,7 @@ IF NOT "%release%"=="" (
 :: load faultline_test_data.dll. all.cmd builds fixtures up front, so this is a
 :: no-op there and on incremental rebuilds.
 IF %build% EQU 1 IF NOT EXIST %DIR_OUT_OBJ%\sqlite3.obj (
-    CALL %DIR_CMD%\faultline_fixtures.cmd build
+    CALL %DIR_CMD%\faultline_fixtures.cmd !args!
     IF ERRORLEVEL 1 GOTO :ERROR
 )
 
