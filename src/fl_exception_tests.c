@@ -320,6 +320,43 @@ FL_TEST("Rethrow Preserves Metadata", test_rethrow_preserves_metadata) {
     FL_END_TRY;
 }
 
+FL_TEST("Catch All Rethrow", test_catch_all_rethrow) {
+    int cleanup_ran  = 0;
+    int no_throw_ran = 0;
+    int caught       = 0;
+
+    // No exception: the block must not run.
+    FL_TRY {
+        no_throw_ran = 1;
+    }
+    FL_CATCH_ALL_RETHROW {
+        cleanup_ran = 100; // must not execute
+    }
+    FL_END_TRY;
+    FL_ASSERT_EQ_INT(no_throw_ran, 1);
+    FL_ASSERT_EQ_INT(cleanup_ran, 0);
+
+    // Exception: the block runs, then FL_END_TRY rethrows with metadata intact.
+    FL_TRY {
+        FL_TRY {
+            FL_THROW_DETAILS(test_exception, "catch-all-rethrow detail");
+        }
+        FL_CATCH_ALL_RETHROW {
+            cleanup_ran = 1;
+        }
+        FL_END_TRY;
+        FL_FAIL("FL_END_TRY should have rethrown");
+    }
+    FL_CATCH(test_exception) {
+        caught = 1;
+        FL_ASSERT_NOT_NULL(FL_DETAILS);
+        FL_ASSERT_TRUE(strstr(FL_DETAILS, "catch-all-rethrow detail") != NULL);
+    }
+    FL_END_TRY;
+    FL_ASSERT_EQ_INT(cleanup_ran, 1);
+    FL_ASSERT_EQ_INT(caught, 1);
+}
+
 FL_SUITE_BEGIN(ts)
 FL_SUITE_ADD(test_throw)
 FL_SUITE_ADD(test_throw_file_line)
@@ -342,6 +379,7 @@ FL_SUITE_ADD(test_finally_with_unhandled)
 FL_SUITE_ADD(test_multiple_catch_clauses)
 FL_SUITE_ADD(test_throw_details_format_args)
 FL_SUITE_ADD(test_rethrow_preserves_metadata)
+FL_SUITE_ADD(test_catch_all_rethrow)
 FL_SUITE_END;
 
 FL_GET_TEST_SUITE("Exception Service", ts);

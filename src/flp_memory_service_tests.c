@@ -34,9 +34,8 @@ FL_SETUP_FN(flp_setup) {
         flp_init_fault_memory_context(&mtc->ctx, arena, &mtc->fi);
         flp_init_fault_memory_service(fla_set_memory_service, &mtc->ctx);
     }
-    FL_CATCH_ALL {
+    FL_CATCH_ALL_RETHROW {
         release_arena(&arena);
-        FL_RETHROW;
     }
     FL_END_TRY;
 }
@@ -61,9 +60,8 @@ FL_SETUP_FN(arena_setup) {
         flp_init_memory_context(&atc->ctx, arena);
         flp_init_memory_service(fla_set_memory_service, &atc->ctx);
     }
-    FL_CATCH_ALL {
+    FL_CATCH_ALL_RETHROW {
         release_arena(&arena);
-        FL_RETHROW;
     }
     FL_END_TRY;
 }
@@ -91,9 +89,8 @@ FL_SETUP_FN(compat_setup) {
         fault_injector_init(&ctc->fi, ctc->arena);
         flp_init_fault_memory_context(&ctc->fault_ctx, ctc->arena, &ctc->fi);
     }
-    FL_CATCH_ALL {
+    FL_CATCH_ALL_RETHROW {
         release_arena(&ctc->arena);
-        FL_RETHROW;
     }
     FL_END_TRY;
 }

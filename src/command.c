@@ -408,7 +408,7 @@ RuntimeCommand *parse_command(FormalCommand const *formals, int argc, char **arg
             }
         }
     }
-    FL_CATCH_ALL {
+    FL_CATCH_ALL_RETHROW {
         if (sub_argv != NULL) {
             free(sub_argv);
         }
@@ -419,7 +419,6 @@ RuntimeCommand *parse_command(FormalCommand const *formals, int argc, char **arg
             free(option_array);
         }
         free_command(runtime_cmd);
-        FL_RETHROW;
     }
     FL_END_TRY;
 
@@ -497,18 +496,17 @@ RuntimeCommand *parse_command_with_globals(FormalCommand const *formals,
     }
 
     // reordered is only scaffolding for the nested parse; release it whether the
-    // parse returns or throws.
+    // parse returns or throws (FL_END_TRY rethrows a pending exception after the
+    // FL_FINALLY block runs).
     RuntimeCommand *parsed = NULL;
     FL_TRY {
         parsed = parse_command(formals, n, reordered);
     }
-    FL_CATCH_ALL {
+    FL_FINALLY {
         free(reordered);
-        FL_RETHROW;
     }
     FL_END_TRY;
 
-    free(reordered);
     return parsed;
 }
 

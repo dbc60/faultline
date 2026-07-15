@@ -139,6 +139,34 @@ _Static_assert(FL_ENTERED == 0, "FL_TRY requires FL_ENTERED == 0");
         fl_env_.state = FL_HANDLED;
 
 /**
+ * @brief FL_CATCH_ALL_RETHROW runs its block for any uncaught exception and leaves the
+ * exception pending, so FL_END_TRY rethrows it.
+ *
+ * Use this for failure-only cleanup that must not consume the exception:
+ *
+ *   FL_TRY { r = acquire(); use(r); }
+ *   FL_CATCH_ALL_RETHROW { release(r); }
+ *   FL_END_TRY;
+ *
+ * Unlike FL_CATCH_ALL, the exception is not marked handled, so no explicit FL_RETHROW is
+ * needed (or allowed) at the end of the block. This matters for more than brevity:
+ * FL_RETHROW expands to a throw-hook call the optimizer can prove noreturn, so a catch
+ * block ending in it makes FL_END_TRY's epilogue statically unreachable and trips C4702
+ * under /WX in whole-program (unity/LTCG) release builds. Here the rethrow happens
+ * inside FL_END_TRY's runtime conditional, which both success and failure paths reach,
+ * so nothing is provably unreachable.
+ *
+ * To swallow the exception after all (e.g. only rethrow unexpected failures), use
+ * FL_CATCH_ALL with an explicit conditional FL_RETHROW instead; the fall-through path
+ * keeps the epilogue reachable there.
+ */
+#define FL_CATCH_ALL_RETHROW           \
+    if (fl_env_.state == FL_ENTERED) { \
+        FL_EXC_POP();                  \
+    }                                  \
+    }                                  \
+    else {
+/**
  * @brief FL_FINALLY will run any code in this block regardless of whether an
  * exception has been thrown and regardless of whether a thrown exception has
  * been caught.

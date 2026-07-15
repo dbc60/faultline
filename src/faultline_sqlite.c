@@ -319,10 +319,9 @@ sqlite3 *faultline_init_database(char const *db_path) {
         faultline_apply_schema(db);
         LOG_VERBOSE(faultline_db, "Database initialized successfully: %s", db_path);
     }
-    FL_CATCH_ALL {
+    FL_CATCH_ALL_RETHROW {
         LOG_ERROR(faultline_db, "Exception during database initialization");
         sqlite3_close_v2(db);
-        FL_RETHROW;
     }
     FL_END_TRY;
 
