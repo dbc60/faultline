@@ -3,7 +3,7 @@ This guide covers how FaultLine's services are **packaged** for distribution and
 
 The distribution model is **vendored source**, not a binary SDK. A consumer ends up with FaultLine's `.c` and `.h` files checked into its own tree and compiles them as part of its own build. There is no `.lib`/`.dll` to ship and no version of MSVC to match.
 
-## Quickstart: exporting services to another project
+## Quickstart: Exporting Services to Another Project
 
 The steps are:
 
@@ -25,7 +25,7 @@ The current set of services:
 
 This is the set of steps for exporting the services to another project. It focus on the memory and file services, exporting them to `<project>\third_party\faultline`, but it can be applied to the other services and your own target folder. Every step is covered in detail later in this guide; the per-service build wiring is covered in the [[Service Integration Guide]].
 
-### 1 Produce the packages
+### 1 Produce the Packages
 In this repo, from the repo root (cmd.exe) run:
 
 ```
@@ -33,58 +33,33 @@ build\cmd\memory_service_dist.cmd
 build\cmd\file_service_dist.cmd
 ```
 
-Each writes `dist\<pkg>\` — sources, headers, and a generated `manifest.txt` recording
-exactly what shipped.
+Each script writes a `dist\<pkg>\` that includes the package's sources, headers, and a generated `manifest.txt` recording exactly what's include.
 
 ### 2 Import Them Into the Target Project
 Run the following PowerShell importer scripts from this repo; the importer scripts take any paths, so substitute your project's path for `<project>\third_party\faultline` :
 
 ```
-build\dist\fl_import.ps1 -From dist\memory_service -Into <consumer>\third_party\faultline
-build\dist\fl_import.ps1 -From dist\file_service   -Into <consumer>\third_party\faultline
+build\dist\fl_import.ps1 -From dist\memory_service -Into <project>\third_party\faultline
+build\dist\fl_import.ps1 -From dist\file_service   -Into <project>\third_party\faultline
 ```
 
-Import a package's dependencies first: `file_service` declares `memory_service`, so the
-importer refuses to install it into a tree where `memory_service` is not already
-present. To add another service later, produce its package and import it into the same
-tree the same way — all services merge into one unified tree.
+Import a package's dependencies first: `file_service` declares `memory_service`, so the importer refuses to install it into a tree where `memory_service` is not already present. To add another service later, produce its package and import it into the same tree the same way. All services merge into one unified tree.
 
-Re-running an import is also the **update** path: changed files are overwritten, files
-the package no longer ships are deleted, and `faultline.lock` tracks which service owns
-which file. Never hand-copy files into that tree — the lockfile won't know about them.
-(If the consumer must re-import without this repo checked out, copy
-`build\dist\fl_import.ps1`/`.cmd`/`.sh` and the `dist\<pkg>` directories into it; the
-importer is self-contained.)
+Re-running an import is also the **update** path: changed files are overwritten, files the package no longer ships are deleted, and `faultline.lock` tracks which service owns which file. Never hand-copy files into that tree. The lockfile won't know about them. (If the consumer must re-import without this repo checked out, copy `build\dist\fl_import.ps1`/`.cmd`/`.sh` and the `dist\<pkg>` directories into it; the importer is self-contained.)
 
 ### 3 Wire the Imported Tree Into the Consumer's Build
 With `<root>` = `<project>\third_party\faultline`:
 
-* **Include paths:** `<root>\include` always. Add `<root>\src` too when a memory
-  package is present — its private headers (and `src\fnv\`, if shipped) live there.
-* **Two exclusions always apply:** never compile `region_windows.c` (it is
-  unity-included by `region_os.c`), and never compile both `flp_exception_service.c`
-  and `fla_exception_service.c` into the same binary (they clash on the shared
-  exception entry points).
-* **Pick the side per binary:**
-  * The consumer's own executable acts as the platform: build `/DFL_PLATFORM_BUILD`
-    and compile the `fl_`/`flp_` sources plus the portable core (arena, region_os.c,
-    …), dropping `fla_exception_service.c`.
-  * A test-suite DLL for `faultline.exe` to load and fault-inject: build `/DDLL_BUILD`
-    (no `FL_PLATFORM_BUILD`) and compile only the `fl_`/`fla_` sources — no `flp_*.c`
-    and none of the arena/region sources. The driver injects the platform services at
-    load time, so `malloc`, `FL_FILE_*`, `LOG_*`, and `FL_TRY` all route through the
-    injected `g_fla_*` globals.
+- Include paths: `<root>\include` always. Add `<root>\src` too when a memory package is present — its private headers (and `src\fnv\`, if shipped) live there.
+- Two exclusions always apply: never compile `region_windows.c` (it is unity-included by `region_os.c`), and never compile both `flp_exception_service.c` and `fla_exception_service.c` into the same binary (they clash on the shared exception entry points).
+- Pick the side per binary:
+    - The project's own executable acts as the platform: build `/DFL_PLATFORM_BUILD` and compile the `fl_`/`flp_` sources plus the portable core (arena, `region_os.c`, …), dropping `fla_exception_service.c`.
+    - A test-suite DLL for `faultline.exe` to load and fault-inject: build `/DDLL_BUILD` (no `FL_PLATFORM_BUILD`) and compile only the `fl_`/`fla_` sources — no `flp_*.c` and none of the arena/region sources. The driver injects the platform services at load time, so `malloc`, `FL_FILE_*`, `LOG_*`, and `FL_TRY` all route through the injected `g_fla_*` global variables.
 
-`build\dist\selftest\fl_dist_selftest.cmd` compiles and runs a consumer test against
-every package through this exact path; treat it as the authoritative example of these
-rules.
+`build\dist\selftest\fl_dist_selftest.cmd` compiles and runs a project test against every package through this exact path; treat it as the authoritative example of these rules.
 
 ### 4 Use the Services
-The selector headers (`fl_memory.h`, `fl_file.h`, ...) select either the "platform"
-(OS dependent) or "application" (OS independent) implementation based on whether or not
-`FL_PLATFORM_BUILD` is defined. The [Service Integration Guide](service-integration-guide.md)
-lists, per service, the headers to include, the sources each side compiles, the required
-exports, and the injection order.
+The selector headers (`fl_memory.h`, `fl_file.h`, ...) select either the "platform" (OS dependent) or "application" (OS independent) implementation based on whether or not `FL_PLATFORM_BUILD` is defined. The [Service Integration Guide](service-integration-guide.md) lists, per service, the headers to include, the sources each side compiles, the required exports, and the injection order.
 
 ## Why not just copy the files?
 The original `*_dist.cmd` scripts copied the current set of files into a `dist\`
@@ -123,10 +98,7 @@ The seven packages:
 | `file_service_dist.cmd`         | `dist\file_service`         | `file_service`         | `memory_service`    | Positional file service, both sides, plus the `fl_file.h` selector and the async contract sketch. The provider allocates through `FL_MALLOC`, supplied by `memory_service`. |
 | `test_framework_dist.cmd`       | `dist\test_framework`       | `test_framework`       | `exception_service` | Test-declaration header (`fl_test.h`), header-only: the `FL_TEST` / `FL_SUITE_*` / `FL_GET_TEST_SUITE` macro family and the `fl_get_test_suite` export the driver enumerates a suite through. |
 
-The first four packages are **self-contained** (they bundle the shared sources they
-need; refcounting makes the overlap safe). The timer, file, and test-framework
-packages instead declare dependencies: import the dependency into the same tree
-first, or the importer refuses (see below).
+The first four packages are **self-contained** (they bundle the shared sources they need; reference counting makes the overlap safe). The timer and file packages instead declare dependencies: import the dependency into the same tree first, or the importer refuses (see below).
 
 Note the package **directory** and the **service name** recorded in the manifest are set independently — a script can register under a name that differs from its directory.
 
@@ -141,7 +113,7 @@ Note the package **directory** and the **service name** recorded in the manifest
 The three importers share the same manifest and lockfile formats and produce byte-identical results, so a repo can use whichever fits its toolchain.
 
 ## Producing a package
-Run the relevant build script from the repo root. No build of the library is required — the dist scripts only copy source and headers.
+Run the relevant build script from the repo root. No build of the library is required. The dist scripts only copy source and headers.
 
 ```
 build\cmd\fault_memory_service_dist.cmd
@@ -161,7 +133,7 @@ Because the manifest is generated from disk *after* the wipe-and-copy, it can ne
 
 ### Adding, removing, or renaming a file in a package
 
-Edit the `COPY` lines in the relevant `*_dist.cmd` and re-run it. The manifest regenerates automatically. On the next import, consumers pick up additions, overwrite changes, and **delete** anything the package no longer ships (provided no other installed service still owns that file). There is nothing else to maintain — the manifest is derived, not hand-edited.
+Edit the `COPY` lines in the relevant `*_dist.cmd` and re-run it. The manifest regenerates automatically. On the next import, consumers pick up additions, overwrite changes, and **delete** anything the package no longer ships (provided no other installed service still owns that file). There is nothing else to maintain. The manifest is derived, not hand-edited.
 
 ### Versioning and dependencies
 

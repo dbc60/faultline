@@ -341,7 +341,7 @@ above (which also covers the separate **core/platform** portability axis):
 ## Environment Notes
 
 - You are running in a bash shell. You can't run .cmd scripts in a bash shell.
-- Faultline is not a git repo. It is a Fossil SCM repo, so don't try to use git commands. If you understand Fossil commands, then use those.
+- Faultline is a git repo (it migrated from Fossil SCM in July 2026), so use git commands.
 
 ## C Coding Guidelines
 ### Braces
