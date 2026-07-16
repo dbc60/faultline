@@ -1,9 +1,11 @@
 # Service Integration Guide
-This guide covers how to wire up FaultLine's runtime services — **exception handling**, **logging**, **memory**, and **timing** — when building a host that loads and drives service consumers.
+This guide covers how to wire up FaultLine's runtime services — **exception handling**, **logging**, **memory**, **timing**, and **file I/O** — when building a host that loads and drives service consumers.
 
 > To bring the service source into another repository in the first place — and
 > keep it updated as packages change — see the
-> [Service Distribution Guide](service-distribution.md).
+> [Service Distribution Guide](service-distribution.md). It opens with a
+> step-by-step quickstart covering the whole export path: produce a package,
+> import it into the consumer, and wire it into the consumer's build.
 
 Two axes are in play (see CLAUDE.md → "Two architectural axes"):
 
@@ -30,7 +32,7 @@ The injection sequence at runtime is always the same:
 
 ## 1. Exception Handling Service
 
-The exception service is **optional** in general. A platform that does not use `FL_TRY`/`FL_CATCH` and does not inject the memory service has no need to require it from an application DLL. The existing `but` and `faultline` drivers treat it as required and refuse to run a DLL that does not export `fla_set_exception_service`, but that is a policy choice made by those drivers, not a constraint of the service design.
+The exception service is **optional** in general. A platform that does not use `FL_TRY`/`FL_CATCH` and does not inject the memory service has no need to require it from an application DLL. The packaged injector (`flp_inject_services()`, see [Packaged Injection](#packaged-injection-flp_inject_services)) and the `but` driver treat it as required and refuse to run a DLL that does not export `fla_set_exception_service`, but that is a policy choice made by those hosts, not a constraint of the service design.
 
 ### Platform side
 
@@ -52,7 +54,7 @@ src/flp_exception_service.c   — platform TLS stack + push/pop/throw + flp_init
 src/fl_exception_service.c    — shared reason-string constants (fl_expected_failure, etc.)
 ```
 
-**Compile flag:** none required, but build the platform target with `/DFL_BUILD_DRIVER` (a compiler flag, not an in-source `#define`) if you also use the `fl_memory.h` / `fl_log.h` selector headers (see §3 and the Memory section).
+**Compile flag:** none required, but build the platform target with `/DFL_PLATFORM_BUILD` (a compiler flag, not an in-source `#define`) if you also use the unified selector headers (`fl_try.h`, `fl_log.h`, `fl_memory.h`, `fl_timer.h`, `fl_file.h`) — they pick the platform side when the flag is defined and the consumer side otherwise.
 
 **Initialization (no explicit init call needed):** The platform TLS stack initializes lazily; just ensure the platform wraps its top-level execution in `FL_TRY` / `FL_END_TRY` so there is always a frame on the stack when a test throws.
 
@@ -164,7 +166,7 @@ if (fla_set_log != NULL) {                   // log service is optional
 Alternatively, include the unified selector header, which picks the right side automatically:
 
 ```c
-// Platform target built with /DFL_BUILD_DRIVER selects the flp_ side;
+// Platform target built with /DFL_PLATFORM_BUILD selects the flp_ side;
 // application code (no such flag) selects the fla_ side.
 #include <faultline/fl_log.h>
 ```
@@ -202,7 +204,7 @@ The memory service is **optional**. Application code that uses standard `malloc`
 ```
 
 For platform code that uses `FL_MALLOC` / `FL_FREE` macros (platform target built with
-`/DFL_BUILD_DRIVER`):
+`/DFL_PLATFORM_BUILD`):
 
 ```c
 #include <faultline/fl_memory.h>             // routes FL_MALLOC etc. to flp_malloc
@@ -259,7 +261,7 @@ if (fla_set_mem != NULL) {                   // memory service is optional
                                              //   g_fla_memory_service, fla_set_memory_service
 
 // Option B — unified selector header (recommended when the same source tree builds both sides)
-#include <faultline/fl_memory.h>             // picks fla_memory_service.h when FL_BUILD_DRIVER
+#include <faultline/fl_memory.h>             // picks fla_memory_service.h when FL_PLATFORM_BUILD
                                              //   is not defined
 ```
 
@@ -301,6 +303,148 @@ of which driver is running.
 are already routed through the service macros. An application that calls the system `malloc`
 directly bypasses the service entirely and is invisible to both platform variants.
 
+## 4. Timer Service
+
+The timer service is **optional**. It provides monotonic timing: `now()` captures an
+opaque `FLTimestamp` sample, and `elapsed_seconds(start, end)` converts two samples to
+seconds. Code on either side normally calls it through the `FL_NOW()` / `FL_ELAPSED()`
+macros in the `fl_timer.h` selector header; for start/stop/peek semantics, bind an
+`FLStopwatch` (`fl_stopwatch.h`) to the active service via `FL_TIMER_SERVICE()`.
+
+### Platform side
+
+**Headers to include:**
+
+```c
+#include <flp_timer_service.h>               // flp_timer_now, flp_timer_elapsed_seconds,
+                                             //   flp_timer_service, flp_init_timer_service
+// Pulled in automatically by the above:
+//   <faultline/fl_timer_service.h>          // FLTimestamp, FLTimerService,
+//                                           //   fla_set_timer_service_fn,
+//                                           //   FLA_SET_TIMER_SERVICE_STR
+```
+
+**Source files to compile and link:**
+
+```
+src/flp_timer_service.c      — QueryPerformanceCounter backend + flp_init_timer_service
+```
+
+**Dependencies:** the provider throws `FL_THROW_DETAILS` if querying the
+performance-counter frequency fails, and `flp_init_timer_service` uses
+`FL_ASSERT_NOT_NULL`, so the platform exception service sources must also be compiled
+in.
+
+**Initialization:** none required. The seconds-per-tick factor is queried lazily on
+first use.
+
+**Injection call (after `LoadLibrary`):**
+
+```c
+#include <faultline/fl_timer_service.h>      // fla_set_timer_service_fn,
+                                             //   FLA_SET_TIMER_SERVICE_STR
+
+fla_set_timer_service_fn *fla_set_timer =
+    (fla_set_timer_service_fn *)GetProcAddress(dll, FLA_SET_TIMER_SERVICE_STR);
+if (fla_set_timer != NULL) {                 // timer service is optional
+    flp_init_timer_service(fla_set_timer);
+}
+```
+
+### Application side
+
+**Headers to include (choose one):**
+
+```c
+// Option A — explicit application-side header
+#include <faultline/fla_timer_service.h>     // g_fla_timer_service, fla_set_timer_service
+
+// Option B — unified selector header
+#include <faultline/fl_timer.h>              // FL_NOW / FL_ELAPSED / FL_TIMER_SERVICE
+```
+
+**Source files to compile and link:**
+
+```
+src/fla_timer_service.c      — g_fla_timer_service global + abort stubs + fla_set_timer_service export
+```
+
+**Export requirement:** Compile with `/DDLL_BUILD`.
+
+## 5. File Service
+
+The file service is **optional**. It provides positional file I/O over UTF-8 paths:
+`read` and `write` each name the byte offset to act on and keep no implicit file
+pointer, so a handle is safe to use from several threads. An `FL_FILE_APPEND` handle is
+the exception — it ignores the write offset and appends atomically at end of file. A
+short transfer count signals EOF or error, and is where the platform can inject I/O
+faults. Code on either side normally calls it through the
+`FL_FILE_OPEN`/`FL_FILE_READ`/`FL_FILE_WRITE`/`FL_FILE_CLOSE` macros in the `fl_file.h`
+selector header.
+
+### Platform side
+
+**Headers to include:**
+
+```c
+#include <flp_file_service.h>                // flp_file_open/read/write/close,
+                                             //   flp_init_file_service
+// Pulled in automatically by the above:
+//   <faultline/fl_file_service.h>           // FLFileService, fla_set_file_service_fn,
+//                                           //   FLA_SET_FILE_SERVICE_STR
+//   <faultline/fl_file_types.h>             // FLFile (opaque), FLFileMode
+```
+
+**Source files to compile and link:**
+
+```
+src/flp_file_service.c       — CreateFileW/ReadFile/WriteFile backend + flp_init_file_service
+```
+
+**Dependencies:** the provider allocates through `FL_MALLOC`/`FL_FREE` when converting
+extended-length (`\\?\`) paths, so the platform memory service must be initialized
+before the provider opens paths longer than `MAX_PATH`; it also uses
+`FL_ASSERT_NOT_NULL`, so the platform exception service sources must be compiled in.
+
+**Initialization:** none required beyond the memory-service setup above.
+
+**Injection call (after `LoadLibrary`):**
+
+```c
+#include <faultline/fl_file_service.h>       // fla_set_file_service_fn,
+                                             //   FLA_SET_FILE_SERVICE_STR
+
+fla_set_file_service_fn *fla_set_file =
+    (fla_set_file_service_fn *)GetProcAddress(dll, FLA_SET_FILE_SERVICE_STR);
+if (fla_set_file != NULL) {                  // file service is optional
+    flp_init_file_service(fla_set_file);
+}
+```
+
+### Application side
+
+**Headers to include (choose one):**
+
+```c
+// Option A — explicit application-side header
+#include <faultline/fla_file_service.h>      // g_fla_file_service, fla_set_file_service
+
+// Option B — unified selector header
+#include <faultline/fl_file.h>               // FL_FILE_OPEN / READ / WRITE / CLOSE
+```
+
+**Source files to compile and link:**
+
+```
+src/fla_file_service.c       — g_fla_file_service global + abort stubs + fla_set_file_service export
+```
+
+**Export requirement:** Compile with `/DDLL_BUILD`.
+
+> **Async file I/O:** `fl_async_file_service.h` is a contract sketch only. It has no
+> platform provider or consumer accessor yet, and `flp_inject_services()` does not
+> inject it.
+
 ## Quick-Reference: Compile and Link Summary
 
 ### Platform executable
@@ -310,6 +454,8 @@ directly bypasses the service entirely and is invisible to both platform variant
 | Exception | `flp_exception_service.h` | `flp_exception_service.c`, `fl_exception_service.c` | Optional    |
 | Log       | `flp_log_service.h`       | `flp_log_service.c`, `fl_threads.c`                 | Recommended |
 | Memory    | `flp_memory_service.h` + a `faultline/` context header | `flp_memory_service.c`, `flp_fault_memory_service.c` (+ arena + fault injector)   | Optional    |
+| Timer     | `flp_timer_service.h`     | `flp_timer_service.c`                               | Optional    |
+| File      | `flp_file_service.h`      | `flp_file_service.c`                                | Optional    |
 
 ### Application DLL
 
@@ -318,13 +464,53 @@ directly bypasses the service entirely and is invisible to both platform variant
 | Exception | `faultline/fla_exception_service.h` | `fla_exception_service.c`, `fl_exception_service.c` | `fla_set_exception_service` |
 | Log       | `faultline/fla_log_service.h`       | `fla_log_service.c`                                 | `fla_set_log_service`       |
 | Memory    | `faultline/fla_memory_service.h`    | `fla_memory_service.c`                              | `fla_set_memory_service`    |
+| Timer     | `faultline/fla_timer_service.h`     | `fla_timer_service.c`                               | `fla_set_timer_service`     |
+| File      | `faultline/fla_file_service.h`      | `fla_file_service.c`                                | `fla_set_file_service`      |
 
 Compile all application DLLs with `/DDLL_BUILD` so `FL_DECL_SPEC` expands to
 `__declspec(dllexport)` for the setter functions.
 
+## Packaged Injection: `flp_inject_services()`
+
+The per-service `GetProcAddress` + `flp_init_*_service` sequence shown in each section
+above is packaged in `src/flp_module_service.c`, which also wraps module loading
+(`LoadLibraryA` / `GetProcAddress` / `FreeLibrary`) behind the `FLPlatformAPI` module
+primitives declared in `platform_api.h`. A host that uses `FLPlatformAPI` gets loading
+and injection as two calls:
+
+```c
+#include <flp_module_service.h>      // flp_module_service_init, flp_load_module,
+                                     //   flp_inject_services
+
+flp_module_service_init(&fault_ctx); // once at host setup: bind the fault-injecting
+                                     //   memory context (FLFaultMemoryContext)
+
+FLModule *suite = flp_load_module(path);
+if (suite == NULL || !flp_inject_services(suite)) {
+    // load failed, or the suite lacks a required service — skip it
+}
+```
+
+`flp_inject_services()` resolves every `fla_set_*_service` symbol the suite exports and
+injects the matching platform service, in the order log → exception → memory → timer →
+file. It embodies two policy choices a hand-rolled host is free to make differently:
+
+- **The exception service is required.** Every test suite runs under `FL_TRY`, so a
+  suite that does not export `fla_set_exception_service` cannot run at all;
+  `flp_inject_services()` returns `false`. Every other service is optional — a missing
+  setter is simply skipped.
+- **The memory binding is always the fault-injecting variant**
+  (`flp_init_fault_memory_service` with the context bound by
+  `flp_module_service_init()`). The plain arena-only service is what the host installs
+  into its own core; the fault-injecting one is injected only into suites, so the
+  framework can never fault-inject its own bookkeeping.
+
+The next section explains the ordering constraints behind that sequence, for hosts that
+hand-roll injection instead.
+
 ## Injection Order
 
-The three services are not fully independent. On the platform side, `flp_memory_service.c`
+The services are not fully independent. On the platform side, `flp_memory_service.c`
 uses `FL_TRY`/`FL_CATCH` blocks and `FL_ASSERT_*` macros throughout its allocator
 implementations, and calls `LOG_DEBUG` inside `flp_free` and `flp_free_pointer`. This means
 the platform memory service has hard dependencies on both the exception service and the log
@@ -333,7 +519,10 @@ allocation or free call that hits a fault or an assertion will invoke an uniniti
 pointer.
 
 The exception and log services have no dependencies on each other or on the memory service —
-they can be initialized in either relative order.
+they can be initialized in either relative order. The timer and file services have no
+dependencies on the other *injected* services (their injectors assert through the
+platform's own statically linked exception machinery), so their position in the order is
+unconstrained; injecting them last matches `flp_inject_services()`.
 
 Call the injectors in this order after each `LoadLibrary`, before running any test code:
 
@@ -343,6 +532,10 @@ Call the injectors in this order after each `LoadLibrary`, before running any te
    injected — every allocator function in `flp_memory_service.c` wraps its body in
    `FL_TRY`/`FL_CATCH`, and the init functions use `FL_ASSERT_NOT_NULL`)
 3. Memory service (optional — safe to inject only after both of the above are in place)
+4. Timer service (optional — no ordering constraints)
+5. File service (optional — no per-suite ordering constraints; the platform-side
+   memory setup it needs for extended-length paths happens at host startup, not per
+   suite)
 
 ```c
 // Log (optional)
@@ -365,6 +558,20 @@ fla_set_memory_service_fn *fla_set_mem =
     (fla_set_memory_service_fn *)GetProcAddress(dll, FLA_SET_MEMORY_SERVICE_STR);
 if (fla_set_mem != NULL) {
     flp_init_memory_service(fla_set_mem, &flmctx);
+}
+
+// Timer (optional)
+fla_set_timer_service_fn *fla_set_timer =
+    (fla_set_timer_service_fn *)GetProcAddress(dll, FLA_SET_TIMER_SERVICE_STR);
+if (fla_set_timer != NULL) {
+    flp_init_timer_service(fla_set_timer);
+}
+
+// File (optional)
+fla_set_file_service_fn *fla_set_file =
+    (fla_set_file_service_fn *)GetProcAddress(dll, FLA_SET_FILE_SERVICE_STR);
+if (fla_set_file != NULL) {
+    flp_init_file_service(fla_set_file);
 }
 ```
 
