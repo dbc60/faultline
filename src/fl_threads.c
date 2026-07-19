@@ -1,7 +1,8 @@
 /**
  * @file fl_threads.c
  * @author Douglas Cuthbertson
- * @brief Compatibility-shim implementations for the C11 <threads.h> mutex and thread subset.
+ * @brief Compatibility-shim implementations for the C11 <threads.h> mutex and thread
+ * subset.
  * @version 0.1
  * @date 2026-02-19
  *
@@ -201,3 +202,90 @@ int thrd_sleep(const struct timespec *duration, struct timespec *remaining) {
 #endif /* platform */
 
 #endif /* compatibility shim needed */
+
+/* --- tss shim ---------------------------------------------------------- */
+/* Compiled only when <threads.h> is unavailable, like the rest of the shim.
+ * Windows: one FLS slot holds a per-thread value array; the FLS callback runs
+ * the registered destructors at thread exit. POSIX: pthread keys map 1:1. */
+#if defined(__STDC_NO_THREADS__) || !defined(__has_include) || !__has_include(<threads.h>)
+
+#if defined(_WIN32) || defined(WIN32)
+
+#define FL_TSS_MAX 16
+
+static tss_dtor_t    fl_tss_dtors_[FL_TSS_MAX];
+static volatile LONG fl_tss_count_;
+static DWORD         fl_tss_fls_ = FLS_OUT_OF_INDEXES;
+
+static VOID WINAPI fl_tss_thread_exit_(PVOID data) {
+    void **values = (void **)data;
+    if (values != NULL) {
+        for (LONG i = 0; i < fl_tss_count_; i++) {
+            if (fl_tss_dtors_[i] != NULL && values[i] != NULL) {
+                fl_tss_dtors_[i](values[i]);
+            }
+        }
+        free(values);
+    }
+}
+
+int tss_create(tss_t *key, tss_dtor_t dtor) {
+    LONG index = InterlockedIncrement(&fl_tss_count_) - 1;
+    if (index >= FL_TSS_MAX) {
+        return thrd_error;
+    }
+    if (fl_tss_fls_ == FLS_OUT_OF_INDEXES) {
+        DWORD fls = FlsAlloc(fl_tss_thread_exit_);
+        if (fls == FLS_OUT_OF_INDEXES) {
+            return thrd_error;
+        }
+        fl_tss_fls_ = fls;
+    }
+    fl_tss_dtors_[index] = dtor;
+    *key                 = (tss_t)index;
+    return thrd_success;
+}
+
+void *tss_get(tss_t key) {
+    void **values = (void **)FlsGetValue(fl_tss_fls_);
+    return values != NULL ? values[key] : NULL;
+}
+
+int tss_set(tss_t key, void *val) {
+    void **values = (void **)FlsGetValue(fl_tss_fls_);
+    if (values == NULL) {
+        values = (void **)calloc(FL_TSS_MAX, sizeof *values);
+        if (values == NULL || !FlsSetValue(fl_tss_fls_, values)) {
+            free(values);
+            return thrd_error;
+        }
+    }
+    values[key] = val;
+    return thrd_success;
+}
+
+void tss_delete(tss_t key) {
+    fl_tss_dtors_[key] = NULL;
+}
+
+#elif defined(__unix__) || defined(__APPLE__) || defined(__FreeBSD__)
+
+int tss_create(tss_t *key, tss_dtor_t dtor) {
+    return pthread_key_create(key, dtor) == 0 ? thrd_success : thrd_error;
+}
+
+void *tss_get(tss_t key) {
+    return pthread_getspecific(key);
+}
+
+int tss_set(tss_t key, void *val) {
+    return pthread_setspecific(key, val) == 0 ? thrd_success : thrd_error;
+}
+
+void tss_delete(tss_t key) {
+    (void)pthread_key_delete(key);
+}
+
+#endif
+
+#endif /* compatibility shim */

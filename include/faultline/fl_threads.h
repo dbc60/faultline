@@ -93,6 +93,24 @@ typedef pthread_t thrd_t;
 int thrd_create(thrd_t *thr, thrd_start_t func, void *arg);
 int thrd_join(thrd_t thr, int *res);
 
+/* --- tss_t (C11 subset) ---
+ * Thread-specific storage with a per-key destructor that runs at thread exit.
+ * Windows backend: fibre-local storage (FlsAlloc), whose callback fires on
+ * thread exit even for threads created with CreateThread. POSIX backend:
+ * pthread_key_create. */
+typedef void (*tss_dtor_t)(void *);
+
+#if defined(_WIN32) || defined(WIN32)
+typedef unsigned long tss_t;
+#else
+typedef pthread_key_t tss_t;
+#endif
+
+int   tss_create(tss_t *key, tss_dtor_t dtor);
+void *tss_get(tss_t key);
+int   tss_set(tss_t key, void *val);
+void  tss_delete(tss_t key);
+
 /* --- thrd_sleep (C11) ---
  * Provided by <threads.h> on conforming platforms; declared here only for the
  * shim. Follows the C11 contract: 0 on success, -1 if interrupted by a
