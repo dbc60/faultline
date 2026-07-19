@@ -62,8 +62,42 @@ typedef struct Arena Arena;
  *       + (reserve * granularity)
  * @note Example: new_arena(MEBI(1), 0) creates a 1 MiB committed arena with no extra
  * reservation.
+ * @note An arena created this way performs no internal synchronization; all
+ *       calls against it must come from one thread, or the caller must
+ *       serialize them. Define FL_ARENA_SYNCHRONIZED and use new_shared_arena
+ *       for an arena that is safe to use from multiple threads concurrently.
  */
 Arena *new_arena(size_t commit, unsigned int reserve);
+
+#ifdef FL_ARENA_SYNCHRONIZED
+/**
+ * @brief Allocate a new Arena whose mutating entry points serialize internally,
+ * making it safe for concurrent use from multiple threads.
+ *
+ * Takes the same parameters as new_arena. Each mutating call (malloc, free,
+ * calloc, realloc, aligned_alloc, free_pointer, set_footprint_limit) acquires
+ * the arena's lock for its duration; composite operations such as realloc are
+ * atomic as a unit. The lock is released even when a call unwinds by throwing.
+ *
+ * Serialization has a fixed per-call cost, so prefer new_arena plus one arena
+ * per thread when the usage pattern allows it, and reserve shared arenas for
+ * state that genuinely must be visible across threads.
+ *
+ * Available only when FL_ARENA_SYNCHRONIZED is defined, and the definition
+ * must be consistent project-wide: it selects which allocator entry points are
+ * compiled, so define it (or not) for every translation unit in the build,
+ * typically on the compiler command line. Projects that never share an arena
+ * across threads simply leave it undefined and pay no synchronization cost of
+ * any kind; defining it later is a recompile, not a source change.
+ *
+ * @param commit The number of bytes to commit beyond the arena structure size.
+ * @param reserve The number of additional granularity blocks to reserve.
+ * @return The address of the newly allocated Arena, or throws arena_out_of_memory.
+ * @throw arena_out_of_memory when memory cannot be allocated.
+ * @throw fl_internal_error when the arena's lock cannot be initialized.
+ */
+Arena *new_shared_arena(size_t commit, unsigned int reserve);
+#endif // FL_ARENA_SYNCHRONIZED
 
 /**
  * @brief Release all memory allocated by an Arena and set the pointer to NULL.

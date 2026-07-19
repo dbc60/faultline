@@ -18,6 +18,7 @@
 #include <faultline/dlist.h>                // DList
 #include <faultline/fl_abbreviated_types.h> // FL_COMPARE
 #include <faultline/fl_exception_types.h>   // FLExceptionReason
+#include <faultline/fl_threads.h>           // mtx_t
 #include <faultline/fl_exception_service_assert.h> // FL_ASSERT* and fl_unexpected_failure declaration
 #include <faultline/fl_try.h>                      // FL_THROW* macros
 #include <faultline/size.h>                        // SIZE_ macros
@@ -291,6 +292,10 @@ struct Arena {
                             ///< and reset the counter to MAX_RELEASE_CHECK_RATE or the
                             ///< current number of regions, whichever is greater.
     size_t allocations;
+    bool   synchronized; ///< when true, the public mutating entry points
+                         ///< serialize on lock; when false, the caller owns
+                         ///< serialization and lock is uninitialized.
+    mtx_t  lock;
 };
 typedef struct Arena Arena;
 

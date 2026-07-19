@@ -14,6 +14,7 @@
 #include <faultline/fl_exception_types.h>          // for FLExceptionReason
 #include <faultline/fl_log.h>                      // for LOG_DEBUG, LOG_ERROR
 #include <faultline/fl_macros.h>                   // for FL_CONTAINER_OF
+#include <faultline/fl_threads.h>                  // for mtx_lock, mtx_unlock
 #include <faultline/fl_try.h>                      // for FL_THROW_DETAILS_FILE_LINE
 #include <faultline/size.h>                        // for TWO_SIZE_T_SIZES, MAX
 #include <stdbool.h>                               // for bool, true
@@ -76,6 +77,47 @@ static int change_mparam(int param_number, int value) {
 }
 #endif // NOT_DEF
 
+/*
+ * On a synchronized arena the public mutating entry points serialize on the
+ * arena's lock, and the static *_impl functions assume the caller holds it.
+ * ARENA_GUARDED_CALL releases the lock when an exception unwinds out of the
+ * call: FL_CATCH_ALL_RETHROW leaves the exception pending, so FL_END_TRY
+ * rethrows it after the unlock. On an unsynchronized arena the call runs
+ * directly; the caller owns serialization, so neither the lock nor the
+ * unwind protection is needed.
+ *
+ * Synchronized arenas exist only when FL_ARENA_SYNCHRONIZED is defined.
+ * Without it, new_shared_arena is not compiled, every arena is
+ * unsynchronized, and the guard collapses to a direct call so the entry
+ * points carry no per-call flag test at all.
+ */
+#ifdef FL_ARENA_SYNCHRONIZED
+#define ARENA_GUARDED_CALL(AR, CALL)     \
+    do {                                 \
+        if (!(AR)->synchronized) {       \
+            CALL;                        \
+        } else {                         \
+            mtx_lock(&(AR)->lock);       \
+            FL_TRY {                     \
+                CALL;                    \
+            }                            \
+            FL_CATCH_ALL_RETHROW {       \
+                mtx_unlock(&(AR)->lock); \
+            }                            \
+            FL_END_TRY;                  \
+            mtx_unlock(&(AR)->lock);     \
+        }                                \
+    } while (0)
+#else
+#define ARENA_GUARDED_CALL(AR, CALL) \
+    do {                             \
+        CALL;                        \
+    } while (0)
+#endif
+
+static void *arena_malloc_impl(Arena *arena, size_t request, char const *file, int line);
+static void  arena_free_impl(Arena *arena, void *mem, char const *file, int line);
+
 // ============================================================================
 // System Information
 // ============================================================================
@@ -116,15 +158,21 @@ size_t arena_granularity(void) {
 }
 
 void arena_set_footprint_limit(Arena *arena, size_t limit) {
+    init_mparams();
+    if (arena->synchronized) {
+        mtx_lock(&arena->lock);
+    }
     if (limit == 0) {
         arena->footprint_limit = 0;
-        return;
+    } else {
+        arena->footprint_limit = ALIGN_UP(limit, mparams.granularity);
     }
-    init_mparams();
-    arena->footprint_limit = ALIGN_UP(limit, mparams.granularity);
+    if (arena->synchronized) {
+        mtx_unlock(&arena->lock);
+    }
 }
 
-Arena *new_arena(size_t commit, u32 reserve) {
+static Arena *new_arena_common(size_t commit, u32 reserve, bool synchronized) {
     FL_ASSERT_DETAILS(commit <= SIZE_MAX - ARENA_ALIGNED_SIZE - CHUNK_SENTINEL_SIZE
                                     - TWO_SIZE_T_SIZES,
                       "request size too large");
@@ -139,6 +187,11 @@ Arena *new_arena(size_t commit, u32 reserve) {
     arena->base        = (Chunk *)(((char *)arena) + ARENA_ALIGNED_SIZE);
     arena->top         = (FreeChunk *)arena->base;
     DLIST_INIT(&arena->region_list);
+    arena->synchronized = synchronized;
+    if (synchronized && mtx_init(&arena->lock, mtx_plain) != thrd_success) {
+        release_region(region);
+        FL_THROW(fl_internal_error);
+    }
 
     // available allocation space is the number of bytes committed less what are already
     // consumed by the region, arena, and sentinel.
@@ -164,6 +217,16 @@ Arena *new_arena(size_t commit, u32 reserve) {
     return arena;
 }
 
+Arena *new_arena(size_t commit, u32 reserve) {
+    return new_arena_common(commit, reserve, false);
+}
+
+#ifdef FL_ARENA_SYNCHRONIZED
+Arena *new_shared_arena(size_t commit, u32 reserve) {
+    return new_arena_common(commit, reserve, true);
+}
+#endif
+
 void release_arena(Arena **arena) {
     if (arena == NULL || *arena == NULL) {
         return;
@@ -178,6 +241,9 @@ void release_arena(Arena **arena) {
         next = DLIST_NEXT(head);
     }
 
+    if ((*arena)->synchronized) {
+        mtx_destroy(&(*arena)->lock);
+    }
     release_region(MEM_TO_REGION(*arena));
     *arena = NULL;
 }
@@ -650,14 +716,14 @@ static RegionNode *find_region_node_owner(Arena *arena, void const *addr) {
     return NULL;
 }
 
-void *arena_aligned_alloc_throw(Arena *arena, size_t alignment, size_t size,
-                                char const *file, int line) {
+static void *arena_aligned_alloc_impl(Arena *arena, size_t alignment, size_t size,
+                                      char const *file, int line) {
     FL_ASSERT_DETAILS_FILE_LINE(alignment != 0 && (alignment & (alignment - 1)) == 0,
                                 "alignment %zu is not a power of 2", file, line,
                                 alignment);
 
     if (alignment <= CHUNK_ALIGNMENT) {
-        return arena_malloc_throw(arena, size, file, line);
+        return arena_malloc_impl(arena, size, file, line);
     }
 
     FL_ASSERT_DETAILS_FILE_LINE(!CHUNK_REQUEST_OUT_OF_RANGE(alignment),
@@ -668,7 +734,7 @@ void *arena_aligned_alloc_throw(Arena *arena, size_t alignment, size_t size,
         "allocation request %zu with alignment %zu exceeds maximum", file, line, size,
         alignment);
 
-    void     *raw          = arena_malloc_throw(arena, size + 2 * alignment, file, line);
+    void     *raw          = arena_malloc_impl(arena, size + 2 * alignment, file, line);
     uintptr_t raw_addr     = (uintptr_t)raw;
     uintptr_t aligned_addr = ALIGN_UP(raw_addr, alignment);
     size_t    gap          = (size_t)(aligned_addr - raw_addr);
@@ -690,7 +756,7 @@ void *arena_aligned_alloc_throw(Arena *arena, size_t alignment, size_t size,
     Chunk *aligned_ch = (Chunk *)((char *)raw_ch + gap);
     aligned_ch->size  = (total_size - gap) | CHUNK_INUSE_FLAGS;
 
-    arena_free_throw(arena, raw, file, line);
+    arena_free_impl(arena, raw, file, line);
 
     // Freeing the gap chunk decremented the allocation count, but the aligned chunk
     // carved from the same allocation is still outstanding; restore the count so the
@@ -700,8 +766,8 @@ void *arena_aligned_alloc_throw(Arena *arena, size_t alignment, size_t size,
     return (void *)aligned_addr;
 }
 
-void *arena_calloc_throw(Arena *arena, size_t count, size_t size, char const *file,
-                         int line) {
+static void *arena_calloc_impl(Arena *arena, size_t count, size_t size, char const *file,
+                               int line) {
     if (count == 0) {
         count = 1;
     }
@@ -714,13 +780,13 @@ void *arena_calloc_throw(Arena *arena, size_t count, size_t size, char const *fi
                                 count, size, CHUNK_MAX_REQUEST);
 
     size_t request = count * size;
-    void  *mem     = arena_malloc_throw(arena, request, file, line);
+    void  *mem     = arena_malloc_impl(arena, request, file, line);
     memset(mem, 0, count * size);
 
     return mem;
 }
 
-void arena_free_throw(Arena *arena, void *mem, char const *file, int line) {
+static void arena_free_impl(Arena *arena, void *mem, char const *file, int line) {
     FreeChunk *ch = FREE_CHUNK_FROM_MEMORY(mem, file, line);
 
     // TODO: instead of throwing fl_internal_error, throw fl_invalid_address. This will
@@ -932,14 +998,16 @@ void arena_free_throw(Arena *arena, void *mem, char const *file, int line) {
     arena->allocations--;
 }
 
-void arena_free_pointer_throw(Arena *arena, void **ptr, char const *file, int line) {
+static void arena_free_pointer_impl(Arena *arena, void **ptr, char const *file,
+                                    int line) {
     FL_ASSERT_NOT_NULL(ptr);
     void *mem = *ptr;
-    arena_free_throw(arena, mem, file, line);
+    arena_free_impl(arena, mem, file, line);
     *ptr = 0;
 }
 
-void *arena_malloc_throw(Arena *arena, size_t request, char const *file, int line) {
+static void *arena_malloc_impl(Arena *arena, size_t request, char const *file,
+                               int line) {
     size_t size = CHUNK_SIZE_FROM_REQUEST(request);
     Chunk *ch   = NULL;
 
@@ -1023,24 +1091,64 @@ void *arena_malloc_throw(Arena *arena, size_t request, char const *file, int lin
     return mem;
 }
 
-void *arena_realloc_throw(Arena *arena, void *mem, size_t size, char const *file,
-                          int line) {
+static void *arena_realloc_impl(Arena *arena, void *mem, size_t size, char const *file,
+                                int line) {
     FL_ASSERT_DETAILS_FILE_LINE(!CHUNK_REQUEST_OUT_OF_RANGE(size),
                                 "allocation request %zu exceeds maximum %zu", file, line,
                                 size, CHUNK_MAX_REQUEST);
 
     void *p;
     if (mem == NULL) {
-        p = arena_malloc_throw(arena, size, file, line);
+        p = arena_malloc_impl(arena, size, file, line);
     } else {
         Chunk *ch      = CHUNK_FROM_MEMORY_FILE_LINE(mem, file, line);
         size_t payload = CHUNK_PAYLOAD_SIZE(ch);
-        p              = arena_malloc_throw(arena, size, file, line);
+        p              = arena_malloc_impl(arena, size, file, line);
         size_t n       = (size < payload) ? size : payload;
         (void)memcpy(p, mem, n);
-        arena_free_throw(arena, mem, file, line);
+        arena_free_impl(arena, mem, file, line);
     }
 
+    return p;
+}
+
+// ============================================================================
+// Public Entry Points
+// ============================================================================
+
+void *arena_aligned_alloc_throw(Arena *arena, size_t alignment, size_t size,
+                                char const *file, int line) {
+    void *mem = NULL;
+    ARENA_GUARDED_CALL(arena, mem = arena_aligned_alloc_impl(arena, alignment, size, file,
+                                                            line));
+    return mem;
+}
+
+void *arena_calloc_throw(Arena *arena, size_t count, size_t size, char const *file,
+                         int line) {
+    void *mem = NULL;
+    ARENA_GUARDED_CALL(arena, mem = arena_calloc_impl(arena, count, size, file, line));
+    return mem;
+}
+
+void arena_free_throw(Arena *arena, void *mem, char const *file, int line) {
+    ARENA_GUARDED_CALL(arena, arena_free_impl(arena, mem, file, line));
+}
+
+void arena_free_pointer_throw(Arena *arena, void **ptr, char const *file, int line) {
+    ARENA_GUARDED_CALL(arena, arena_free_pointer_impl(arena, ptr, file, line));
+}
+
+void *arena_malloc_throw(Arena *arena, size_t request, char const *file, int line) {
+    void *mem = NULL;
+    ARENA_GUARDED_CALL(arena, mem = arena_malloc_impl(arena, request, file, line));
+    return mem;
+}
+
+void *arena_realloc_throw(Arena *arena, void *mem, size_t size, char const *file,
+                          int line) {
+    void *p = NULL;
+    ARENA_GUARDED_CALL(arena, p = arena_realloc_impl(arena, mem, size, file, line));
     return p;
 }
 
