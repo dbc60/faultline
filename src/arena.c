@@ -14,7 +14,6 @@
 #include <faultline/fl_exception_types.h>          // for FLExceptionReason
 #include <faultline/fl_log.h>                      // for LOG_DEBUG, LOG_ERROR
 #include <faultline/fl_macros.h>                   // for FL_CONTAINER_OF
-#include <faultline/fl_threads.h>                  // for mtx_lock, mtx_unlock
 #include <faultline/fl_try.h>                      // for FL_THROW_DETAILS_FILE_LINE
 #include <faultline/size.h>                        // for TWO_SIZE_T_SIZES, MAX
 #include <stdbool.h>                               // for bool, true
@@ -26,6 +25,7 @@
 #include "bits.h"                                  // for BIT_LSB, ALIGN_UP, BIT_MASK...
 #include "chunk.h"                                 // for CHUNK_SIZE, FreeChunk, Chunk
 #include "digital_search_tree.h"                   // for DigitalSearchTree, dst_init...
+#include "fl_lock.h"                               // for fl_lock_acquire, fl_lock_re...
 #include "index.h"                                 // for INDEX_BY_VALUE64, COMPUTE_L...
 #include "region.h"                                // for MEM_TO_REGION, REGION_BYTES...
 #include "region_node.h"                           // for RegionNode, new_region_node
@@ -92,21 +92,21 @@ static int change_mparam(int param_number, int value) {
  * points carry no per-call flag test at all.
  */
 #ifdef FL_ARENA_SYNCHRONIZED
-#define ARENA_GUARDED_CALL(AR, CALL)     \
-    do {                                 \
-        if (!(AR)->synchronized) {       \
-            CALL;                        \
-        } else {                         \
-            mtx_lock(&(AR)->lock);       \
-            FL_TRY {                     \
-                CALL;                    \
-            }                            \
-            FL_CATCH_ALL_RETHROW {       \
-                mtx_unlock(&(AR)->lock); \
-            }                            \
-            FL_END_TRY;                  \
-            mtx_unlock(&(AR)->lock);     \
-        }                                \
+#define ARENA_GUARDED_CALL(AR, CALL)          \
+    do {                                      \
+        if (!(AR)->synchronized) {            \
+            CALL;                             \
+        } else {                              \
+            fl_lock_acquire(&(AR)->lock);     \
+            FL_TRY {                          \
+                CALL;                         \
+            }                                 \
+            FL_CATCH_ALL_RETHROW {            \
+                fl_lock_release(&(AR)->lock); \
+            }                                 \
+            FL_END_TRY;                       \
+            fl_lock_release(&(AR)->lock);     \
+        }                                     \
     } while (0)
 #else
 #define ARENA_GUARDED_CALL(AR, CALL) \
@@ -160,7 +160,7 @@ size_t arena_granularity(void) {
 void arena_set_footprint_limit(Arena *arena, size_t limit) {
     init_mparams();
     if (arena->synchronized) {
-        mtx_lock(&arena->lock);
+        fl_lock_acquire(&arena->lock);
     }
     if (limit == 0) {
         arena->footprint_limit = 0;
@@ -168,7 +168,7 @@ void arena_set_footprint_limit(Arena *arena, size_t limit) {
         arena->footprint_limit = ALIGN_UP(limit, mparams.granularity);
     }
     if (arena->synchronized) {
-        mtx_unlock(&arena->lock);
+        fl_lock_release(&arena->lock);
     }
 }
 
@@ -188,7 +188,7 @@ static Arena *new_arena_common(size_t commit, u32 reserve, bool synchronized) {
     arena->top         = (FreeChunk *)arena->base;
     DLIST_INIT(&arena->region_list);
     arena->synchronized = synchronized;
-    if (synchronized && mtx_init(&arena->lock, mtx_plain) != thrd_success) {
+    if (synchronized && !fl_lock_init(&arena->lock)) {
         release_region(region);
         FL_THROW(fl_internal_error);
     }
@@ -242,7 +242,7 @@ void release_arena(Arena **arena) {
     }
 
     if ((*arena)->synchronized) {
-        mtx_destroy(&(*arena)->lock);
+        fl_lock_destroy(&(*arena)->lock);
     }
     release_region(MEM_TO_REGION(*arena));
     *arena = NULL;

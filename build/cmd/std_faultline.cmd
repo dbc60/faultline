@@ -69,6 +69,7 @@ IF %build% EQU 1 (
     %DIR_REPO%\src\fl_threads.c %DIR_REPO%\src\fla_exception_service.c ^
     %DIR_REPO%\src\fla_log_service.c %DIR_REPO%\src\region.c ^
     %DIR_REPO%\src\region_node.c %DIR_REPO%\src\region_os.c ^
+    %DIR_REPO%\src\lock_os.c ^
     %DIR_REPO%\src\set.c %DIR_REPO%\src\win_timer.c ^
     %DIR_THIRD_PARTY%\fnv\FNV64.c %DIR_REPO%\src\fla_timer_service.c ^
     %DIR_OUT_OBJ%\sqlite3.obj %DIR_OUT_OBJ%\cwalk.obj /Fo:%DIR_OUT_OBJ%\ ^
@@ -106,6 +107,7 @@ IF %build% EQU 1 (
     %DIR_REPO%\src\flp_fault_memory_service.c %DIR_REPO%\src\flp_timer_service.c ^
     %DIR_REPO%\src\flp_file_service.c %DIR_REPO%\src\output_junit.c ^
     %DIR_REPO%\src\region.c %DIR_REPO%\src\region_node.c %DIR_REPO%\src\region_os.c ^
+    %DIR_REPO%\src\lock_os.c ^
     %DIR_REPO%\src\set.c %DIR_REPO%\src\win_timer.c ^
     %DIR_THIRD_PARTY%\fnv\FNV64.c ^
     %DIR_OUT_OBJ%\sqlite3.obj %DIR_OUT_OBJ%\cwalk.obj /Fo:%DIR_OUT_OBJ%\ ^

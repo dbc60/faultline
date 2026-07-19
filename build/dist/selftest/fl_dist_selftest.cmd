@@ -245,11 +245,13 @@ EXIT /B %ERRORLEVEL%
 :: that are unity-#included by another source. region_windows.c is included by
 :: region_os.c, so compiling it as its own TU duplicates new_region/commit/etc.
 :: The library's own build compiles region_os.c and never region_windows.c.
+:: The lock backends (win32_lock.c, generic_lock.c) are unity-#included by
+:: lock_os.c the same way.
 :: -----------------------------------------------------------------------
 :COLLECT_SRCS
 SET SRCS=
 FOR %%F IN ("%~1\*.c") DO (
-    IF /I NOT "%%~nxF"=="region_windows.c" SET SRCS=!SRCS! "%%F"
+    IF /I NOT "%%~nxF"=="region_windows.c" IF /I NOT "%%~nxF"=="win32_lock.c" IF /I NOT "%%~nxF"=="generic_lock.c" SET SRCS=!SRCS! "%%F"
 )
 EXIT /B 0
 

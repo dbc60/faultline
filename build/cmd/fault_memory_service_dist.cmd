@@ -87,6 +87,9 @@ COPY /Y "%DIR_SRC%\region.c"                   "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SRC%\region_node.c"              "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SRC%\region_os.c"                "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SRC%\region_windows.c"           "%DIR_DIST%\src\" > NUL
+COPY /Y "%DIR_SRC%\lock_os.c"                  "%DIR_DIST%\src\" > NUL
+COPY /Y "%DIR_SRC%\win32_lock.c"               "%DIR_DIST%\src\" > NUL
+COPY /Y "%DIR_SRC%\generic_lock.c"             "%DIR_DIST%\src\" > NUL
 
 :: -----------------------------------------------------------------------
 :: C source files — collections
@@ -133,6 +136,7 @@ COPY /Y "%DIR_SRC%\region.h"                   "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SRC%\region_node.h"              "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SRC%\region_os.h"                "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SRC%\region_windows.h"           "%DIR_DIST%\src\" > NUL
+COPY /Y "%DIR_SRC%\fl_lock.h"                  "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SRC%\win32_platform.h"           "%DIR_DIST%\src\" > NUL
 
 :: -----------------------------------------------------------------------

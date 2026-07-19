@@ -35,6 +35,7 @@
 #include "region.c"
 #include "region_node.c"
 #include "region_os.c"
+#include "lock_os.c"
 #include "set.c"
 
 #include <stddef.h> // size_t

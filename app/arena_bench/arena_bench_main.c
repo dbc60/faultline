@@ -41,6 +41,7 @@
 #include "fl_threads.c"
 #include "flp_exception_service.c"
 #include "flp_log_service.c"
+#include "lock_os.c"
 #include "region.c"
 #include "region_node.c"
 #include "region_os.c"

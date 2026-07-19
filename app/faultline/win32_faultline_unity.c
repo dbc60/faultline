@@ -23,6 +23,7 @@
  * reprovides region_<os>.c and keeps the rest.
  */
 #include "region_os.c" /* dispatches to region_windows.c -> VirtualAlloc */
+#include "lock_os.c"
 
 /* -- OS primitives ---------------------------------------------------------- */
 #include "fl_threads.c"

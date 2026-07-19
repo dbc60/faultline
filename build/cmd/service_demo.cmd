@@ -134,6 +134,7 @@ cl %CommonCompilerFlagsFinal% /experimental:c11atomics /DFL_PLATFORM_BUILD /DFL_
     "%TREE%\src\region.c" ^
     "%TREE%\src\region_node.c" ^
     "%TREE%\src\region_os.c" ^
+    "%TREE%\src\lock_os.c" ^
     "%TREE%\src\flp_memory_service.c" ^
     "%HERE%\demo_driver.c" ^
     /Fo:"%OBJ_EXE%\\" /Fd:"%BIN%\demo_driver.pdb" /Fe:"%BIN%\demo_driver.exe" ^
