@@ -77,6 +77,7 @@ ECHO Copying arena source files...
 COPY /Y "%DIR_SRC%\arena.c"                    "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SRC%\arena_dbg.c"                "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SRC%\arena_malloc.c"             "%DIR_DIST%\src\" > NUL
+COPY /Y "%DIR_SRC%\arena_pool.c"               "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SRC%\buffer.c"                   "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SRC%\digital_search_tree.c"      "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SRC%\fl_exception_service.c"     "%DIR_DIST%\src\" > NUL
@@ -168,6 +169,7 @@ COPY /Y "%DIR_INC%\flp_fault_memory_context.h"      "%DIR_DIST%\include\faultlin
 ECHO Copying arena/exception/log public headers...
 COPY /Y "%DIR_INC%\arena.h"                         "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\arena_malloc.h"                  "%DIR_DIST%\include\faultline\" > NUL
+COPY /Y "%DIR_INC%\arena_pool.h"                    "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\dlist.h"                         "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\fl_abbreviated_types.h"          "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\fl_exception_service.h"          "%DIR_DIST%\include\faultline\" > NUL

@@ -166,9 +166,16 @@
  *
  * @param size the size of the chunk in bytes including this size field.
  */
+struct Arena;
+
 typedef struct Chunk {
-    size_t size;
-    size_t pad0; // for 16-byte alignment
+    size_t        size;
+    struct Arena *owner; ///< the arena the chunk was allocated from; written at
+                         ///< allocation time and meaningful only while the
+                         ///< chunk is in use (free chunks overlay this word
+                         ///< with sibling linkage). Any thread may read it for
+                         ///< an in-use chunk, which is how a free from a
+                         ///< non-owning thread finds the queue to push to.
 } Chunk;
 
 /**

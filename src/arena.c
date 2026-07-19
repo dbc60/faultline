@@ -118,6 +118,24 @@ static int change_mparam(int param_number, int value) {
 static void *arena_malloc_impl(Arena *arena, size_t request, char const *file, int line);
 static void  arena_free_impl(Arena *arena, void *mem, char const *file, int line);
 
+/**
+ * @brief Reclaim blocks pushed by arena_free_remote from other threads.
+ *
+ * Runs on the owning thread with the arena's serialization already
+ * established, so the queued blocks can go through the normal free path. The
+ * acquire exchange pairs with the release CAS in arena_free_remote, making
+ * each block's contents visible before it is reused.
+ */
+static void arena_absorb_remote_frees(Arena *arena, char const *file, int line) {
+    void *mem
+        = atomic_exchange_explicit(&arena->remote_free_head, NULL, memory_order_acquire);
+    while (mem != NULL) {
+        void *next = *(void **)mem;
+        arena_free_impl(arena, mem, file, line);
+        mem = next;
+    }
+}
+
 // ============================================================================
 // System Information
 // ============================================================================
@@ -187,6 +205,7 @@ static Arena *new_arena_common(size_t commit, u32 reserve, bool synchronized) {
     arena->base        = (Chunk *)(((char *)arena) + ARENA_ALIGNED_SIZE);
     arena->top         = (FreeChunk *)arena->base;
     DLIST_INIT(&arena->region_list);
+    atomic_store_explicit(&arena->remote_free_head, NULL, memory_order_relaxed);
     arena->synchronized = synchronized;
     if (synchronized && !fl_lock_init(&arena->lock)) {
         release_region(region);
@@ -755,6 +774,7 @@ static void *arena_aligned_alloc_impl(Arena *arena, size_t alignment, size_t siz
     raw_ch->size      = gap | flags;
     Chunk *aligned_ch = (Chunk *)((char *)raw_ch + gap);
     aligned_ch->size  = (total_size - gap) | CHUNK_INUSE_FLAGS;
+    aligned_ch->owner = arena;
 
     arena_free_impl(arena, raw, file, line);
 
@@ -1011,6 +1031,10 @@ static void *arena_malloc_impl(Arena *arena, size_t request, char const *file,
     size_t size = CHUNK_SIZE_FROM_REQUEST(request);
     Chunk *ch   = NULL;
 
+    if (atomic_load_explicit(&arena->remote_free_head, memory_order_relaxed) != NULL) {
+        arena_absorb_remote_frees(arena, file, line);
+    }
+
     LOG_DEBUG("Arena", "request %zu, %s:%d", request, file, line);
     ARENA_CHECK_TOP_CHUNK_FILE_LINE(arena, file, line);
     if (request <= ARENA_MAX_SMALL_REQUEST) {
@@ -1087,6 +1111,7 @@ static void *arena_malloc_impl(Arena *arena, size_t request, char const *file,
         mem = CHUNK_TO_MEMORY(ch);
     }
     CHUNK_VALIDATE(ch, size);
+    ch->owner = arena;
     arena->allocations++;
     return mem;
 }
@@ -1112,6 +1137,23 @@ static void *arena_realloc_impl(Arena *arena, void *mem, size_t size, char const
     return p;
 }
 
+void arena_free_remote(Arena *arena, void *mem) {
+    // The dead block's payload stores the queue link; its header stays intact
+    // (still marked in use) until the owner absorbs it through the normal
+    // free path at its next allocation.
+    void *head = atomic_load_explicit(&arena->remote_free_head, memory_order_relaxed);
+    do {
+        *(void **)mem = head;
+    } while (!atomic_compare_exchange_weak_explicit(&arena->remote_free_head, &head, mem,
+                                                    memory_order_release,
+                                                    memory_order_relaxed));
+}
+
+Arena *arena_owner(void const *mem) {
+    Chunk const *ch = (Chunk const *)((char const *)mem - CHUNK_ALIGNED_SIZE);
+    return ch->owner;
+}
+
 // ============================================================================
 // Public Entry Points
 // ============================================================================
@@ -1119,8 +1161,8 @@ static void *arena_realloc_impl(Arena *arena, void *mem, size_t size, char const
 void *arena_aligned_alloc_throw(Arena *arena, size_t alignment, size_t size,
                                 char const *file, int line) {
     void *mem = NULL;
-    ARENA_GUARDED_CALL(arena, mem = arena_aligned_alloc_impl(arena, alignment, size, file,
-                                                            line));
+    ARENA_GUARDED_CALL(arena, mem = arena_aligned_alloc_impl(arena, alignment, size,
+                                                             file, line));
     return mem;
 }
 

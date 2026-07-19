@@ -36,6 +36,7 @@
 
 #include "arena.c"
 #include "arena_dbg.c"
+#include "arena_pool.c"
 #include "digital_search_tree.c"
 #include "fl_exception_service.c"
 #include "fl_threads.c"
@@ -47,6 +48,7 @@
 #include "region_os.c"
 
 #include <faultline/arena.h>
+#include <faultline/arena_pool.h>
 #include <faultline/fl_abbreviated_types.h> // u32, u64
 #include <faultline/fl_macros.h>            // FL_ARRAY_COUNT
 #include <faultline/fl_threads.h>           // mtx_t, thrd_t
@@ -71,14 +73,14 @@ static char const *module = "ArenaBench";
 #define BM_FREE(A, P)    arena_free_throw((A), (P), __FILE__, __LINE__)
 
 enum {
-    BM_REPS        = 9, ///< measured repetitions per single-threaded benchmark
-    BM_THREAD_REPS = 5, ///< measured repetitions per multi-threaded benchmark
+    BM_REPS        = 9,    ///< measured repetitions per single-threaded benchmark
+    BM_THREAD_REPS = 5,    ///< measured repetitions per multi-threaded benchmark
     BM_BULK_COUNT  = 4096, ///< live allocations per bulk pass
     BM_MAX_THREADS = 4,
 };
 
 /// defeats dead-code elimination in the primitive benchmarks
-static volatile size_t g_sink;
+static size_t volatile g_sink;
 
 /// nanoseconds per QueryPerformanceCounter tick
 static double g_qpc_period_ns;
@@ -157,6 +159,17 @@ static u64 bm_srw_pair(Arena *arena, size_t iters) {
         AcquireSRWLockExclusive(&lock);
         g_sink = i;
         ReleaseSRWLockExclusive(&lock);
+    }
+    return bm_now() - begin;
+}
+
+static tss_t g_bench_tss_key;
+
+static u64 bm_tss_get(Arena *arena, size_t iters) {
+    FL_UNUSED(arena);
+    u64 begin = bm_now();
+    for (size_t i = 0; i < iters; i++) {
+        g_sink = (size_t)(uintptr_t)tss_get(g_bench_tss_key);
     }
     return bm_now() - begin;
 }
@@ -295,6 +308,7 @@ static void bm_run(char const *name, bm_fn *fn, Arena *arena, size_t iters,
 
 typedef struct ThreadBenchArg {
     Arena      *shared_arena; ///< NULL: the worker creates a private arena
+    ArenaPool  *pool;         ///< when set, allocate through the pool instead
     size_t      iters;
     u32         core;
     atomic_int *ready;
@@ -309,7 +323,7 @@ static int bm_thread_worker(void *arg) {
 
     Arena *own   = NULL;
     Arena *arena = tba->shared_arena;
-    if (arena == NULL) {
+    if (arena == NULL && tba->pool == NULL) {
         own   = new_arena(MEBI(4), 0);
         arena = own;
     }
@@ -320,10 +334,18 @@ static int bm_thread_worker(void *arg) {
     }
 
     FL_TRY {
-        for (size_t i = 0; i < tba->iters; i++) {
-            void *mem    = BM_MALLOC(arena, 64);
-            *(char *)mem = (char)i;
-            BM_FREE(arena, mem);
+        if (tba->pool != NULL) {
+            for (size_t i = 0; i < tba->iters; i++) {
+                void *mem    = ARENA_POOL_MALLOC_THROW(tba->pool, 64);
+                *(char *)mem = (char)i;
+                ARENA_POOL_FREE_THROW(tba->pool, mem);
+            }
+        } else {
+            for (size_t i = 0; i < tba->iters; i++) {
+                void *mem    = BM_MALLOC(arena, 64);
+                *(char *)mem = (char)i;
+                BM_FREE(arena, mem);
+            }
         }
     }
     FL_CATCH_ALL {
@@ -338,7 +360,8 @@ static int bm_thread_worker(void *arg) {
     return failed ? 1 : 0;
 }
 
-static double bm_threads_once(Arena *shared, size_t nthreads, size_t iters) {
+static double bm_threads_once(Arena *shared, ArenaPool *pool, size_t nthreads,
+                              size_t iters) {
     thrd_t         threads[BM_MAX_THREADS];
     ThreadBenchArg args[BM_MAX_THREADS];
     atomic_int     ready  = 0;
@@ -347,6 +370,7 @@ static double bm_threads_once(Arena *shared, size_t nthreads, size_t iters) {
 
     for (size_t t = 0; t < nthreads; t++) {
         args[t].shared_arena = shared;
+        args[t].pool         = pool;
         args[t].iters        = iters;
         args[t].core         = bm_worker_core(t);
         args[t].ready        = &ready;
@@ -381,15 +405,138 @@ static double bm_threads_once(Arena *shared, size_t nthreads, size_t iters) {
     return ((double)elapsed * g_qpc_period_ns) / (double)ops;
 }
 
-static void bm_run_threads(char const *name, Arena *shared, size_t nthreads,
-                           size_t iters) {
+static void bm_run_threads(char const *name, Arena *shared, ArenaPool *pool,
+                           size_t nthreads, size_t iters) {
     double results[BM_THREAD_REPS];
 
-    (void)bm_threads_once(shared, nthreads, iters / 4); // warmup
+    (void)bm_threads_once(shared, pool, nthreads, iters / 4); // warmup
     for (size_t r = 0; r < BM_THREAD_REPS; r++) {
-        results[r] = bm_threads_once(shared, nthreads, iters);
+        results[r] = bm_threads_once(shared, pool, nthreads, iters);
     }
     bm_report(name, 2 * iters * nthreads, results, BM_THREAD_REPS);
+}
+
+/* --------------------- Producer-consumer (remote free) ------------------ */
+
+enum {
+    BM_XFER_RING = 256
+};
+
+typedef struct XferShared {
+    ArenaPool      *pool;
+    size_t          iters;
+    atomic_int     *ready;
+    atomic_int     *go;
+    _Atomic(void *) ring[BM_XFER_RING];
+} XferShared;
+
+typedef struct XferArg {
+    XferShared *sh;
+    u32         core;
+    bool        producer;
+} XferArg;
+
+static int bm_xfer_worker(void *arg) {
+    XferArg    *xa     = (XferArg *)arg;
+    XferShared *sh     = xa->sh;
+    bool        failed = false;
+
+    SetThreadAffinityMask(GetCurrentThread(), (DWORD_PTR)1 << xa->core);
+    atomic_fetch_add(sh->ready, 1);
+    while (atomic_load(sh->go) == 0) {
+        YieldProcessor();
+    }
+
+    FL_TRY {
+        if (xa->producer) {
+            for (size_t i = 0; i < sh->iters; i++) {
+                void *mem             = ARENA_POOL_MALLOC_THROW(sh->pool, 64);
+                *(char *)mem          = (char)i;
+                _Atomic(void *) *slot = &sh->ring[i % BM_XFER_RING];
+                while (atomic_load_explicit(slot, memory_order_relaxed) != NULL) {
+                    YieldProcessor();
+                }
+                atomic_store_explicit(slot, mem, memory_order_release);
+            }
+        } else {
+            for (size_t i = 0; i < sh->iters; i++) {
+                _Atomic(void *) *slot = &sh->ring[i % BM_XFER_RING];
+                void            *mem;
+                while ((mem = atomic_load_explicit(slot, memory_order_acquire))
+                       == NULL) {
+                    YieldProcessor();
+                }
+                atomic_store_explicit(slot, NULL, memory_order_release);
+                ARENA_POOL_FREE_THROW(sh->pool, mem);
+            }
+        }
+    }
+    FL_CATCH_ALL {
+        failed = true;
+        LOG_ERROR(module, "xfer worker threw: %s", FL_REASON);
+    }
+    FL_END_TRY;
+
+    return failed ? 1 : 0;
+}
+
+static double bm_xfer_once(ArenaPool *pool, size_t iters) {
+    XferShared sh;
+    XferArg    args[2];
+    thrd_t     threads[2];
+    atomic_int ready  = 0;
+    atomic_int go     = 0;
+    bool       failed = false;
+
+    sh.pool  = pool;
+    sh.iters = iters;
+    sh.ready = &ready;
+    sh.go    = &go;
+    for (size_t i = 0; i < BM_XFER_RING; i++) {
+        atomic_store_explicit(&sh.ring[i], NULL, memory_order_relaxed);
+    }
+
+    for (size_t t = 0; t < 2; t++) {
+        args[t].sh       = &sh;
+        args[t].core     = bm_worker_core(t);
+        args[t].producer = t == 0;
+        if (thrd_create(&threads[t], bm_xfer_worker, &args[t]) != thrd_success) {
+            fprintf(stderr, "failed to create xfer thread %zu\n", t);
+            exit(1);
+        }
+    }
+
+    while (atomic_load(&ready) < 2) {
+        YieldProcessor();
+    }
+    u64 begin = bm_now();
+    atomic_store(&go, 1);
+    for (size_t t = 0; t < 2; t++) {
+        int res = 0;
+        thrd_join(threads[t], &res);
+        if (res != 0) {
+            failed = true;
+        }
+    }
+    u64 elapsed = bm_now() - begin;
+
+    if (failed) {
+        fprintf(stderr, "an xfer thread failed; aborting\n");
+        exit(1);
+    }
+
+    size_t ops = 2 * iters;
+    return ((double)elapsed * g_qpc_period_ns) / (double)ops;
+}
+
+static void bm_run_xfer(char const *name, ArenaPool *pool, size_t iters) {
+    double results[BM_THREAD_REPS];
+
+    (void)bm_xfer_once(pool, iters / 4); // warmup
+    for (size_t r = 0; r < BM_THREAD_REPS; r++) {
+        results[r] = bm_xfer_once(pool, iters);
+    }
+    bm_report(name, 2 * iters, results, BM_THREAD_REPS);
 }
 
 /* -------------------------------- main ---------------------------------- */
@@ -411,9 +558,8 @@ int main(int argc, char **argv) {
 
 #ifndef FL_ARENA_SYNCHRONIZED
     if (shared) {
-        fprintf(stderr,
-                "--shared requires a build with FL_ARENA_SYNCHRONIZED; skipping "
-                "shared-arena workloads\n");
+        fprintf(stderr, "--shared requires a build with FL_ARENA_SYNCHRONIZED; skipping "
+                        "shared-arena workloads\n");
         shared = false;
     }
 #endif
@@ -456,6 +602,10 @@ int main(int argc, char **argv) {
 
     bm_run("mtx lock/unlock pair", bm_mtx_pair, NULL, 10000000 / scale, 1);
     bm_run("SRWLOCK acquire/release pair", bm_srw_pair, NULL, 10000000 / scale, 1);
+    if (tss_create(&g_bench_tss_key, NULL) == thrd_success) {
+        tss_set(g_bench_tss_key, &g_bench_tss_key);
+        bm_run("tss_get", bm_tss_get, NULL, 10000000 / scale, 1);
+    }
     bm_run("FL_TRY empty frame", bm_try_frame, NULL, 2000000 / scale, 1);
     bm_run("small 64B malloc+free", bm_small_pingpong, arena, 1000000 / scale, 2);
 #ifdef FL_ARENA_SYNCHRONIZED
@@ -463,10 +613,8 @@ int main(int argc, char **argv) {
            1000000 / scale, 2);
 #endif
     bm_run("mixed 16B-8KiB malloc+free", bm_mixed_pingpong, arena, 1000000 / scale, 2);
-    bm_run("bulk 4096x128B LIFO", bm_bulk_lifo, arena, 64 / scale,
-           2 * BM_BULK_COUNT);
-    bm_run("bulk 4096x128B FIFO", bm_bulk_fifo, arena, 64 / scale,
-           2 * BM_BULK_COUNT);
+    bm_run("bulk 4096x128B LIFO", bm_bulk_lifo, arena, 64 / scale, 2 * BM_BULK_COUNT);
+    bm_run("bulk 4096x128B FIFO", bm_bulk_fifo, arena, 64 / scale, 2 * BM_BULK_COUNT);
     bm_run("bulk 4096x128B interleaved", bm_bulk_interleaved, arena, 64 / scale,
            2 * BM_BULK_COUNT);
 
@@ -474,15 +622,25 @@ int main(int argc, char **argv) {
     for (size_t t = 2; t <= max_threads; t *= 2) {
         char name[64];
         snprintf(name, sizeof name, "%zu threads, private arenas", t);
-        bm_run_threads(name, NULL, t, 1000000 / scale);
+        bm_run_threads(name, NULL, NULL, t, 1000000 / scale);
     }
+
+    ArenaPool *pool = new_arena_pool(MEBI(4), 0);
+    bm_run_threads("1 thread, pool local free", NULL, pool, 1, 1000000 / scale);
+    for (size_t t = 2; t <= max_threads; t *= 2) {
+        char name[64];
+        snprintf(name, sizeof name, "%zu threads, pool local free", t);
+        bm_run_threads(name, NULL, pool, t, 1000000 / scale);
+    }
+    bm_run_xfer("producer-consumer, remote free", pool, 1000000 / scale);
+    release_arena_pool(&pool);
 
 #ifdef FL_ARENA_SYNCHRONIZED
     if (shared) {
         for (size_t t = 2; t <= max_threads; t *= 2) {
             char name[64];
             snprintf(name, sizeof name, "%zu threads, shared arena", t);
-            bm_run_threads(name, shared_arena, t, 1000000 / scale);
+            bm_run_threads(name, shared_arena, NULL, t, 1000000 / scale);
         }
     }
 

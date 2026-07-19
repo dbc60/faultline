@@ -147,11 +147,36 @@ void *arena_calloc_throw(Arena *arena, size_t count, size_t size, char const *fi
  * @note Released memory is returned to appropriate bins for reuse.
  * @note File/line are used for debugging.
  */
-void  arena_free_throw(Arena *arena, void *ptr, char const *file, int line);
-void  arena_free_pointer_throw(Arena *arena, void **ptr, char const *file, int line);
-void *arena_malloc_throw(Arena *arena, size_t request, char const *file, int line);
-void *arena_realloc_throw(Arena *arena, void *mem, size_t size, char const *file,
-                          int line);
+void arena_free_throw(Arena *arena, void *ptr, char const *file, int line);
+void arena_free_pointer_throw(Arena *arena, void **ptr, char const *file, int line);
+
+/**
+ * @brief Free a block from a thread that does not own the arena.
+ *
+ * Pushes the block onto the owning arena's remote-free queue with a single
+ * lock-free atomic operation; the owning thread reclaims queued blocks
+ * through the normal free path at its next allocation. Safe to call from any
+ * thread and on any arena, synchronized or not. Performs no validation, so
+ * the caller must pass a live allocation from this arena.
+ *
+ * @param arena The arena that owns the block (see arena_owner).
+ * @param mem The block to free.
+ */
+void arena_free_remote(Arena *arena, void *mem);
+
+/**
+ * @brief Return the arena a block was allocated from.
+ *
+ * The owner is recorded in the block's header at allocation time and remains
+ * readable from any thread for as long as the block stays allocated.
+ *
+ * @param mem A live allocation from some arena.
+ * @return The owning arena.
+ */
+Arena *arena_owner(void const *mem);
+void  *arena_malloc_throw(Arena *arena, size_t request, char const *file, int line);
+void  *arena_realloc_throw(Arena *arena, void *mem, size_t size, char const *file,
+                           int line);
 
 /**
  * @brief Allocate a block of memory from the arena.

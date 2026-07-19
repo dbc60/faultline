@@ -76,6 +76,11 @@ if errorlevel 1 (
     GOTO :ERROR
 )
 
+call %DIR_CMD%\arena_pool.cmd !args!
+if errorlevel 1 (
+    GOTO :ERROR
+)
+
 call %DIR_CMD%\buffer.cmd !args!
 if errorlevel 1 (
     GOTO :ERROR
@@ -184,6 +189,7 @@ if %test% EQU 1 (
         index_generic_tests.dll ^
         index_windows_tests.dll ^
         arena_tests.dll ^
+        arena_pool_tests.dll ^
         buffer_tests.dll ^
         fnv_tests.dll ^
         math_tests.dll ^

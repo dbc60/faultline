@@ -24,8 +24,9 @@
 #include <faultline/fl_try.h>                      // FL_THROW* macros
 #include <faultline/size.h>                        // SIZE_ macros
 
-#include <stddef.h> // size_t
-#include <stdio.h>  // snprintf
+#include <stdatomic.h> // _Atomic, atomic_load_explicit
+#include <stddef.h>    // size_t
+#include <stdio.h>     // snprintf
 
 // LOG2(ARENA_MIN_LARGE_CHUNK)
 #define ARENA_LOG2_MIN_LARGE_CHUNK 10
@@ -38,12 +39,12 @@
         }                                                      \
     } while (0)
 
-#define ARENA_RTCHECK_VA(EXP, FILE, LINE, fmt, ...)                              \
-    do {                                                                         \
-        if (!(EXP)) {                                                            \
-            FL_THROW_DETAILS_FILE_LINE(fl_internal_error, fmt, FILE, LINE,       \
-                                       ##__VA_ARGS__);                           \
-        }                                                                        \
+#define ARENA_RTCHECK_VA(EXP, FILE, LINE, fmt, ...)                        \
+    do {                                                                   \
+        if (!(EXP)) {                                                      \
+            FL_THROW_DETAILS_FILE_LINE(fl_internal_error, fmt, FILE, LINE, \
+                                       ##__VA_ARGS__);                     \
+        }                                                                  \
     } while (0)
 
 /// the maximum size of a chunk that can fit into a small bin
@@ -292,10 +293,13 @@ struct Arena {
                             ///< zero, free any Regions that don't contain used chunks
                             ///< and reset the counter to MAX_RELEASE_CHECK_RATE or the
                             ///< current number of regions, whichever is greater.
-    size_t allocations;
-    bool   synchronized; ///< when true, the public mutating entry points
-                         ///< serialize on lock; when false, the caller owns
-                         ///< serialization and lock is uninitialized.
+    size_t          allocations;
+    _Atomic(void *) remote_free_head; ///< blocks freed by non-owning threads
+                                      ///< (arena_free_remote); the owner
+                                      ///< reclaims them at its next allocation.
+    bool synchronized;                ///< when true, the public mutating entry points
+                                      ///< serialize on lock; when false, the caller owns
+                                      ///< serialization and lock is uninitialized.
     FLLock lock;
 };
 typedef struct Arena Arena;
