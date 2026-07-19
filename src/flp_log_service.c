@@ -32,7 +32,7 @@
 #if defined(__clang__) || defined(__GNUC__)
 #include <sec_api/stdio_s.h> // for fopen_s
 #endif
-#else  // POSIX
+#else                // POSIX
 #include <errno.h>   // for errno
 #include <pthread.h> // for pthread_self
 #include <stdint.h>  // for uintptr_t
@@ -107,6 +107,14 @@ static void constraint_handler(char const *restrict msg, void *restrict ptr,
 
 void flp_log_init_custom(FLLogLevel level, char const *path) {
     if (!g_logger.initialized) {
+        // Must precede any call that locks g_logger.mutex (flp_log_set_output[_path]
+        // below, and flp_write_log from other threads once initialized is visible).
+        if (mtx_init(&g_logger.mutex, mtx_plain) != thrd_success) {
+            fprintf(stderr, "Fatal: Failed to initialize logging mutex\n");
+            fflush(stderr);
+            abort();
+        }
+
         g_logger.enabled   = true;
         g_logger.max_level = level;
         if (path != NULL) {
@@ -114,15 +122,9 @@ void flp_log_init_custom(FLLogLevel level, char const *path) {
             // when the file actually opened, and clears it on the stdout fallback.
             flp_log_set_output_path(path);
         } else {
-            g_logger.output       = stdout;
-            g_logger.close_output = false;
+            flp_log_set_output(stdout);
         }
 
-        if (mtx_init(&g_logger.mutex, mtx_plain) != thrd_success) {
-            fprintf(stderr, "Fatal: Failed to initialize logging mutex\n");
-            fflush(stderr);
-            abort();
-        }
         g_logger.initialized = true;
     }
 }
@@ -132,6 +134,7 @@ void flp_log_init(void) {
 }
 
 void flp_log_cleanup(void) {
+    mtx_lock(&g_logger.mutex);
     if (g_logger.output != NULL) {
         fflush(g_logger.output);
     }
@@ -141,6 +144,7 @@ void flp_log_cleanup(void) {
         g_logger.output       = NULL;
         g_logger.close_output = false;
     }
+    mtx_unlock(&g_logger.mutex);
 
     mtx_destroy(&g_logger.mutex);
     g_logger.initialized = false;
@@ -151,11 +155,29 @@ void flp_log_set_level(FLLogLevel level) {
 }
 
 void flp_log_set_output(FILE *file) {
+    mtx_lock(&g_logger.mutex);
+    // Close the previous handle before replacing it, same as flp_log_set_output_path:
+    // close_output is only ever true for a handle this module opened itself, so this
+    // can't reach stdout/stderr.
+    if (g_logger.close_output && g_logger.output != NULL) {
+        fclose(g_logger.output);
+    }
     g_logger.output       = file ? file : stdout;
     g_logger.close_output = false;
+    mtx_unlock(&g_logger.mutex);
 }
 
 void flp_log_set_output_path(char const *path) {
+    mtx_lock(&g_logger.mutex);
+
+    // Close the previous handle before opening the new one to avoid leaking the old
+    // handle when switching to a different path.
+    if (g_logger.close_output && g_logger.output != NULL) {
+        fclose(g_logger.output);
+        g_logger.output       = NULL;
+        g_logger.close_output = false;
+    }
+
     FILE *file;
 #ifdef __STDC_LIB_EXT1__
     constraint_handler_t previous_handler = set_constraint_handler_s(constraint_handler);
@@ -192,6 +214,8 @@ void flp_log_set_output_path(char const *path) {
 #endif
 
     g_logger.output = file;
+
+    mtx_unlock(&g_logger.mutex);
 }
 
 // ---------------------------------------------------------------------------

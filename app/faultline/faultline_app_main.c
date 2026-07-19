@@ -34,7 +34,7 @@
 
 #include <stdio.h> // printf
 
-static char const *module = "Faultline";
+static char const *module_name = "Faultline";
 
 FL_APP_MAIN(faultline_app_main) {
     // Install the platform's services into this module's fla_ globals. Order matters:
@@ -75,11 +75,11 @@ FL_APP_MAIN(faultline_app_main) {
             FL_TRY {
                 db = faultline_init_database(db_path);
                 if (db == NULL) {
-                    LOG_ERROR(module, "Failed to open database at \"%s\"", db_path);
+                    LOG_ERROR(module_name, "Failed to open database at \"%s\"", db_path);
                 }
             }
             FL_CATCH_ALL {
-                LOG_ERROR(module, "Database initialization failed: %s", FL_REASON);
+                LOG_ERROR(module_name, "Database initialization failed: %s", FL_REASON);
                 db = NULL;
             }
             FL_END_TRY;
@@ -114,7 +114,7 @@ FL_APP_MAIN(faultline_app_main) {
         exit_code = 1;
     }
     FL_CATCH_ALL {
-        LOG_ERROR(module, "Unhandled exception: %s", FL_REASON);
+        LOG_ERROR(module_name, "Unhandled exception: %s", FL_REASON);
         exit_code = 1;
     }
     FL_END_TRY;

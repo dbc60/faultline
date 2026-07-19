@@ -4,7 +4,7 @@ SETLOCAL ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 :: See LICENSE.txt for copyright and licensing information about this file.
 ::
 :: build_test_dll.cmd - Shared helper: compile one test DLL and optionally run
-::   it with but_driver.exe. Called by individual component scripts; not
+::   it with faultline.exe. Called by individual component scripts; not
 ::   intended to be invoked directly.
 ::
 :: Usage:

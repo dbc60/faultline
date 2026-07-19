@@ -154,7 +154,7 @@ int main(int argc, char **argv) {
     // service.h). This flp_ FL_TRY establishes it; the core's fla_ FL_TRY nests
     // on the same platform stack (after install, g_fla_*.push_env == flp_push),
     // so an uncaught throw from the core or a suite rethrows up to here.
-    int exit_code = 0;
+    volatile int exit_code = 0;
     FL_TRY {
         exit_code = faultline_app_main(&platform, argc, argv);
     }
