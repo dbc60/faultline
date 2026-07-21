@@ -93,6 +93,7 @@ COPY /Y "%DIR_SRC%\generic_lock.c"             "%DIR_DIST%\src\" > NUL
 ECHO Copying support service source files...
 COPY /Y "%DIR_SRC%\fl_exception_service.c"     "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SRC%\flp_exception_service.c"    "%DIR_DIST%\src\" > NUL
+COPY /Y "%DIR_SRC%\flp_file_service.c"         "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SRC%\flp_log_service.c"          "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SRC%\fl_threads.c"               "%DIR_DIST%\src\" > NUL
 
@@ -143,6 +144,8 @@ COPY /Y "%DIR_INC%\fl_abbreviated_types.h"          "%DIR_DIST%\include\faultlin
 COPY /Y "%DIR_INC%\fl_exception_service.h"          "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\fl_exception_service_assert.h"   "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\fl_exception_types.h"            "%DIR_DIST%\include\faultline\" > NUL
+COPY /Y "%DIR_INC%\fl_file_service.h"               "%DIR_DIST%\include\faultline\" > NUL
+COPY /Y "%DIR_INC%\fl_file_types.h"                 "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\fl_log.h"                        "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\fl_log_service.h"                "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\fl_macros.h"                     "%DIR_DIST%\include\faultline\" > NUL
@@ -164,6 +167,7 @@ COPY /Y "%DIR_INC%\fla_memory_service.h"            "%DIR_DIST%\include\faultlin
 ECHO Copying top-level public headers...
 COPY /Y "%DIR_REPO%\include\flp_memory_service.h"   "%DIR_DIST%\include\" > NUL
 COPY /Y "%DIR_REPO%\include\flp_exception_service.h" "%DIR_DIST%\include\" > NUL
+COPY /Y "%DIR_REPO%\include\flp_file_service.h"     "%DIR_DIST%\include\" > NUL
 COPY /Y "%DIR_REPO%\include\flp_log_service.h"      "%DIR_DIST%\include\" > NUL
 
 :: -----------------------------------------------------------------------

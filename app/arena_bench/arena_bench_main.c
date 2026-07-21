@@ -36,12 +36,15 @@
 
 #include "arena.c"
 #include "arena_dbg.c"
+#include "arena_malloc.c" // FL_MALLOC/FL_FREE backing, needed by flp_file_service.c
 #include "arena_pool.c"
 #include "digital_search_tree.c"
 #include "fl_exception_service.c"
 #include "fl_threads.c"
 #include "flp_exception_service.c"
+#include "flp_file_service.c" // flp_log_service.c now calls flp_file_open/write/close
 #include "flp_log_service.c"
+#include "flp_memory_service.c" // FL_MALLOC/FL_FREE backing (flp_malloc/flp_free)
 #include "lock_os.c"
 #include "region.c"
 #include "region_node.c"

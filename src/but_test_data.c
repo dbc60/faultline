@@ -7,12 +7,22 @@
  *
  * See LICENSE.txt for copyright and licensing information about this file.
  */
+#include "arena.c"
+#include "arena_dbg.c"
+#include "arena_malloc.c" // FL_MALLOC/FL_FREE backing, needed by flp_file_service.c
 #include "but_driver.c"
 #include "but_result_context.c"
+#include "digital_search_tree.c"
 #include "fl_exception_service.c"
 #include "fl_threads.c" // mtx_init, mtx_lock, mtx_unlock, mtx_destroy
 #include "flp_exception_service.c"
+#include "flp_file_service.c" // flp_log_service.c now calls flp_file_open/write/close
 #include "flp_log_service.c"
+#include "flp_memory_service.c" // FL_MALLOC/FL_FREE backing (flp_malloc/flp_free)
+#include "lock_os.c"
+#include "region.c"
+#include "region_node.c"
+#include "region_os.c"
 
 // Dummy fla_set_exception_service so set_up_test_driver_data() in but_test_cases.c has
 // a function to load.

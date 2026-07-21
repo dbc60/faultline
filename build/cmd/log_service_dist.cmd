@@ -32,7 +32,7 @@ SET DIR_INC=%DIR_REPO%\include\faultline
 :: Package metadata recorded in manifest.txt (bump SVC_VERSION on release).
 SET SVC_NAME=log_service
 SET SVC_VERSION=0.2.0
-SET SVC_DEPENDS=
+SET SVC_DEPENDS=file_service
 
 :: Handle clean
 IF /I "%~1"=="clean" (

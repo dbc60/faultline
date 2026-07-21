@@ -85,10 +85,11 @@ That service is the least drop-in by nature, and that's fine.
 
 FaultLine is organized into **6 modular component libraries** that can be used independently:
 
-#### fl_log.lib - Logging System (No Dependencies)
+#### fl_log.lib - Logging System (Platform provider depends on the file service)
 - Public API: `include/faultline/fl_log_service.h` (contract), `include/faultline/fl_log.h` (unified `LOG_*` selector)
 - Implementation: `src/flp_log_service.c` (platform provider), `src/fla_log_service.c` (consumer accessor)
 - Features: Service-based logging with configurable levels and backends, selected per translation unit by `FL_PLATFORM_BUILD`
+- Dependency: the platform provider opens path-based log output through the file service (`flp_file_open`/`flp_file_write`/`flp_file_close`, `FL_FILE_APPEND` mode) for its atomic-append and fault-injection-testability guarantees; stdout output stays raw stdio, since the file service has no notion of it. The consumer accessor has no dependencies.
 - Build script: `build/cmd/log_service.cmd`
 
 #### fl_math.lib - Math Utilities (No Dependencies)
@@ -186,6 +187,7 @@ fl_math.lib (no dependencies)
 - Shared API: `include/faultline/fl_log_service.h` - Service interface (`FLLogService` struct with write function pointer)
 - Unified macros: `include/faultline/fl_log.h` - the **single definition site** for `LOG_*`; selects `flp_write_log` or `g_fla_log_service.write` by `FL_PLATFORM_BUILD`
 - Platform provider: `include/flp_log_service.h`, `src/flp_log_service.c` · Consumer accessor: `include/faultline/fla_log_service.h`, `src/fla_log_service.c`
+- `flp_log_set_output_path` opens its target through the file service (`flp_file_open` in `FL_FILE_APPEND` mode) instead of `fopen_s` directly, so every write is one atomic append (`flp_file_write`) rather than several streamed `fprintf` calls, and the write path is exercisable by FaultLine's own fault injection. `flp_log_set_output` (stdout / a caller-supplied `FILE*`) stays raw stdio — the file service has no notion of it.
 
 **Public vs Private Headers**:
 - **Public headers**: In `include/` subdirectories (log/, math/, memory/, collections/, timer/, faultline/)

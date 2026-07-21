@@ -88,10 +88,22 @@ ECHO.
 ECHO ============================================================
 ECHO  log_service
 ECHO ============================================================
+CALL "%DIR_CMDS%\memory_service_dist.cmd" > NUL
+IF ERRORLEVEL 1 ( ECHO   [dist]    FAILED & SET /A FAILS+=1 & GOTO :after_log )
+CALL "%DIR_CMDS%\file_service_dist.cmd" > NUL
+IF ERRORLEVEL 1 ( ECHO   [dist]    FAILED & SET /A FAILS+=1 & GOTO :after_log )
 CALL "%DIR_CMDS%\log_service_dist.cmd" > NUL
 IF ERRORLEVEL 1 ( ECHO   [dist]    FAILED & SET /A FAILS+=1 & GOTO :after_log )
 SET INTO=%DIR_SELF%\log_service
-CALL :IMPORT "%DIR_REPO%\dist\log_service" "%INTO%"
+:: log_service declares SVC_DEPENDS=file_service -- needed by flp_log_service.c,
+:: not by the fla_ consumer side this test actually compiles below -- and
+:: file_service itself declares SVC_DEPENDS=memory_service. Both must still be
+:: imported first purely to satisfy fl_import's package-level dependency check.
+CALL :IMPORT "%DIR_REPO%\dist\memory_service" "%INTO%"
+IF ERRORLEVEL 1 ( ECHO   [import]  FAILED & SET /A FAILS+=1 & GOTO :after_log )
+CALL :IMPORT_ADD "%DIR_REPO%\dist\file_service" "%INTO%"
+IF ERRORLEVEL 1 ( ECHO   [import]  FAILED & SET /A FAILS+=1 & GOTO :after_log )
+CALL :IMPORT_ADD "%DIR_REPO%\dist\log_service" "%INTO%"
 IF ERRORLEVEL 1 ( ECHO   [import]  FAILED & SET /A FAILS+=1 & GOTO :after_log )
 SET OBJ=%INTO%\_obj
 IF NOT EXIST "%OBJ%" MD "%OBJ%"

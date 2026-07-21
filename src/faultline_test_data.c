@@ -21,8 +21,10 @@
 #include "faultline_context.c"
 #include "faultline_driver.c"
 #include "fnv/FNV64.c"
+#include "flp_file_service.c" // flp_log_service.c now calls flp_file_open/write/close
 #include "flp_log_service.c"
-#include "flp_timer_service.c" // flp_timer_now/elapsed_seconds for the driver's timing
+#include "flp_memory_service.c" // FL_MALLOC/FL_FREE backing (flp_malloc/flp_free)
+#include "flp_timer_service.c"  // flp_timer_now/elapsed_seconds for the driver's timing
 #include "region.c"
 #include "region_node.c"
 #include "region_os.c"

@@ -2,7 +2,7 @@
  * @file flp_log_service.c
  * @author Douglas Cuthbertson
  * @brief Platform side of the log service implementation
- * @version 0.1
+ * @version 0.2
  * @date 2026-02-09
  *
  * See LICENSE.txt for copyright and licensing information about this file.
@@ -12,13 +12,14 @@
 #include <faultline/fl_threads.h>     // for mtx_destroy, mtx_init, mtx_lock
 #include <faultline/fl_try.h>         // FL_ASSERT_REASON_IMPL indirectly
 #include <faultline/fl_exception_service_assert.h> // FL_ASSERT_NOT_NULL
-#include <flp_log_service.h> // for FLP_INIT_LOG_SERVICE_FN, flp_con...
-#include <stdarg.h>          // for va_end, va_list, va_start
-#include <stdbool.h>         // for false, bool, true
-#include <stdio.h>           // for fprintf, snprintf, NULL, fflush, FILE, stdout
-#include <stdlib.h>          // for abort
-#include <string.h>          // for strrchr, strerror_s, strerror
-#include <time.h>            // for localtime, strftime, time, time_t
+#include <flp_file_service.h> // for flp_file_open/write/close, FLFile, FL_FILE_APPEND
+#include <flp_log_service.h>  // for FLP_INIT_LOG_SERVICE_FN, flp_con...
+#include <stdarg.h>           // for va_end, va_list, va_start
+#include <stdbool.h>          // for false, bool, true
+#include <stdio.h>            // for fprintf, snprintf, NULL, fflush, FILE, stdout
+#include <stdlib.h>           // for abort
+#include <string.h>           // for strrchr
+#include <time.h>             // for localtime, strftime, time, time_t
 
 #if defined(_WIN32) || defined(WIN32)
 #ifndef WIN32_LEAN_AND_MEAN
@@ -26,16 +27,9 @@
 #endif
 #include <windows.h>           // IWYU pragma: keep - sets target architecture
 #include <processthreadsapi.h> // for GetCurrentThreadId
-
-#define __STDC_WANT_LIB_EXT1__ 1
-#include <corecrt.h> // for errno_t
-#if defined(__clang__) || defined(__GNUC__)
-#include <sec_api/stdio_s.h> // for fopen_s
-#endif
-#else                // POSIX
-#include <errno.h>   // for errno
-#include <pthread.h> // for pthread_self
-#include <stdint.h>  // for uintptr_t
+#else                          // POSIX
+#include <pthread.h>           // for pthread_self
+#include <stdint.h>            // for uintptr_t
 #endif
 
 FL_WRITE_LOG_FN(flp_write_log);
@@ -44,13 +38,22 @@ FL_WRITE_LOG_FN(flp_write_log);
 // Private logger struct
 // ---------------------------------------------------------------------------
 
+// stdout / a caller-supplied FILE* is never owned; a handle opened via the file
+// service always is. Ownership is therefore implied by which kind is active, rather
+// than tracked with a separate flag that could in principle disagree with it.
+typedef enum {
+    FLP_LOG_OUTPUT_STDIO, // stdio_output is valid; never closed by this module
+    FLP_LOG_OUTPUT_FILE,  // file_output is valid; opened and closed by this module
+} FLPLogOutputKind;
+
 typedef struct {
-    bool       close_output;
-    bool       enabled;
-    FLLogLevel max_level;
-    FILE      *output;
-    mtx_t      mutex;
-    bool       initialized;
+    bool             enabled;
+    FLLogLevel       max_level;
+    FLPLogOutputKind output_kind;
+    FILE            *stdio_output; // valid iff output_kind == FLP_LOG_OUTPUT_STDIO
+    FLFile          *file_output;  // valid iff output_kind == FLP_LOG_OUTPUT_FILE
+    mtx_t            mutex;
+    bool             initialized;
 } FLPLogger;
 
 static FLPLogger g_logger;
@@ -66,6 +69,13 @@ static FLLogService g_log_service = {
 // Keep these in sync with enum FLLogLevel in fl_log_service.h
 static char const *level_names[]
     = {"FATAL", "ERROR", "WARN", "INFO", "VERBOSE", "DEBUG", "TRACE"};
+
+// Bounds one formatted record (timestamp + level + thread id + file:line + optional
+// id + message + newline). Every LOG_* call site in this codebase is well under a
+// tenth of this; the headroom costs nothing on a non-recursive, mutex-serialized
+// stack frame, and any finite bound is new relative to the previously-unbounded
+// streamed fprintf output, so the generous choice is the safe one.
+#define FLP_LOG_LINE_MAX 4096
 
 static void format_timestamp(char *buffer, size_t size) {
     time_t     now     = time(NULL);
@@ -93,13 +103,52 @@ static char const *get_filename(char const *path) {
     return last_sep ? last_sep + 1 : path;
 }
 
-#ifdef __STDC_LIB_EXT1__
-static void constraint_handler(char const *restrict msg, void *restrict ptr,
-                               errno_t error) {
-    FL_UNUSED(ptr);
-    fprintf(stderr, "%s: %d\n", msg ? msg : "unknown error", error);
+// Appends formatted text into buf at byte offset pos, clamping so pos never exceeds
+// bufsize-1. vsnprintf's return value is the length that would have been written, which
+// can exceed the space actually available once an earlier piece truncates; using that
+// value unclamped would let "bytes remaining" (bufsize - pos) underflow on the next
+// call. Clamping guarantees buf stays NUL-terminated and pos stays a valid offset after
+// every partial append, so an oversized record truncates cleanly instead of corrupting
+// the offset math.
+static int appendv(char *buf, size_t bufsize, int pos, char const *fmt, va_list args) {
+    if (bufsize == 0) {
+        return 0;
+    }
+    size_t cap = bufsize - 1; // reserve room for vsnprintf's own NUL
+    if (pos < 0 || (size_t)pos >= cap) {
+        return (int)cap; // already full; skip the vsnprintf call entirely
+    }
+
+    int n = vsnprintf(buf + pos, bufsize - (size_t)pos, fmt, args);
+    if (n < 0) {
+        return pos; // encoding error: drop this piece, keep prior content
+    }
+
+    size_t new_pos = (size_t)pos + (size_t)n;
+    return (int)(new_pos > cap ? cap : new_pos);
 }
-#endif
+
+// Variadic convenience wrapper over appendv, for the fixed pieces of a record
+// (prefix, optional id, separators, newline). flp_write_log's own va_list (from its
+// message format/args) is forwarded to appendv directly instead, since a va_list can
+// only be consumed once.
+static int append(char *buf, size_t bufsize, int pos, char const *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    int result = appendv(buf, bufsize, pos, fmt, args);
+    va_end(args);
+    return result;
+}
+
+// Release the currently active output before installing a new one. Only file-service
+// output is owned by the logger (stdout or a caller-supplied FILE* is never closed
+// here). Must be called with g_logger.mutex held.
+static void release_current_output_locked(void) {
+    if (g_logger.output_kind == FLP_LOG_OUTPUT_FILE && g_logger.file_output != NULL) {
+        flp_file_close(g_logger.file_output);
+    }
+    g_logger.file_output = NULL;
+}
 
 // ---------------------------------------------------------------------------
 // Platform lifecycle functions
@@ -118,8 +167,6 @@ void flp_log_init_custom(FLLogLevel level, char const *path) {
         g_logger.enabled   = true;
         g_logger.max_level = level;
         if (path != NULL) {
-            // flp_log_set_output_path owns close_output: it sets the flag only
-            // when the file actually opened, and clears it on the stdout fallback.
             flp_log_set_output_path(path);
         } else {
             flp_log_set_output(stdout);
@@ -135,15 +182,18 @@ void flp_log_init(void) {
 
 void flp_log_cleanup(void) {
     mtx_lock(&g_logger.mutex);
-    if (g_logger.output != NULL) {
-        fflush(g_logger.output);
+
+    if (g_logger.output_kind == FLP_LOG_OUTPUT_STDIO) {
+        if (g_logger.stdio_output != NULL) {
+            fflush(g_logger.stdio_output);
+        }
+    } else if (g_logger.file_output != NULL) {
+        // flp_file_write is a direct synchronous WriteFile with no libc-side
+        // buffering, so there is nothing to flush here -- just release the handle.
+        flp_file_close(g_logger.file_output);
+        g_logger.file_output = NULL;
     }
 
-    if (g_logger.close_output && g_logger.output != NULL) {
-        fclose(g_logger.output);
-        g_logger.output       = NULL;
-        g_logger.close_output = false;
-    }
     mtx_unlock(&g_logger.mutex);
 
     mtx_destroy(&g_logger.mutex);
@@ -156,64 +206,32 @@ void flp_log_set_level(FLLogLevel level) {
 
 void flp_log_set_output(FILE *file) {
     mtx_lock(&g_logger.mutex);
-    // Close the previous handle before replacing it, same as flp_log_set_output_path:
-    // close_output is only ever true for a handle this module opened itself, so this
-    // can't reach stdout/stderr.
-    if (g_logger.close_output && g_logger.output != NULL) {
-        fclose(g_logger.output);
-    }
-    g_logger.output       = file ? file : stdout;
-    g_logger.close_output = false;
+    release_current_output_locked();
+    g_logger.output_kind  = FLP_LOG_OUTPUT_STDIO;
+    g_logger.stdio_output = file ? file : stdout;
     mtx_unlock(&g_logger.mutex);
 }
 
 void flp_log_set_output_path(char const *path) {
     mtx_lock(&g_logger.mutex);
+    release_current_output_locked();
 
-    // Close the previous handle before opening the new one to avoid leaking the old
-    // handle when switching to a different path.
-    if (g_logger.close_output && g_logger.output != NULL) {
-        fclose(g_logger.output);
-        g_logger.output       = NULL;
-        g_logger.close_output = false;
-    }
-
-    FILE *file;
-#ifdef __STDC_LIB_EXT1__
-    constraint_handler_t previous_handler = set_constraint_handler_s(constraint_handler);
-#endif
-#if defined(_WIN32) || defined(WIN32)
-    errno_t error = fopen_s(&file, path, "a+");
-#else
-    int error = 0;
-    file      = fopen(path, "a+");
+    // FL_FILE_APPEND (Win32 FILE_APPEND_DATA) makes every write an atomic write at end
+    // of file, so several writers, including other processes appending to the same path,
+    // interleave whole records instead of the log module needing to implement that
+    // guarantee itself.
+    FLFile *file = flp_file_open(path, FL_FILE_APPEND);
     if (file == NULL) {
-        error = errno;
-    }
-#endif
-    if (error != 0) {
-        char buf[256] = {0};
-#if defined(_WIN32) || defined(WIN32)
-        strerror_s(buf, sizeof buf, error);
-#else
-        // strerror is not thread-safe, but this is a configuration-time call and
-        // the result is copied out immediately.
-        snprintf(buf, sizeof buf, "%s", strerror(error));
-#endif
-        fprintf(stderr, "Error: failed to open %s (error: %s); falling back to stdout\n",
-                path, buf);
-        file = stdout;
-        // stdout is not ours to close; without this, flp_log_cleanup would
-        // fclose(stdout) whenever a stale flag was left set.
-        g_logger.close_output = false;
+        // flp_file_open reports failure as NULL only; the file service's contract
+        // carries no error code, so this message is necessarily less specific than a
+        // fopen_s/errno-based one would be.
+        fprintf(stderr, "Error: failed to open %s; falling back to stdout\n", path);
+        g_logger.output_kind  = FLP_LOG_OUTPUT_STDIO;
+        g_logger.stdio_output = stdout; // stdout is not ours to close
     } else {
-        g_logger.close_output = true;
+        g_logger.output_kind = FLP_LOG_OUTPUT_FILE;
+        g_logger.file_output = file;
     }
-#ifdef __STDC_LIB_EXT1__
-    set_constraint_handler_s(previous_handler);
-#endif
-
-    g_logger.output = file;
 
     mtx_unlock(&g_logger.mutex);
 }
@@ -227,6 +245,13 @@ FL_WRITE_LOG_FN(flp_write_log) {
         return;
     }
 
+    // The lock covers formatting and the single write together, not just the write.
+    // FL_FILE_APPEND only makes the write itself atomic. It says nothing about the
+    // handle's lifetime. If the lock released after formatting and reacquired only
+    // around flp_file_write, a concurrent set_output, set_output_path, or cleanup call
+    // could close g_logger.file_output in the gap, and this thread would then write
+    // through (or close a second time) a handle that is no longer valid. Locking the
+    // whole section prevents that handle swap from occurring mid-write.
     mtx_lock(&g_logger.mutex);
 
     char timestamp[32];
@@ -236,24 +261,35 @@ FL_WRITE_LOG_FN(flp_write_log) {
 
     char const *filename = get_filename(file);
 
+    char record[FLP_LOG_LINE_MAX];
+    int  pos = 0;
+
     // the longest log-level name is 7 characters ("VERBOSE"), so we align all log-levels
     // with a 7-character width.
-    fprintf(g_logger.output, "[%s] [%-7s] [T:%lu] %s:%3d", timestamp, level_names[level],
-            tid, filename, line);
+    pos = append(record, sizeof record, pos, "[%s] [%-7s] [T:%lu] %s:%3d", timestamp,
+                 level_names[level], tid, filename, line);
 
     if (id && id[0] != '\0') {
-        fprintf(g_logger.output, " [%s]", id);
+        pos = append(record, sizeof record, pos, " [%s]", id);
     }
 
-    fprintf(g_logger.output, " ");
+    pos = append(record, sizeof record, pos, " ");
 
     va_list args;
     va_start(args, format);
-    vfprintf(g_logger.output, format, args);
+    pos = appendv(record, sizeof record, pos, format, args);
     va_end(args);
 
-    fprintf(g_logger.output, "\n");
-    fflush(g_logger.output);
+    pos = append(record, sizeof record, pos, "\n");
+
+    size_t len = (size_t)pos;
+    if (g_logger.output_kind == FLP_LOG_OUTPUT_FILE) {
+        flp_file_write(g_logger.file_output, record, len,
+                       0); // offset ignored (append mode)
+    } else if (g_logger.stdio_output != NULL) {
+        fwrite(record, 1, len, g_logger.stdio_output);
+        fflush(g_logger.stdio_output);
+    }
 
     mtx_unlock(&g_logger.mutex);
 }

@@ -2,14 +2,17 @@
  * @file fl_log_service_tests.c
  * @author Douglas Cuthbertson
  * @brief Test suite for the log service implementation.
- * @version 0.1
+ * @version 0.2
  * @date 2026-02-11
  *
  * See LICENSE.txt for copyright and licensing information about this file.
  *
  * This test suite verifies the platform-side log service (flp_log_service.c)
  * covering lifecycle, level filtering, output routing, output format,
- * static helpers, service plumbing, and thread safety.
+ * static helpers, service plumbing, and thread safety. Path-based output now
+ * routes through the file service (flp_file_service.c), so this suite also pulls
+ * in its memory-service backing (FL_MALLOC/FL_FREE), mirroring the same unity
+ * include pattern flp_file_service_tests.c uses.
  *
  * The driver injects an FLExceptionService via fla_set_exception_service().
  * FL_ASSERT macros throw exceptions caught by but_driver.exe.
@@ -23,6 +26,8 @@
 
 #include "fl_exception_service.c"  // exception reason constants
 #include "fla_exception_service.c" // TLS exception service (app-side)
+#include "fla_memory_service.c"    // g_fla_memory_service (FL_MALLOC backing)
+#include "flp_file_service.c"      // flp_log_service.c's file-backed output path
 #include "flp_log_service.c"       // code under test (platform log service)
 #include "fla_log_service.c"       // code under test (application log service)
 
@@ -165,7 +170,7 @@ FL_TEST("Init Custom With Path", init_custom_with_path) {
 
     // init_custom with a non-NULL path opens the file itself and takes ownership.
     flp_log_init_custom(LOG_LEVEL_TRACE, path);
-    FL_ASSERT_TRUE(g_logger.close_output);
+    FL_ASSERT_TRUE(g_logger.output_kind == FLP_LOG_OUTPUT_FILE);
     FL_ASSERT_EQ_INT((int)g_logger.max_level, (int)LOG_LEVEL_TRACE);
 
     flp_write_log(LOG_LEVEL_INFO, __FILE__, __LINE__, "test", "custom path msg");
@@ -177,8 +182,8 @@ FL_TEST("Init Custom With Path", init_custom_with_path) {
 FL_TEST("Init Custom Null Path Stdout", init_custom_null_path_stdout) {
     // A NULL path routes to stdout (unowned) and honors the requested level.
     flp_log_init_custom(LOG_LEVEL_WARN, NULL);
-    FL_ASSERT_EQ_PTR((void *)g_logger.output, (void *)stdout);
-    FL_ASSERT_FALSE(g_logger.close_output);
+    FL_ASSERT_TRUE(g_logger.output_kind == FLP_LOG_OUTPUT_STDIO);
+    FL_ASSERT_EQ_PTR((void *)g_logger.stdio_output, (void *)stdout);
     FL_ASSERT_EQ_INT((int)g_logger.max_level, (int)LOG_LEVEL_WARN);
     flp_log_cleanup();
 }
@@ -250,8 +255,8 @@ FL_TEST("Level Boundary", level_boundary) {
 FL_TEST("Set Output NULL Defaults Stdout", set_output_null_defaults_stdout) {
     flp_log_init();
     flp_log_set_output(NULL);
-    FL_ASSERT_EQ_PTR((void *)g_logger.output, (void *)stdout);
-    FL_ASSERT_FALSE(g_logger.close_output);
+    FL_ASSERT_TRUE(g_logger.output_kind == FLP_LOG_OUTPUT_STDIO);
+    FL_ASSERT_EQ_PTR((void *)g_logger.stdio_output, (void *)stdout);
     flp_log_cleanup();
 }
 
@@ -317,8 +322,8 @@ FL_TEST("Set Output Path Invalid Fallback", set_output_path_invalid_fallback) {
     int saved = suppress_stderr();
     flp_log_set_output_path("X:\\no_such_dir_abc123\\no_such_file.log");
     restore_stderr(saved);
-    FL_ASSERT_EQ_PTR((void *)g_logger.output, (void *)stdout);
-    FL_ASSERT_FALSE(g_logger.close_output);
+    FL_ASSERT_TRUE(g_logger.output_kind == FLP_LOG_OUTPUT_STDIO);
+    FL_ASSERT_EQ_PTR((void *)g_logger.stdio_output, (void *)stdout);
     flp_log_cleanup();
 }
 
