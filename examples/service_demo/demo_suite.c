@@ -17,7 +17,7 @@
  * The driver injects all three services after LoadLibrary() via the exported
  * fla_set_* entry points (declared FL_DECL_SPEC -> dllexport under DLL_BUILD),
  * then calls the demo_* workers below. None of the allocator, logger, or
- * exception machinery is compiled into this DLL — it is all borrowed from the
+ * exception machinery is compiled into this DLL. It is all borrowed from the
  * driver at run time. That is the whole point of the demo.
  */
 

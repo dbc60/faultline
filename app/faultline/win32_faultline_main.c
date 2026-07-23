@@ -24,6 +24,7 @@
  * Platform services assembled here and where they come from:
  *   - flp_timer_service.c  : flp_timer_now / flp_timer_elapsed_seconds
  *   - flp_file_service.c   : flp_file_open / read / write / close
+ *   - flp_stream_service.c : flp_stream_open / write / close / console
  *   - flp_module_service.c : flp_load_module / flp_resolve_symbol /
  *                            flp_unload_module / flp_inject_services /
  *                            flp_module_service_init
@@ -36,15 +37,16 @@
 #include <faultline/fl_context.h>     // (FaultInjector forward use)
 
 // Platform service interfaces + implementations (defined earlier in the unity TU)
-#include <faultline/fl_exception_service.h>     // FLExceptionService
-#include <faultline/fl_file_service.h>          // FLFileService
-#include <faultline/fl_log_service.h>           // FLLogService, FLLogLevel
+#include <faultline/fl_exception_service.h> // FLExceptionService
+#include <faultline/fl_file_service.h>      // FLFileService
+#include <faultline/fl_log_service.h>       // FLLogService, FLLogLevel
+#include <faultline/fl_stream_service.h>    // FLStreamService
 
 // The core lib's embedded consumer accessors (built with FL_EMBEDDED, so plain
 // functions): the host installs log + exception into them before the first core
 // call. This TU must also compile with /DFL_EMBEDDED so these declarations match.
-#include <faultline/fla_exception_service.h> // fla_set_exception_service
-#include <faultline/fla_log_service.h>       // fla_set_log_service
+#include <faultline/fla_exception_service.h>    // fla_set_exception_service
+#include <faultline/fla_log_service.h>          // fla_set_log_service
 #include <faultline/fl_macros.h>                // FL_UNUSED
 #include <faultline/fl_memory_service.h>        // FLMemoryService
 #include <faultline/fl_timer_service.h>         // FLTimerService
@@ -55,6 +57,7 @@
 #include <flp_memory_service.h> // flp_init_memory_service, flp_malloc, ...
 #include <flp_timer_service.h>  // flp_timer_now, flp_timer_elapsed_seconds
 #include <flp_file_service.h>   // flp_file_open, flp_file_read, flp_file_write, ...
+#include <flp_stream_service.h> // flp_stream_open, flp_stream_write, flp_stream_close, ...
 #include <flp_module_service.h> // flp_load_module, flp_inject_services, ...
 #include <faultline/fl_try.h>   // FL_TRY/FL_CATCH_ALL (selects flp_ backstop)
 #include <faultline/fl_log.h>   // LOG_* (selects flp_ backend via FL_PLATFORM_BUILD)
@@ -130,6 +133,12 @@ int main(int argc, char **argv) {
         .write = flp_file_write,
         .close = flp_file_close,
     };
+    FLStreamService stream = {
+        .open    = flp_stream_open,
+        .write   = flp_stream_write,
+        .close   = flp_stream_close,
+        .console = flp_stream_console,
+    };
 
     FLPlatformAPI platform = {
         .memory    = &plain_memory,
@@ -137,6 +146,7 @@ int main(int argc, char **argv) {
         .exception = &exception,
         .timer     = &timer,
         .file      = &file,
+        .stream    = &stream,
         .arena     = arena,
         .injector  = injector,
 
@@ -154,7 +164,7 @@ int main(int argc, char **argv) {
     // service.h). This flp_ FL_TRY establishes it; the core's fla_ FL_TRY nests
     // on the same platform stack (after install, g_fla_*.push_env == flp_push),
     // so an uncaught throw from the core or a suite rethrows up to here.
-    volatile int exit_code = 0;
+    int volatile exit_code = 0;
     FL_TRY {
         exit_code = faultline_app_main(&platform, argc, argv);
     }

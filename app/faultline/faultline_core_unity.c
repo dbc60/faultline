@@ -55,6 +55,7 @@
 #include "fla_log_service.c"
 #include "fla_timer_service.c"
 #include "fla_file_service.c"
+#include "fla_stream_service.c"
 
 /* -- Test driver ------------------------------------------------------------ */
 #include "fault_injector.c"

@@ -21,14 +21,15 @@ extern "C" {
 
 // An opaque handle provided by the platform and used by the core implementation. A given
 // instance belongs to whichever service opened it: a handle opened by the synchronous
-// service is not interchangeable with one opened by the asynchronous service (on Windows
-// the async-capability is fixed at open by FILE_FLAG_OVERLAPPED).
+// file service is not interchangeable with one opened by the asynchronous file service
+// (on Windows the async-capability is fixed at open by FILE_FLAG_OVERLAPPED) or by the
+// stream service (fl_stream_service.h), which reuses this same FLFile type for its own,
+// differently-represented handles (see flp_stream_service.c).
 typedef struct FLFile FLFile;
 
 typedef enum {
-    FL_FILE_READ,   // open existing for reading
-    FL_FILE_WRITE,  // create/truncate for writing
-    FL_FILE_APPEND, // create-or-append; every write lands at end of file
+    FL_FILE_READ,  // open existing for reading
+    FL_FILE_WRITE, // create/truncate for writing
 } FLFileMode;
 
 #if defined(__cplusplus)

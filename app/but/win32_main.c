@@ -31,6 +31,7 @@
 #include "flp_memory_service.c"
 #include "flp_fault_memory_service.c"
 #include "flp_file_service.c"
+#include "flp_stream_service.c"
 #include "fnv/FNV64.c"
 #include "region.c"
 #include "region_node.c"
@@ -228,6 +229,14 @@ int main(int argc, char **argv) {
             // the file service is optional
             if (fla_set_file_service != NULL) {
                 flp_init_file_service(fla_set_file_service);
+            }
+
+            fla_set_stream_service_fn *fla_set_stream_service
+                = (fla_set_stream_service_fn *)
+                    GetProcAddress(test_suite, FLA_SET_STREAM_SERVICE_STR);
+            // the stream service is optional
+            if (fla_set_stream_service != NULL) {
+                flp_init_stream_service(fla_set_stream_service);
             }
 
             fl_get_test_suite

@@ -6,14 +6,14 @@ SETLOCAL ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 :: Build and run the platform/application service-split demo.
 ::
 :: This is an end-to-end demonstration that the simplified package set composes:
-::   1. produce the memory_service, file_service, log_service, and exception_service
-::      packages (log_service depends on file_service for path-based output)
+::   1. produce the memory_service, stream_service, log_service, and exception_service
+::      packages (log_service depends on stream_service for append/console output)
 ::   2. import all four into one unified tree (fl_import refcounts shared files)
 ::   3. build demo_suite.dll  (application side; the fla_ service shims)
 ::   4. build demo_driver.exe (platform side; the flp_ service implementations)
 ::   5. run the driver, which loads the DLL and injects the three application-facing
 ::      services (memory, log, exception); the demo never opens a log file by path,
-::      so file_service is only needed to satisfy flp_log_service.c's link-time
+::      so stream_service is only needed to satisfy flp_log_service.c's link-time
 ::      dependency, and the driver does not inject it into the DLL
 ::
 :: The fla_ and flp_ exception sources cannot live in one binary (both define
@@ -77,8 +77,8 @@ IF %build% NEQ 1 (
 ECHO Producing packages...
 CALL "%DIR_CMD%\memory_service_dist.cmd" > NUL
 IF ERRORLEVEL 1 ( ECHO   [dist] memory_service FAILED & GOTO :FAIL )
-CALL "%DIR_CMD%\file_service_dist.cmd" > NUL
-IF ERRORLEVEL 1 ( ECHO   [dist] file_service FAILED & GOTO :FAIL )
+CALL "%DIR_CMD%\stream_service_dist.cmd" > NUL
+IF ERRORLEVEL 1 ( ECHO   [dist] stream_service FAILED & GOTO :FAIL )
 CALL "%DIR_CMD%\log_service_dist.cmd" > NUL
 IF ERRORLEVEL 1 ( ECHO   [dist] log_service FAILED & GOTO :FAIL )
 CALL "%DIR_CMD%\exception_service_dist.cmd" > NUL
@@ -92,8 +92,8 @@ ECHO Importing packages into %TREE% ...
 SET FL_IMPORT=%DIR_REPO%\build\dist\fl_import.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File "%FL_IMPORT%" -From "%DIR_REPO%\dist\memory_service" -Into "%TREE%"
 IF ERRORLEVEL 1 ( ECHO   [import] memory_service FAILED & GOTO :FAIL )
-powershell -NoProfile -ExecutionPolicy Bypass -File "%FL_IMPORT%" -From "%DIR_REPO%\dist\file_service" -Into "%TREE%"
-IF ERRORLEVEL 1 ( ECHO   [import] file_service FAILED & GOTO :FAIL )
+powershell -NoProfile -ExecutionPolicy Bypass -File "%FL_IMPORT%" -From "%DIR_REPO%\dist\stream_service" -Into "%TREE%"
+IF ERRORLEVEL 1 ( ECHO   [import] stream_service FAILED & GOTO :FAIL )
 powershell -NoProfile -ExecutionPolicy Bypass -File "%FL_IMPORT%" -From "%DIR_REPO%\dist\log_service" -Into "%TREE%"
 IF ERRORLEVEL 1 ( ECHO   [import] log_service FAILED & GOTO :FAIL )
 powershell -NoProfile -ExecutionPolicy Bypass -File "%FL_IMPORT%" -From "%DIR_REPO%\dist\exception_service" -Into "%TREE%"
@@ -144,7 +144,7 @@ cl %CommonCompilerFlagsFinal% /experimental:c11atomics /DFL_PLATFORM_BUILD /DFL_
     "%TREE%\src\region_os.c" ^
     "%TREE%\src\lock_os.c" ^
     "%TREE%\src\flp_memory_service.c" ^
-    "%TREE%\src\flp_file_service.c" ^
+    "%TREE%\src\flp_stream_service.c" ^
     "%HERE%\demo_driver.c" ^
     /Fo:"%OBJ_EXE%\\" /Fd:"%BIN%\demo_driver.pdb" /Fe:"%BIN%\demo_driver.exe" ^
     /link %CommonLinkerFlagsFinal% /ENTRY:mainCRTStartup > "%CL_LOG%" 2>&1

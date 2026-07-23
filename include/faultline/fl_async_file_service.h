@@ -26,7 +26,7 @@
  *   - Op ownership: a returned FLFileOp is owned by the caller and must be handed
  *     to release once its result has been retrieved.
  *   - Short count: a byte count smaller than requested still signals EOF or error,
- *     and is where the platform can inject completion-time I/O faults — the same
+ *     and is where the platform can inject completion-time I/O faults. It is the same
  *     convention the synchronous read/write use.
  */
 

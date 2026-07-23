@@ -71,7 +71,7 @@ MD "%DIR_DIST%\src"
 MD "%DIR_DIST%\include\faultline"
 
 :: -----------------------------------------------------------------------
-:: C source files — arena
+:: C source files: arena
 :: -----------------------------------------------------------------------
 ECHO Copying arena source files...
 COPY /Y "%DIR_SRC%\arena.c"                    "%DIR_DIST%\src\" > NUL
@@ -88,24 +88,24 @@ COPY /Y "%DIR_SRC%\win32_lock.c"               "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SRC%\generic_lock.c"             "%DIR_DIST%\src\" > NUL
 
 :: -----------------------------------------------------------------------
-:: C source files — support services (exception + log + threads)
+:: C source files: support services (exception + log + threads)
 :: -----------------------------------------------------------------------
 ECHO Copying support service source files...
 COPY /Y "%DIR_SRC%\fl_exception_service.c"     "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SRC%\flp_exception_service.c"    "%DIR_DIST%\src\" > NUL
-COPY /Y "%DIR_SRC%\flp_file_service.c"         "%DIR_DIST%\src\" > NUL
+COPY /Y "%DIR_SRC%\flp_stream_service.c"       "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SRC%\flp_log_service.c"          "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SRC%\fl_threads.c"               "%DIR_DIST%\src\" > NUL
 
 :: -----------------------------------------------------------------------
-:: C source files — memory service (both sides, arena-only)
+:: C source files: memory service (both sides, arena-only)
 :: -----------------------------------------------------------------------
 ECHO Copying memory service source files...
 COPY /Y "%DIR_SRC%\fla_memory_service.c"       "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SRC%\flp_memory_service.c"       "%DIR_DIST%\src\" > NUL
 
 :: -----------------------------------------------------------------------
-:: Private headers — arena (needed to compile the sources; not public API)
+:: Private headers: arena (needed to compile the sources; not public API)
 :: -----------------------------------------------------------------------
 ECHO Copying arena private headers...
 COPY /Y "%DIR_SRC%\arena_internal.h"           "%DIR_DIST%\src\" > NUL
@@ -127,13 +127,13 @@ COPY /Y "%DIR_SRC%\fl_lock.h"                  "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SRC%\win32_platform.h"           "%DIR_DIST%\src\" > NUL
 
 :: -----------------------------------------------------------------------
-:: Public headers — memory service context
+:: Public headers: memory service context
 :: -----------------------------------------------------------------------
 ECHO Copying memory service context headers...
 COPY /Y "%DIR_INC%\flp_memory_context.h"            "%DIR_DIST%\include\faultline\" > NUL
 
 :: -----------------------------------------------------------------------
-:: Public headers from include\faultline\ — arena + exception + log
+:: Public headers from include\faultline\: arena + exception + log
 :: -----------------------------------------------------------------------
 ECHO Copying arena/exception/log public headers...
 COPY /Y "%DIR_INC%\arena.h"                         "%DIR_DIST%\include\faultline\" > NUL
@@ -144,7 +144,7 @@ COPY /Y "%DIR_INC%\fl_abbreviated_types.h"          "%DIR_DIST%\include\faultlin
 COPY /Y "%DIR_INC%\fl_exception_service.h"          "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\fl_exception_service_assert.h"   "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\fl_exception_types.h"            "%DIR_DIST%\include\faultline\" > NUL
-COPY /Y "%DIR_INC%\fl_file_service.h"               "%DIR_DIST%\include\faultline\" > NUL
+COPY /Y "%DIR_INC%\fl_stream_service.h"             "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\fl_file_types.h"                 "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\fl_log.h"                        "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\fl_log_service.h"                "%DIR_DIST%\include\faultline\" > NUL
@@ -154,7 +154,7 @@ COPY /Y "%DIR_INC%\fl_try.h"                        "%DIR_DIST%\include\faultlin
 COPY /Y "%DIR_INC%\size.h"                          "%DIR_DIST%\include\faultline\" > NUL
 
 :: -----------------------------------------------------------------------
-:: Public headers from include\faultline\ — memory service
+:: Public headers from include\faultline\: memory service
 :: -----------------------------------------------------------------------
 ECHO Copying memory service public headers...
 COPY /Y "%DIR_INC%\fl_memory.h"                     "%DIR_DIST%\include\faultline\" > NUL
@@ -167,7 +167,7 @@ COPY /Y "%DIR_INC%\fla_memory_service.h"            "%DIR_DIST%\include\faultlin
 ECHO Copying top-level public headers...
 COPY /Y "%DIR_REPO%\include\flp_memory_service.h"   "%DIR_DIST%\include\" > NUL
 COPY /Y "%DIR_REPO%\include\flp_exception_service.h" "%DIR_DIST%\include\" > NUL
-COPY /Y "%DIR_REPO%\include\flp_file_service.h"     "%DIR_DIST%\include\" > NUL
+COPY /Y "%DIR_REPO%\include\flp_stream_service.h"   "%DIR_DIST%\include\" > NUL
 COPY /Y "%DIR_REPO%\include\flp_log_service.h"      "%DIR_DIST%\include\" > NUL
 
 :: -----------------------------------------------------------------------

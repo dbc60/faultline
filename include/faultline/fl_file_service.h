@@ -32,17 +32,18 @@ extern "C" {
 // platform can inject I/O faults). Sequential streaming is a thin cursor over this
 // primitive, built by the consumer rather than carried in the contract.
 //
-// Exception: a handle opened with FL_FILE_APPEND ignores the write offset and
-// appends every write atomically at end of file (Windows FILE_APPEND_DATA
-// semantics), so several writers can interleave whole records. Positional writes
-// require an FL_FILE_WRITE handle.
+// Append-only writes and non-positional console output are provided by a separate stream
+// service (fl_stream_service.h), not this one. Neither target has a meaningful byte
+// offset, so this service's positional contract does not fit them.
 #define FL_FILE_OPEN_FN(name) FLFile *name(char const *path, FLFileMode mode)
 typedef FL_FILE_OPEN_FN(fl_file_open_fn);
 
-#define FL_FILE_READ_FN(name) size_t name(FLFile *f, void *buf, size_t bytes, uint64_t offset)
+#define FL_FILE_READ_FN(name) \
+    size_t name(FLFile *f, void *buf, size_t bytes, uint64_t offset)
 typedef FL_FILE_READ_FN(fl_file_read_fn);
 
-#define FL_FILE_WRITE_FN(name) size_t name(FLFile *f, void const *buf, size_t bytes, uint64_t offset)
+#define FL_FILE_WRITE_FN(name) \
+    size_t name(FLFile *f, void const *buf, size_t bytes, uint64_t offset)
 typedef FL_FILE_WRITE_FN(fl_file_write_fn);
 
 #define FL_FILE_CLOSE_FN(name) void name(FLFile *f)

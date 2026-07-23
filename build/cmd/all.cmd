@@ -161,6 +161,11 @@ if errorlevel 1 (
     GOTO :ERROR
 )
 
+call %DIR_CMD%\stream_service.cmd !args!
+if errorlevel 1 (
+    GOTO :ERROR
+)
+
 IF NOT EXIST test MD test
 copy /y %DIR_OUT_BIN%\*.exe test\ > NUL
 copy /y %DIR_OUT_BIN%\*.dll test\ > NUL
@@ -201,15 +206,17 @@ if %test% EQU 1 (
         faultline_tests.dll ^
         malloc_cleanup_config_tests.dll ^
         flp_memory_service_tests.dll ^
-        flp_file_service_tests.dll
-    .\faultline.exe show results --limit 23
+        flp_file_service_tests.dll ^
+        flp_stream_service_tests.dll
+    .\faultline.exe show results --limit 24
     REM Split-architecture smoke: the same suites driven through the split host.
     REM Its log goes to faultline.log; the results table shows the runs.
     .\win32_faultline.exe run ^
         faultline_tests.dll ^
         flp_file_service_tests.dll ^
+        flp_stream_service_tests.dll ^
         timer_tests.dll
-    .\win32_faultline.exe show results --limit 3
+    .\win32_faultline.exe show results --limit 4
     popd
 )
 GOTO :SUCCESS

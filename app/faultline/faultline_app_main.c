@@ -25,6 +25,7 @@
 #include <faultline/fla_log_service.h>       // fla_set_log_service
 #include <faultline/fla_timer_service.h>     // fla_set_timer_service
 #include <faultline/fla_file_service.h>      // fla_set_file_service
+#include <faultline/fla_stream_service.h>    // fla_set_stream_service
 #include <faultline/fl_try.h>                // FL_TRY/FL_CATCH (selects fla_ backend)
 
 #include <faultline/fl_context.h>     // FLContext, faultline_initialize
@@ -48,6 +49,7 @@ FL_APP_MAIN(faultline_app_main) {
     fla_set_log_service(platform->log, sizeof *platform->log);
     fla_set_timer_service(platform->timer, sizeof *platform->timer);
     fla_set_file_service(platform->file, sizeof *platform->file);
+    fla_set_stream_service(platform->stream, sizeof *platform->stream);
 
     FLContext fctx         = {0};
     sqlite3  *db           = NULL;

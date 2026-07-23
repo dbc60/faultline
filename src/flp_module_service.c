@@ -21,11 +21,13 @@
 #include <faultline/fl_log.h>               // LOG_ERROR (flp backend: FL_PLATFORM_BUILD)
 #include <faultline/fl_log_service.h>       // fla_set_log_service_fn
 #include <faultline/fl_memory_service.h>    // fla_set_memory_service_fn
+#include <faultline/fl_stream_service.h>    // fla_set_stream_service_fn
 #include <faultline/fl_timer_service.h>     // fla_set_timer_service_fn
 #include <flp_exception_service.h>          // flp_init_exception_service
 #include <flp_file_service.h>               // flp_init_file_service
 #include <flp_log_service.h>                // flp_init_log_service
 #include <flp_memory_service.h> // flp_init_fault_memory_service, FLFaultMemoryContext
+#include <flp_stream_service.h> // flp_init_stream_service
 #include <flp_timer_service.h>  // flp_init_timer_service
 
 #include <stdbool.h> // false, true
@@ -126,6 +128,13 @@ FL_INJECT_SERVICES_FN(flp_inject_services) {
         = (fla_set_file_service_fn *)GetProcAddress(m, FLA_SET_FILE_SERVICE_STR);
     if (fla_set_file != NULL) {
         flp_init_file_service(fla_set_file);
+    }
+
+    // Stream service (optional)
+    fla_set_stream_service_fn *fla_set_stream
+        = (fla_set_stream_service_fn *)GetProcAddress(m, FLA_SET_STREAM_SERVICE_STR);
+    if (fla_set_stream != NULL) {
+        flp_init_stream_service(fla_set_stream);
     }
 
     return true;

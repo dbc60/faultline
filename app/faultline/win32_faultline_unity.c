@@ -39,6 +39,7 @@
 #include "flp_fault_memory_service.c"
 #include "flp_timer_service.c"  /* wraps QueryPerformanceCounter          */
 #include "flp_file_service.c"   /* wraps CreateFileW/ReadFile/WriteFile   */
+#include "flp_stream_service.c" /* wraps append-file + console I/O        */
 #include "flp_module_service.c" /* LoadLibrary/GetProcAddress + injection */
 
 /* -- Platform host entry point (thin) -----------------------------------------

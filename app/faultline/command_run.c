@@ -28,11 +28,13 @@
 #include <faultline/fl_memory_service.h> // fla_set_memory_service_fn, FLA_SET_MEMORY_SERVICE_STR
 #include <faultline/fl_timer_service.h> // fla_set_timer_service_fn, FLA_SET_TIMER_SERVICE_STR
 #include <faultline/fl_file_service.h> // fla_set_file_service_fn, FLA_SET_FILE_SERVICE_STR
-#include <flp_exception_service.h>     // flp_init_exception_service
-#include <flp_log_service.h>           // flp_init_log_service
-#include <flp_memory_service.h>        // flp_init_fault_memory_service
-#include <flp_timer_service.h>         // flp_init_timer_service
-#include <flp_file_service.h>          // flp_init_file_service
+#include <faultline/fl_stream_service.h> // fla_set_stream_service_fn, FLA_SET_STREAM_SERVICE_STR
+#include <flp_exception_service.h> // flp_init_exception_service
+#include <flp_log_service.h>       // flp_init_log_service
+#include <flp_memory_service.h>    // flp_init_fault_memory_service
+#include <flp_timer_service.h>     // flp_init_timer_service
+#include <flp_file_service.h>      // flp_init_file_service
+#include <flp_stream_service.h>    // flp_init_stream_service
 
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
@@ -360,6 +362,13 @@ static bool suite_inject(ExecutionContext *ectx, SuiteHandle suite) {
         = (fla_set_file_service_fn *)GetProcAddress(suite, FLA_SET_FILE_SERVICE_STR);
     if (fla_set_file != NULL) {
         flp_init_file_service(fla_set_file);
+    }
+
+    // Stream service (optional)
+    fla_set_stream_service_fn *fla_set_stream
+        = (fla_set_stream_service_fn *)GetProcAddress(suite, FLA_SET_STREAM_SERVICE_STR);
+    if (fla_set_stream != NULL) {
+        flp_init_stream_service(fla_set_stream);
     }
 
     return true;

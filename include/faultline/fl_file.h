@@ -12,9 +12,9 @@
  * call-site names never carry a platform/consumer prefix: the side is fixed per TU by
  * the build, not per call.
  *
- * read/write are positional -- each names the byte offset to act on -- so these
- * macros mirror the FLFileService signatures exactly. An FL_FILE_APPEND handle
- * ignores the write offset and appends at end of file (see fl_file_service.h).
+ * read/write are positional -- each names the byte offset to act on -- so these macros
+ * mirror the FLFileService signatures exactly. Append-only writes and console output are
+ * provided by a separate stream service (fl_stream.h), not this one.
  */
 #include <faultline/fl_file_service.h> // FLFile, FLFileMode
 

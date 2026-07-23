@@ -8,13 +8,12 @@
  * Compiled WITH FL_PLATFORM_BUILD (so fl_try.h/fl_log.h select the self-contained
  * platform service macros) and FL_EMBEDDED. This binary owns the arena and the
  * platform implementations of all three services. It loads demo_suite.dll,
- * injects each service via the DLL's exported fla_set_* entry points — exactly
- * as the real FaultLine driver does in app/faultline/command_run.c — then calls
+ * injects each service via the DLL's exported fla_set_* entry points then calls
  * the DLL's worker exports.
  *
  * Build inputs (from the unified imported tree): the flp_/fl_ sources of the
  * memory_service, log, and exception (exception_service) packages. The fla_
- * sources are deliberately NOT compiled here — they belong to the DLL, and
+ * sources are deliberately NOT compiled here. They belong to the DLL, and
  * fla_/flp_ exception sources cannot coexist in one binary.
  */
 #include <faultline/arena.h>              // Arena, new_arena
@@ -107,7 +106,7 @@ int main(int argc, char **argv) {
     }
     // The reason was thrown in the DLL, where fl_invalid_value lives at a
     // different address than the driver's copy (each module links its own
-    // fl_exception_service.c). Match by string, not pointer — see FL_CATCH_STR.
+    // fl_exception_service.c). Match by string, not pointer. See FL_CATCH_STR.
     FL_CATCH_STR(fl_invalid_value) {
         LOG_INFO(module, "driver caught exception propagated from the DLL: %s",
                  FL_REASON);

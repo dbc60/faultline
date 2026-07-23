@@ -48,7 +48,7 @@ MD "%DIR_SELF%"
 SET FAILS=0
 
 :: =======================================================================
-::  exception_service  — single-binary platform exception service (FL_PLATFORM_BUILD)
+::  exception_service: single-binary platform exception service (FL_PLATFORM_BUILD)
 ::
 ::  The exception_service package ships fl_ + fla_ + flp_. A standalone binary
 ::  acts as the platform: build /DFL_PLATFORM_BUILD (so fl_try.h selects the
@@ -82,7 +82,7 @@ ECHO   [ok]
 :after_exc
 
 :: =======================================================================
-::  log_service  — application-side service test (unity-includes fla_log_service.c)
+::  log_service: application-side service test (unity-includes fla_log_service.c)
 :: =======================================================================
 ECHO.
 ECHO ============================================================
@@ -90,18 +90,18 @@ ECHO  log_service
 ECHO ============================================================
 CALL "%DIR_CMDS%\memory_service_dist.cmd" > NUL
 IF ERRORLEVEL 1 ( ECHO   [dist]    FAILED & SET /A FAILS+=1 & GOTO :after_log )
-CALL "%DIR_CMDS%\file_service_dist.cmd" > NUL
+CALL "%DIR_CMDS%\stream_service_dist.cmd" > NUL
 IF ERRORLEVEL 1 ( ECHO   [dist]    FAILED & SET /A FAILS+=1 & GOTO :after_log )
 CALL "%DIR_CMDS%\log_service_dist.cmd" > NUL
 IF ERRORLEVEL 1 ( ECHO   [dist]    FAILED & SET /A FAILS+=1 & GOTO :after_log )
 SET INTO=%DIR_SELF%\log_service
-:: log_service declares SVC_DEPENDS=file_service -- needed by flp_log_service.c,
+:: log_service declares SVC_DEPENDS=stream_service -- needed by flp_log_service.c,
 :: not by the fla_ consumer side this test actually compiles below -- and
-:: file_service itself declares SVC_DEPENDS=memory_service. Both must still be
+:: stream_service itself declares SVC_DEPENDS=memory_service. Both must still be
 :: imported first purely to satisfy fl_import's package-level dependency check.
 CALL :IMPORT "%DIR_REPO%\dist\memory_service" "%INTO%"
 IF ERRORLEVEL 1 ( ECHO   [import]  FAILED & SET /A FAILS+=1 & GOTO :after_log )
-CALL :IMPORT_ADD "%DIR_REPO%\dist\file_service" "%INTO%"
+CALL :IMPORT_ADD "%DIR_REPO%\dist\stream_service" "%INTO%"
 IF ERRORLEVEL 1 ( ECHO   [import]  FAILED & SET /A FAILS+=1 & GOTO :after_log )
 CALL :IMPORT_ADD "%DIR_REPO%\dist\log_service" "%INTO%"
 IF ERRORLEVEL 1 ( ECHO   [import]  FAILED & SET /A FAILS+=1 & GOTO :after_log )
@@ -122,7 +122,7 @@ ECHO   [ok]
 :after_log
 
 :: =======================================================================
-::  memory  — single-binary platform memory-service assembly + fault injection
+::  memory: single-binary platform memory-service assembly + fault injection
 :: =======================================================================
 ECHO.
 ECHO ============================================================
@@ -150,7 +150,7 @@ ECHO   [ok]
 :after_mem
 
 :: =======================================================================
-::  timer_service  — consumer-side injection over its exception_service dependency
+::  timer_service: consumer-side injection over its exception_service dependency
 :: =======================================================================
 ECHO.
 ECHO ============================================================
@@ -188,7 +188,7 @@ ECHO   [ok]
 :after_timer
 
 :: =======================================================================
-::  file_service  — single-binary platform assembly over its memory_service dependency
+::  file_service: single-binary platform assembly over its memory_service dependency
 :: =======================================================================
 ECHO.
 ECHO ============================================================
@@ -220,6 +220,39 @@ IF ERRORLEVEL 1 ( ECHO   [run]     FAILED & SET /A FAILS+=1 & GOTO :after_file )
 ECHO   [ok]
 :after_file
 
+:: =======================================================================
+::  stream_service: single-binary platform assembly over its memory_service dependency
+:: =======================================================================
+ECHO.
+ECHO ============================================================
+ECHO  stream_service
+ECHO ============================================================
+CALL "%DIR_CMDS%\memory_service_dist.cmd" > NUL
+IF ERRORLEVEL 1 ( ECHO   [dist]    FAILED & SET /A FAILS+=1 & GOTO :after_stream )
+CALL "%DIR_CMDS%\stream_service_dist.cmd" > NUL
+IF ERRORLEVEL 1 ( ECHO   [dist]    FAILED & SET /A FAILS+=1 & GOTO :after_stream )
+SET INTO=%DIR_SELF%\stream
+:: stream_service declares SVC_DEPENDS=memory_service: import the dependency
+:: first, then layer the package into the same tree (fl_import checks the dep).
+CALL :IMPORT "%DIR_REPO%\dist\memory_service" "%INTO%"
+IF ERRORLEVEL 1 ( ECHO   [import]  FAILED & SET /A FAILS+=1 & GOTO :after_stream )
+CALL :IMPORT_ADD "%DIR_REPO%\dist\stream_service" "%INTO%"
+IF ERRORLEVEL 1 ( ECHO   [import]  FAILED & SET /A FAILS+=1 & GOTO :after_stream )
+SET OBJ=%INTO%\_obj
+IF NOT EXIST "%OBJ%" MD "%OBJ%"
+CALL :COLLECT_SRCS "%INTO%\src"
+cl %CommonCompilerFlagsFinal% /experimental:c11atomics /wd4456 /DFL_EMBEDDED /DFL_PLATFORM_BUILD ^
+    /I"%INTO%\include" /I"%INTO%\src" ^
+    !SRCS! ^
+    "%HERE%\stream_consumer_test.c" ^
+    /Fo:"%OBJ%\\" /Fd:"%INTO%\stream_consumer.pdb" /Fe:"%INTO%\stream_consumer.exe" ^
+    /link %CommonLinkerFlagsFinal% /ENTRY:mainCRTStartup > "%CL_LOG%" 2>&1
+IF ERRORLEVEL 1 ( ECHO   [compile] FAILED & TYPE "%CL_LOG%" & SET /A FAILS+=1 & GOTO :after_stream )
+"%INTO%\stream_consumer.exe"
+IF ERRORLEVEL 1 ( ECHO   [run]     FAILED & SET /A FAILS+=1 & GOTO :after_stream )
+ECHO   [ok]
+:after_stream
+
 IF EXIST "%CL_LOG%" DEL "%CL_LOG%" 2> NUL
 
 ECHO.
@@ -236,7 +269,7 @@ ENDLOCAL
 EXIT /B 1
 
 :: -----------------------------------------------------------------------
-:: :IMPORT <from-package-dir> <into-tree>  — wipe and import via fl_import.ps1
+:: :IMPORT <from-package-dir> <into-tree>: wipe and import via fl_import.ps1
 :: -----------------------------------------------------------------------
 :IMPORT
 IF EXIST "%~2" RD /S /Q "%~2"
@@ -244,7 +277,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%DIR_DIST%\fl_import.ps1" -
 EXIT /B %ERRORLEVEL%
 
 :: -----------------------------------------------------------------------
-:: :IMPORT_ADD <from-package-dir> <into-tree>  — layer a package into an
+:: :IMPORT_ADD <from-package-dir> <into-tree>: layer a package into an
 :: existing tree WITHOUT wiping, so a dependency imported by :IMPORT survives
 :: (this is how a dependent package lands on top of its dependency).
 :: -----------------------------------------------------------------------
@@ -253,7 +286,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%DIR_DIST%\fl_import.ps1" -
 EXIT /B %ERRORLEVEL%
 
 :: -----------------------------------------------------------------------
-:: :COLLECT_SRCS <src-dir>  — set SRCS to every *.c in <src-dir> EXCEPT files
+:: :COLLECT_SRCS <src-dir>: set SRCS to every *.c in <src-dir> EXCEPT files
 :: that are unity-#included by another source. region_windows.c is included by
 :: region_os.c, so compiling it as its own TU duplicates new_region/commit/etc.
 :: The library's own build compiles region_os.c and never region_windows.c.

@@ -10,8 +10,8 @@
  * @date 2026-06-20
  *
  * The platform fills in an FLPlatformAPI and hands it to faultline_app_main(); the
- * application layer reaches every OS capability — memory, exceptions, logging, timing,
- * files, and module loading — only through this struct. The application TU must never
+ * application layer reaches every OS capability (memory, exceptions, logging, timing,
+ * files, and module loading) only through this struct. The application TU must never
  * include <Windows.h>; this header is its sole window onto the platform.
  *
  * See LICENSE.txt for copyright and licensing information about this file.
@@ -21,6 +21,7 @@
 #include <faultline/fl_log_service.h>       // FLLogService, FLLogLevel
 #include <faultline/fl_timer_service.h>     // FLTimerService
 #include <faultline/fl_file_service.h>      // FLFileService, FLFile (opaque)
+#include <faultline/fl_stream_service.h>    // FLStreamService
 #include <faultline/arena.h>                // Arena
 #include <faultline/fault_injector.h>       // FaultInjector
 #include <faultline/fl_macros.h>            // FL_STR
@@ -74,12 +75,13 @@ typedef struct FLPlatformAPI {
     FLExceptionService *exception;
     FLTimerService     *timer;
     FLFileService      *file;
+    FLStreamService    *stream;
 
     // Shared infrastructure the driver uses directly (both are core-layer):
-    //   arena    — OS-backed application arena, owned by the platform.
-    //   injector — the fault-injector instance that backs the fault-memory
-    //              service; the driver drives this same instance
-    //              (fctx->injector = platform->injector).
+    //   arena:    OS-backed application arena, owned by the platform.
+    //   injector: the fault-injector instance that backs the fault-memory
+    //             service; the driver drives this same instance
+    //             (fctx->injector = platform->injector).
     Arena         *arena;
     FaultInjector *injector;
 

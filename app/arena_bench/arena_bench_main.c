@@ -42,9 +42,10 @@
 #include "fl_exception_service.c"
 #include "fl_threads.c"
 #include "flp_exception_service.c"
-#include "flp_file_service.c" // flp_log_service.c now calls flp_file_open/write/close
-#include "flp_log_service.c"
+#include "flp_file_service.c"
+#include "flp_log_service.c"    // calls flp_stream_open/write/close
 #include "flp_memory_service.c" // FL_MALLOC/FL_FREE backing (flp_malloc/flp_free)
+#include "flp_stream_service.c"
 #include "lock_os.c"
 #include "region.c"
 #include "region_node.c"

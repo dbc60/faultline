@@ -10,9 +10,9 @@
  * This test suite verifies the platform-side log service (flp_log_service.c)
  * covering lifecycle, level filtering, output routing, output format,
  * static helpers, service plumbing, and thread safety. Path-based output now
- * routes through the file service (flp_file_service.c), so this suite also pulls
- * in its memory-service backing (FL_MALLOC/FL_FREE), mirroring the same unity
- * include pattern flp_file_service_tests.c uses.
+ * routes through the stream service (flp_stream_service.c), so this suite also
+ * pulls in its memory-service backing (FL_MALLOC/FL_FREE), mirroring the same
+ * unity include pattern flp_stream_service_tests.c uses.
  *
  * The driver injects an FLExceptionService via fla_set_exception_service().
  * FL_ASSERT macros throw exceptions caught by but_driver.exe.
@@ -27,7 +27,7 @@
 #include "fl_exception_service.c"  // exception reason constants
 #include "fla_exception_service.c" // TLS exception service (app-side)
 #include "fla_memory_service.c"    // g_fla_memory_service (FL_MALLOC backing)
-#include "flp_file_service.c"      // flp_log_service.c's file-backed output path
+#include "flp_stream_service.c"    // flp_log_service.c's append/console output path
 #include "flp_log_service.c"       // code under test (platform log service)
 #include "fla_log_service.c"       // code under test (application log service)
 
@@ -170,7 +170,7 @@ FL_TEST("Init Custom With Path", init_custom_with_path) {
 
     // init_custom with a non-NULL path opens the file itself and takes ownership.
     flp_log_init_custom(LOG_LEVEL_TRACE, path);
-    FL_ASSERT_TRUE(g_logger.output_kind == FLP_LOG_OUTPUT_FILE);
+    FL_ASSERT_TRUE(g_logger.output_kind == FLP_LOG_OUTPUT_STREAM);
     FL_ASSERT_EQ_INT((int)g_logger.max_level, (int)LOG_LEVEL_TRACE);
 
     flp_write_log(LOG_LEVEL_INFO, __FILE__, __LINE__, "test", "custom path msg");
@@ -509,8 +509,8 @@ FL_TEST("App Set Installs Write", app_set_installs_write) {
     g_fla_log_service.write = saved;
 }
 
-// The application service can be wired to the real platform writer, so an
-// app-side write lands in the platform logger's output file.
+// The application service can be wired to the real platform writer, so an app-side write
+// is directed to the platform logger's output file.
 FL_TEST("App Set Routes To Platform", app_set_routes_to_platform) {
     fl_write_log_fn *saved = g_fla_log_service.write;
     char             path[256], buf[4096];

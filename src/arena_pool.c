@@ -8,8 +8,8 @@
  *
  * Ownership model: the thread-specific-storage value is a pointer to the
  * thread's shard record. The free path compares the block's recorded owner
- * (arena_owner) with the caller's shard; a mismatch — including a caller that
- * never allocated — always takes the remote-queue path, which is safe from
+ * (arena_owner) with the caller's shard; a mismatch, including a caller that
+ * never allocated, always takes the remote-queue path, which is safe from
  * any thread. Shard adoption happens under the pool lock, which is touched
  * only on thread arrival; allocation and free never take it.
  *
@@ -82,7 +82,7 @@ static ShardRecord *arena_pool_current_shard(ArenaPool *pool) {
 
 /**
  * @brief Thread-exit destructor: orphan the shard so a future thread can
- * adopt it. The arena is not released — allocations may outlive the thread.
+ * adopt it. The arena is not released, so allocations may outlive the thread.
  */
 static void arena_pool_thread_exit(void *value) {
     ShardRecord *rec = (ShardRecord *)value;

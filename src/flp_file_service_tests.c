@@ -161,30 +161,6 @@ FL_TEST("Positional Read", positional_read) {
     delete_path(path);
 }
 
-// An FL_FILE_APPEND handle ignores the write offset: every write lands at end of file,
-// so two writes that both name offset 0 produce concatenated data.
-FL_TEST("Append Ignores Offset", append_ignores_offset) {
-    char path[256];
-    next_path(path, sizeof path);
-
-    FLFile *f = flp_file_open(path, FL_FILE_APPEND);
-    FL_ASSERT_NOT_NULL(f);
-    FL_ASSERT_EQ_SIZE_T(flp_file_write(f, "AAA", 3, 0), (size_t)3);
-    FL_ASSERT_EQ_SIZE_T(flp_file_write(f, "BBB", 3, 0), (size_t)3);
-    flp_file_close(f);
-
-    f = flp_file_open(path, FL_FILE_READ);
-    FL_ASSERT_NOT_NULL(f);
-    char   buf[8] = {0};
-    size_t n      = flp_file_read(f, buf, 6, 0);
-    flp_file_close(f);
-
-    FL_ASSERT_EQ_SIZE_T(n, (size_t)6);
-    FL_ASSERT_TRUE(memcmp(buf, "AAABBB", 6) == 0);
-
-    delete_path(path);
-}
-
 // Two positional writes in one session land at the offsets named, not at a running file
 // pointer.
 FL_TEST("Positional Write", positional_write) {
@@ -318,7 +294,6 @@ FL_SUITE_ADD(driver_injects_file_service)
 FL_SUITE_ADD(init_installs_provider)
 FL_SUITE_ADD(write_then_read_round_trip)
 FL_SUITE_ADD(positional_read)
-FL_SUITE_ADD(append_ignores_offset)
 FL_SUITE_ADD(positional_write)
 FL_SUITE_ADD(open_missing_returns_null)
 FL_SUITE_ADD(open_invalid_mode_returns_null)

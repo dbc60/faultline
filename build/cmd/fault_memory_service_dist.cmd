@@ -71,7 +71,7 @@ MD "%DIR_DIST%\src\fnv"
 MD "%DIR_DIST%\include\faultline"
 
 :: -----------------------------------------------------------------------
-:: C source files — arena
+:: C source files: arena
 :: -----------------------------------------------------------------------
 ECHO Copying arena source files...
 COPY /Y "%DIR_SRC%\arena.c"                    "%DIR_DIST%\src\" > NUL
@@ -83,7 +83,7 @@ COPY /Y "%DIR_SRC%\digital_search_tree.c"      "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SRC%\fl_exception_service.c"     "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SRC%\fl_threads.c"               "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SRC%\flp_exception_service.c"    "%DIR_DIST%\src\" > NUL
-COPY /Y "%DIR_SRC%\flp_file_service.c"         "%DIR_DIST%\src\" > NUL
+COPY /Y "%DIR_SRC%\flp_stream_service.c"       "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SRC%\flp_log_service.c"          "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SRC%\region.c"                   "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SRC%\region_node.c"              "%DIR_DIST%\src\" > NUL
@@ -94,25 +94,25 @@ COPY /Y "%DIR_SRC%\win32_lock.c"               "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SRC%\generic_lock.c"             "%DIR_DIST%\src\" > NUL
 
 :: -----------------------------------------------------------------------
-:: C source files — collections
+:: C source files: collections
 :: -----------------------------------------------------------------------
 ECHO Copying collections source files...
 COPY /Y "%DIR_SRC%\set.c"                      "%DIR_DIST%\src\" > NUL
 
 :: -----------------------------------------------------------------------
-:: C source files — FNV hash (placed in src\fnv\ to preserve the include path)
+:: C source files: FNV hash (placed in src\fnv\ to preserve the include path)
 :: -----------------------------------------------------------------------
 ECHO Copying FNV source files...
 COPY /Y "%DIR_FNV%\FNV64.c"                    "%DIR_DIST%\src\fnv\" > NUL
 
 :: -----------------------------------------------------------------------
-:: C source files — fault injector
+:: C source files: fault injector
 :: -----------------------------------------------------------------------
 ECHO Copying fault injector source files...
 COPY /Y "%DIR_SRC%\fault_injector.c"           "%DIR_DIST%\src\" > NUL
 
 :: -----------------------------------------------------------------------
-:: C source files — memory service (both sides)
+:: C source files: memory service (both sides)
 :: -----------------------------------------------------------------------
 ECHO Copying memory service source files...
 COPY /Y "%DIR_SRC%\fla_memory_service.c"            "%DIR_DIST%\src\" > NUL
@@ -120,7 +120,7 @@ COPY /Y "%DIR_SRC%\flp_memory_service.c"            "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SRC%\flp_fault_memory_service.c"      "%DIR_DIST%\src\" > NUL
 
 :: -----------------------------------------------------------------------
-:: Private headers — arena
+:: Private headers: arena
 :: -----------------------------------------------------------------------
 ECHO Copying arena private headers...
 COPY /Y "%DIR_SRC%\arena_internal.h"           "%DIR_DIST%\src\" > NUL
@@ -142,7 +142,7 @@ COPY /Y "%DIR_SRC%\fl_lock.h"                  "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SRC%\win32_platform.h"           "%DIR_DIST%\src\" > NUL
 
 :: -----------------------------------------------------------------------
-:: Private headers — FNV hash
+:: Private headers: FNV hash
 :: -----------------------------------------------------------------------
 ECHO Copying FNV private headers...
 COPY /Y "%DIR_FNV%\FNV64.h"                    "%DIR_DIST%\src\fnv\" > NUL
@@ -151,21 +151,21 @@ COPY /Y "%DIR_FNV%\FNVErrorCodes.h"            "%DIR_DIST%\src\fnv\" > NUL
 COPY /Y "%DIR_FNV%\fnv-private.h"              "%DIR_DIST%\src\fnv\" > NUL
 
 :: -----------------------------------------------------------------------
-:: Private headers — fault injector
+:: Private headers: fault injector
 :: -----------------------------------------------------------------------
 ECHO Copying fault injector private headers...
 COPY /Y "%DIR_SRC%\fault_injector_internal.h"  "%DIR_DIST%\src\" > NUL
 COPY /Y "%DIR_SRC%\fault_injector_resource.h"  "%DIR_DIST%\src\" > NUL
 
 :: -----------------------------------------------------------------------
-:: Public headers — memory service context
+:: Public headers: memory service context
 :: -----------------------------------------------------------------------
 ECHO Copying memory service context headers...
 COPY /Y "%DIR_INC%\flp_memory_context.h"            "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\flp_fault_memory_context.h"      "%DIR_DIST%\include\faultline\" > NUL
 
 :: -----------------------------------------------------------------------
-:: Public headers from include\faultline\ — arena + exception + log
+:: Public headers from include\faultline\: arena + exception + log
 :: -----------------------------------------------------------------------
 ECHO Copying arena/exception/log public headers...
 COPY /Y "%DIR_INC%\arena.h"                         "%DIR_DIST%\include\faultline\" > NUL
@@ -176,7 +176,7 @@ COPY /Y "%DIR_INC%\fl_abbreviated_types.h"          "%DIR_DIST%\include\faultlin
 COPY /Y "%DIR_INC%\fl_exception_service.h"          "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\fl_exception_service_assert.h"   "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\fl_exception_types.h"            "%DIR_DIST%\include\faultline\" > NUL
-COPY /Y "%DIR_INC%\fl_file_service.h"               "%DIR_DIST%\include\faultline\" > NUL
+COPY /Y "%DIR_INC%\fl_stream_service.h"             "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\fl_file_types.h"                 "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\fl_log.h"                        "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\fl_log_service.h"                "%DIR_DIST%\include\faultline\" > NUL
@@ -186,7 +186,7 @@ COPY /Y "%DIR_INC%\fl_try.h"                        "%DIR_DIST%\include\faultlin
 COPY /Y "%DIR_INC%\size.h"                          "%DIR_DIST%\include\faultline\" > NUL
 
 :: -----------------------------------------------------------------------
-:: Public headers from include\faultline\ — fault injector + memory service
+:: Public headers from include\faultline\: fault injector + memory service
 :: -----------------------------------------------------------------------
 ECHO Copying fault injector and memory service public headers...
 COPY /Y "%DIR_INC%\buffer.h"                        "%DIR_DIST%\include\faultline\" > NUL
@@ -207,7 +207,7 @@ COPY /Y "%DIR_INC%\set.h"                           "%DIR_DIST%\include\faultlin
 ECHO Copying top-level public headers...
 COPY /Y "%DIR_REPO%\include\flp_memory_service.h"   "%DIR_DIST%\include\" > NUL
 COPY /Y "%DIR_REPO%\include\flp_exception_service.h" "%DIR_DIST%\include\" > NUL
-COPY /Y "%DIR_REPO%\include\flp_file_service.h"     "%DIR_DIST%\include\" > NUL
+COPY /Y "%DIR_REPO%\include\flp_stream_service.h"   "%DIR_DIST%\include\" > NUL
 COPY /Y "%DIR_REPO%\include\flp_log_service.h"      "%DIR_DIST%\include\" > NUL
 
 :: -----------------------------------------------------------------------

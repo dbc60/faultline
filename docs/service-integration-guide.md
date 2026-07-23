@@ -1,5 +1,5 @@
 # Service Integration Guide
-This guide covers how to wire up FaultLine's runtime services — **exception handling**, **logging**, **memory**, **timing**, and **file I/O** — when building a host that loads and drives service consumers.
+This guide covers how to wire up FaultLine's runtime services — **exception handling**, **logging**, **memory**, **timing**, **file I/O**, and **stream I/O** — when building a host that loads and drives service consumers.
 
 > To bring the service source into another repository in the first place — and
 > keep it updated as packages change — see the
@@ -375,10 +375,10 @@ src/fla_timer_service.c      — g_fla_timer_service global + abort stubs + fla_
 
 The file service is **optional**. It provides positional file I/O over UTF-8 paths:
 `read` and `write` each name the byte offset to act on and keep no implicit file
-pointer, so a handle is safe to use from several threads. An `FL_FILE_APPEND` handle is
-the exception — it ignores the write offset and appends atomically at end of file. A
-short transfer count signals EOF or error, and is where the platform can inject I/O
-faults. Code on either side normally calls it through the
+pointer, so a handle is safe to use from several threads. A short transfer count
+signals EOF or error, and is where the platform can inject I/O faults. Append-only
+writes and console output are provided by a separate stream service (section 6,
+below), not this one. Code on either side normally calls it through the
 `FL_FILE_OPEN`/`FL_FILE_READ`/`FL_FILE_WRITE`/`FL_FILE_CLOSE` macros in the `fl_file.h`
 selector header.
 
@@ -445,6 +445,84 @@ src/fla_file_service.c       — g_fla_file_service global + abort stubs + fla_s
 > platform provider or consumer accessor yet, and `flp_inject_services()` does not
 > inject it.
 
+## 6. Stream Service
+
+The stream service is **optional**. It provides sequential, non-addressable I/O:
+append-only writes to a file by UTF-8 path (Windows `FILE_APPEND_DATA` — every
+write lands atomically at end of file, so several writers can interleave whole
+records) and writes to the process's inherited console streams (stdout/stderr) via
+a `console()` accessor. Neither target has a meaningful byte offset, so unlike the
+file service's `write`, this contract's `write` takes no offset parameter at all.
+`close()` on a `console()`-obtained handle is a documented no-op — stdout/stderr are
+process-wide and shared, never this service's to close. It reuses the `FLFile`
+opaque type from the file service's `fl_file_types.h` rather than defining its own;
+a handle from one service is not interchangeable with a handle from another. Code
+on either side normally calls it through the
+`FL_STREAM_OPEN`/`FL_STREAM_WRITE`/`FL_STREAM_CLOSE`/`FL_STREAM_CONSOLE` macros in
+the `fl_stream.h` selector header.
+
+### Platform side
+
+**Headers to include:**
+
+```c
+#include <flp_stream_service.h>              // flp_stream_open/write/close/console,
+                                             //   flp_init_stream_service
+// Pulled in automatically by the above:
+//   <faultline/fl_stream_service.h>         // FLStreamService, FLConsoleStream,
+//                                           //   fla_set_stream_service_fn,
+//                                           //   FLA_SET_STREAM_SERVICE_STR
+//   <faultline/fl_file_types.h>             // FLFile (opaque; reused from the file service)
+```
+
+**Source files to compile and link:**
+
+```
+src/flp_stream_service.c     — CreateFileW/WriteFile (append) + GetStdHandle backend,
+                                flp_init_stream_service
+```
+
+**Dependencies:** the provider allocates through `FL_MALLOC`/`FL_FREE` only when
+converting extended-length (`\\?\`) paths (the common short-path case allocates
+nothing), so the platform memory service must be initialized before the provider
+opens paths longer than `MAX_PATH`; it also uses `FL_ASSERT_NOT_NULL`, so the
+platform exception service sources must be compiled in.
+
+**Initialization:** none required beyond the memory-service setup above.
+
+**Injection call (after `LoadLibrary`):**
+
+```c
+#include <faultline/fl_stream_service.h>     // fla_set_stream_service_fn,
+                                             //   FLA_SET_STREAM_SERVICE_STR
+
+fla_set_stream_service_fn *fla_set_stream =
+    (fla_set_stream_service_fn *)GetProcAddress(dll, FLA_SET_STREAM_SERVICE_STR);
+if (fla_set_stream != NULL) {                // stream service is optional
+    flp_init_stream_service(fla_set_stream);
+}
+```
+
+### Application side
+
+**Headers to include (choose one):**
+
+```c
+// Option A — explicit application-side header
+#include <faultline/fla_stream_service.h>    // g_fla_stream_service, fla_set_stream_service
+
+// Option B — unified selector header
+#include <faultline/fl_stream.h>             // FL_STREAM_OPEN / WRITE / CLOSE / CONSOLE
+```
+
+**Source files to compile and link:**
+
+```
+src/fla_stream_service.c     — g_fla_stream_service global + abort stubs + fla_set_stream_service export
+```
+
+**Export requirement:** Compile with `/DDLL_BUILD`.
+
 ## Quick-Reference: Compile and Link Summary
 
 ### Platform executable
@@ -456,6 +534,7 @@ src/fla_file_service.c       — g_fla_file_service global + abort stubs + fla_s
 | Memory    | `flp_memory_service.h` + a `faultline/` context header | `flp_memory_service.c`, `flp_fault_memory_service.c` (+ arena + fault injector)   | Optional    |
 | Timer     | `flp_timer_service.h`     | `flp_timer_service.c`                               | Optional    |
 | File      | `flp_file_service.h`      | `flp_file_service.c`                                | Optional    |
+| Stream    | `flp_stream_service.h`    | `flp_stream_service.c`                              | Optional    |
 
 ### Application DLL
 
@@ -466,6 +545,7 @@ src/fla_file_service.c       — g_fla_file_service global + abort stubs + fla_s
 | Memory    | `faultline/fla_memory_service.h`    | `fla_memory_service.c`                              | `fla_set_memory_service`    |
 | Timer     | `faultline/fla_timer_service.h`     | `fla_timer_service.c`                               | `fla_set_timer_service`     |
 | File      | `faultline/fla_file_service.h`      | `fla_file_service.c`                                | `fla_set_file_service`      |
+| Stream    | `faultline/fla_stream_service.h`    | `fla_stream_service.c`                              | `fla_set_stream_service`    |
 
 Compile all application DLLs with `/DDLL_BUILD` so `FL_DECL_SPEC` expands to
 `__declspec(dllexport)` for the setter functions.
@@ -493,7 +573,8 @@ if (suite == NULL || !flp_inject_services(suite)) {
 
 `flp_inject_services()` resolves every `fla_set_*_service` symbol the suite exports and
 injects the matching platform service, in the order log → exception → memory → timer →
-file. It embodies two policy choices a hand-rolled host is free to make differently:
+file → stream. It embodies two policy choices a hand-rolled host is free to make
+differently:
 
 - **The exception service is required.** Every test suite runs under `FL_TRY`, so a
   suite that does not export `fla_set_exception_service` cannot run at all;
@@ -519,8 +600,8 @@ allocation or free call that hits a fault or an assertion will invoke an uniniti
 pointer.
 
 The exception and log services have no dependencies on each other or on the memory service —
-they can be initialized in either relative order. The timer and file services have no
-dependencies on the other *injected* services (their injectors assert through the
+they can be initialized in either relative order. The timer, file, and stream services have
+no dependencies on the other *injected* services (their injectors assert through the
 platform's own statically linked exception machinery), so their position in the order is
 unconstrained; injecting them last matches `flp_inject_services()`.
 
@@ -536,6 +617,9 @@ Call the injectors in this order after each `LoadLibrary`, before running any te
 5. File service (optional — no per-suite ordering constraints; the platform-side
    memory setup it needs for extended-length paths happens at host startup, not per
    suite)
+6. Stream service (optional — same shape as the file service: no per-suite ordering
+   constraints, and the memory setup it needs only matters for paths longer than
+   `MAX_PATH`)
 
 ```c
 // Log (optional)
@@ -572,6 +656,13 @@ fla_set_file_service_fn *fla_set_file =
     (fla_set_file_service_fn *)GetProcAddress(dll, FLA_SET_FILE_SERVICE_STR);
 if (fla_set_file != NULL) {
     flp_init_file_service(fla_set_file);
+}
+
+// Stream (optional)
+fla_set_stream_service_fn *fla_set_stream =
+    (fla_set_stream_service_fn *)GetProcAddress(dll, FLA_SET_STREAM_SERVICE_STR);
+if (fla_set_stream != NULL) {
+    flp_init_stream_service(fla_set_stream);
 }
 ```
 

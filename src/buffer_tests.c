@@ -65,7 +65,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("increase capacity", TestWithArena, test_increase_cap
                            setup_with_arena, cleanup_with_arena) {
     Buffer buf = {0};
     init_buffer(&buf, t->arena, 0, ELEMENT_SIZE);
-    // A small request lands on the growth floor.
+    // A small request is clamped to the fixed minimum-capacity floor.
     increase_capacity(&buf, 1);
     FL_ASSERT_EQ_SIZE_T(buf.capacity, (size_t)BUFFER_MIN_CAPACITY);
     FL_ASSERT_NOT_NULL(buf.mem);

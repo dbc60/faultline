@@ -25,7 +25,7 @@
 
 #include <faultline/arena.h>              // Arena, new_arena, release_arena
 #include <faultline/fl_file.h>            // FL_FILE_OPEN/READ/WRITE/CLOSE
-#include <faultline/fl_file_types.h>      // FLFile, FL_FILE_READ/WRITE/APPEND
+#include <faultline/fl_file_types.h>      // FLFile, FL_FILE_READ/WRITE
 #include <faultline/fl_macros.h>          // FL_UNUSED
 #include <faultline/fl_memory_service.h>  // FLA_SET_MEMORY_SERVICE_FN
 #include <faultline/fl_try.h>             // FL_TRY, FL_CATCH_ALL, FL_END_TRY
@@ -80,22 +80,6 @@ int main(void) {
             char tail[64] = {0};
             CHECK(FL_FILE_READ(f, tail, sizeof tail, 10) == len - 10);
             CHECK(memcmp(tail, payload + 10, len - 10) == 0);
-            FL_FILE_CLOSE(f);
-        }
-
-        SECTION("append ignores the write offset");
-        {
-            char const extra[] = "tail";
-            FLFile    *f       = FL_FILE_OPEN(path, FL_FILE_APPEND);
-            CHECK(f != NULL);
-            CHECK(FL_FILE_WRITE(f, extra, 4, 0) == 4); // offset 0 still appends
-            FL_FILE_CLOSE(f);
-
-            char buf[64] = {0};
-            f            = FL_FILE_OPEN(path, FL_FILE_READ);
-            CHECK(f != NULL);
-            CHECK(FL_FILE_READ(f, buf, sizeof buf, 0) == len + 4);
-            CHECK(memcmp(buf + len, extra, 4) == 0);
             FL_FILE_CLOSE(f);
         }
 

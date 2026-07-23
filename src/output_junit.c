@@ -10,7 +10,8 @@
 #include <faultline/fl_test_summary.h> // FLTestSummary, faultline_test_summary_buffer_get
 #include <faultline/fl_try.h>          // FL_THROW (selects flp_ backstop)
 #include <faultline/fl_file.h>         // FL_FILE_OPEN/WRITE/CLOSE (selects backend)
-#include <faultline/fl_file_types.h>   // FLFile, FL_FILE_WRITE, FL_FILE_APPEND
+#include <faultline/fl_file_types.h>   // FLFile, FL_FILE_WRITE
+#include <faultline/fl_stream.h>       // FL_STREAM_OPEN/WRITE/CLOSE (selects backend)
 #include <stdarg.h>                    // va_list, va_start, va_end
 #include <stdbool.h>                   // bool, true, false
 #include <stdint.h>                    // uint64_t
@@ -25,36 +26,49 @@
 
 FLExceptionReason const junit_open_failure = "failed to open junit file";
 
-// -- Buffered writer over the file service ---------------------------------------------
-// FLFileService has no formatted-output primitive and each of its writes is a whole
-// service call, so this small accumulator batches the many short XML fragments into
-// one write per JUNIT_OUT_CAP bytes. It tracks the running offset for handles whose
-// writes are positional (FL_FILE_WRITE mode); an FL_FILE_APPEND handle ignores it.
+// -- Buffered writer over the file / stream services -----------------------------------
+// Neither service has a formatted-output primitive and each of their writes is a whole
+// service call, so this small accumulator batches the many short XML fragments into one
+// write per JUNIT_OUT_CAP bytes. junit_begin truncates/creates the file via the
+// positional (offset-tracking) file service; junit_write/junit_end append to it via the
+// stream service, which has no offset parameter at all.
 #define JUNIT_OUT_CAP 1024
 
+typedef enum {
+    JUNIT_BACKEND_FILE,   // positional write via the file service (FL_FILE_WRITE mode)
+    JUNIT_BACKEND_STREAM, // offset-less append write via the stream service
+} JUnitBackend;
+
 typedef struct JUnitOut {
-    FLFile  *file;
-    uint64_t offset; // next write position (ignored by append handles)
+    FLFile      *file;
+    JUnitBackend backend;
+    uint64_t offset; // next write position; used only when backend == JUNIT_BACKEND_FILE
     size_t   len;    // bytes buffered
     bool     failed; // a service write came up short
     char     buf[JUNIT_OUT_CAP];
 } JUnitOut;
 
-static void out_init(JUnitOut *out, FLFile *file) {
-    out->file   = file;
-    out->offset = 0;
-    out->len    = 0;
-    out->failed = false;
+static void out_init(JUnitOut *out, FLFile *file, JUnitBackend backend) {
+    out->file    = file;
+    out->backend = backend;
+    out->offset  = 0;
+    out->len     = 0;
+    out->failed  = false;
 }
 
 static void out_flush(JUnitOut *out) {
     if (out->len > 0) {
-        size_t written = FL_FILE_WRITE(out->file, out->buf, out->len, out->offset);
+        size_t written;
+        if (out->backend == JUNIT_BACKEND_FILE) {
+            written = FL_FILE_WRITE(out->file, out->buf, out->len, out->offset);
+            out->offset += written;
+        } else {
+            written = FL_STREAM_WRITE(out->file, out->buf, out->len);
+        }
         if (written < out->len) {
             LOG_ERROR(JUNIT_MODULE, "wrote %zu bytes, expected %zu", written, out->len);
             out->failed = true;
         }
-        out->offset += written;
         out->len = 0;
     }
 }
@@ -122,22 +136,28 @@ static void xml_write_escaped(JUnitOut *out, char const *str) {
     }
 }
 
-static void junit_open(JUnitXML *junit, FLFileMode mode) {
+static void junit_open(JUnitXML *junit, JUnitBackend backend) {
     if (junit->file != NULL) {
         // already opened
         return;
     }
 
-    junit->file = FL_FILE_OPEN(junit->path, mode);
+    junit->file = (backend == JUNIT_BACKEND_FILE)
+                      ? FL_FILE_OPEN(junit->path, FL_FILE_WRITE)
+                      : FL_STREAM_OPEN(junit->path);
     if (junit->file == NULL) {
         LOG_ERROR(JUNIT_MODULE, "error opening file \"%s\"", junit->path);
         FL_THROW(junit_open_failure);
     }
 }
 
-static void junit_close(JUnitXML *junit) {
+static void junit_close(JUnitXML *junit, JUnitBackend backend) {
     FL_ASSERT_NOT_NULL(junit->file);
-    FL_FILE_CLOSE(junit->file);
+    if (backend == JUNIT_BACKEND_FILE) {
+        FL_FILE_CLOSE(junit->file);
+    } else {
+        FL_STREAM_CLOSE(junit->file);
+    }
     junit->file = NULL;
 }
 
@@ -187,13 +207,13 @@ int junit_begin(JUnitXML *junit) {
     if (junit->path != NULL) {
         // FL_FILE_WRITE truncates on open (create-always), so a stale file from a
         // previous run is discarded without a separate delete step.
-        junit_open(junit, FL_FILE_WRITE);
+        junit_open(junit, JUNIT_BACKEND_FILE);
         JUnitOut out;
-        out_init(&out, junit->file);
+        out_init(&out, junit->file, JUNIT_BACKEND_FILE);
         out_puts(&out, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
         out_puts(&out, "<testsuites>\n");
         out_flush(&out);
-        junit_close(junit);
+        junit_close(junit, JUNIT_BACKEND_FILE);
         rc = out.failed ? -1 : 0;
     }
 
@@ -203,12 +223,12 @@ int junit_begin(JUnitXML *junit) {
 int junit_end(JUnitXML *junit) {
     int rc = 0;
     if (junit->path != NULL) {
-        junit_open(junit, FL_FILE_APPEND);
+        junit_open(junit, JUNIT_BACKEND_STREAM);
         JUnitOut out;
-        out_init(&out, junit->file);
+        out_init(&out, junit->file, JUNIT_BACKEND_STREAM);
         out_puts(&out, "</testsuites>\n");
         out_flush(&out);
-        junit_close(junit);
+        junit_close(junit, JUNIT_BACKEND_STREAM);
         rc = out.failed ? -1 : 0;
     }
 
@@ -218,9 +238,9 @@ int junit_end(JUnitXML *junit) {
 int junit_write(JUnitXML *junit, FLContext *fctx) {
     int rc = 0;
     if (junit->path != NULL) {
-        junit_open(junit, FL_FILE_APPEND);
+        junit_open(junit, JUNIT_BACKEND_STREAM);
         JUnitOut out;
-        out_init(&out, junit->file);
+        out_init(&out, junit->file, JUNIT_BACKEND_STREAM);
         FLTestSuite *ts                    = fctx->ts;
         double       total_elapsed_seconds = 0.0;
         size_t       results_count         = faultline_get_results_count(fctx);
@@ -283,7 +303,7 @@ int junit_write(JUnitXML *junit, FLContext *fctx) {
         out_puts(&out, "    </testsuite>\n");
         out_flush(&out);
 
-        junit_close(junit);
+        junit_close(junit, JUNIT_BACKEND_STREAM);
         rc = out.failed ? -1 : 0;
     }
 

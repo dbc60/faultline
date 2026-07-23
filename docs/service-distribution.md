@@ -18,8 +18,9 @@ The current set of services:
 - **memory service**, in two variants:
   - backed by an arena: `build\cmd\memory_service_dist.cmd`
   - backed by an arena plus fault injection: `build\cmd\fault_memory_service_dist.cmd`. This is the platform-side package for any binary that wants to *provide* fault-injected memory whether it injects into itself (a self-testing app) or into test-suite DLLs it loads (a custom driver).
-- **logging service**: `build\cmd\log_service_dist.cmd`
+- **logging service**: `build\cmd\log_service_dist.cmd` (depends on the `stream_service` package)
 - **file service**: `build\cmd\file_service_dist.cmd` (depends on the arena-backed `memory_service` package; note that `fault_memory_service` does not satisfy the dependency; the importer checks the service name)
+- **stream service**: `build\cmd\stream_service_dist.cmd` (append-only file writes plus a console/stdout/stderr accessor; depends on the arena-backed `memory_service` package)
 - **timer and stopwatch service**: `build\cmd\timer_service_dist.cmd` (depends on the `exception_service` package)
 - **test framework**: `build\cmd\test_framework_dist.cmd` (header-only `fl_test.h` — the `FL_TEST` / `FL_SUITE_*` / `FL_GET_TEST_SUITE` declarations a test-suite DLL publishes its cases through so the driver can exercise them; depends on the `exception_service` package)
 
@@ -43,7 +44,7 @@ build\dist\fl_import.ps1 -From dist\memory_service -Into <project>\third_party\f
 build\dist\fl_import.ps1 -From dist\file_service   -Into <project>\third_party\faultline
 ```
 
-Import a package's dependencies first: `file_service` declares `memory_service`, so the importer refuses to install it into a tree where `memory_service` is not already present. To add another service later, produce its package and import it into the same tree the same way. All services merge into one unified tree.
+Import a package's dependencies first: `file_service` declares `memory_service`, so the importer refuses to install it into a tree where `memory_service` is not already present (`stream_service` declares the same `memory_service` dependency, and `log_service` in turn declares `stream_service`). To add another service later, produce its package and import it into the same tree the same way. All services merge into one unified tree.
 
 Re-running an import is also the **update** path: changed files are overwritten, files the package no longer ships are deleted, and `faultline.lock` tracks which service owns which file. Never hand-copy files into that tree. The lockfile won't know about them. (If the consumer must re-import without this repo checked out, copy `build\dist\fl_import.ps1`/`.cmd`/`.sh` and the `dist\<pkg>` directories into it; the importer is self-contained.)
 
@@ -86,19 +87,20 @@ owner stops shipping them.
 | `build/cmd/*_dist.cmd`            | Collect one service's files into `dist\<pkg>\` and emit its manifest |
 | `build/dist/fl_emit_manifest.ps1` | Hash every file in a package dir and write `manifest.txt`            |
 
-The seven packages:
+The eight packages:
 
 | Build script                    | Package dir                 | Service name           | Depends on          | Notes                                                         |
 | ------------------------------- | --------------------------- | ---------------------- | ------------------- | ------------------------------------------------------------- |
-| `log_service_dist.cmd`          | `dist\log_service`          | `log_service`          | —                   | Log service, both sides                                       |
+| `log_service_dist.cmd`          | `dist\log_service`          | `log_service`          | `stream_service`    | Log service, both sides. The platform provider calls `flp_stream_open`/`write`/`close` for path-based output. |
 | `exception_service_dist.cmd`    | `dist\exception_service`    | `exception_service`    | —                   | Exception service, both sides (driver `flp_` + DLL `fla_`); self-contained for single binaries via `/DFL_PLATFORM_BUILD`. |
 | `memory_service_dist.cmd`       | `dist\memory_service`       | `memory_service`       | —                   | Arena-only memory service (no fault injection): arena + platform exception+log + both service sides. Build `/DFL_PLATFORM_BUILD`. |
 | `fault_memory_service_dist.cmd` | `dist\fault_memory_service` | `fault_memory_service` | —                   | Fault-injecting memory service: arena + fault injector + platform exception+log + app-side memory service. Build `/DFL_PLATFORM_BUILD`. For any binary that provides fault-injected memory — to itself (a self-testing app) or to suite DLLs it loads (a custom driver). |
 | `timer_service_dist.cmd`        | `dist\timer_service`        | `timer_service`        | `exception_service` | Monotonic timer service, both sides, plus the `FLStopwatch` composition and the `fl_timer.h` selector. First package to use `SVC_DEPENDS`: it ships only its own files. |
 | `file_service_dist.cmd`         | `dist\file_service`         | `file_service`         | `memory_service`    | Positional file service, both sides, plus the `fl_file.h` selector and the async contract sketch. The provider allocates through `FL_MALLOC`, supplied by `memory_service`. |
+| `stream_service_dist.cmd`       | `dist\stream_service`       | `stream_service`       | `memory_service`    | Append-only file writes plus a console (stdout/stderr) accessor, both sides, plus the `fl_stream.h` selector. `write` takes no offset. Bundles its own copy of `fl_file_types.h` (the shared `FLFile` vocabulary), same as `file_service`. |
 | `test_framework_dist.cmd`       | `dist\test_framework`       | `test_framework`       | `exception_service` | Test-declaration header (`fl_test.h`), header-only: the `FL_TEST` / `FL_SUITE_*` / `FL_GET_TEST_SUITE` macro family and the `fl_get_test_suite` export the driver enumerates a suite through. |
 
-The first four packages are **self-contained** (they bundle the shared sources they need; reference counting makes the overlap safe). The timer and file packages instead declare dependencies: import the dependency into the same tree first, or the importer refuses (see below).
+`exception_service`, `memory_service`, and `fault_memory_service` are **self-contained** (they bundle the shared sources they need; reference counting makes the overlap safe). `log_service`, `timer_service`, `file_service`, and `stream_service` instead declare dependencies: import the dependency into the same tree first, or the importer refuses (see below).
 
 Note the package **directory** and the **service name** recorded in the manifest are set independently — a script can register under a name that differs from its directory.
 
@@ -228,7 +230,7 @@ Imported 'memory_service' v0.2.0 into third_party\faultline
 
 ### Importing overlapping packages
 
-Because the self-contained packages bundle their shared sources, importing more than one into the same tree is safe — e.g. `memory_service` and `fault_memory_service` both ship `flp_exception_service.c`. The shared file lands once and gains two owners; removing either service keeps the file for the other. There is no need to import a "base" package first. (The timer and file packages are the exception: they ship only their own files, so their declared dependency must be imported into the same tree first.)
+Because the self-contained packages bundle their shared sources, importing more than one into the same tree is safe — e.g. `memory_service` and `fault_memory_service` both ship `flp_exception_service.c`. The shared file lands once and gains two owners; removing either service keeps the file for the other. There is no need to import a "base" package first. (The log, timer, file, and stream packages are the exception: they ship only their own files, so their declared dependency must be imported into the same tree first.)
 
 ## Building the imported source
 
@@ -239,8 +241,9 @@ Each service has a platform (`flp_`) side and an application (`fla_`) side, sele
 | Package | Build mode | Why |
 | --- | --- | --- |
 | `memory_service`, `fault_memory_service` | **`/DFL_PLATFORM_BUILD`** | Platform-side binaries — a self-testing single binary, or a custom driver that injects into suite DLLs it loads. These ship the self-contained `flp_` exception and log services, which work with no driver and no injection. |
-| `exception_service`, `log_service` | either side | Ship both sides. Build a single binary `/DFL_PLATFORM_BUILD` (compiles the self-contained `flp_` side), or compile the `fla_` side into a test DLL `/DDLL_BUILD` for a driver to inject at load time — see the service-split demo (`examples/service_demo`). |
-| `timer_service`, `file_service` | either side | Ship both sides plus their selector headers (`fl_timer.h`, `fl_file.h`). Their platform sides lean on the packages they declare as dependencies: `exception_service` for timer, `memory_service` (which bundles exception + log) for file. |
+| `exception_service` | either side | Ship both sides. Build a single binary `/DFL_PLATFORM_BUILD` (compiles the self-contained `flp_` side), or compile the `fla_` side into a test DLL `/DDLL_BUILD` for a driver to inject at load time — see the service-split demo (`examples/service_demo`). |
+| `log_service` | either side | Ship both sides plus the `fl_log.h` selector. Its platform provider calls `flp_stream_open`/`write`/`close` for path-based output, so its declared dependency (`stream_service`) must be imported into the same tree first. |
+| `timer_service`, `file_service`, `stream_service` | either side | Ship both sides plus their selector headers (`fl_timer.h`, `fl_file.h`, `fl_stream.h`). Their platform sides lean on the packages they declare as dependencies: `exception_service` for timer, `memory_service` for file and stream. |
 | `test_framework` | either side (header-only) | Nothing to compile. Suite sources include `fl_test.h` and build `/DDLL_BUILD` so `fl_get_test_suite` is exported for the driver to resolve. |
 
 > The `memory_service` and `fault_memory_service` packages are **platform-side**: they ship `flp_exception_service.c`

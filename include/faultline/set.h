@@ -179,10 +179,10 @@ struct Set {
 /**
  * @brief Hash the value and return the hash in the *hash parameter.
  *
- * This default hashes the value as element_size raw bytes, so an element type
- * containing padding must be zero-initialized (e.g. with = {0} or memset) before
- * insert and lookup — indeterminate padding bytes make logically equal values
- * hash differently. Supply a custom hash function to hash by field instead.
+ * This default hashes the value as element_size raw bytes, so an element type containing
+ * padding must be zero-initialized (e.g. with = {0} or memset) before insert and lookup,
+ * because indeterminate padding bytes make logically equal values hash differently.
+ * Supply a custom hash function to hash by field instead.
  *
  * @param set
  * @param value
@@ -195,8 +195,8 @@ u64 set_do_hash(Set const *set, void const *value);
  * @brief Compare a and b, return true if they match and false otherwise.
  *
  * This default compares the values as element_size raw bytes, so the same
- * zero-initialization rule as set_do_hash applies to element types containing
- * padding. Supply a custom compare function to compare by field instead.
+ * zero-initialization rule as set_do_hash applies to element types containing padding.
+ * Supply a custom compare function to compare by field instead.
  *
  * @param set
  * @param a

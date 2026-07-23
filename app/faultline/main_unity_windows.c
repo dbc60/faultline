@@ -26,6 +26,7 @@
 #include "flp_timer_service.c"
 #include "flp_fault_memory_service.c"
 #include "flp_file_service.c"
+#include "flp_stream_service.c"
 #include "output_junit.c"
 #include "fnv/FNV64.c"
 #include "region.c"

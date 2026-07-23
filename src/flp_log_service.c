@@ -12,14 +12,14 @@
 #include <faultline/fl_threads.h>     // for mtx_destroy, mtx_init, mtx_lock
 #include <faultline/fl_try.h>         // FL_ASSERT_REASON_IMPL indirectly
 #include <faultline/fl_exception_service_assert.h> // FL_ASSERT_NOT_NULL
-#include <flp_file_service.h> // for flp_file_open/write/close, FLFile, FL_FILE_APPEND
-#include <flp_log_service.h>  // for FLP_INIT_LOG_SERVICE_FN, flp_con...
-#include <stdarg.h>           // for va_end, va_list, va_start
-#include <stdbool.h>          // for false, bool, true
-#include <stdio.h>            // for fprintf, snprintf, NULL, fflush, FILE, stdout
-#include <stdlib.h>           // for abort
-#include <string.h>           // for strrchr
-#include <time.h>             // for localtime, strftime, time, time_t
+#include <flp_stream_service.h> // for flp_stream_open/write/close/console, FLFile
+#include <flp_log_service.h>    // for FLP_INIT_LOG_SERVICE_FN
+#include <stdarg.h>             // for va_end, va_list, va_start
+#include <stdbool.h>            // for false, bool, true
+#include <stdio.h>              // for fprintf, snprintf, NULL, fflush, FILE, stdout
+#include <stdlib.h>             // for abort
+#include <string.h>             // for strrchr
+#include <time.h>               // for localtime, strftime, time, time_t
 
 #if defined(_WIN32) || defined(WIN32)
 #ifndef WIN32_LEAN_AND_MEAN
@@ -38,20 +38,24 @@ FL_WRITE_LOG_FN(flp_write_log);
 // Private logger struct
 // ---------------------------------------------------------------------------
 
-// stdout / a caller-supplied FILE* is never owned; a handle opened via the file
-// service always is. Ownership is therefore implied by which kind is active, rather
-// than tracked with a separate flag that could in principle disagree with it.
+// stdout or a caller-supplied FILE* is never owned; a handle opened via the stream
+// service always is safe to close unconditionally, because close() is a documented no-op
+// on a console-obtained handle, so a path-append handle and a console handle share one
+// output kind here. Ownership is therefore implied by which kind is active, rather than
+// tracked with a separate flag that could in principle disagree with it.
 typedef enum {
-    FLP_LOG_OUTPUT_STDIO, // stdio_output is valid; never closed by this module
-    FLP_LOG_OUTPUT_FILE,  // file_output is valid; opened and closed by this module
+    FLP_LOG_OUTPUT_STDIO,  // stdio output is valid and handles are never closed by this
+                           // module
+    FLP_LOG_OUTPUT_STREAM, // stream output is valid; handles are opened and closed by
+                           // this module
 } FLPLogOutputKind;
 
 typedef struct {
     bool             enabled;
     FLLogLevel       max_level;
     FLPLogOutputKind output_kind;
-    FILE            *stdio_output; // valid iff output_kind == FLP_LOG_OUTPUT_STDIO
-    FLFile          *file_output;  // valid iff output_kind == FLP_LOG_OUTPUT_FILE
+    FILE            *stdio_output;  // valid iff output_kind == FLP_LOG_OUTPUT_STDIO
+    FLFile          *stream_output; // valid iff output_kind == FLP_LOG_OUTPUT_STREAM
     mtx_t            mutex;
     bool             initialized;
 } FLPLogger;
@@ -140,14 +144,15 @@ static int append(char *buf, size_t bufsize, int pos, char const *fmt, ...) {
     return result;
 }
 
-// Release the currently active output before installing a new one. Only file-service
+// Release the currently active output before installing a new one. Only stream-service
 // output is owned by the logger (stdout or a caller-supplied FILE* is never closed
 // here). Must be called with g_logger.mutex held.
 static void release_current_output_locked(void) {
-    if (g_logger.output_kind == FLP_LOG_OUTPUT_FILE && g_logger.file_output != NULL) {
-        flp_file_close(g_logger.file_output);
+    if (g_logger.output_kind == FLP_LOG_OUTPUT_STREAM
+        && g_logger.stream_output != NULL) {
+        flp_stream_close(g_logger.stream_output);
     }
-    g_logger.file_output = NULL;
+    g_logger.stream_output = NULL;
 }
 
 // ---------------------------------------------------------------------------
@@ -187,11 +192,11 @@ void flp_log_cleanup(void) {
         if (g_logger.stdio_output != NULL) {
             fflush(g_logger.stdio_output);
         }
-    } else if (g_logger.file_output != NULL) {
-        // flp_file_write is a direct synchronous WriteFile with no libc-side
+    } else if (g_logger.stream_output != NULL) {
+        // flp_stream_write is a direct synchronous WriteFile with no libc-side
         // buffering, so there is nothing to flush here -- just release the handle.
-        flp_file_close(g_logger.file_output);
-        g_logger.file_output = NULL;
+        flp_stream_close(g_logger.stream_output);
+        g_logger.stream_output = NULL;
     }
 
     mtx_unlock(&g_logger.mutex);
@@ -216,21 +221,45 @@ void flp_log_set_output_path(char const *path) {
     mtx_lock(&g_logger.mutex);
     release_current_output_locked();
 
-    // FL_FILE_APPEND (Win32 FILE_APPEND_DATA) makes every write an atomic write at end
-    // of file, so several writers, including other processes appending to the same path,
-    // interleave whole records instead of the log module needing to implement that
-    // guarantee itself.
-    FLFile *file = flp_file_open(path, FL_FILE_APPEND);
+    // The stream service opens append-mode (Win32 FILE_APPEND_DATA), so every write
+    // is atomic at end of file: several writers, including other processes appending to
+    // the same path, interleave whole records without the log module needing to
+    // implement that guarantee itself.
+    FLFile *file = flp_stream_open(path);
     if (file == NULL) {
-        // flp_file_open reports failure as NULL only; the file service's contract
+        // flp_stream_open reports failure as NULL only; the stream service's contract
         // carries no error code, so this message is necessarily less specific than a
         // fopen_s/errno-based one would be.
         fprintf(stderr, "Error: failed to open %s; falling back to stdout\n", path);
         g_logger.output_kind  = FLP_LOG_OUTPUT_STDIO;
         g_logger.stdio_output = stdout; // stdout is not ours to close
     } else {
-        g_logger.output_kind = FLP_LOG_OUTPUT_FILE;
-        g_logger.file_output = file;
+        g_logger.output_kind   = FLP_LOG_OUTPUT_STREAM;
+        g_logger.stream_output = file;
+    }
+
+    mtx_unlock(&g_logger.mutex);
+}
+
+// Opt-in only: nothing in this module calls this automatically. The default output
+// (flp_log_init / flp_log_init_custom with no path) stays raw stdio via
+// flp_log_set_output(stdout). A WriteFile-based console write here and a CRT-buffered
+// fprintf(stdout,...) elsewhere in the process are two independently buffered paths to
+// the same OS handle and can interleave out of order, so nothing switches to this path
+// automatically. A caller that wants the log service's console output to be
+// fault-injectable (or wants stderr instead of stdout) must call this explicitly.
+void flp_log_set_output_console(FLConsoleStream which) {
+    mtx_lock(&g_logger.mutex);
+    release_current_output_locked();
+
+    FLFile *file = flp_stream_console(which);
+    if (file == NULL) {
+        fprintf(stderr, "Error: no console stream available; falling back to stdout\n");
+        g_logger.output_kind  = FLP_LOG_OUTPUT_STDIO;
+        g_logger.stdio_output = stdout;
+    } else {
+        g_logger.output_kind   = FLP_LOG_OUTPUT_STREAM;
+        g_logger.stream_output = file;
     }
 
     mtx_unlock(&g_logger.mutex);
@@ -246,12 +275,13 @@ FL_WRITE_LOG_FN(flp_write_log) {
     }
 
     // The lock covers formatting and the single write together, not just the write.
-    // FL_FILE_APPEND only makes the write itself atomic. It says nothing about the
-    // handle's lifetime. If the lock released after formatting and reacquired only
-    // around flp_file_write, a concurrent set_output, set_output_path, or cleanup call
-    // could close g_logger.file_output in the gap, and this thread would then write
-    // through (or close a second time) a handle that is no longer valid. Locking the
-    // whole section prevents that handle swap from occurring mid-write.
+    // The stream service's append semantics only make the write itself atomic. They
+    // say nothing about the handle's lifetime. If the lock released after formatting
+    // and reacquired only around flp_stream_write, a concurrent set_output,
+    // set_output_path, set_output_console, or cleanup call could close
+    // g_logger.stream_output in the gap, and this thread would then write through (or
+    // close a second time) a handle that is no longer valid. Locking the whole section
+    // prevents that handle swap from occurring mid-write.
     mtx_lock(&g_logger.mutex);
 
     char timestamp[32];
@@ -283,9 +313,8 @@ FL_WRITE_LOG_FN(flp_write_log) {
     pos = append(record, sizeof record, pos, "\n");
 
     size_t len = (size_t)pos;
-    if (g_logger.output_kind == FLP_LOG_OUTPUT_FILE) {
-        flp_file_write(g_logger.file_output, record, len,
-                       0); // offset ignored (append mode)
+    if (g_logger.output_kind == FLP_LOG_OUTPUT_STREAM) {
+        flp_stream_write(g_logger.stream_output, record, len);
     } else if (g_logger.stdio_output != NULL) {
         fwrite(record, 1, len, g_logger.stdio_output);
         fflush(g_logger.stdio_output);

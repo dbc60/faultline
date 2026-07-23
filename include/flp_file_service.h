@@ -32,8 +32,6 @@ FLP_INIT_FILE_SERVICE_FN(flp_init_file_service);
  *
  * read/write are positional: each names the byte offset to act on and leaves the
  * handle's file pointer untouched, so a handle is safe to use from several threads.
- * An FL_FILE_APPEND handle is the exception: it ignores the write offset and
- * appends at end of file (see fl_file_service.h).
  */
 FL_FILE_OPEN_FN(flp_file_open);
 FL_FILE_READ_FN(flp_file_read);

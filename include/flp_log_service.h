@@ -11,7 +11,8 @@
  * See LICENSE.txt for copyright and licensing information about this file.
  *
  */
-#include <faultline/fl_log_service.h> // FLLogLevel, FL_WRITE_LOG_FN
+#include <faultline/fl_log_service.h>    // FLLogLevel, FL_WRITE_LOG_FN
+#include <faultline/fl_stream_service.h> // FLConsoleStream
 
 #include <stdio.h> // FILE
 
@@ -62,12 +63,24 @@ void flp_log_set_output(FILE *file);
 /**
  * @brief Open a file by path and direct log output to it.
  *
- * The file is opened in append mode. On failure the logger falls back to
- * stdout and prints a warning to stderr.
+ * The file is opened through the stream service (append semantics). On failure
+ * the logger falls back to stdout and prints a warning to stderr.
  *
  * @param path File path to open.
  */
 void flp_log_set_output_path(char const *path);
+
+/**
+ * @brief Direct log output to one of the process's console streams.
+ *
+ * Opt-in only. Nothing calls this automatically. The default output stays raw stdio (see
+ * flp_log_set_output); this routes writes through the stream service instead, making
+ * them fault-injectable like the path-based output. On failure the logger falls back to
+ * stdout and prints a warning to stderr.
+ *
+ * @param which Which console stream (stdout or stderr) to direct output to.
+ */
+void flp_log_set_output_console(FLConsoleStream which);
 
 /**
  * @brief Platform-side write implementation for the log service.

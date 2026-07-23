@@ -217,3 +217,57 @@ None — the platform/core split work is complete, and the timer/file dist
 packages shipped 2026-07-14. Deferred/optional items live in their sections
 above (the async file service contract, seek/tell/flush/size/stat, a
 fault-injecting file service).
+
+---
+
+## D. `fl_stream_service.h` — stream service split out of the file service ✅ (done)
+
+The file service originally covered two structurally different jobs behind one
+contract: positional read/write on a seekable file, and atomic end-of-file
+appends (`FL_FILE_APPEND`) with the offset argument silently ignored. The log
+service's path-based output used only the append case, and its stdout/stderr
+output stayed on raw `<stdio.h>` because the file service had no notion of a
+console stream — two code paths for what is conceptually the same kind of
+target (sequential, no addressable position).
+
+Split append-only file writes and a console (stdout/stderr) accessor into a new
+stream service (`fl_stream_service.h`, `fl_stream.h`, provider
+`flp_stream_service.h`/`.c`, consumer accessor `fla_stream_service.h`/`.c`).
+`write` in the new contract takes no offset parameter at all — meaningless for
+both an append target and a console target. `close()` on a `console()`-obtained
+handle is a documented no-op (stdout/stderr are process-wide and shared, never
+this service's to close); the provider tells a console handle apart from an
+append-file handle via two fixed static slots rather than a heap allocation, so
+`flp_stream_open` stays allocation-free in the common (short-path) case —
+matching `flp_file_open` and avoiding a bootstrap-order hazard (the platform
+host opens its default log file before the memory service exists).
+
+`FL_FILE_APPEND` was removed from `FLFileMode` (`fl_file_types.h`) once both of
+its consumers moved off it:
+- `flp_log_service.c`'s path-based output (`flp_log_set_output_path`) now opens
+  through the stream service. Its stdout default (`flp_log_set_output`) is
+  unchanged — raw stdio, on purpose: a `WriteFile`-based console write and a
+  CRT-buffered `fprintf(stdout,...)` are two independently-buffered paths to the
+  same OS handle and can interleave out of order, so nothing switches
+  automatically. A new opt-in `flp_log_set_output_console(FLConsoleStream)`
+  routes through the stream service for callers that want console output to be
+  fault-injectable.
+- `output_junit.c` mixes both services in one struct: `junit_begin`'s
+  truncate-open still uses the file service (`FL_FILE_WRITE`); `junit_write`/
+  `junit_end`'s appends use the new stream service. `JUnitOut` gained a
+  `JUnitBackend` field so its buffered `out_flush` calls the right primitive.
+
+Build-graph fallout: every unity TU that compiles `flp_log_service.c` also
+needs `flp_stream_service.c` (and the consumer-side unity TU that compiles
+`output_junit.c` needs `fla_stream_service.c`), since `flp_log_service.c` now
+calls `flp_stream_open`/`write`/`close` directly. `memory_service_dist.cmd` and
+`fault_memory_service_dist.cmd` (which each bundle a private copy of the old
+`flp_file_service.c` purely to satisfy `flp_log_service.c`'s link dependency)
+now bundle `flp_stream_service.c` instead; `log_service_dist.cmd`'s
+`SVC_DEPENDS` moved from `file_service` to the new `stream_service` package.
+
+### Deferred (noted, not blocking)
+- [ ] stdin read — the stream service is write-only for this pass (file-append +
+  console write). No current consumer reads stdin; add a symmetric read-side
+  contract if one shows up.
+- [ ] seek/tell/flush/size/stat on the file service — unchanged from section B.
