@@ -314,6 +314,13 @@ sqlite3 *faultline_init_database(char const *db_path) {
     }
     LOG_DEBUG(faultline_db, "Database opened successfully");
 
+    // enable foreign key enforcement (and ON DELETE CASCADE)
+    rc = sqlite3_exec(db, "PRAGMA foreign_keys = ON;", NULL, NULL, NULL);
+    if (rc != SQLITE_OK) {
+        LOG_WARN(faultline_db, "Failed to enable foreign key enforcement: %s",
+                 sqlite3_errmsg(db));
+    }
+
     // Initialize schema on the opened connection
     FL_TRY {
         faultline_apply_schema(db);
