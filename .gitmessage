@@ -1,0 +1,13 @@
+
+
+# Subject line: imperative mood, <=50 chars, no trailing period.
+# ("Fix", "Add", "Update" -- not "Fixed", "Added", "Updated")
+#
+# Body (optional, wrap at ~72 cols): explain WHY, not what -- the diff
+# already shows what changed. Cover motivation, why this approach over
+# alternatives you considered, and what breaks if this is reverted.
+#
+# BREAKING CHANGE: ...   (delete this line if not applicable)
+# Refs: #123             (delete this line if not applicable)
+#
+# One logical change per commit. Comment lines are stripped automatically.

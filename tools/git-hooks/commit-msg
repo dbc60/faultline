@@ -1,0 +1,75 @@
+#!/bin/sh
+# commit-msg hook: lightweight guardrails, not a style police.
+# Blocks only clear problems; warns (non-blocking) on soft issues.
+# Bypass intentionally with: git commit --no-verify
+
+commit_msg_file="$1"
+commit_source="$2"
+
+[ "$commit_source" = "merge" ] && exit 0
+
+subject=$(sed -n '1p' "$commit_msg_file")
+
+case "$subject" in
+    "Merge "*|"fixup! "*|"squash! "*) exit 0 ;;
+esac
+
+fail=0
+
+warn() { echo "commit-msg: warning: $1" >&2; }
+block() { echo "commit-msg: error: $1" >&2; fail=1; }
+
+if [ -z "$subject" ]; then
+    block "empty subject line"
+fi
+
+case "$subject" in
+    *.) block "subject line ends with a period" ;;
+esac
+
+len=$(printf '%s' "$subject" | wc -c)
+
+if [ "$len" -gt 72 ]; then
+    block "subject line is $len chars, hard cap is 72 (aim for 50)"
+fi
+
+second_line=$(sed -n '2p' "$commit_msg_file")
+if [ -n "$second_line" ]; then
+    block "line 2 must be blank to separate subject from body"
+fi
+
+lc_subject=$(printf '%s' "$subject" | tr '[:upper:]' '[:lower:]')
+for vague in fix fixes wip cleanup "clean up" misc updates changes stuff \
+             "minor fixes" "small fix" tweaks "more changes" "wip commit" \
+             "doc updates" "doc update" "docs update" "minor tweaks" \
+             "small changes" "code review feedback"; do
+    if [ "$lc_subject" = "$vague" ]; then
+        block "subject '$subject' is too vague to find later -- say what changed and why"
+    fi
+done
+
+first_word=$(printf '%s' "$subject" | sed -n 's/^\([A-Za-z][A-Za-z]*\).*/\1/p')
+lc_first_word=$(printf '%s' "$first_word" | tr '[:upper:]' '[:lower:]')
+case "$lc_first_word" in
+    fixed|added|updated|changed|removed|created|implemented|refactored|renamed|deleted|moved|fixing|adding|updating)
+        block "subject starts with '$first_word' -- use imperative mood (Fix, Add, Update, ...)"
+        ;;
+esac
+
+if [ "$len" -gt 50 ] && [ "$len" -le 72 ]; then
+    warn "subject line is $len chars; 50 or fewer is the convention (72 is the hard cap)"
+fi
+
+body_content=$(sed '1,2d' "$commit_msg_file" | grep -v '^#' | grep -v '^[[:space:]]*$')
+changed=$(git diff --cached --shortstat | sed -n 's/.* \([0-9][0-9]*\) files\? changed.*/\1/p')
+changed=${changed:-0}
+if [ -z "$body_content" ] && [ "$changed" -gt 3 ]; then
+    warn "no body, but $changed file(s) changed -- consider explaining why, not just what"
+fi
+
+if [ "$fail" -eq 1 ]; then
+    echo "commit-msg: fix the issue(s) above, or override with 'git commit --no-verify'." >&2
+    exit 1
+fi
+
+exit 0

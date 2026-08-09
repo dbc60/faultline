@@ -257,31 +257,54 @@ Tests are organized as shared libraries (DLLs) loaded by test drivers:
 
 ### Commit Message Convention
 
-Use **`scope: description`** (the Linux/Git/Go style), not Conventional Commits (`type:`).
-The scope — the affected subsystem — is the most useful key for scanning history, so it
-leads the subject line. The verb in the description already conveys whether a change is a
-fix, feature, or refactor, so a separate `type:` prefix is redundant.
+Follow [the seven rules of a great Git commit message](https://cbea.ms/git-commit/):
 
-**Format**: `scope: imperative description` (subject ≤ ~72 chars, lowercase scope, no trailing period).
+1. Separate subject from body with a blank line
+2. Limit the subject line to 50 characters
+3. Capitalize the subject line
+4. Do not end the subject line with a period
+5. Use the imperative mood in the subject line
+6. Wrap the body at 72 characters
+7. Use the body to explain *what* and *why* vs. *how*
 
-**Scopes** are the component libraries and top-level areas:
-- Libraries: `fl_log`, `fl_math`, `fl_memory`, `fl_collections`, `fl_timer`, `faultline`
-- Other areas: `build`, `cmd`, `but`, `test`, `docs`, `third_party`
-- For a specific file/tool, a finer scope is fine (e.g., `fl_import:`, `service_demo:`).
+`.gitmessage` carries the rules as comments and `tools/git-hooks/commit-msg` checks a
+subset of them. Both are already configured (`commit.template` and `core.hooksPath`); a
+fresh clone needs:
 
-**Examples**:
 ```
-faultline: emit per-test <testcase> elements in JUnit output
-build: clean and build service_demo in one invocation
-fl_import: resolve relative paths against PowerShell's location
-fl_memory: fix region coalescing off-by-one
+git config commit.template .gitmessage
+git config core.hooksPath tools/git-hooks
 ```
 
-**Breaking API changes**: keep the `scope: description` subject and add a `BREAKING CHANGE:`
-footer describing the break. This preserves the one machine-readable signal worth keeping
-without per-commit type ceremony.
+**Example**:
+```
+Fix 32-bit builds and the bugs they exposed
 
-Do not rewrite existing history to this style — apply it to new commits only.
+The x86 configuration had rotted: it would not compile, and with the
+warnings silenced it would not link. Dropping it was the alternative,
+but x86 is the cheapest detector this codebase has for size_t/u64
+conflation.
+
+BREAKING CHANGE: <what breaks>   (omit unless an API breaks)
+Refs: #123                       (omit unless there is an issue)
+```
+
+**What the hook refuses**: an empty subject; a subject ending in a period; a subject
+over **72** characters; a non-blank line 2; a subject that is only a vague word (`fix`,
+`wip`, `cleanup`, `misc`, …); a subject opening in past tense or a gerund (`Fixed`,
+`Adding`, …).
+
+**What it only warns about**: a subject of 51–72 characters, and a missing body when the
+commit touches more than three files.
+
+So rule 2 is a *target* of 50 with a hard cap of 72 — not a hard 50. Rules 3 and 6,
+capitalization and body wrap, are not checked mechanically at all and rest on the
+author. Bypass deliberately with `git commit --no-verify`.
+
+**These rules are on trial** (adopted 2026-08-09). They replace a `scope: description`
+convention (Linux/Git/Go style, lowercase scope leading the subject), so `git log` holds
+both forms and earlier commits look different by design. Do not rewrite existing history
+to match, and do not restyle an old message just because you touched the same file.
 
 ### File Naming Convention
 

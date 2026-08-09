@@ -41,4 +41,5 @@ metrics/
 # Other
 *.sqlite
 *.log
-git-commit.txt
+git-commit*.txt
+2???-??-??-*.txt
