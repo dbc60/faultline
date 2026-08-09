@@ -17,18 +17,21 @@ SETLOCAL ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 ::  win32:      specifies a 32-bit build.
 ::  test:       build the current configuration and run all unit tests.
 ::  junit:      when combined with test, write JUnit XML results to test\junit.xml.
-::  vs2017:     use Visual Studio 2017. The scripts will search for MS Build,
-::              Pro, and Community Edition in that order.
-::  vs2019:     use Visual Studio 2019. The scripts will search for MS Build,
-::              Pro, and Community Edition in that order.
-::  vs2022:     use Visual Studio 2022. The scripts will search for MS Build,
-::              Pro, and Community Edition in that order.
+::  vs2022:     use Visual Studio 2022 (MSVC 17.x).
+::  vs2026:     use Visual Studio 2026 (MSVC 18.x).
+::              Pass one to pin that version; pass neither to use the newest
+::              installed, including versions newer than the ones named here.
+::              Any edition carrying the C++ x86/x64 toolset qualifies
+::              (BuildTools/Community/Professional/Enterprise) -- see shell.cmd,
+::              which locates it with vswhere. VS2019 (16.x) and older are not
+::              supported: they have no C11 <stdatomic.h>, which the core
+::              allocator requires.
 ::  verbose:    Display details of steps during the build process.
 ::  trace:      Display the values of these options.
 ::  timed:      Enable timing metrics collection with ctime.
 
 :: Remember to export these in the ENDLOCAL section below
-SET "options=build: debug: release: cleanall: clean: cleanplat: x64: x86: win32: test: junit: vs2017: vs2019: vs2022: verbose: trace: timed:"
+SET "options=build: debug: release: cleanall: clean: cleanplat: x64: x86: win32: test: junit: vs2022: vs2026: verbose: trace: timed:"
 :: Initialize flags to zero
 FOR %%O in (%options%) DO FOR /f "tokens=1,* delims=:" %%A in ("%%O") DO (
     if NOT "%%~B"=="" (
@@ -103,9 +106,8 @@ ENDLOCAL & (
     SET "win32=%win32%"
     SET "test=%test%"
     SET "junit=%junit%"
-    SET "vs2017=%vs2017%"
-    SET "vs2019=%vs2019%"
     SET "vs2022=%vs2022%"
+    SET "vs2026=%vs2026%"
     SET "verbose=%verbose%"
     SET "trace=%trace%"
     SET "timed=%timed%"

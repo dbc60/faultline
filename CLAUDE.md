@@ -240,7 +240,7 @@ Tests are organized as shared libraries (DLLs) loaded by test drivers:
 
 ### Platform Considerations
 
-- **Primary platform**: Windows with MSVC compiler (VS2017/2019/2022)
+- **Primary platform**: Windows with MSVC compiler (VS2019/2022/2026)
 - **C Standard**: C17 with experimental C11 atomics support
 - **Threading**: Uses Windows-specific threading and atomic operations
 - **Architecture**: Supports both x86 and x64 builds

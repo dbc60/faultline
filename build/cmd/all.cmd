@@ -7,14 +7,19 @@ SET DIR_CMD=%~dp0
 SET DIR_CMD=%DIR_CMD:~0,-1%
 CALL %DIR_CMD%\options.cmd %*
 
+CALL %DIR_CMD%\setup.cmd %*
+:: No supported Visual Studio for a requested build.
+IF ERRORLEVEL 1 EXIT /B 1
+
+:: Exit early if build is set to zero
+IF %build% EQU 0 GOTO :SUCCESS
+
 if %timed% EQU 1 (
     if NOT EXIST metrics\vs (
         md metrics\vs
     )
     ctime.exe -begin metrics\vs\all.ctm
 )
-
-CALL %DIR_CMD%\setup.cmd %*
 
 set "args="
 for %%A in (%*) do (

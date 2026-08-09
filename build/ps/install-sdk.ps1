@@ -37,8 +37,11 @@
     this script (build\ps\ -> build\ -> repo root).
 
 .PARAMETER Toolchain
-    Build toolchain whose output to install. Accepted values: vs2022, clang.
-    Default: vs2022
+    Build toolchain whose output to install. Accepted values: auto, clang, or
+    any vsNNNN naming a target\ subdirectory the build produced (vs2019,
+    vs2022, vs2026, or a newer Visual Studio).
+    Default: auto -- the newest target\vs* build present, which is the one the
+    build scripts produce, since they select the newest Visual Studio installed.
 
 .PARAMETER Platform
     Target architecture. Accepted values: x64, x86.
@@ -55,7 +58,7 @@
 .EXAMPLE
     .\install-sdk.ps1 -Prefix C:\libs\faultline
 
-    Installs the vs2022 x64 release build to C:\libs\faultline\FaultLine\.
+    Installs the newest x64 release build to C:\libs\faultline\FaultLine\.
 
 .EXAMPLE
     .\install-sdk.ps1 -Prefix C:\libs\faultline -Toolchain clang -BuildType debug -Force
@@ -79,8 +82,10 @@ param (
 
     [string] $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path,
 
-    [ValidateSet('vs2022', 'clang')]
-    [string] $Toolchain = 'vs2022',
+    # Not a ValidateSet: the MSVC bucket is named for whatever Visual Studio the
+    # build found, so a version newer than any known here must be accepted.
+    [ValidatePattern('^(auto|clang|vs\d+)$')]
+    [string] $Toolchain = 'auto',
 
     [ValidateSet('x64', 'x86')]
     [string] $Platform = 'x64',
@@ -104,30 +109,39 @@ $ErrorActionPreference = 'Stop'
 # ---------------------------------------------------------------------------
 
 if ($Toolchain -eq 'clang' -and $Platform -eq 'x86') {
-    Write-Error "The clang toolchain only supports x64. Use -Platform x64 or -Toolchain vs2022."
+    Write-Error "The clang toolchain only supports x64. Use -Platform x64 or an MSVC toolchain."
 }
 
-$BuildOut = Join-Path $RepoRoot "target\$Toolchain\$Platform\$BuildType"
+$BuildOut = $null
+if ($Toolchain -ne 'auto') {
+    $BuildOut = Join-Path $RepoRoot "target\$Toolchain\$Platform\$BuildType"
+}
 
-# The MSVC build directory is named after the Visual Studio version that
-# shell.cmd selected via vswhere (e.g. vs2022, vs2026), so the requested
-# vsNNNN bucket may not be the one actually present. If it is missing, fall
-# back to the newest target\vs* build that has the requested platform/type.
-if ($Toolchain -ne 'clang' -and -not (Test-Path $BuildOut)) {
+# The MSVC build directory is named after the Visual Studio version the build
+# scripts selected via vswhere, which may be newer than any version named here.
+# So 'auto' -- the default -- takes the newest target\vs* bucket rather than
+# guessing a year, and an explicit vsNNNN that was never built falls back to the
+# same choice instead of failing.
+if ($Toolchain -ne 'clang' -and (-not $BuildOut -or -not (Test-Path $BuildOut))) {
     $TargetRoot = Join-Path $RepoRoot 'target'
-    $Fallback = Get-ChildItem -Path $TargetRoot -Directory -Filter 'vs*' -ErrorAction SilentlyContinue |
+    $Newest = Get-ChildItem -Path $TargetRoot -Directory -Filter 'vs*' -ErrorAction SilentlyContinue |
         Sort-Object Name -Descending |
         ForEach-Object { Join-Path $_.FullName "$Platform\$BuildType" } |
         Where-Object { Test-Path $_ } |
         Select-Object -First 1
-    if ($Fallback) {
-        Write-Verbose "Toolchain '$Toolchain' build not found; using $Fallback"
-        $BuildOut = $Fallback
+    if ($Newest) {
+        if ($Toolchain -ne 'auto') {
+            Write-Verbose "Toolchain '$Toolchain' build not found; using $Newest"
+        }
+        $BuildOut = $Newest
+        # Report the bucket actually installed, not the request that missed.
+        $Toolchain = Split-Path (Split-Path (Split-Path $Newest -Parent) -Parent) -Leaf
     }
 }
 
-if (-not (Test-Path $BuildOut)) {
-    Write-Error "Build output directory not found: $BuildOut`nBuild the project first (build\cmd\all.cmd)."
+if (-not $BuildOut -or -not (Test-Path $BuildOut)) {
+    $Missing = if ($BuildOut) { $BuildOut } else { Join-Path $RepoRoot "target\vs*\$Platform\$BuildType" }
+    Write-Error "Build output directory not found: $Missing`nBuild the project first (build\cmd\all.cmd)."
 }
 
 $BinSource = Join-Path $BuildOut 'bin'

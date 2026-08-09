@@ -47,10 +47,13 @@ TITLE %_BTDLL_NAME%
 CALL %_BTDLL_DIR%\options.cmd %_BTDLL_ARGS%
 CALL %_BTDLL_DIR%\setup.cmd %_BTDLL_ARGS%
 
-:: The nested driver bootstrap below must not repeat this script's clean and
-:: must land in the same configuration (release/x86/vs version). Forward the
-:: options but strip the clean/test verbs (test maps to build), the same
-:: filtering all.cmd uses.
+:: The nested driver bootstrap must not repeat the clean that setup.cmd already
+:: performed, and it must write into the same output tree this script runs the
+:: driver from: setup.cmd derives target\<vs>\<platform>\<buildtype> from the
+:: option flags, and a nested call starts them all at zero, so without the
+:: options forwarded it would default to debug/x64/newest-VS and put the driver
+:: in the wrong target directory. Forward the options but strip the clean/test
+:: verbs (test maps to build), the same filtering all.cmd uses.
 set "args="
 for %%A in (%_BTDLL_ARGS%) do (
     if /I not "%%~A"=="test" if /I not "%%~A"=="clean" if /I not "%%~A"=="cleanall" if /I not "%%~A"=="cleanplat" (

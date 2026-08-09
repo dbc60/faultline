@@ -358,7 +358,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Re-insert After Remove", TestSet, test_reinsert_afte
 FL_TYPE_TEST_SETUP_CLEANUP("Collisions", TestSet, test_collisions, setup_set,
                            cleanup_set) {
     FL_UNUSED_TYPE_ARG;
-    // key % 1 == 0 for any key, so all values land in bucket 0.
+    // key % 1 == 0 for any key, so all values are inserted into bucket 0.
     Set *set = new_set(t->arena, 1, sizeof(int));
     int  a = 1, b = 2, c = 3;
 

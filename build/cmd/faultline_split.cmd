@@ -25,10 +25,13 @@ SET DIR_LOCAL=%DIR_CMD%\local
 CALL %DIR_CMD%\options.cmd %*
 CALL %DIR_CMD%\setup.cmd %*
 
-:: Sub-builds must not repeat the clean this script's setup already performed --
-:: a nested setup.cmd would wipe the fixtures rebuilt below. Forward the
-:: configuration options but strip the clean/test verbs (test maps to build),
-:: the same filtering all.cmd uses.
+:: The nested sub-builds must not repeat the clean that setup.cmd already
+:: performed, and they must write into the same output tree this script links
+:: from: setup.cmd derives target\<vs>\<platform>\<buildtype> from the
+:: option flags, and a nested call starts them all at zero, so without the
+:: options forwarded they would default to debug/x64/newest-VS and put their
+:: objects in the wrong target directory. Forward the options but strip the
+:: clean/test verbs (test maps to build), the same filtering all.cmd uses.
 set "args="
 for %%A in (%*) do (
     if /I not "%%~A"=="test" if /I not "%%~A"=="clean" if /I not "%%~A"=="cleanall" if /I not "%%~A"=="cleanplat" (
@@ -39,9 +42,9 @@ for %%A in (%*) do (
     )
 )
 
-:: Shared fixtures (sqlite3.obj / cwalk.obj) must exist before the link step.
-:: Forward the filtered options so the fixtures land in the same configuration
-:: (release/x86/vs version) this script is building.
+:: After 'clean' the shared fixtures are gone; rebuild them (untimed) so the
+:: timed compile below can link sqlite3.obj / cwalk.obj. all.cmd builds fixtures
+:: up front, so this is a no-op there and on incremental rebuilds.
 IF %build% EQU 1 IF NOT EXIST %DIR_OUT_OBJ%\sqlite3.obj (
     CALL %DIR_CMD%\faultline_fixtures.cmd !args!
     IF ERRORLEVEL 1 GOTO :ERROR

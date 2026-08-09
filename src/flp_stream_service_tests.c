@@ -119,7 +119,7 @@ FL_TEST("Init Installs Provider", init_installs_provider) {
 // Append write round-trip
 // ---------------------------------------------------------------------------
 
-// write takes no offset: two writes both land at end of file and concatenate. This is
+// write takes no offset: two writes are both at end of file and concatenate. This is
 // the direct replacement for the file service's removed "Append Ignores Offset" test.
 FL_TEST("Open Write Close Round Trip", open_write_close_round_trip) {
     char path[256];

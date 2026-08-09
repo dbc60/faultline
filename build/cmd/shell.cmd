@@ -12,6 +12,10 @@ SETLOCAL ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 :: windows-latest runner). The located edition's vcvars{64,32}.bat is called to
 :: put cl on PATH and export the SDK environment.
 ::
+:: Visual Studio 2022 (17.x) is the oldest version supported; there is no upper
+:: bound, so a newer VS than any named here is used when it is the newest one
+:: installed.
+::
 :: This script is called once per build script (all.cmd plus each component), so
 :: it has two paths:
 ::   * Not yet in a dev environment (VSINSTALLDIR empty): locate VS with vswhere
@@ -34,24 +38,29 @@ IF NOT "%VSINSTALLDIR%"=="" (
 
 SET "VSWHERE=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
 IF NOT EXIST "%VSWHERE%" (
-    ECHO Visual Studio locator vswhere.exe not found at:
-    ECHO   "%VSWHERE%"
-    ECHO Visual Studio 2017 or later with the C++ toolset is required.
+    ECHO Visual Studio locator vswhere.exe not found at: 1>&2
+    ECHO   "%VSWHERE%" 1>&2
+    ECHO Visual Studio 2022 or later with the C++ toolset is required. 1>&2
     GOTO :EOF
 )
 
 :: When exactly one VS year is requested, constrain vswhere to that major
-:: version; otherwise take the latest installed VS. The ranges are left UNquoted:
-:: the SET "..." protects the ')' on this line, and below VS_RANGE is expanded
-:: with delayed expansion inside the FOR /F (so the ')' is absent at parse time
-:: and merely a literal argument char -- with no matching '(' -- at run time).
-:: Quoting the range here instead unbalances the quotes around "%VSWHERE%" when
-:: the FOR /F command is executed, dropping vswhere's leading quote.
-::   VS2017 = 15.x, VS2019 = 16.x, VS2022 = 17.x, VS2026 = 18.x
-SET "VS_RANGE="
-IF %vs2017% EQU 1 IF %vs2019% EQU 0 IF %vs2022% EQU 0 SET "VS_RANGE=-version [15.0,16.0)"
-IF %vs2019% EQU 1 IF %vs2017% EQU 0 IF %vs2022% EQU 0 SET "VS_RANGE=-version [16.0,17.0)"
-IF %vs2022% EQU 1 IF %vs2017% EQU 0 IF %vs2019% EQU 0 SET "VS_RANGE=-version [17.0,18.0)"
+:: version; otherwise take the latest installed VS at or above the oldest
+:: supported major. The open upper end of the default range is what admits a VS
+:: newer than any named here. The ranges are left UNquoted: the SET "..."
+:: protects the ')' on this line, and below VS_RANGE is expanded with delayed
+:: expansion inside the FOR /F (so the ')' is absent at parse time and merely a
+:: literal argument char -- with no matching '(' -- at run time). Quoting the
+:: range here instead unbalances the quotes around "%VSWHERE%" when the FOR /F
+:: command is executed, dropping vswhere's leading quote.
+::   VS2022 = 17.x, VS2026 = 18.x
+:: VS2019 (16.x) and older are not supported -- they have no C11 <stdatomic.h>,
+:: which the core allocator requires -- so even the unconstrained case floors the
+:: range at 17.0 rather than leaving it open. That way a machine with only VS2019
+:: reports "no installation found" here instead of failing later inside cl.
+SET "VS_RANGE=-version [17.0,)"
+IF %vs2022% EQU 1 IF %vs2026% EQU 0 SET "VS_RANGE=-version [17.0,18.0)"
+IF %vs2026% EQU 1 IF %vs2022% EQU 0 SET "VS_RANGE=-version [18.0,19.0)"
 
 :: Only consider installs that actually carry the C++ x86/x64 toolset, and allow
 :: any product (Community/Professional/Enterprise/BuildTools).
@@ -62,8 +71,9 @@ CALL :VSWHERE_PROP installationPath VSINSTALL
 CALL :VSWHERE_PROP installationVersion VS_VER
 
 IF "%VSINSTALL%"=="" (
-    ECHO No Visual Studio installation with the C++ x86/x64 toolset was found.
-    ECHO   vswhere : "%VSWHERE%"
+    ECHO No Visual Studio installation with the C++ x86/x64 toolset was found 1>&2
+    ECHO in the requested version range: !VS_RANGE! 1>&2
+    ECHO   vswhere : "%VSWHERE%" 1>&2
     GOTO :EOF
 )
 
@@ -73,9 +83,14 @@ IF "%VSINSTALL%"=="" (
 :: inconsistent -- "2022" for VS2022 but "18" for VS2026 -- so derive it here).
 :: Unknown future majors fall through as vs<major>, which is still stable.
 FOR /f "tokens=1 delims=." %%V IN ("%VS_VER%") DO SET "VS_MAJOR=%%V"
+
+:: Reject a too-old toolchain here rather than only in the vswhere range: the
+:: already-activated path above skips vswhere entirely, so an inherited VS 2019
+:: developer environment would otherwise reach the compiler and fail obscurely.
+IF "%VS_MAJOR%"=="" GOTO :badversion
+IF %VS_MAJOR% LSS 17 GOTO :badversion
+
 SET "VS_YEAR=%VS_MAJOR%"
-IF "%VS_MAJOR%"=="15" SET "VS_YEAR=2017"
-IF "%VS_MAJOR%"=="16" SET "VS_YEAR=2019"
 IF "%VS_MAJOR%"=="17" SET "VS_YEAR=2022"
 IF "%VS_MAJOR%"=="18" SET "VS_YEAR=2026"
 IF NOT "%VS_YEAR%"=="" SET "VSSOLUTION=vs%VS_YEAR%"
@@ -118,8 +133,6 @@ ENDLOCAL & (
     SET "VCToolsRedistDir=%VCToolsRedistDir%"
     SET "VCToolsVersion=%VCToolsVersion%"
     SET "VisualStudioVersion=%VisualStudioVersion%"
-    SET "VS150COMNTOOLS=%VS150COMNTOOLS%"
-    SET "VS160COMNTOOLS=%VS160COMNTOOLS%"
     SET "WindowsLibPath=%WindowsLibPath%"
     SET "WindowsSdkBinPath=%WindowsSdkBinPath%"
     SET "WindowsSdkDir=%WindowsSdkDir%"
@@ -150,6 +163,12 @@ FOR /f "usebackq tokens=* delims=" %%I IN (`"%VSWHERE%" -latest !VS_RANGE! !VS_R
 EXIT /B 0
 
 :badenv
-ECHO VSINSTALLDIR is not defined after calling vcvars.
-ECHO The located Visual Studio install may be missing the C++ toolset:
-ECHO   "%VSINSTALL%"
+ECHO VSINSTALLDIR is not defined after calling vcvars. 1>&2
+ECHO The located Visual Studio install may be missing the C++ toolset: 1>&2
+ECHO   "%VSINSTALL%" 1>&2
+GOTO :EOF
+
+:badversion
+ECHO Unsupported Visual Studio version: "%VS_VER%" 1>&2
+ECHO Visual Studio 2022 ^(17.x^) or later with the C++ toolset is required. It 1>&2
+ECHO needs C11 ^<stdatomic.h^>, which VS2019 and older do not provide. 1>&2

@@ -279,7 +279,7 @@ EXIT /B %ERRORLEVEL%
 :: -----------------------------------------------------------------------
 :: :IMPORT_ADD <from-package-dir> <into-tree>: layer a package into an
 :: existing tree WITHOUT wiping, so a dependency imported by :IMPORT survives
-:: (this is how a dependent package lands on top of its dependency).
+:: (this is how a dependent package is included with its dependency).
 :: -----------------------------------------------------------------------
 :IMPORT_ADD
 powershell -NoProfile -ExecutionPolicy Bypass -File "%DIR_DIST%\fl_import.ps1" -From "%~1" -Into "%~2"

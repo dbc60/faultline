@@ -161,8 +161,8 @@ FL_TEST("Positional Read", positional_read) {
     delete_path(path);
 }
 
-// Two positional writes in one session land at the offsets named, not at a running file
-// pointer.
+// Two positional writes in one session will be at the offsets named, not at a running
+// file pointer.
 FL_TEST("Positional Write", positional_write) {
     char path[256];
     next_path(path, sizeof path);

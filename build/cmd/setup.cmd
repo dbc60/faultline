@@ -16,12 +16,16 @@ FOR /f "delims=" %%F IN ("%DIR_BUILD%") DO (
 )
 SET DIR_REPO=%DIR_REPO:~0,-1%
 
+:: Set here, ahead of the config.cmd call below, rather than beside DIR_INCLUDE,
+:: so config.cmd can build source paths from it.
+SET DIR_THIRD_PARTY=%DIR_REPO%\third_party
+
 FOR /F "delims=" %%F IN ("%DIR_REPO%") DO (
     SET REPO_NAME=%%~nF
 )
 
-:: If "build" is not set, then set it if test is set or if neither clean nor
-:: cleanall are set
+:: If "build" is not set, then set it if test is set or if cleanall, clean, and
+:: cleanplat are not set
 if %build% EQU 0 (
     if %test% EQU 1 (
         SET build=1
@@ -35,15 +39,13 @@ if %build% EQU 0 (
     )
 )
 
-:: Make sure we'll look for at least one version of Visual Studio
-if %vs2022% EQU 0 (
-    if %vs2019% EQU 0 (
-        if %vs2017% EQU 0 (
-            REM None are set, so try all of them
-            SET vs2022=1
-            SET vs2019=1
-            SET vs2017=1
-        )
+:: Make sure we'll look for at least one version of Visual Studio. With both of
+:: them set, shell.cmd leaves vswhere unconstrained and takes the newest installed.
+if %vs2026% EQU 0 (
+    if %vs2022% EQU 0 (
+        REM Neither is set, so try both
+        SET vs2026=1
+        SET vs2022=1
     )
 )
 
@@ -87,20 +89,38 @@ if %debug% EQU 1 (
     SET BUILD_TYPE=release
 )
 
-if %build% EQU 1 (
+:: VSSOLUTION names the target\ subfolder, so a clean has to derive it exactly the
+:: way a build does, otherwise it deletes a different tree than the build writes.
+:: shell.cmd derives it correctly: it finds the installed Visual Studio through
+:: vswhere and maps the MSVC major version to its marketing year (18 -> vs2026).
+:: clean and cleanplat both need it (DIR_OUT_BUILD and DIR_OUT_PLATFORM are built
+:: from it); cleanall deletes all of DIR_TARGET and does not.
+SET NEED_VSSOLUTION=0
+IF %build%     EQU 1 SET NEED_VSSOLUTION=1
+IF %clean%     EQU 1 SET NEED_VSSOLUTION=1
+IF %cleanplat% EQU 1 SET NEED_VSSOLUTION=1
+
+if !NEED_VSSOLUTION! EQU 1 (
     IF "%VSSOLUTION%"=="" (
         CALL !DIR_CMD!\shell.cmd >NUL
     )
 )
 
-:: Make sure VSSOLUTION is set in case clean or cleanall are set.
+:: If build==1 and VSSOLUTION is empty, then shell.cmd could not find a supported
+:: version of Visual Studio, so exit here.
+if %build% EQU 1 IF "%VSSOLUTION%"=="" (
+    ECHO SETUP.CMD ERROR: no requested Visual Studio ^(vs2022, vs2026^) with the 1>&2
+    ECHO C++ x86/x64 toolset was found, so there is nothing to build with. 1>&2
+    EXIT /B 1
+)
+
+:: Not building, so a missing toolchain is not fatal: a clean only needs a folder
+:: name. Guess the newest of the requested years rather than use an empty path.
 if "%VSSOLUTION%"=="" (
-    if %vs2022% EQU 1 (
+    if %vs2026% EQU 1 (
+        SET VSSOLUTION=vs2026
+    ) else if %vs2022% EQU 1 (
         SET VSSOLUTION=vs2022
-    ) else if %vs2019% EQU 1 (
-        SET VSSOLUTION=vs2019
-    ) else if %vs2017% EQU 1 (
-        SET VSSOLUTION=vs2017
     )
 )
 
@@ -111,12 +131,12 @@ if %build% EQU 1 (
 :: Build artifacts are written in the current repository to the path
 :: DIR_TARGET\Compiler\Platform\BuildType, where
 ::
-::  - Compiler is one of vs2017, vs2019, or vs2022.
+::  - Compiler is either vs2022 or vs2026.
 ::  - Platform is either x64 or x86.
 ::  - BuildType is either debug or release.
 ::
 :: For example build artifacts for a 64-bit debug-build created with Visual
-:: Studio 2022 woule be written to "build\vs2022\x64\debug\".
+:: Studio 2026 would be written to "build\vs2026\x64\debug\".
 SET DIR_OUT_BASE=%DIR_REPO%\%DIR_TARGET%\%VSSOLUTION%
 SET DIR_OUT_PLATFORM=!DIR_OUT_BASE!\!DIR_PLATFORM!
 SET DIR_OUT_BUILD=!DIR_OUT_PLATFORM!\%BUILD_TYPE%
@@ -125,7 +145,6 @@ SET DIR_OUT_LIB=!DIR_OUT_BUILD!\lib
 SET DIR_OUT_BIN=!DIR_OUT_BUILD!\bin
 SET DIR_OUT_INC=!DIR_OUT_BUILD!\inc
 SET DIR_INCLUDE=%DIR_REPO%\include
-SET DIR_THIRD_PARTY=%DIR_REPO%\third_party
 
 if %trace% EQU 1 (
     ECHO SET_ENV.CMD: DIR_INCLUDE_PRIVATE   =!DIR_INCLUDE_PRIVATE!
@@ -195,9 +214,8 @@ ENDLOCAL & (
     SET "x64=%x64%"
     SET "x86=%x86%"
     SET "test=%test%"
-    SET "vs2017=%vs2017%"
-    SET "vs2019=%vs2019%"
     SET "vs2022=%vs2022%"
+    SET "vs2026=%vs2026%"
     SET "verbose=%verbose%"
     SET "trace=%trace%"
 
@@ -228,8 +246,6 @@ ENDLOCAL & (
     SET "VCToolsRedistDir=%VCToolsRedistDir%"
     SET "VCToolsVersion=%VCToolsVersion%"
     SET "VisualStudioVersion=%VisualStudioVersion%"
-    SET "VS150COMNTOOLS=%VS150COMNTOOLS%"
-    SET "VS160COMNTOOLS=%VS160COMNTOOLS%"
     SET "WindowsLibPath=%WindowsLibPath%"
     SET "WindowsSdkBinPath=%WindowsSdkBinPath%"
     SET "WindowsSdkDir=%WindowsSdkDir%"

@@ -22,10 +22,13 @@ CALL %DIR_CMD%\options.cmd %*
 
 CALL %DIR_CMD%\setup.cmd %*
 
-:: The nested fixtures build must not repeat the clean this script's setup
-:: already performed, and it must land in the same configuration (release/x86/
-:: vs version). Forward the options but strip the clean/test verbs (test maps
-:: to build), the same filtering all.cmd uses.
+:: The nested fixtures build must not repeat the clean that setup.cmd already
+:: performed, and it must write into the same output tree this script links
+:: from: setup.cmd derives target\<vs>\<platform>\<buildtype> from the
+:: option flags, and a nested call starts them all at zero, so without the
+:: options forwarded it would default to debug/x64/newest-VS and put its
+:: objects in the wrong target directory. Forward the options but strip the
+:: clean/test verbs (test maps to build), the same filtering all.cmd uses.
 set "args="
 for %%A in (%*) do (
     if /I not "%%~A"=="test" if /I not "%%~A"=="clean" if /I not "%%~A"=="cleanall" if /I not "%%~A"=="cleanplat" (

@@ -10,18 +10,6 @@ SETLOCAL ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 :: timer/file/module capabilities only through services injected via the
 :: FLPlatformAPI, never through platform symbols directly. The platform exe
 :: (faultline_split.cmd) links this lib; dependency direction is platform->core.
-::
-:: PREREQUISITES (the split does not compile until these land):
-::   - headers:  include/platform_api.h, include/faultline/fl_timer_service.h,
-::               include/faultline/fl_file_service.h
-::   - seam #1:  faultline_driver.c times via FLTimerService (fctx->timer),
-::               not start_win/stop_win/elapsed_win_seconds
-::   - seam #2:  the driver allocates via the injected memory service, not direct
-::               arena_malloc_throw on a platform arena
-::   - seam #3:  core uses the fla_ exception macros (injected FLExceptionService),
-::               not the flp_ variants
-::   - seam #4:  output_junit.c writes via FLFileService, not fopen/FILE*
-::   - new file: app/faultline/faultline_app_main.c (extracted from main_windows.c)
 
 SET PROJECT_NAME="Faultline Core"
 SET PROJECT_NAME=%PROJECT_NAME:"=%
