@@ -22,8 +22,14 @@ docs/html/
 .vscode
 .vs
 
-# Yes, I use Claude Code to help organize this repo
-.claude/
+# Yes, I use Claude Code to help organize this repo. Team-shared config (settings.json,
+# skills, hooks) is committed; personal overrides in settings.local.json stay local. Note
+# that git cannot re-include anything under an excluded DIRECTORY, so this has to exclude
+# the children (.claude/*) rather than the directory itself (.claude/).
+.claude/*
+!.claude/settings.json
+!.claude/skills/
+!.claude/hooks/
 
 # Experiments with agents
 _ai_team/
