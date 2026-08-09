@@ -265,6 +265,7 @@
 #ifndef ARENA_LARGE_BIN_COUNT
 #define ARENA_LARGE_BIN_COUNT ARENA_LARGE_BIN_COUNT_DEFAULT
 #endif
+
 #define ARENA_CHUNK_TO_DST(CH)       ((DigitalSearchTree *)(CH))
 #define ARENA_DST_TO_FREE_CHUNK(DST) ((FreeChunk *)(DST))
 
@@ -277,6 +278,22 @@
  */
 #define ARENA_SMALL_BIN_COUNT \
     ((ARENA_MIN_LARGE_CHUNK - CHUNK_MIN_SIZE) / CHUNK_ALIGNMENT)
+
+/*
+ * The bin geometry is derived from the alignment and the width of a size_t, so a change
+ * to either can put the size classes out of step with the maps that index them. These
+ * catch that at compile time, on whichever target is being built.
+ */
+_Static_assert(ARENA_SMALL_BIN_COUNT <= ARENA_SMALL_MAP_BITS,
+               "small bins outnumber the bits of the small-bin map that indexes them");
+_Static_assert(((size_t)1 << ARENA_LOG2_MIN_LARGE_CHUNK) == ARENA_MIN_LARGE_CHUNK,
+               "ARENA_LOG2_MIN_LARGE_CHUNK is not the log2 of ARENA_MIN_LARGE_CHUNK");
+_Static_assert(ARENA_MIN_LARGE_CHUNK == ARENA_MAX_SMALL_CHUNK + CHUNK_ALIGNMENT,
+               "a gap or overlap sits between the largest small chunk and the "
+               "smallest large one");
+_Static_assert(ARENA_LARGE_BIN_COUNT > 0, "there must be at least one large bin");
+_Static_assert(ARENA_LARGE_BIN_COUNT <= ARENA_LARGE_BIN_COUNT_MAX,
+               "the topmost large bin describes chunks a size_t cannot express");
 
 /**
  * @brief ARENA_LEFT_SHIFT(IDX) takes an index (IDX) of a bin and returns the value to
@@ -341,6 +358,16 @@ struct Arena {
     FLLock lock;
 };
 typedef struct Arena Arena;
+
+/*
+ * ARENA_SMALL_MAP_BITS is the width the bin geometry above is derived from; these tie it
+ * to the fields that actually carry the bits, so narrowing either map breaks the build
+ * rather than silently shifting past the end of a word.
+ */
+_Static_assert(ARENA_SMALL_MAP_BITS == sizeof(((struct Arena *)0)->small_map) * U08_BIT,
+               "ARENA_SMALL_MAP_BITS does not match the width of Arena::small_map");
+_Static_assert(ARENA_LARGE_BIN_COUNT <= sizeof(((struct Arena *)0)->large_map) * U08_BIT,
+               "large bins outnumber the bits of Arena::large_map that indexes them");
 
 extern FLExceptionReason arena_out_of_memory;
 extern FLExceptionReason fl_internal_error;
