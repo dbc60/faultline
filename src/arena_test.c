@@ -73,11 +73,14 @@ FL_TEST("Macros", test_arena_macros) {
  * @brief iterate through a range of reserved blocks
  */
 FL_TEST("Initialization Size", test_initialize_size) {
-    Arena    *arena;
-    u32       page_size;
-    size_t    request  = 0;
-    u16       exponent = 0;
-    u16 const log2_8GB = 33; // 2^33 is 8 GB
+    Arena *arena;
+    u32    page_size;
+    size_t request  = 0;
+    u16    exponent = 0;
+    // The ceiling is what the target can actually reserve: 2^33 (8 GB) on a 64-bit
+    // address space, and 2^28 (256 MB) on a 32-bit one, which has only two
+    // gibibytes in total and cannot hand a single reservation anything near it.
+    u16 const log2_max_request = SIZE_T_SIZE == 8 ? 33 : 28;
 
     /**
      * @brief I feel I should be able to use MEMORYSTATUSEX to enable testing
@@ -107,8 +110,8 @@ FL_TEST("Initialization Size", test_initialize_size) {
     get_memory_info(0, &page_size);
     arena = new_arena(request, 0);
     // test new_arena reserving space for requests for 0 bytes and then starting
-    // with 2 bytes and doubling each iteration to a maximum of 8GB.
-    for (exponent = 1; arena != 0 && exponent <= log2_8GB; exponent++) {
+    // with 2 bytes and doubling each iteration up to the ceiling above.
+    for (exponent = 1; arena != 0 && exponent <= log2_max_request; exponent++) {
         size_t expected_size
             = ALIGN_UP(request + ARENA_ALIGNED_SIZE + REGION_ALIGNED_SIZE,
                        (size_t)page_size);
@@ -117,26 +120,26 @@ FL_TEST("Initialization Size", test_initialize_size) {
         size_t actual_size = REGION_BYTES_COMMITTED(MEM_TO_REGION(arena));
 
         FL_ASSERT_DETAILS(actual_size == expected_size,
-                          "[exponent=%hu, request=0x%llx]: unexpected size; expected: "
-                          "0x%016llx, actual: 0x%016llx",
+                          "[exponent=%hu, request=0x%zx]: unexpected size; expected: "
+                          "0x%016zx, actual: 0x%016zx",
                           exponent, request, expected_size, actual_size);
 
         FL_ASSERT_DETAILS(arena->initialized,
-                          "[exponent=%hu, request=0x%llx]: arena at %p is uninitialized",
+                          "[exponent=%hu, request=0x%zx]: arena at %p is uninitialized",
                           exponent, request, arena);
 
         FL_ASSERT_DETAILS(arena->small_map == 0,
-                          "[exponent=%hu, request=0x%llx]: invalid initialization for "
+                          "[exponent=%hu, request=0x%zx]: invalid initialization for "
                           "small-bin map; expected: 1, actual: 0x%0llx",
                           exponent, request, arena->small_map);
 
         FL_ASSERT_DETAILS(arena->large_map == 0,
-                          "[exponent=%hu, request=0x%llx]: invalid initialization for "
+                          "[exponent=%hu, request=0x%zx]: invalid initialization for "
                           "tree-bin map; expected: 1, actual: 0x%0llx",
                           exponent, request, arena->large_map);
 
         release_arena(&arena);
-        request = 1ULL << exponent;
+        request = (size_t)1 << exponent;
         arena   = new_arena(request, 0);
     }
 
@@ -182,8 +185,8 @@ void test_exception_pointer(ptrdiff_t actual, ptrdiff_t expected, char const *fi
 void validate_arena_state(Arena *arena, TestState *state) {
     FL_ASSERT_TRUE(arena->initialized);
 
-    test_exception_pointer(arena->small_map, 0, __FILE__, __LINE__);
-    test_exception_pointer(arena->large_map, 0, __FILE__, __LINE__);
+    test_exception_64(arena->small_map, 0, __FILE__, __LINE__);
+    test_exception_64(arena->large_map, 0, __FILE__, __LINE__);
 
     test_exception_64(arena->fast_size, state->fast_size, __FILE__, __LINE__);
     test_exception_64(CHUNK_SIZE(arena->top), state->top_size, __FILE__, __LINE__);
@@ -220,7 +223,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Initialization", TestState, test_initialization,
     FL_TRY {
         reserved = REGION_BYTES_RESERVED(MEM_TO_REGION(arena));
         FL_ASSERT_DETAILS(reserved >= min_allocation,
-                          "Expected allocation size > %llu. Actual %llu", min_allocation,
+                          "Expected allocation size > %zu. Actual %zu", min_allocation,
                           reserved);
         validate_arena_state(arena, t);
     }
@@ -247,18 +250,18 @@ FL_TEST("Small Size to Index", test_chunk_size_to_index) {
         size_t payload = CHUNK_REQUEST_TO_PAYLOAD(req);
         FL_ASSERT_DETAILS(
             actual < ARENA_SMALL_BIN_COUNT,
-            "Request %zd. Expected index < %lld. Actual %d. sizeof(Chunk) %zd. "
-            "Chunk size %zd. CHUNK_MIN_PAYLOAD %zd, CHUNK_MIN_SIZE %zd, "
-            "ARENA_MAX_SMALL_CHUNK %zd, ARENA_MAX_SMALL_REQUEST %zd. Aligned Header "
-            "Size %zd. Payload %zd. Footer size %zd",
+            "Request %zu. Expected index < %zu. Actual %d. sizeof(Chunk) %zu. "
+            "Chunk size %zu. CHUNK_MIN_PAYLOAD %zu, CHUNK_MIN_SIZE %zu, "
+            "ARENA_MAX_SMALL_CHUNK %zu, ARENA_MAX_SMALL_REQUEST %zu. Aligned Header "
+            "Size %zu. Payload %zu. Footer size %zu",
             req, ARENA_SMALL_BIN_COUNT, actual, sizeof(Chunk), chunk_size,
             CHUNK_MIN_PAYLOAD, CHUNK_MIN_SIZE, ARENA_MAX_SMALL_CHUNK,
             ARENA_MAX_SMALL_REQUEST, CHUNK_ALIGNED_SIZE, payload, CHUNK_FOOTER_SIZE);
 
         FL_ASSERT_DETAILS(chunk_size < ARENA_MIN_LARGE_CHUNK,
-                          "Request %zd. Expected chunk size to be less than %d. Actual "
-                          "%lld. Min large-bin size %d, Max small chunk %zd, Max small "
-                          "request %zd, Small-bin count %zd",
+                          "Request %zu. Expected chunk size to be less than %zu. Actual "
+                          "%zu. Min large-bin size %zu, Max small chunk %zu, Max small "
+                          "request %zu, Small-bin count %zu",
                           req, ARENA_MIN_LARGE_CHUNK, chunk_size, ARENA_MIN_LARGE_CHUNK,
                           ARENA_MAX_SMALL_CHUNK, ARENA_MAX_SMALL_REQUEST,
                           ARENA_SMALL_BIN_COUNT);
@@ -416,7 +419,7 @@ FL_TEST("Minimum Large Bin", test_min_large_size) {
     // the smallest chunk in a large bin should be the size of the largest small-bin
     // chunk plus the width of a small bin (CHUNK_ALIGNMENT).
     FL_ASSERT_DETAILS(ARENA_MIN_LARGE_CHUNK == ARENA_MAX_SMALL_CHUNK + CHUNK_ALIGNMENT,
-                      "Expected %zu. Actual %u.",
+                      "Expected %zu. Actual %zu.",
                       ARENA_MAX_SMALL_CHUNK + CHUNK_ALIGNMENT, ARENA_MIN_LARGE_CHUNK);
 
     // detect off-by-one errors - the small-bin index of the smallest large-bin chunk
@@ -729,9 +732,19 @@ static void setup_large_bins(FLTestCase *btc) {
     for (idx = 0; idx < max_index; idx++) {
         // dbg_display_range(idx, range, low, mid, high);
         //  set low to the baseline size of the next bin
-        low += range;
+        size_t next_low = low + range;
         // double the range on odd indices, because bin widths double every other bin.
-        range = idx & 0x1 ? range << 1 : range;
+        size_t next_range = idx & 0x1 ? range << 1 : range;
+
+        // The topmost bins describe chunks larger than a narrow address space can
+        // express. Stop at the last bin whose greatest size still fits a size_t, so
+        // the walk hands the allocation loop below a size it can actually request.
+        if (next_low < low || next_range < range || next_low > MAX_SIZE_T - next_range) {
+            break;
+        }
+
+        low   = next_low;
+        range = next_range;
         // mid   = low + (range >> 1);
         high = low + range - CHUNK_ALIGNMENT;
     }
@@ -743,14 +756,21 @@ static void setup_large_bins(FLTestCase *btc) {
             arena = new_arena(high, 0);
             // dbg_display_allocate_arena(high);
         }
+        FL_CATCH(region_initialization_failure) {
+            // The reservation was refused outright; retry against a smaller bin.
+        }
         FL_CATCH(region_out_of_memory) {
+            // Not enough memory for this bin; retry against a smaller one.
+        }
+        FL_END_TRY;
+
+        if (arena == NULL) {
             idx--;
             high -= range;
             // mid   = high - (range >> 1);
             range = idx & 0x1 ? range >> 1 : range;
             low   = high - range;
         }
-        FL_END_TRY;
     }
 
     FL_ASSERT_DETAILS(arena != NULL, "Failed to allocate an arena");
@@ -845,7 +865,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Large Chunk Allocation", ArenaTestLarge, test_large_
             insert_large_chunk(arena, tree, __FILE__, __LINE__);
 
             FL_ASSERT_DETAILS((arena->large_map & 1ull << idx) != 0,
-                              "expected map bit set at %d, actual map 0x%016zu", idx,
+                              "expected map bit set at %d, actual map 0x%016llx", idx,
                               arena->large_map);
 
             DigitalSearchTree *actual;
@@ -856,9 +876,12 @@ FL_TYPE_TEST_SETUP_CLEANUP("Large Chunk Allocation", ArenaTestLarge, test_large_
                               req, size);
 
             FL_ASSERT_DETAILS(arena->large_map == 0,
-                              "expected map bit set at %d, actual map 0x%016zu", idx,
+                              "expected map bit set at %d, actual map 0x%016llx", idx,
                               arena->large_map);
 
+            // The chunk went into the bin for this index, so that is the one that
+            // should be empty again now it has been allocated back out.
+            bin = ARENA_LARGE_BIN_AT(arena, idx);
             FL_ASSERT_DETAILS(*bin == NULL, "expected bin to be NULL, actual 0x%016p",
                               *bin);
 

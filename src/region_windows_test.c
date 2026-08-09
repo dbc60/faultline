@@ -56,10 +56,15 @@ FL_TYPE_TEST_SETUP_CLEANUP("Large Reservation", RegionAllocationTestCase,
     get_memory_info(&granularity, 0);
 
     // As of 2023, 64 TEBI is the maximum amount of memory 64-bit Windows can
-    // manage. We should be able to reserve it all.
-    u32 additional_blocks = (u32)(TEBI(64) / granularity) - (u32)(request / granularity);
-    Region *region        = new_region(request, additional_blocks);
-    t->region             = region;
+    // manage, and we should be able to reserve it all. A 32-bit process has two
+    // gibibytes of address space in total, so it reserves a large share of that
+    // instead -- asking for the 64-bit figure there would overflow the reservation
+    // size rather than test a large reservation.
+    size_t const reservation = (size_t)(SIZE_T_SIZE == 8 ? TEBI(64) : MEBI(512));
+    u32          additional_blocks
+        = (u32)(reservation / granularity) - (u32)(request / granularity);
+    Region *region = new_region(request, additional_blocks);
+    t->region      = region;
 
     VirtualQuery(region, &mem_info, sizeof mem_info);
     FL_ASSERT_EQ_PTR(region, mem_info.BaseAddress);

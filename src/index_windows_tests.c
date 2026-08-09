@@ -307,10 +307,13 @@ FL_TEST("Bin lower limit round-trips through index_by_value", bin_limit_round_tr
     u32 cnt = 48;
     u32 p2  = 10;
 
-    // For each bin, its lower limit should map back to the same bin index.
+    // For each bin, its lower limit should map back to the same bin index. The
+    // limits are held at the width index_by_value accepts: the upper bins of a
+    // 48-bin set exceed a 32-bit size_t, and narrowing them here would test
+    // truncated values rather than the ones the index maps.
     for (u32 idx = 0; idx < cnt; idx++) {
-        size_t lower     = INDEX_BIN_TO_LOWER_LIMIT(idx, p2);
-        u32    round_idx = index_by_value((flag64)lower, cnt, p2);
+        flag64 lower     = INDEX_BIN_TO_LOWER_LIMIT(idx, p2);
+        u32    round_idx = index_by_value(lower, cnt, p2);
         FL_ASSERT_EQ_UINT32(idx, round_idx);
     }
 }

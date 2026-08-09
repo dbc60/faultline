@@ -52,7 +52,7 @@ int main(void) {
 
         fl_stopwatch_start(&sw);
         // Burn enough work that the elapsed time exceeds the counter resolution.
-        volatile unsigned spin = 0;
+        unsigned volatile spin = 0;
         for (unsigned i = 0; i < 1000000u; i++) {
             spin += i;
         }

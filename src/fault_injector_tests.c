@@ -99,13 +99,13 @@ FL_TYPE_TEST_SETUP_CLEANUP("Default Values", FaultTestCase, default_values, setu
     }
     if (fault_injector_get_allocated_count(injector) != 0) {
         FL_THROW_DETAILS(fl_test_exception,
-                         "expected allocated_resources to be empty, got %zu",
-                         fault_injector_get_allocated_count(injector));
+                         "expected allocated_resources to be empty, got %lld",
+                         (long long)fault_injector_get_allocated_count(injector));
     }
     if (fault_injector_get_released_count(injector) != 0) {
         FL_THROW_DETAILS(fl_test_exception,
-                         "expected released_resources to be empty, got %zu",
-                         fault_injector_get_released_count(injector));
+                         "expected released_resources to be empty, got %lld",
+                         (long long)fault_injector_get_released_count(injector));
     }
     if (fault_injector_get_invalid_address_count(injector) != 0) {
         FL_THROW_DETAILS(fl_test_exception, "expected faults to be empty, got %lld",

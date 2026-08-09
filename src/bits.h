@@ -13,6 +13,7 @@
 #include <faultline/fl_abbreviated_types.h> // u64
 
 #include <limits.h> // CHAR_BIT
+#include <stddef.h> // size_t
 
 #if defined(__cplusplus)
 extern "C" {
@@ -25,8 +26,12 @@ extern "C" {
  * For example, ALIGN_UP(x, 16) rounds up x to the smallest multiple of 16 greater than
  * or equal to x. If x is 47, the result is 48. If x is 48, the result is 48. If x is 49,
  * the result is 64.
+ *
+ * The mask is built at size_t width because every alignment target is a size or an
+ * address. Widening it past size_t would retype the whole expression, so that aligning
+ * a size_t would yield a value the caller must narrow again.
  */
-#define ALIGN_UP(V, P2) (((V) + ((P2) - 1)) & ~((u64)(P2) - 1))
+#define ALIGN_UP(V, P2) (((V) + ((P2) - 1)) & ~((size_t)(P2) - 1))
 
 /**
  * @brief Given a non-negative value V and a power-of-2 P2, ALIGN_DOWN(V, P2) calculates
@@ -36,7 +41,7 @@ extern "C" {
  * less than or equal to x. If x is 49, the result is 48. If x is 48, the result is 48.
  * If x is 47, the result is 32.
  */
-#define ALIGN_DOWN(V, P2) ((V) & ~((u64)(P2) - 1))
+#define ALIGN_DOWN(V, P2) ((V) & ~((size_t)(P2) - 1))
 
 /**
  * @brief unsigned negation

@@ -9,6 +9,7 @@
  *
  * See LICENSE.txt for copyright and licensing information about this file.
  */
+#include <faultline/bitscan_windows.h>      // fl_bit_scan_reverse64
 #include <faultline/fl_abbreviated_types.h> // u16, u32, u64
 
 #ifndef WIN32_LEAN_AND_MEAN
@@ -34,9 +35,9 @@ extern "C" {
 
 #define MATH_GREATEST_LOG2_BIT64(VAL, P2) \
     do {                                  \
-        u64   v = (VAL);                  \
-        DWORD x;                          \
-        _BitScanReverse64(&x, v);         \
+        u64 v = (VAL);                    \
+        u32 x = 0;                        \
+        fl_bit_scan_reverse64(&x, v);     \
         (P2) = x;                         \
     } while (0)
 

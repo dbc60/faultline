@@ -50,6 +50,17 @@ typedef struct DigitalSearchTree {
     (FL_CONTAINER_OF(DLIST_NEXT(&(T)->siblings), DigitalSearchTree, siblings))
 #define DST_PREV_SIBLING(T) \
     (FL_CONTAINER_OF(DLIST_PREVIOUS(&(T)->siblings), DigitalSearchTree, siblings))
+
+/**
+ * @brief Select the subtree to descend into for a key at a given decision bit.
+ *
+ * The key is widened to 64 bits because BITS_RIGHT_MSB_LEAST discriminates against
+ * the most-significant bit of a 64-bit word, which a size_t does not necessarily
+ * reach. The left-shift a caller supplies is therefore relative to bit 63, not to
+ * the width of a size_t.
+ */
+#define DST_NEXT_CHILD(SIZE, LEFT_SHIFT) \
+    BITS_RIGHT_MSB_LEAST((u64)(SIZE), (LEFT_SHIFT), 1)
 #define DST_LEFT_CHILD(T)  ((T)->child[0])
 #define DST_RIGHT_CHILD(T) ((T)->child[1])
 
@@ -319,7 +330,7 @@ dst_find_smallest_large_node(DigitalSearchTree *root, size_t size, flag64 left_s
     size_t             remainder_size    = UNSIGNED_NEGATION(size);
     DigitalSearchTree *smallest          = NULL;
     DigitalSearchTree *rightmost_subtree = NULL; // the deepest, untaken right subtree
-    flag64             next              = BITS_RIGHT_MSB_LEAST(size, left_shift, 1);
+    flag64             next              = DST_NEXT_CHILD(size, left_shift);
 
     do {
         size_t root_remainder_size = CHUNK_SIZE(root) - size;
@@ -350,7 +361,7 @@ dst_find_smallest_large_node(DigitalSearchTree *root, size_t size, flag64 left_s
             }
 
             left_shift++;
-            next = BITS_RIGHT_MSB_LEAST(size, left_shift, 1);
+            next = DST_NEXT_CHILD(size, left_shift);
         }
     } while (remainder_size != 0 && root != NULL);
 

@@ -20,12 +20,12 @@
 #include "fl_selftest.h"
 
 #include <stddef.h> // size_t, NULL
+#include <stdio.h>  // fopen, fread, fclose
 #include <stdlib.h> // getenv, remove
 #include <string.h> // memcmp, strlen
 
 #include <faultline/arena.h>              // Arena, new_arena, release_arena
-#include <faultline/fl_file.h>            // FL_FILE_OPEN/READ/WRITE/CLOSE (read-back only)
-#include <faultline/fl_file_types.h>      // FLFile, FL_FILE_READ
+#include <faultline/fl_file_types.h>      // FLFile
 #include <faultline/fl_macros.h>          // FL_UNUSED
 #include <faultline/fl_memory_service.h>  // FLA_SET_MEMORY_SERVICE_FN
 #include <faultline/fl_stream.h>          // FL_STREAM_OPEN/WRITE/CLOSE/CONSOLE
@@ -46,14 +46,19 @@ static FLA_SET_MEMORY_SERVICE_FN(noop_set_memory_service) {
     FL_UNUSED(size);
 }
 
-// Read the whole contents of path back via the (unrelated) file service.
+// Read the whole contents of path back through stdio. The stream service is
+// write-only, so verifying what it wrote needs a reader from somewhere; stdio keeps
+// that to the C library rather than making this package depend on the file service,
+// which it does not ship.
 static size_t read_back(char const *path, char *buf, size_t bufsize) {
-    FLFile *f = FL_FILE_OPEN(path, FL_FILE_READ);
-    if (f == NULL) {
-        return 0;
+    size_t n = 0;
+    FILE  *f = fopen(path, "rb");
+
+    if (f != NULL) {
+        n = fread(buf, 1, bufsize, f);
+        fclose(f);
     }
-    size_t n = FL_FILE_READ(f, buf, bufsize, 0);
-    FL_FILE_CLOSE(f);
+
     return n;
 }
 
@@ -105,9 +110,13 @@ int main(void) {
 
         SECTION("console close is a no-op on a redirected handle");
         {
-            FLFile *temp = FL_FILE_OPEN(path, FL_FILE_WRITE);
-            CHECK(temp != NULL);
-            HANDLE temp_handle = (HANDLE)temp;
+            // SetStdHandle needs a real Win32 handle. Created directly rather than
+            // through the file service: this package does not ship it, and the
+            // handle behind an FLFile is the provider's own representation, not
+            // something a consumer should assume it can cast to.
+            HANDLE temp_handle = CreateFileA(path, GENERIC_WRITE, FILE_SHARE_READ, NULL,
+                                             CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+            CHECK(temp_handle != INVALID_HANDLE_VALUE);
 
             HANDLE saved = GetStdHandle(STD_OUTPUT_HANDLE);
             CHECK(SetStdHandle(STD_OUTPUT_HANDLE, temp_handle) != 0);
@@ -123,7 +132,8 @@ int main(void) {
             CHECK(FL_STREAM_WRITE(console, "again\n", 6) == 6);
 
             CHECK(SetStdHandle(STD_OUTPUT_HANDLE, saved) != 0);
-            FL_FILE_CLOSE(temp); // the test's own handle, not the service's to close
+            CloseHandle(
+                temp_handle); // the test's own handle, not the service's to close
 
             char buf[32] = {0};
             CHECK(read_back(path, buf, sizeof buf) == 17);

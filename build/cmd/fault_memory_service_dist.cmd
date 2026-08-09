@@ -171,6 +171,7 @@ ECHO Copying arena/exception/log public headers...
 COPY /Y "%DIR_INC%\arena.h"                         "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\arena_malloc.h"                  "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\arena_pool.h"                    "%DIR_DIST%\include\faultline\" > NUL
+COPY /Y "%DIR_INC%\bitscan_windows.h"               "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\dlist.h"                         "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\fl_abbreviated_types.h"          "%DIR_DIST%\include\faultline\" > NUL
 COPY /Y "%DIR_INC%\fl_exception_service.h"          "%DIR_DIST%\include\faultline\" > NUL

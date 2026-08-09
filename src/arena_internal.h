@@ -28,8 +28,14 @@
 #include <stddef.h>    // size_t
 #include <stdio.h>     // snprintf
 
-// LOG2(ARENA_MIN_LARGE_CHUNK)
-#define ARENA_LOG2_MIN_LARGE_CHUNK 10
+/**
+ * @brief LOG2(ARENA_MIN_LARGE_CHUNK).
+ *
+ * ARENA_MIN_LARGE_CHUNK is ARENA_SMALL_MAP_BITS (2^6) alignment units, and an
+ * alignment unit is two size_t (2^4 on a 64-bit target, 2^3 on a 32-bit one), which
+ * puts this at 10 and 9 respectively.
+ */
+#define ARENA_LOG2_MIN_LARGE_CHUNK (SIZE_T_SIZE == 8 ? 10 : 9)
 
 /// runtime checks
 #define ARENA_RTCHECK(EXP, FILE, LINE)                         \
@@ -224,9 +230,38 @@
  * end      |+-+-+-+|+-+-+-+|+-+-+-+|+-+-+-+|+-+-+-+|+-+-+-+|+-+-+-+|+-+-+-+-|
  * total size: 0x0478 bytes, or 1,144 bytes.
  */
-/// The minimum size of large chunks
-#define ARENA_MIN_LARGE_CHUNK         1024
-#define ARENA_LARGE_BIN_COUNT_DEFAULT 48
+/// The number of bins the small-bin map indexes, one bit each.
+#define ARENA_SMALL_MAP_BITS 64
+
+/**
+ * @brief The smallest chunk that belongs to a large bin.
+ *
+ * The small bins cover [CHUNK_MIN_SIZE, ARENA_MIN_LARGE_CHUNK) in CHUNK_ALIGNMENT
+ * steps, so this boundary is exactly the span the small-bin map can index. Deriving
+ * it from the alignment rather than fixing it keeps that span within the map on a
+ * 32-bit target, where an alignment unit is half as wide and a fixed boundary would
+ * ask for twice as many bins as there are bits.
+ */
+#define ARENA_MIN_LARGE_CHUNK (ARENA_SMALL_MAP_BITS * CHUNK_ALIGNMENT)
+
+/**
+ * @brief The most large bins the address space can carry.
+ *
+ * Each pair of bins covers one power of two at or above ARENA_MIN_LARGE_CHUNK, so
+ * the last bin of a set of N has a lower limit of
+ * 1.5 * 2^(ARENA_LOG2_MIN_LARGE_CHUNK + (N - 1) / 2). That limit has to stay
+ * representable as a size_t, which caps the count on a narrower address space.
+ */
+#define ARENA_LARGE_BIN_COUNT_MAX \
+    (2 * (SIZE_T_BITSIZE - 1 - ARENA_LOG2_MIN_LARGE_CHUNK) + 2)
+
+/// Bins beyond this many buy little, so the count is capped well under the maximum
+/// a 64-bit address space could otherwise index.
+#define ARENA_LARGE_BIN_COUNT_PREFERRED 48
+
+#define ARENA_LARGE_BIN_COUNT_DEFAULT \
+    MIN(ARENA_LARGE_BIN_COUNT_PREFERRED, ARENA_LARGE_BIN_COUNT_MAX)
+
 #ifndef ARENA_LARGE_BIN_COUNT
 #define ARENA_LARGE_BIN_COUNT ARENA_LARGE_BIN_COUNT_DEFAULT
 #endif
@@ -248,13 +283,16 @@
  * left-shift the size of the DigitalSearchTree. The shifted value will be used to make
  * left-right decisions while searching the tree for a candidate free chunk.
  *
+ * The shift is relative to bit 63, because the tree discriminates on the
+ * most-significant bit of a 64-bit word (see DST_NEXT_CHILD) rather than on the
+ * most-significant bit of a size_t.
+ *
  * @param IDX the index of the bin.
  */
 #define ARENA_LEFT_SHIFT(IDX)               \
     (((IDX) == (ARENA_LARGE_BIN_COUNT) - 1) \
          ? 0                                \
-         : (SIZE_T_BITSIZE - SIZE_T_ONE)    \
-               - (((IDX) >> 1) + (ARENA_LOG2_MIN_LARGE_CHUNK) - 2))
+         : (U64_BIT - 1) - (((IDX) >> 1) + (ARENA_LOG2_MIN_LARGE_CHUNK) - 2))
 
 /**
  * @brief A structure for holding the state of a memory-allocation arena.

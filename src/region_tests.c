@@ -329,7 +329,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Non-zero Initial Commit", RegionAllocationTestCase,
     get_memory_info(0, &page_size);
 
     // Committed should be at least sizeof(Region) + 64KiB, rounded to page size
-    size_t expected_min = ALIGN_UP(REGION_ALIGNED_SIZE + KIBI(64), page_size);
+    size_t expected_min = ALIGN_UP((size_t)(REGION_ALIGNED_SIZE + KIBI(64)), page_size);
     FL_ASSERT_TRUE(REGION_BYTES_COMMITTED(region) >= expected_min);
 
     // Committed should be page-aligned
@@ -393,9 +393,13 @@ FL_TYPE_TEST_SETUP_CLEANUP("Extend Zero", RegionAllocationTestCase, test_extend_
 FL_TYPE_TEST_SETUP_CLEANUP("Extend Beyond Available", RegionAllocationTestCase,
                            test_extend_beyond_available, setup_region_allocation,
                            cleanup_region_allocation) {
-    // Request far more than any system can provide (1 PiB)
+    // Ask for more than the region reports it can reach. Deriving the request from
+    // the region keeps it out of reach on any address-space width, where a fixed
+    // constant large enough for 64-bit would truncate to something reachable on 32.
+    size_t beyond = region_available_bytes(t->region) + t->region->granularity;
+
     FL_TRY {
-        region_extend(t->region, TEBI(1024));
+        region_extend(t->region, beyond);
         FL_FAIL("Expected region_out_of_memory for extend beyond available space");
     }
     FL_CATCH(region_out_of_memory) {

@@ -43,7 +43,10 @@ void cleanup(FLTestCase *btc) {
 void setup_large_range(FLTestCase *btc) {
     TestRequest *tr = FL_CONTAINER_OF(btc, TestRequest, tc);
     tr->lo          = ARENA_MAX_SMALL_CHUNK;
-    tr->hi          = GIBI(2);
+    // The arena below commits this much up front, and a 32-bit process has only two
+    // gibibytes of address space to draw on, so the ceiling is scaled to the target.
+    // The loop steps by doubling, so a lower ceiling costs only a few size classes.
+    tr->hi = (size_t)(SIZE_T_SIZE == 8 ? GIBI(2) : MEBI(256));
 
     // make sure the arena is large enough
     tr->arena = new_arena(tr->hi, 0);
@@ -148,7 +151,8 @@ FL_TYPE_TEST_SETUP_CLEANUP("In-Order Delete", TestRequest, test_in_order_delete,
         DListI64 *node = FL_CONTAINER_OF(DLIST_LAST(&head->link), DListI64, link);
 
         DLIST_REMOVE(&node->link);
-        FL_ASSERT_DETAILS(node->value == i, "Expected %zu. Actual %zd", i, node->value);
+        FL_ASSERT_DETAILS(node->value == i, "Expected %lld. Actual %lld", i,
+                          node->value);
         arena_free_throw(t->arena, node, __FILE__, __LINE__);
     }
 }
@@ -183,7 +187,8 @@ FL_TYPE_TEST_SETUP_CLEANUP("Reverse-Order Delete", TestRequest,
     for (i64 i = (i64)t->hi - 1; i >= (i64)t->lo; i--) {
         DListI64 *node = FL_CONTAINER_OF(DLIST_FIRST(&head->link), DListI64, link);
         DLIST_REMOVE(&node->link);
-        FL_ASSERT_DETAILS(node->value == i, "Expected %zu. Actual %zd", i, node->value);
+        FL_ASSERT_DETAILS(node->value == i, "Expected %lld. Actual %lld", i,
+                          node->value);
 
         arena_free_throw(t->arena, node, __FILE__, __LINE__);
     }

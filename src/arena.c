@@ -380,7 +380,7 @@ static Chunk *chunk_from_fast(Arena *arena, size_t size, char const *file, int l
 static Chunk *allocate_from_next_nonempty_small_bin(Arena *arena, size_t size,
                                                     char const *file, int line) {
     flag64 small_bits = ARENA_SMALL_BITS(arena, size);
-    u64    index      = ARENA_SMALL_INDEX(size);
+    u32    index      = ARENA_SMALL_INDEX(size);
     flag64 left_bits  = (small_bits << index) & BIT_MASK_LEFT(IDX_TO_BIT64(index));
     flag64 least_bit  = BIT_LSB(left_bits);
     COMPUTE_LSB2IDX64(least_bit, index);

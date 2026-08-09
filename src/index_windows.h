@@ -12,6 +12,7 @@
  *
  * See LICENSE.txt for copyright and licensing information about this file.
  */
+#include <faultline/bitscan_windows.h> // fl_bit_scan_forward64, fl_bit_scan_reverse64
 #include <faultline/fl_abbreviated_types.h> // u32, flag64
 #include <faultline/size.h>                 // TWO_SIZE_T_SIZES
 
@@ -53,11 +54,11 @@
  * @param X is a 64-bit value.
  * @param I set to the zero-based index of the least-significant set bit (1 bit) in X.
  */
-#define COMPUTE_LSB2IDX64(X, I)                      \
-    do {                                             \
-        unsigned long J;                             \
-        u08           ok = _BitScanForward64(&J, X); \
-        I                = ok ? (u32)J : 0;          \
+#define COMPUTE_LSB2IDX64(X, I)                       \
+    do {                                              \
+        u32 J;                                        \
+        u08 ok = fl_bit_scan_forward64(&J, (u64)(X)); \
+        I      = ok ? J : 0;                          \
     } while (0)
 
 /**
@@ -85,11 +86,11 @@
  * @param X is a 64-bit value.
  * @param I set to the zero-based index of the most-significant set bit (1 bit) in X.
  */
-#define COMPUTE_MSB2IDX64(X, I)                      \
-    do {                                             \
-        unsigned long J;                             \
-        u08           ok = _BitScanReverse64(&J, X); \
-        I                = ok ? (u32)J : 0;          \
+#define COMPUTE_MSB2IDX64(X, I)                       \
+    do {                                              \
+        u32 J;                                        \
+        u08 ok = fl_bit_scan_reverse64(&J, (u64)(X)); \
+        I      = ok ? J : 0;                          \
     } while (0)
 
 /**
@@ -143,7 +144,7 @@
             IDX = (CNT) - 1;                                               \
         } else {                                                           \
             u32 K;                                                         \
-            u08 ok = _BitScanReverse64((DWORD *)&K, X);                    \
+            u08 ok = fl_bit_scan_reverse64(&K, X);                         \
             if (ok) {                                                      \
                 IDX = (u32)((K << 1) + (((VAL) >> (K + ((P2) - 1)) & 1))); \
             } else {                                                       \
@@ -220,7 +221,7 @@ static inline u32 index_by_value(flag64 val, u32 cnt, u32 exp) {
     } else {
         u32 k;
         // find k, the largest power of 2 that is not greater than log2(x)
-        u08 ok = _BitScanReverse64((DWORD *)&k, x);
+        u08 ok = fl_bit_scan_reverse64(&k, x);
         if (ok) {
             // "k << 1" ensures that the index is even, and the second term ensures that
             // the index is odd if the value is odd. "k << 1" also ensures that each

@@ -54,7 +54,7 @@ void dst_insert(DigitalSearchTree *restrict root, DigitalSearchTree *restrict no
             DLIST_INSERT_NEXT(&root->siblings, &node->siblings);
         } else {
             // traverse to next subtree
-            flag64 next = BITS_RIGHT_MSB_LEAST(size, left_shift, 1);
+            flag64 next = DST_NEXT_CHILD(size, left_shift);
             child       = root->child[next];
 
             // node should NOT be in the tree already

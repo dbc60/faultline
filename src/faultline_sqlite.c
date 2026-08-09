@@ -1466,8 +1466,11 @@ void faultline_show_test_failures(sqlite3 *db, char const *suite_name, int limit
 
             // Include resource address for leaks and invalid frees when available
             if (resource_addr != 0 && result_code > FL_PASS) {
-                snprintf(location, sizeof location, "%s:%d @%p", filename, source_line,
-                         (void *)resource_addr);
+                // The stored address is 64-bit regardless of the width of the build
+                // reading it, so format the value rather than round-tripping it
+                // through a pointer that may be narrower.
+                snprintf(location, sizeof location, "%s:%d @0x%llx", filename,
+                         source_line, (unsigned long long)resource_addr);
             } else {
                 snprintf(location, sizeof location, "%s:%d", filename, source_line);
             }

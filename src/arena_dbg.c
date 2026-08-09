@@ -391,15 +391,16 @@ static bool find_bin(Arena *arena, FreeChunk *ch) {
         if (ARENA_LARGE_MAP_IS_MARKED(arena, tidx)) {
             DigitalSearchTree *t          = *ARENA_LARGE_BIN_AT(arena, tidx);
             flag64             left_shift = ARENA_LEFT_SHIFT(tidx);
-            size_t             size_bits  = size << left_shift;
+            // Widened to match the tree's discriminator, which is the most-significant
+            // bit of a 64-bit word rather than of a size_t.
+            u64 size_bits = (u64)size << left_shift;
             // N.B.: this is how to traverse a tree when parent and child pointers can't
             // be NULL/zero.
-            DigitalSearchTree *next
-                = t->child[(size_bits >> (SIZE_T_BITSIZE - SIZE_T_ONE)) & 1];
+            DigitalSearchTree *next = t->child[(size_bits >> (U64_BIT - 1)) & 1];
             while (t != next && CHUNK_SIZE(t) != size) {
                 t = next;
                 size_bits <<= 1;
-                next = t->child[(size_bits >> (SIZE_T_BITSIZE - SIZE_T_ONE)) & 1];
+                next = t->child[(size_bits >> (U64_BIT - 1)) & 1];
             }
             if (t != next) {
                 DigitalSearchTree *u = t;

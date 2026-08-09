@@ -138,13 +138,14 @@ FL_TYPE_TEST_SETUP_CLEANUP("Arena Malloc And Free", ArenaServiceTestCase,
 }
 
 // Verify that an arena-only OOM returns NULL rather than propagating
-// arena_out_of_memory as a thrown exception. A request for 1 TiB is
-// guaranteed to exhaust any real arena without risking size_t overflow
-// in the arena's internal calculations.
+// arena_out_of_memory as a thrown exception. Half the size_t range exhausts any
+// real arena on any address-space width, while staying below the arena's
+// maximum request so the request is rejected for want of memory rather than for
+// being out of range.
 FL_TYPE_TEST_SETUP_CLEANUP("Arena Malloc OOM Returns Null", ArenaServiceTestCase,
                            arena_malloc_oom_returns_null, arena_setup, arena_cleanup) {
     FL_UNUSED_TYPE_ARG;
-    void *ptr = malloc((size_t)1 << 40);
+    void *ptr = malloc(HALF_MAX_SIZE_T);
     FL_ASSERT_NULL(ptr);
 }
 

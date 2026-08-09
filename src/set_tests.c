@@ -109,7 +109,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Not Member", TestSet, test_membership, setup_set,
     if (set_contains(set, &value)) {
         LOG_ERROR("Set Test", "Expected set to NOT contain %zu", value);
         FL_THROW_DETAILS(fl_internal_error,
-                         "set_contains(set, %llu): expected false, actual true", value);
+                         "set_contains(set, %zu): expected false, actual true", value);
     }
 
     value = 0xdeadbeef;
@@ -117,7 +117,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Not Member", TestSet, test_membership, setup_set,
     if (!set_contains(set, &value)) {
         LOG_ERROR("Set Test", "Expected set to contain %zu", value);
         FL_THROW_DETAILS(fl_internal_error,
-                         "set_contains(set, %llu): expected false, actual true", value);
+                         "set_contains(set, %zu): expected false, actual true", value);
     }
 
     destroy_set(set);

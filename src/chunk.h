@@ -50,7 +50,7 @@
 #define CHUNK_CURRENT_INUSE_FLAG 0x2
 #define CHUNK_INUSE_FLAGS        (CHUNK_PREVIOUS_INUSE_FLAG | CHUNK_CURRENT_INUSE_FLAG)
 
-/// The minimum alignment for memory addresses (16, 0x10)
+/// The minimum alignment for memory addresses (16 on a 64-bit target, 8 on 32-bit)
 #define CHUNK_ALIGNMENT TWO_SIZE_T_SIZES
 
 /// A bit mask for aligning memory addresses (15, 0x0F, b0000 1111)
@@ -346,7 +346,7 @@ static inline FreeChunk *free_chunk_split(FreeChunk *ch, size_t new_size,
                                    new_size);
     }
 
-    flag64     in_use         = ch->size & CHUNK_INUSE_FLAGS;
+    size_t     in_use         = ch->size & CHUNK_INUSE_FLAGS;
     size_t     remainder_size = size - new_size;
     FreeChunk *remainder      = NULL;
     if (remainder_size >= CHUNK_MIN_SIZE) {
