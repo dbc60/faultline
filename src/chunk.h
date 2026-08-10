@@ -53,7 +53,7 @@
 /// The minimum alignment for memory addresses (16 on a 64-bit target, 8 on 32-bit)
 #define CHUNK_ALIGNMENT TWO_SIZE_T_SIZES
 
-/// A bit mask for aligning memory addresses (15, 0x0F, b0000 1111)
+/// A bit mask for aligning memory addresses (15 on a 64-bit target, 7 on 32-bit)
 #define CHUNK_ALIGNMENT_MASK (CHUNK_ALIGNMENT - 1)
 
 #define CHUNK_FOOTER_SIZE SIZE_T_SIZE
