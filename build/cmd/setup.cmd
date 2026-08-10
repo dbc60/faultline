@@ -162,7 +162,7 @@ IF %cleanall% EQU 1 (
     if %verbose% EQU 1 (
         IF EXIST %DIR_TARGET% ECHO Clean All: deleting directory: %DIR_TARGET%
     )
-    IF EXIST %DIR_TARGET% DEL /S /Q %DIR_TARGET%\*
+    IF EXIST %DIR_TARGET% RD /S /Q %DIR_TARGET%
     SET VSSOLUTION=
 )
 
