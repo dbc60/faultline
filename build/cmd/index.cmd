@@ -21,6 +21,9 @@ if %timed% EQU 1 (
 
 CALL %DIR_CMD%\setup.cmd %*
 
+:: cl output capture, named per script inside this configuration's obj directory
+SET "TEMP_OUT=%DIR_OUT_OBJ%\%~n0_cl_out.tmp"
+
 :: The build defaults to debug unless release is explicitly passed in
 IF NOT "%release%"=="" (
     if %release% EQU 1 (
@@ -37,14 +40,14 @@ IF %build% EQU 1 (
     %DIR_REPO%\src\index_generic_tests.c /Fo:%DIR_OUT_OBJ%\ /Fd:%DIR_OUT_LIB%\index_generic_tests.pdb ^
     /LD /link %CommonLinkerFlagsFinal% ^
     /OUT:%DIR_OUT_BIN%\index_generic_tests.dll ^
-    /IMPLIB:%DIR_OUT_LIB%\index_generic_tests.lib > "%TEMP%\cl_out.tmp"
+    /IMPLIB:%DIR_OUT_LIB%\index_generic_tests.lib > "%TEMP_OUT%"
     if errorlevel 1 (
-        type "%TEMP%\cl_out.tmp"
-        del "%TEMP%\cl_out.tmp"
+        type "%TEMP_OUT%"
+        del "%TEMP_OUT%"
         echo failed to build the Generic %PROJECT_NAME% test suite
         GOTO :ERROR
     )
-    del "%TEMP%\cl_out.tmp"
+    del "%TEMP_OUT%"
 )
 
 :: Build the Windows version of the test suite
@@ -56,14 +59,14 @@ IF %build% EQU 1 (
     %DIR_REPO%\src\index_windows_tests.c /Fo:%DIR_OUT_OBJ%\ /Fd:%DIR_OUT_LIB%\index_windows_tests.pdb ^
     /LD /link %CommonLinkerFlagsFinal% ^
     /OUT:%DIR_OUT_BIN%\index_windows_tests.dll ^
-    /IMPLIB:%DIR_OUT_LIB%\index_windows_tests.lib > "%TEMP%\cl_out.tmp"
+    /IMPLIB:%DIR_OUT_LIB%\index_windows_tests.lib > "%TEMP_OUT%"
     if errorlevel 1 (
-        type "%TEMP%\cl_out.tmp"
-        del "%TEMP%\cl_out.tmp"
+        type "%TEMP_OUT%"
+        del "%TEMP_OUT%"
         echo failed to build the Windows %PROJECT_NAME% test suite
         GOTO :ERROR
     )
-    del "%TEMP%\cl_out.tmp"
+    del "%TEMP_OUT%"
 )
 
 if %test% EQU 1 (

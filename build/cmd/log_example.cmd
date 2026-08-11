@@ -21,6 +21,9 @@ if %timed% EQU 1 (
 
 CALL %DIR_CMD%\setup.cmd %*
 
+:: cl output capture, named per script inside this configuration's obj directory
+SET "TEMP_OUT=%DIR_OUT_OBJ%\%~n0_cl_out.tmp"
+
 :: The build defaults to debug unless release is explicitly passed in
 IF NOT "%release%"=="" (
     if %release% EQU 1 (
@@ -36,14 +39,14 @@ IF %build% EQU 1 (
     cl %CommonCompilerFlagsFinal% /I%DIR_INCLUDE% /I%DIR_REPO%\src ^
     %DIR_REPO%\cmd\log_example\main.c  /Fo:%DIR_OUT_OBJ%\ ^
     /Fd:%DIR_OUT_BIN%\log_example.pdb /Fe:%DIR_OUT_BIN%\log_example.exe /link ^
-    %CommonLinkerFlagsFinal% /ENTRY:mainCRTStartup > "%TEMP%\cl_out.tmp"
+    %CommonLinkerFlagsFinal% /ENTRY:mainCRTStartup > "%TEMP_OUT%"
     if errorlevel 1 (
-        type "%TEMP%\cl_out.tmp"
-        del "%TEMP%\cl_out.tmp"
+        type "%TEMP_OUT%"
+        del "%TEMP_OUT%"
         echo failed to build the %PROJECT_NAME% Program
         GOTO :ERROR
     )
-    del "%TEMP%\cl_out.tmp"
+    del "%TEMP_OUT%"
 )
 if %timed% EQU 1 (
     ctime.exe -end metrics\vs\log_example.ctm %errorlevel%

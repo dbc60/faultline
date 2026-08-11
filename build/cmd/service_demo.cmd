@@ -42,9 +42,12 @@ CALL "%DIR_CMD%\setup.cmd" %*
 SET HERE=%DIR_REPO%\examples\service_demo
 SET TREE=%DIR_REPO%\target\service_demo\tree
 SET BIN=%DIR_REPO%\target\service_demo\bin
-SET OBJ_DLL=%DIR_REPO%\target\service_demo\obj\dll
-SET OBJ_EXE=%DIR_REPO%\target\service_demo\obj\exe
-SET CL_LOG=%TEMP%\service_demo_cl.tmp
+SET OBJ_ROOT=%DIR_REPO%\target\service_demo\obj
+SET OBJ_DLL=%OBJ_ROOT%\dll
+SET OBJ_EXE=%OBJ_ROOT%\exe
+:: cl output capture, kept in the demo's own tree so it is removed by clean and
+:: reclaimed by the next run instead of being shared with unrelated builds
+SET "CL_LOG=%OBJ_ROOT%\service_demo_cl.tmp"
 
 :: Honor clean/cleanall/cleanplat by removing the demo's private tree. The demo
 :: keeps every artifact under target\service_demo (setup.cmd's clean targets the

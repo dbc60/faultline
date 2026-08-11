@@ -20,6 +20,9 @@ if %timed% EQU 1 (
 
 CALL %DIR_CMD%\setup.cmd %*
 
+:: cl output capture, named per script inside this configuration's obj directory
+SET "TEMP_OUT=%DIR_OUT_OBJ%\%~n0_cl_out.tmp"
+
 :: Build the project
 IF %build% EQU 1 (
     if %verbose% EQU 1 (
@@ -70,14 +73,14 @@ IF %build% EQU 1 (
         %DIR_REPO%\src\set.c ^
         %DIR_REPO%\src\win_timer.c ^
         %DIR_THIRD_PARTY%\sqlite\sqlite3.c ^
-        /Fo:%DIR_OUT_OBJ%\ /Fd:%DIR_OUT_LIB%\faultline.pdb > "%TEMP%\cl_out.tmp"
+        /Fo:%DIR_OUT_OBJ%\ /Fd:%DIR_OUT_LIB%\faultline.pdb > "%TEMP_OUT%"
     IF ERRORLEVEL 1 (
-        type "%TEMP%\cl_out.tmp"
-        del "%TEMP%\cl_out.tmp"
+        type "%TEMP_OUT%"
+        del "%TEMP_OUT%"
         echo Failed to compile %PROJECT_NAME%
         GOTO :ERROR
     )
-    del "%TEMP%\cl_out.tmp"
+    del "%TEMP_OUT%"
 
     REM Create static library from .obj files
     lib %CommonLibrarianFlags% ^

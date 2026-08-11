@@ -20,6 +20,9 @@ if %timed% EQU 1 (
 
 CALL %DIR_CMD%\setup.cmd %*
 
+:: cl output capture, named per script inside this configuration's obj directory
+SET "TEMP_OUT=%DIR_OUT_OBJ%\%~n0_cl_out.tmp"
+
 :: Build the project: one driver with synchronized-arena support compiled in,
 :: and one with the project default (FL_ARENA_SYNCHRONIZED undefined).
 IF %build% EQU 1 (
@@ -30,14 +33,14 @@ IF %build% EQU 1 (
     /I%DIR_REPO%\src /DFL_PLATFORM_BUILD /DFL_ARENA_SYNCHRONIZED ^
     %DIR_REPO%\app\arena_bench\arena_bench_main.c /Fo:%DIR_OUT_OBJ%\ ^
     /Fd:%DIR_OUT_BIN%\arena_bench.pdb /Fe:%DIR_OUT_BIN%\arena_bench.exe /link ^
-    %CommonLinkerFlagsFinal% /ENTRY:mainCRTStartup > "%TEMP%\cl_out.tmp"
+    %CommonLinkerFlagsFinal% /ENTRY:mainCRTStartup > "%TEMP_OUT%"
     if errorlevel 1 (
-        type "%TEMP%\cl_out.tmp"
-        del "%TEMP%\cl_out.tmp"
+        type "%TEMP_OUT%"
+        del "%TEMP_OUT%"
         echo failed to build the %PROJECT_NAME% Program
         GOTO :ERROR
     )
-    del "%TEMP%\cl_out.tmp"
+    del "%TEMP_OUT%"
 
     IF %verbose% EQU 1 (
         ECHO Build %PROJECT_NAME% without synchronized-arena support
@@ -47,14 +50,14 @@ IF %build% EQU 1 (
     %DIR_REPO%\app\arena_bench\arena_bench_main.c /Fo:%DIR_OUT_OBJ%\ ^
     /Fd:%DIR_OUT_BIN%\arena_bench_nosync.pdb ^
     /Fe:%DIR_OUT_BIN%\arena_bench_nosync.exe /link ^
-    %CommonLinkerFlagsFinal% /ENTRY:mainCRTStartup > "%TEMP%\cl_out.tmp"
+    %CommonLinkerFlagsFinal% /ENTRY:mainCRTStartup > "%TEMP_OUT%"
     if errorlevel 1 (
-        type "%TEMP%\cl_out.tmp"
-        del "%TEMP%\cl_out.tmp"
+        type "%TEMP_OUT%"
+        del "%TEMP_OUT%"
         echo failed to build the %PROJECT_NAME% Program
         GOTO :ERROR
     )
-    del "%TEMP%\cl_out.tmp"
+    del "%TEMP_OUT%"
 )
 if %timed% EQU 1 (
     ctime.exe -end metrics\vs\arena_bench.ctm %errorlevel%

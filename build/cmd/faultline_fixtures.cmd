@@ -22,6 +22,9 @@ CALL %DIR_CMD%\options.cmd %*
 
 CALL %DIR_CMD%\setup.cmd %*
 
+:: cl output capture, named per script inside this configuration's obj directory
+SET "TEMP_OUT=%DIR_OUT_OBJ%\%~n0_cl_out.tmp"
+
 :: The build defaults to debug unless release is explicitly passed in
 IF NOT "%release%"=="" (
     if %release% EQU 1 (
@@ -35,28 +38,28 @@ IF %build% EQU 1 (
     )
     cl %CommonCompilerFlagsFinal% /wd4456 /wd4200 /wd4115 ^
     /I"%DIR_THIRD_PARTY%" /c %DIR_THIRD_PARTY%\sqlite\sqlite3.c ^
-    /Fo:%DIR_OUT_OBJ%\sqlite3.obj /Fd:%DIR_OUT_OBJ%\sqlite3.pdb > "%TEMP%\cl_out.tmp"
+    /Fo:%DIR_OUT_OBJ%\sqlite3.obj /Fd:%DIR_OUT_OBJ%\sqlite3.pdb > "%TEMP_OUT%"
     if errorlevel 1 (
-        type "%TEMP%\cl_out.tmp"
-        del "%TEMP%\cl_out.tmp"
+        type "%TEMP_OUT%"
+        del "%TEMP_OUT%"
         echo failed to build sqlite3.obj
         GOTO :ERROR
     )
-    del "%TEMP%\cl_out.tmp"
+    del "%TEMP_OUT%"
 
     if %verbose% EQU 1 (
         ECHO Build shared fixture object: cwalk.obj
     )
     cl %CommonCompilerFlagsFinal% /wd4456 /wd4200 /wd4115 ^
     /I"%DIR_THIRD_PARTY%\cwalk\include" /c %DIR_THIRD_PARTY%\cwalk\src\cwalk.c ^
-    /Fo:%DIR_OUT_OBJ%\cwalk.obj /Fd:%DIR_OUT_OBJ%\cwalk.pdb > "%TEMP%\cl_out.tmp"
+    /Fo:%DIR_OUT_OBJ%\cwalk.obj /Fd:%DIR_OUT_OBJ%\cwalk.pdb > "%TEMP_OUT%"
     if errorlevel 1 (
-        type "%TEMP%\cl_out.tmp"
-        del "%TEMP%\cl_out.tmp"
+        type "%TEMP_OUT%"
+        del "%TEMP_OUT%"
         echo failed to build cwalk.obj
         GOTO :ERROR
     )
-    del "%TEMP%\cl_out.tmp"
+    del "%TEMP_OUT%"
 
     if %verbose% EQU 1 (
         ECHO.
@@ -67,14 +70,14 @@ IF %build% EQU 1 (
     /Fo:%DIR_OUT_OBJ%\ /Fd:%DIR_OUT_BIN%\faultline_test_data.pdb ^
     /LD /link %CommonLinkerFlagsFinal% ^
     /OUT:%DIR_OUT_BIN%\faultline_test_data.dll ^
-    /IMPLIB:%DIR_OUT_LIB%\faultline_test_data.lib > "%TEMP%\cl_out.tmp"
+    /IMPLIB:%DIR_OUT_LIB%\faultline_test_data.lib > "%TEMP_OUT%"
     if errorlevel 1 (
-        type "%TEMP%\cl_out.tmp"
-        del "%TEMP%\cl_out.tmp"
+        type "%TEMP_OUT%"
+        del "%TEMP_OUT%"
         echo failed to build the %PROJECT_NAME% driver test-data DLL
         GOTO :ERROR
     )
-    del "%TEMP%\cl_out.tmp"
+    del "%TEMP_OUT%"
 )
 GOTO :SUCCESS
 

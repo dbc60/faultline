@@ -20,6 +20,9 @@ if %timed% EQU 1 (
 
 CALL %DIR_CMD%\setup.cmd %*
 
+:: cl output capture, named per script inside this configuration's obj directory
+SET "TEMP_OUT=%DIR_OUT_OBJ%\%~n0_cl_out.tmp"
+
 :: The build defaults to debug unless release is explicitly passed in
 IF NOT "%release%"=="" (
     if %release% EQU 1 (
@@ -37,14 +40,14 @@ IF %build% EQU 1 (
     /Fo:%DIR_OUT_OBJ%\ /Fd:%DIR_OUT_LIB%\but_tests.pdb ^
     /LD /link %CommonLinkerFlagsFinal% ^
     /OUT:%DIR_OUT_BIN%\but_tests.dll ^
-    /IMPLIB:%DIR_OUT_LIB%\but_tests.lib > "%TEMP%\cl_out.tmp"
+    /IMPLIB:%DIR_OUT_LIB%\but_tests.lib > "%TEMP_OUT%"
     if errorlevel 1 (
-        type "%TEMP%\cl_out.tmp"
-        del "%TEMP%\cl_out.tmp"
+        type "%TEMP_OUT%"
+        del "%TEMP_OUT%"
         echo failed to build the %PROJECT_NAME%
         GOTO :ERROR
     )
-    del "%TEMP%\cl_out.tmp"
+    del "%TEMP_OUT%"
 
     if %verbose% EQU 1 (
         ECHO.
@@ -56,14 +59,14 @@ IF %build% EQU 1 (
     /Fo:%DIR_OUT_OBJ%\ /Fd:%DIR_OUT_BIN%\but_test_data.pdb ^
     /LD /link %CommonLinkerFlagsFinal% ^
     /OUT:%DIR_OUT_BIN%\but_test_data.dll ^
-    /IMPLIB:%DIR_OUT_LIB%\but_test_data.lib > "%TEMP%\cl_out.tmp"
+    /IMPLIB:%DIR_OUT_LIB%\but_test_data.lib > "%TEMP_OUT%"
     if errorlevel 1 (
-        type "%TEMP%\cl_out.tmp"
-        del "%TEMP%\cl_out.tmp"
+        type "%TEMP_OUT%"
+        del "%TEMP_OUT%"
         echo failed to build the %PROJECT_NAME% driver's test-data DLL
         GOTO :ERROR
     )
-    del "%TEMP%\cl_out.tmp"
+    del "%TEMP_OUT%"
 
     IF %verbose% EQU 1 (
         ECHO.
@@ -73,14 +76,14 @@ IF %build% EQU 1 (
     /I%DIR_REPO%\src /DFL_PLATFORM_BUILD /DFL_EMBEDDED ^
     %DIR_REPO%\app\but\win32_main.c  /Fo:%DIR_OUT_OBJ%\ ^
     /Fd:%DIR_OUT_BIN%\but_driver.pdb /Fe:%DIR_OUT_BIN%\but_driver.exe /link ^
-    %CommonLinkerFlagsFinal% /ENTRY:mainCRTStartup > "%TEMP%\cl_out.tmp"
+    %CommonLinkerFlagsFinal% /ENTRY:mainCRTStartup > "%TEMP_OUT%"
     if errorlevel 1 (
-        type "%TEMP%\cl_out.tmp"
-        del "%TEMP%\cl_out.tmp"
+        type "%TEMP_OUT%"
+        del "%TEMP_OUT%"
         echo failed to build the %PROJECT_NAME% Program
         GOTO :ERROR
     )
-    del "%TEMP%\cl_out.tmp"
+    del "%TEMP_OUT%"
 )
 if %timed% EQU 1 (
     ctime.exe -end metrics\vs\but_test_driver.ctm %errorlevel%

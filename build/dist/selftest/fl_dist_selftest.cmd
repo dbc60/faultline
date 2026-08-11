@@ -35,7 +35,9 @@ CALL "%HERE%\..\..\cmd\setup.cmd" %*
 SET DIR_CMDS=%DIR_REPO%\build\cmd
 SET DIR_DIST=%DIR_REPO%\build\dist
 SET DIR_SELF=%DIR_REPO%\target\dist_selftest
-SET CL_LOG=%TEMP%\fl_dist_selftest_cl.tmp
+:: cl output capture, kept in the scratch tree this run wipes and recreates below,
+:: so it is never shared with unrelated builds and never accumulates
+SET "CL_LOG=%DIR_SELF%\fl_dist_selftest_cl.tmp"
 
 :: clean: remove the scratch tree and exit.
 IF %clean% EQU 1   GOTO :CLEAN

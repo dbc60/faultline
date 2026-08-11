@@ -22,6 +22,9 @@ CALL %DIR_CMD%\options.cmd %*
 
 CALL %DIR_CMD%\setup.cmd %*
 
+:: cl output capture, named per script inside this configuration's obj directory
+SET "TEMP_OUT=%DIR_OUT_OBJ%\%~n0_cl_out.tmp"
+
 :: The nested fixtures build must not repeat the clean that setup.cmd already
 :: performed, and it must write into the same output tree this script links
 :: from: setup.cmd derives target\<vs>\<platform>\<buildtype> from the
@@ -78,14 +81,14 @@ IF %build% EQU 1 (
     %DIR_OUT_OBJ%\sqlite3.obj %DIR_OUT_OBJ%\cwalk.obj /Fo:%DIR_OUT_OBJ%\ ^
     /Fd:%DIR_OUT_BIN%\std_faultline_tests.pdb ^
     /LD /link %CommonLinkerFlagsFinal% /LIBPATH:%DIR_OUT_LIB% ^
-    /OUT:%DIR_OUT_BIN%\std_faultline_tests.dll /IMPLIB:%DIR_OUT_LIB%\std_faultline_tests.lib > "%TEMP%\cl_out.tmp"
+    /OUT:%DIR_OUT_BIN%\std_faultline_tests.dll /IMPLIB:%DIR_OUT_LIB%\std_faultline_tests.lib > "%TEMP_OUT%"
     if errorlevel 1 (
-        type "%TEMP%\cl_out.tmp"
-        del "%TEMP%\cl_out.tmp"
+        type "%TEMP_OUT%"
+        del "%TEMP_OUT%"
         echo failed to build the %PROJECT_NAME% test suite ^(non-unity^)
         GOTO :ERROR
     )
-    del "%TEMP%\cl_out.tmp"
+    del "%TEMP_OUT%"
 
     IF %verbose% EQU 1 (
         ECHO.
@@ -116,14 +119,14 @@ IF %build% EQU 1 (
     %DIR_THIRD_PARTY%\fnv\FNV64.c ^
     %DIR_OUT_OBJ%\sqlite3.obj %DIR_OUT_OBJ%\cwalk.obj /Fo:%DIR_OUT_OBJ%\ ^
     /Fd:%DIR_OUT_BIN%\std_faultline.pdb /Fe:%DIR_OUT_BIN%\std_faultline.exe /link ^
-    %CommonLinkerFlagsFinal% /ENTRY:mainCRTStartup > "%TEMP%\cl_out.tmp"
+    %CommonLinkerFlagsFinal% /ENTRY:mainCRTStartup > "%TEMP_OUT%"
     if errorlevel 1 (
-        type "%TEMP%\cl_out.tmp"
-        del "%TEMP%\cl_out.tmp"
+        type "%TEMP_OUT%"
+        del "%TEMP_OUT%"
         echo failed to build the %PROJECT_NAME% Test Program ^(non-unity^)
         GOTO :ERROR
     )
-    del "%TEMP%\cl_out.tmp"
+    del "%TEMP_OUT%"
 )
 if %timed% EQU 1 (
     ctime.exe -end metrics\vs\std_faultline.ctm %errorlevel%

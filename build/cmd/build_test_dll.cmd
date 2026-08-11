@@ -47,6 +47,9 @@ TITLE %_BTDLL_NAME%
 CALL %_BTDLL_DIR%\options.cmd %_BTDLL_ARGS%
 CALL %_BTDLL_DIR%\setup.cmd %_BTDLL_ARGS%
 
+:: cl output capture, named per test DLL inside this configuration's obj directory
+SET "TEMP_OUT=%DIR_OUT_OBJ%\%_BTDLL_DLL%_cl_out.tmp"
+
 :: The nested driver bootstrap must not repeat the clean that setup.cmd already
 :: performed, and it must write into the same output tree this script runs the
 :: driver from: setup.cmd derives target\<vs>\<platform>\<buildtype> from the
@@ -80,14 +83,14 @@ IF %build% EQU 1 (
     /Fo:%DIR_OUT_OBJ%\ /Fd:%DIR_OUT_LIB%\%_BTDLL_DLL%.pdb ^
     /LD /link %CommonLinkerFlagsFinal% ^
     /OUT:%DIR_OUT_BIN%\%_BTDLL_DLL%.dll ^
-    /IMPLIB:%DIR_OUT_LIB%\%_BTDLL_DLL%.lib > "%TEMP%\cl_out.tmp"
+    /IMPLIB:%DIR_OUT_LIB%\%_BTDLL_DLL%.lib > "%TEMP_OUT%"
     if errorlevel 1 (
-        type "%TEMP%\cl_out.tmp"
-        del "%TEMP%\cl_out.tmp"
+        type "%TEMP_OUT%"
+        del "%TEMP_OUT%"
         echo failed to build the %_BTDLL_NAME% test suite
         GOTO :_btdll_error
     )
-    del "%TEMP%\cl_out.tmp"
+    del "%TEMP_OUT%"
 )
 
 if %test% EQU 1 (

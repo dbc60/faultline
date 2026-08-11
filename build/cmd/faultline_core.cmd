@@ -20,6 +20,10 @@ SET DIR_CMD=%DIR_CMD:~0,-1%
 CALL %DIR_CMD%\options.cmd %*
 CALL %DIR_CMD%\setup.cmd %*
 
+:: cl and lib output capture, named per script inside this configuration's obj
+:: directory
+SET "TEMP_OUT=%DIR_OUT_OBJ%\%~n0_cl_out.tmp"
+
 if %timed% EQU 1 (
     if NOT EXIST metrics\vs (
         md metrics\vs
@@ -36,24 +40,24 @@ IF %build% EQU 1 (
     /I"%DIR_THIRD_PARTY%\cwalk\include" ^
     %DIR_REPO%\app\faultline\faultline_core_unity.c ^
     /Fo:%DIR_OUT_OBJ%\faultline_core.obj ^
-    /Fd:%DIR_OUT_BIN%\faultline_core.pdb > "%TEMP%\cl_out.tmp"
+    /Fd:%DIR_OUT_BIN%\faultline_core.pdb > "%TEMP_OUT%"
     if errorlevel 1 (
-        type "%TEMP%\cl_out.tmp"
-        del "%TEMP%\cl_out.tmp"
+        type "%TEMP_OUT%"
+        del "%TEMP_OUT%"
         echo failed to compile %PROJECT_NAME% ^(unity^)
         GOTO :ERROR
     )
-    del "%TEMP%\cl_out.tmp"
+    del "%TEMP_OUT%"
 
     lib /NOLOGO /OUT:%DIR_OUT_LIB%\faultline_core.lib ^
-    %DIR_OUT_OBJ%\faultline_core.obj > "%TEMP%\lib_out.tmp"
+    %DIR_OUT_OBJ%\faultline_core.obj > "%TEMP_OUT%"
     if errorlevel 1 (
-        type "%TEMP%\lib_out.tmp"
-        del "%TEMP%\lib_out.tmp"
+        type "%TEMP_OUT%"
+        del "%TEMP_OUT%"
         echo failed to archive faultline_core.lib
         GOTO :ERROR
     )
-    del "%TEMP%\lib_out.tmp"
+    del "%TEMP_OUT%"
 )
 
 if %timed% EQU 1 (
