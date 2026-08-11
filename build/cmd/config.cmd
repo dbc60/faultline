@@ -155,8 +155,8 @@ SET CommonCompilerFlags=/nologo ^
 SET CommonLinkerFlags=/MACHINE:X64 /nologo /incremental:no /MANIFESTUAC /opt:ref ^
     /DEBUG /STACK:0x100000,0x100000
 ) else (
-    ECHO CONFIG.CMD ERROR: Unknown platform target "%PLATFORM%"
-    GOTO :EOF
+    ECHO CONFIG.CMD ERROR: Unknown platform target "%PLATFORM%" 1>&2
+    EXIT /B 1
 )
 
 ::SET CStandardLibraryIncludeFlags=/I"%VSINSTALLDIR%SDK\ScopeCppSDK\SDK\include\ucrt"
