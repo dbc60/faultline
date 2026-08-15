@@ -16,13 +16,72 @@
 
 #if defined(__STDC_NO_THREADS__) || !defined(__has_include) || !__has_include(<threads.h>)
 
+#include <stddef.h> // for NULL
+
+/* --- Thread-parameter slots (shared by both backends) ---------------------
+ * CreateThread and pthread_create each carry exactly one pointer into the new
+ * thread, so the (func, arg) pair must live somewhere that outlives the
+ * creator's stack frame. These slots supply that storage, which keeps the
+ * thread shim free of any allocator: its only dependency stays the OS thread
+ * API itself.
+ *
+ * A new thread copies the pair into locals and releases its slot as its first
+ * action, so a slot is held only for the window between the create call and
+ * the new thread's first instructions. The pool therefore bounds concurrent
+ * pending starts, not live threads. Exhausting it yields thrd_nomem, the same
+ * code the C11 contract already reserves for "could not allocate what the
+ * thread needed"; raise FL_THRD_PARAM_SLOTS if a caller can outrun it.
+ */
+#ifndef FL_THRD_PARAM_SLOTS
+#define FL_THRD_PARAM_SLOTS 64
+#endif
+
+/* The shim cannot assume <stdatomic.h> is enabled, so each backend claims a
+ * slot with the test-and-set primitive it already has. */
+#if defined(_WIN32) || defined(WIN32)
+typedef volatile LONG fl_thrd_slot_;
+#define FL_THRD_SLOT_CLAIM(S)   (InterlockedExchange(&(S), 1) == 0)
+#define FL_THRD_SLOT_RELEASE(S) ((void)InterlockedExchange(&(S), 0))
+#else
+typedef int volatile fl_thrd_slot_;
+#define FL_THRD_SLOT_CLAIM(S)   (__atomic_exchange_n(&(S), 1, __ATOMIC_ACQUIRE) == 0)
+#define FL_THRD_SLOT_RELEASE(S) __atomic_store_n(&(S), 0, __ATOMIC_RELEASE)
+#endif
+
+typedef struct {
+    thrd_start_t func;
+    void        *arg;
+} fl_thrd_param_;
+
+static fl_thrd_param_ fl_thrd_params_[FL_THRD_PARAM_SLOTS];
+static fl_thrd_slot_  fl_thrd_slot_used_[FL_THRD_PARAM_SLOTS];
+
+/* Returns a claimed slot holding the pair, or NULL when every slot is in use.
+ * The create call that publishes the slot pointer to the new thread is itself
+ * the synchronization edge, so the pair needs no barrier of its own. */
+static fl_thrd_param_ *fl_thrd_param_claim_(thrd_start_t func, void *arg) {
+    fl_thrd_param_ *slot = NULL;
+    for (int i = 0; i < FL_THRD_PARAM_SLOTS && slot == NULL; i++) {
+        if (FL_THRD_SLOT_CLAIM(fl_thrd_slot_used_[i])) {
+            fl_thrd_params_[i].func = func;
+            fl_thrd_params_[i].arg  = arg;
+            slot                    = &fl_thrd_params_[i];
+        }
+    }
+    return slot;
+}
+
+static void fl_thrd_param_release_(fl_thrd_param_ *p) {
+    FL_THRD_SLOT_RELEASE(fl_thrd_slot_used_[p - fl_thrd_params_]);
+}
+
 #if defined(_WIN32) || defined(WIN32)
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
 #include <handleapi.h>         // for CloseHandle
 #include <processthreadsapi.h> // for CreateThread, GetExitCodeThread
-#include <stdlib.h>            // for NULL, free, malloc
+#include <stdlib.h>            // for calloc, free (tss shim below)
 #include <synchapi.h>          // for DeleteCriticalSection, EnterCriticalS...
 #include <time.h>              // for struct timespec
 #include <winbase.h>           // for INFINITE, CreateWaitableTimerEx, SetWaitableTimer
@@ -51,29 +110,22 @@ void mtx_destroy(mtx_t *mutex) {
 
 /* --- Windows threads --- */
 
-typedef struct {
-    thrd_start_t func;
-    void        *arg;
-} fl_thrd_param_;
-
 static DWORD WINAPI fl_thrd_wrapper_(LPVOID param) {
     fl_thrd_param_ *p    = (fl_thrd_param_ *)param;
     thrd_start_t    func = p->func;
     void           *arg  = p->arg;
-    free(p);
+    fl_thrd_param_release_(p);
     return (DWORD)func(arg);
 }
 
 int thrd_create(thrd_t *thr, thrd_start_t func, void *arg) {
-    fl_thrd_param_ *p = (fl_thrd_param_ *)malloc(sizeof *p);
+    fl_thrd_param_ *p = fl_thrd_param_claim_(func, arg);
     if (p == NULL) {
         return thrd_nomem;
     }
-    p->func = func;
-    p->arg  = arg;
-    *thr    = CreateThread(NULL, 0, fl_thrd_wrapper_, p, 0, NULL);
+    *thr = CreateThread(NULL, 0, fl_thrd_wrapper_, p, 0, NULL);
     if (*thr == NULL) {
-        free(p);
+        fl_thrd_param_release_(p);
         return thrd_error;
     }
     return thrd_success;
@@ -155,28 +207,21 @@ void mtx_destroy(mtx_t *mutex) {
 
 /* --- POSIX threads --- */
 
-typedef struct {
-    thrd_start_t func;
-    void        *arg;
-} fl_thrd_param_;
-
 static void *fl_thrd_wrapper_(void *param) {
     fl_thrd_param_ *p    = (fl_thrd_param_ *)param;
     thrd_start_t    func = p->func;
     void           *arg  = p->arg;
-    free(p);
+    fl_thrd_param_release_(p);
     return (void *)(intptr_t)func(arg);
 }
 
 int thrd_create(thrd_t *thr, thrd_start_t func, void *arg) {
-    fl_thrd_param_ *p = (fl_thrd_param_ *)malloc(sizeof *p);
+    fl_thrd_param_ *p = fl_thrd_param_claim_(func, arg);
     if (p == NULL) {
         return thrd_nomem;
     }
-    p->func = func;
-    p->arg  = arg;
     if (pthread_create(thr, NULL, fl_thrd_wrapper_, p) != 0) {
-        free(p);
+        fl_thrd_param_release_(p);
         return thrd_error;
     }
     return thrd_success;
