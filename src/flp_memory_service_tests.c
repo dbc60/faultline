@@ -18,6 +18,7 @@
 #include "flp_memory_service.c"
 #include "flp_fault_memory_service.c"
 #include <faultline/fl_test.h>
+#include <stddef.h> // offsetof
 
 // -- Fault-injecting service fixtures -----------------------------------------
 
@@ -177,6 +178,102 @@ FL_TYPE_TEST_SETUP_CLEANUP("Arena And Fault Service Compatibility", CompatTestCa
     FL_ASSERT_TRUE(arena_malloc_fn != fault_malloc_fn);
 }
 
+// -- Tests: contract layout ----------------------------------------------------
+
+// FLMemoryService crosses the DLL boundary by value: the driver passes its own
+// sizeof to fla_set_memory_service, which copies the struct through the suite's
+// layout. Growth is therefore safe only when the new member is APPENDED -- a
+// suite built against the older contract then reads a prefix that is identical
+// in both layouts. An INSERTED member shifts every later slot, and the size
+// guard cannot see it: a newer driver still satisfies "size >= sizeof", so an
+// older suite silently calls the wrong function pointer through the right name.
+//
+// These assertions make growth deliberate. If one fires, decide which case you
+// are in before updating the numbers: appending is a compatible change, and
+// inserting requires every suite DLL to be rebuilt in lockstep.
+FL_TEST("Memory Service Layout", memory_service_layout) {
+    // All members are pointers, so the struct is pointer-sized throughout and
+    // these hold on both x86 and x64.
+    FL_ASSERT_EQ_SIZE_T(sizeof(FLMemoryService), 6 * sizeof(void *));
+
+    FL_ASSERT_EQ_SIZE_T(offsetof(FLMemoryService, ctx), 0 * sizeof(void *));
+    FL_ASSERT_EQ_SIZE_T(offsetof(FLMemoryService, fl_aligned_alloc), 1 * sizeof(void *));
+    FL_ASSERT_EQ_SIZE_T(offsetof(FLMemoryService, fl_calloc), 2 * sizeof(void *));
+    FL_ASSERT_EQ_SIZE_T(offsetof(FLMemoryService, fl_free), 3 * sizeof(void *));
+    FL_ASSERT_EQ_SIZE_T(offsetof(FLMemoryService, fl_malloc), 4 * sizeof(void *));
+    FL_ASSERT_EQ_SIZE_T(offsetof(FLMemoryService, fl_realloc), 5 * sizeof(void *));
+}
+
+// -- Tests: free_pointer -------------------------------------------------------
+//
+// The free_pointer variants are free() plus "clear the caller's pointer". They
+// have no consumer inside this repo -- the worldbuilder host calls
+// flp_free_pointer directly -- so these tests are the only thing holding their
+// behavior in place.
+
+// The arena-only provider clears the caller's pointer and returns the block.
+FL_TYPE_TEST_SETUP_CLEANUP("Free Pointer Clears Pointer", ArenaServiceTestCase,
+                           free_pointer_clears_pointer, arena_setup, arena_cleanup) {
+    FL_UNUSED_TYPE_ARG;
+    void *ptr = malloc(64);
+    FL_ASSERT_NOT_NULL(ptr);
+
+    flp_free_pointer(&ptr, __FILE__, __LINE__);
+    FL_ASSERT_NULL(ptr);
+
+    // The block returned to the arena is available again.
+    void *again = malloc(64);
+    FL_ASSERT_NOT_NULL(again);
+    free(again);
+}
+
+// Freeing through a pointer that already holds NULL must not crash and must
+// leave the pointer NULL. flp_free_pointer reaches arena_free_throw, which does
+// not special-case NULL, so this also pins down that the resulting exception is
+// contained by the provider rather than escaping to the caller.
+FL_TYPE_TEST_SETUP_CLEANUP("Free Pointer Accepts Null Target", ArenaServiceTestCase,
+                           free_pointer_accepts_null_target, arena_setup,
+                           arena_cleanup) {
+    FL_UNUSED_TYPE_ARG;
+    void *ptr = NULL;
+    flp_free_pointer(&ptr, __FILE__, __LINE__);
+    FL_ASSERT_NULL(ptr);
+}
+
+// The fault-injecting provider clears the pointer the same way. malloc may
+// legitimately return NULL when the injector forces this site to fail, so the
+// free is guarded -- the point is that free_pointer behaves identically under
+// either service.
+FL_TYPE_TEST_SETUP_CLEANUP("Fault Free Pointer Clears Pointer", MemServiceTestCase,
+                           fault_free_pointer_clears_pointer, flp_setup, flp_cleanup) {
+    FL_UNUSED_TYPE_ARG;
+    void *ptr = malloc(64);
+    if (ptr != NULL) {
+        flp_fault_free_pointer(&ptr, __FILE__, __LINE__);
+    }
+    FL_ASSERT_NULL(ptr);
+}
+
+// arena_free_pointer is the layer the providers delegate to. Freeing through it
+// must leave the arena in the same state as arena_free plus a manual clear, so
+// the two spellings are interchangeable at a call site.
+FL_TYPE_TEST_SETUP_CLEANUP("Arena Free Pointer Matches Free", ArenaServiceTestCase,
+                           arena_free_pointer_matches_free, arena_setup, arena_cleanup) {
+    Arena *arena = t->ctx.arena;
+
+    void *a = arena_malloc(arena, 64, __FILE__, __LINE__);
+    FL_ASSERT_NOT_NULL(a);
+    arena_free(arena, a, __FILE__, __LINE__);
+    size_t after_free = arena_allocation_count(arena);
+
+    void *b = arena_malloc(arena, 64, __FILE__, __LINE__);
+    FL_ASSERT_NOT_NULL(b);
+    arena_free_pointer(arena, &b, __FILE__, __LINE__);
+    FL_ASSERT_NULL(b);
+
+    FL_ASSERT_EQ_SIZE_T(arena_allocation_count(arena), after_free);
+}
+
 // -- Cross-boundary injection --------------------------------------------------
 //
 // Unlike the tests above -- whose setups self-inject a service built from a
@@ -209,11 +306,16 @@ FL_TEST("Driver Injects Memory Service", driver_injects_memory_service) {
 
 FL_SUITE_BEGIN(ts)
 FL_SUITE_ADD(driver_injects_memory_service)
+FL_SUITE_ADD(memory_service_layout)
 FL_SUITE_ADD_EMBEDDED(initialize_fault_service)
 FL_SUITE_ADD_EMBEDDED(initialize_arena_service)
 FL_SUITE_ADD_EMBEDDED(arena_malloc_and_free)
 FL_SUITE_ADD_EMBEDDED(arena_malloc_oom_returns_null)
 FL_SUITE_ADD_EMBEDDED(arena_fault_service_compatibility)
+FL_SUITE_ADD_EMBEDDED(free_pointer_clears_pointer)
+FL_SUITE_ADD_EMBEDDED(free_pointer_accepts_null_target)
+FL_SUITE_ADD_EMBEDDED(fault_free_pointer_clears_pointer)
+FL_SUITE_ADD_EMBEDDED(arena_free_pointer_matches_free)
 FL_SUITE_END;
 
 FL_GET_TEST_SUITE("Memory Service", ts)
