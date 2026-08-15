@@ -31,6 +31,134 @@ FLExceptionReason faultline_db_not_found     = "database not found";
 
 static char const *faultline_db = "Faultline DB Initialization";
 
+// ---- SQLite statement primitives ------------------------------------------
+//
+// Each takes a `what` label naming the operation for the failure log, e.g.
+// "baseline reset". sqlite3_prepare_v2 sets its out-parameter to NULL on error
+// and sqlite3_finalize(NULL) is a no-op, so callers need no extra guarding
+// around either.
+
+/**
+ * @brief Prepare a statement, logging on failure.
+ *
+ * @param db Database connection
+ * @param sql Statement text
+ * @param what Short description of the operation, used in the failure log
+ * @return Prepared statement, or NULL on a prepare error.
+ */
+static sqlite3_stmt *db_prepare(sqlite3 *db, char const *sql, char const *what) {
+    sqlite3_stmt *stmt = NULL;
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
+        LOG_WARN(faultline_db, "%s prepare failed: %s", what, sqlite3_errmsg(db));
+    }
+    return stmt;
+}
+
+/**
+ * @brief Bind an optional filter value, where NULL means "no filter".
+ *
+ * NULL binds SQL NULL, which the report queries read as unfiltered through
+ * their (?N IS NULL OR column = ?N) predicates, so a filter value is never
+ * spliced into the statement text.
+ */
+static void db_bind_filter(sqlite3_stmt *stmt, int index, char const *value) {
+    if (value != NULL) {
+        sqlite3_bind_text(stmt, index, value, -1, SQLITE_STATIC);
+    } else {
+        sqlite3_bind_null(stmt, index);
+    }
+}
+
+/**
+ * @brief Bind the row cap of a report query.
+ *
+ * Report SQL ends in "LIMIT :limit". A cap of zero or less binds -1, which
+ * SQLite reads as no upper bound, so the clause needs no conditional text and
+ * no query has to be assembled in a fixed-size buffer. The parameter is named
+ * rather than numbered so a query can add or drop positional parameters
+ * without renumbering its cap: SQLite assigns :limit the next index after the
+ * highest ?N the statement uses. A statement without the placeholder is left
+ * untouched.
+ */
+static void db_bind_limit(sqlite3_stmt *stmt, int limit) {
+    int index = sqlite3_bind_parameter_index(stmt, ":limit");
+    if (index > 0) {
+        sqlite3_bind_int(stmt, index, limit > 0 ? limit : -1);
+    }
+}
+
+/**
+ * @brief Step a non-row-returning statement to completion, then finalize it.
+ *
+ * Takes ownership of stmt, which is finalized on both the success and the
+ * failure path.
+ *
+ * @return Rows changed, or -1 if the statement did not run to completion.
+ */
+static int db_run(sqlite3 *db, sqlite3_stmt *stmt, char const *what) {
+    int changed = -1;
+    if (sqlite3_step(stmt) == SQLITE_DONE) {
+        changed = sqlite3_changes(db);
+    } else {
+        LOG_WARN(faultline_db, "%s failed: %s", what, sqlite3_errmsg(db));
+    }
+    sqlite3_finalize(stmt);
+    return changed;
+}
+
+/**
+ * @brief Run a parameterless statement that returns no rows.
+ *
+ * @return true when the statement succeeded.
+ */
+static bool db_exec(sqlite3 *db, char const *sql, char const *what) {
+    bool ok = (sqlite3_exec(db, sql, NULL, NULL, NULL) == SQLITE_OK);
+    if (!ok) {
+        LOG_WARN(faultline_db, "%s failed: %s", what, sqlite3_errmsg(db));
+    }
+    return ok;
+}
+
+/**
+ * @brief Run a NULL-terminated array of best-effort DDL.
+ *
+ * Every statement is attempted; a failure warns and does not stop the rest.
+ */
+static void db_exec_all(sqlite3 *db, char const **sql, char const *what) {
+    for (int i = 0; sql[i] != NULL; i++) {
+        db_exec(db, sql[i], what);
+    }
+}
+
+/**
+ * @brief Read column 0 of the first row of a parameterless query.
+ *
+ * @param fallback Value returned when the query fails or yields no row
+ */
+static int db_query_int(sqlite3 *db, char const *sql, int fallback, char const *what) {
+    int           value = fallback;
+    sqlite3_stmt *stmt  = db_prepare(db, sql, what);
+    if (stmt != NULL) {
+        if (sqlite3_step(stmt) == SQLITE_ROW) {
+            value = sqlite3_column_int(stmt, 0);
+        }
+        sqlite3_finalize(stmt);
+    }
+    return value;
+}
+
+/**
+ * @brief Read a text column, substituting a fallback for SQL NULL.
+ *
+ * A NULL column value (SQL NULL, or an out-of-memory inside
+ * sqlite3_column_text) must not reach the printf %s conversions or MSVC's
+ * str*_s functions, both of which abort on NULL.
+ */
+static char const *db_column_text(sqlite3_stmt *stmt, int column, char const *fallback) {
+    char const *text = (char const *)sqlite3_column_text(stmt, column);
+    return (text != NULL) ? text : fallback;
+}
+
 // Core tables - MUST succeed on creation. These hold the raw result data the
 // CLI reads back. Everything else (the derived table, indexes, and views) is
 // built on top of them and is best-effort.
@@ -230,54 +358,28 @@ static void faultline_apply_schema(sqlite3 *db) {
     // from a pre-v2 database; the old rows held only unread, duplicated history.
     // A fresh database has no schema_info rows yet (MAX(version) is NULL -> 0),
     // so this is a no-op for new databases.
-    int stored_version = 0;
-    {
-        sqlite3_stmt *vstmt = NULL;
-        if (sqlite3_prepare_v2(db, "SELECT MAX(version) FROM schema_info", -1, &vstmt,
-                               NULL)
-            == SQLITE_OK) {
-            if (sqlite3_step(vstmt) == SQLITE_ROW) {
-                stored_version = sqlite3_column_int(vstmt, 0);
-            }
-            sqlite3_finalize(vstmt);
-        }
-    }
+    int stored_version = db_query_int(db, "SELECT MAX(version) FROM schema_info", 0,
+                                      "schema version query");
     if (stored_version > 0 && stored_version < 2) {
         LOG_INFO(faultline_db,
                  "Upgrading schema from v%d: rebuilding test_case_evolution",
                  stored_version);
-        sqlite3_exec(db, "DROP TRIGGER IF EXISTS update_test_evolution;", NULL, NULL,
-                     NULL);
-        sqlite3_exec(db, "DROP TABLE IF EXISTS test_case_evolution;", NULL, NULL, NULL);
+        db_exec(db, "DROP TRIGGER IF EXISTS update_test_evolution;", "trigger drop");
+        db_exec(db, "DROP TABLE IF EXISTS test_case_evolution;",
+                "test_case_evolution drop");
     }
 
     // Derived tables - SHOULD succeed but not fatal (computed from raw data)
     LOG_DEBUG(faultline_db, "Creating derived tables...");
-    for (int i = 0; schema_derived_tables[i] != NULL; i++) {
-        rc = sqlite3_exec(db, schema_derived_tables[i], NULL, NULL, NULL);
-        if (rc != SQLITE_OK) {
-            LOG_WARN(faultline_db, "Derived table creation failed: %s",
-                     sqlite3_errmsg(db));
-        }
-    }
+    db_exec_all(db, schema_derived_tables, "derived table creation");
 
     // Indexes - CAN fail silently (performance optimization)
     LOG_DEBUG(faultline_db, "Creating indexes...");
-    for (int i = 0; schema_indexes[i] != NULL; i++) {
-        rc = sqlite3_exec(db, schema_indexes[i], NULL, NULL, NULL);
-        if (rc != SQLITE_OK) {
-            LOG_WARN(faultline_db, "Index creation failed: %s", sqlite3_errmsg(db));
-        }
-    }
+    db_exec_all(db, schema_indexes, "index creation");
 
     // Views - CAN fail silently (convenience feature)
     LOG_DEBUG(faultline_db, "Creating views...");
-    for (int i = 0; schema_views[i] != NULL; i++) {
-        rc = sqlite3_exec(db, schema_views[i], NULL, NULL, NULL);
-        if (rc != SQLITE_OK) {
-            LOG_WARN(faultline_db, "View creation failed: %s", sqlite3_errmsg(db));
-        }
-    }
+    db_exec_all(db, schema_views, "view creation");
 
     // Record schema version
     char version_sql[256];
@@ -285,10 +387,7 @@ static void faultline_apply_schema(sqlite3 *db) {
              "INSERT OR REPLACE INTO schema_info (version, applied_date) "
              "VALUES (%d, datetime('now'));",
              FL_SCHEMA_VERSION);
-    rc = sqlite3_exec(db, version_sql, NULL, NULL, NULL);
-    if (rc != SQLITE_OK) {
-        LOG_WARN(faultline_db, "Schema version record failed: %s", sqlite3_errmsg(db));
-    }
+    db_exec(db, version_sql, "schema version record");
 }
 
 /**
@@ -315,11 +414,7 @@ sqlite3 *faultline_init_database(char const *db_path) {
     LOG_DEBUG(faultline_db, "Database opened successfully");
 
     // enable foreign key enforcement (and ON DELETE CASCADE)
-    rc = sqlite3_exec(db, "PRAGMA foreign_keys = ON;", NULL, NULL, NULL);
-    if (rc != SQLITE_OK) {
-        LOG_WARN(faultline_db, "Failed to enable foreign key enforcement: %s",
-                 sqlite3_errmsg(db));
-    }
+    db_exec(db, "PRAGMA foreign_keys = ON;", "foreign key enforcement");
 
     // Initialize schema on the opened connection
     FL_TRY {
@@ -394,19 +489,17 @@ int faultline_record_test_run_start(sqlite3 *db, char const *suite_name,
         // First, ensure test suite is registered
         char const *insert_suite_sql
             = "INSERT OR IGNORE INTO test_suites (suite_name) VALUES (?);";
-        sqlite3_stmt *stmt;
-        int           rc = sqlite3_prepare_v2(db, insert_suite_sql, -1, &stmt, NULL);
-        if (rc == SQLITE_OK) {
+        sqlite3_stmt *stmt = db_prepare(db, insert_suite_sql, "suite registration");
+        if (stmt != NULL) {
             sqlite3_bind_text(stmt, 1, suite_name, -1, SQLITE_STATIC);
-            sqlite3_step(stmt);
-            sqlite3_finalize(stmt);
+            db_run(db, stmt, "suite registration");
         }
 
         // Get suite_id
         char const *get_suite_id_sql
             = "SELECT suite_id FROM test_suites WHERE suite_name = ?;";
-        rc = sqlite3_prepare_v2(db, get_suite_id_sql, -1, &stmt, NULL);
-        if (rc == SQLITE_OK) {
+        stmt = db_prepare(db, get_suite_id_sql, "suite_id lookup");
+        if (stmt != NULL) {
             sqlite3_bind_text(stmt, 1, suite_name, -1, SQLITE_STATIC);
             if (sqlite3_step(stmt) == SQLITE_ROW) {
                 suite_id = sqlite3_column_int(stmt, 0);
@@ -425,8 +518,8 @@ int faultline_record_test_run_start(sqlite3 *db, char const *suite_name,
                   "    cleanups_failed, total_fault_sites, total_elapsed_time"
                   ") VALUES (?, ?, 0, 0, 0, 0, 0, 0, 0, 0, 0.0);";
 
-            rc = sqlite3_prepare_v2(db, insert_run_sql, -1, &stmt, NULL);
-            if (rc == SQLITE_OK) {
+            stmt = db_prepare(db, insert_run_sql, "test run insert");
+            if (stmt != NULL) {
                 sqlite3_bind_int(stmt, 1, suite_id);
                 // When tm_info is NULL (unreachable in practice), passing NULL to
                 // sqlite3_bind_text stores SQL NULL rather than triggering the column
@@ -434,6 +527,8 @@ int faultline_record_test_run_start(sqlite3 *db, char const *suite_name,
                 // runtime.
                 sqlite3_bind_text(stmt, 2, tm_info ? timestamp : NULL, -1,
                                   SQLITE_STATIC);
+                // The rowid is only meaningful before the next statement runs on this
+                // connection, so it is read here rather than through db_run.
                 if (sqlite3_step(stmt) == SQLITE_DONE) {
                     run_id = (int)sqlite3_last_insert_rowid(db);
                     LOG_VERBOSE(faultline_db, "Started test run %d for suite: %s",
@@ -531,9 +626,8 @@ void faultline_record_test_run_complete(sqlite3 *db, int run_id, FLContext *fctx
               "    total_elapsed_time = ?, average_test_time = ?, pass_rate = ? "
               "WHERE id = ?;";
 
-        sqlite3_stmt *stmt;
-        int           rc = sqlite3_prepare_v2(db, update_sql, -1, &stmt, NULL);
-        if (rc == SQLITE_OK) {
+        sqlite3_stmt *stmt = db_prepare(db, update_sql, "test run completion");
+        if (stmt != NULL) {
             sqlite3_bind_int(stmt, PARAM_TEST_CASES, (int)fctx->ts->count);
             sqlite3_bind_int(stmt, PARAM_TESTS_RUN, (int)tests_run);
             sqlite3_bind_int(stmt, PARAM_TESTS_PASSED, (int)tests_passed);
@@ -557,11 +651,10 @@ void faultline_record_test_run_complete(sqlite3 *db, int run_id, FLContext *fctx
                                 tests_run > 0 ? (double)tests_passed / tests_run : 0.0);
             sqlite3_bind_int(stmt, PARAM_RUN_ID, run_id);
 
-            if (sqlite3_step(stmt) == SQLITE_DONE) {
+            if (db_run(db, stmt, "test run completion") >= 0) {
                 LOG_VERBOSE(faultline_db, "Completed test run %d: %zu/%zu tests passed",
                             run_id, tests_passed, tests_run);
             }
-            sqlite3_finalize(stmt);
         }
     }
     FL_CATCH_ALL {
@@ -608,10 +701,8 @@ static void faultline_update_test_evolution(sqlite3 *db, int run_id,
           "    last_fault_sites    = excluded.last_fault_sites,"
           "    last_execution_time = excluded.last_execution_time;";
 
-    sqlite3_stmt *stmt = NULL;
-    if (sqlite3_prepare_v2(db, upsert_sql, -1, &stmt, NULL) != SQLITE_OK) {
-        LOG_WARN(faultline_db, "test_case_evolution upsert prepare failed: %s",
-                 sqlite3_errmsg(db));
+    sqlite3_stmt *stmt = db_prepare(db, upsert_sql, "test_case_evolution upsert");
+    if (stmt == NULL) {
         return;
     }
 
@@ -624,11 +715,7 @@ static void faultline_update_test_evolution(sqlite3 *db, int run_id,
     sqlite3_bind_int64(stmt, 4, summary->faults_exercised);
     sqlite3_bind_double(stmt, 5, summary->elapsed_seconds);
 
-    if (sqlite3_step(stmt) != SQLITE_DONE) {
-        LOG_WARN(faultline_db, "test_case_evolution upsert failed: %s",
-                 sqlite3_errmsg(db));
-    }
-    sqlite3_finalize(stmt);
+    db_run(db, stmt, "test_case_evolution upsert");
 }
 
 /**
@@ -673,9 +760,8 @@ void faultline_record_test_summary(sqlite3 *db, int run_id, FLTestSummary *summa
               "injection_failures"
               ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
-        sqlite3_stmt *stmt;
-        int           rc = sqlite3_prepare_v2(db, insert_sql, -1, &stmt, NULL);
-        if (rc == SQLITE_OK) {
+        sqlite3_stmt *stmt = db_prepare(db, insert_sql, "test summary insert");
+        if (stmt != NULL) {
             sqlite3_bind_int(stmt, PARAM_RUN_ID, run_id);
             sqlite3_bind_int(stmt, PARAM_TEST_INDEX, (int)summary->index);
             sqlite3_bind_text(stmt, PARAM_TEST_NAME, test_name, -1, SQLITE_STATIC);
@@ -743,10 +829,9 @@ void faultline_record_test_summary(sqlite3 *db, int run_id, FLTestSummary *summa
                               "    exception_reason, details, source_file, source_line"
                               ") VALUES (?, ?, ?, ?, ?, ?, ?, ?);";
 
-                        sqlite3_stmt *fault_stmt;
-                        int fault_rc = sqlite3_prepare_v2(db, fault_insert_sql, -1,
-                                                          &fault_stmt, NULL);
-                        if (fault_rc == SQLITE_OK) {
+                        sqlite3_stmt *fault_stmt
+                            = db_prepare(db, fault_insert_sql, "fault insert");
+                        if (fault_stmt != NULL) {
                             sqlite3_bind_int(fault_stmt, FAULT_PARAM_SUMMARY_ID,
                                              summary_id);
                             sqlite3_bind_int64(fault_stmt, FAULT_PARAM_FAULT_INDEX,
@@ -767,12 +852,11 @@ void faultline_record_test_summary(sqlite3 *db, int run_id, FLTestSummary *summa
                             sqlite3_bind_int(fault_stmt, FAULT_PARAM_SOURCE_LINE,
                                              fault->line);
 
-                            if (sqlite3_step(fault_stmt) == SQLITE_DONE) {
+                            if (db_run(db, fault_stmt, "fault insert") >= 0) {
                                 LOG_DEBUG(faultline_db,
                                           "Recorded fault %zu for test summary %d", f,
                                           summary_id);
                             }
-                            sqlite3_finalize(fault_stmt);
                         }
                     }
                 }
@@ -812,21 +896,15 @@ void faultline_show_recent_runs(sqlite3 *db, int limit) {
                       "       rtr.total_fault_sites "
                       "FROM raw_test_runs rtr "
                       "JOIN test_suites ts ON rtr.suite_id = ts.suite_id "
-                      "ORDER BY rtr.timestamp DESC";
+                      "ORDER BY rtr.timestamp DESC "
+                      "LIMIT :limit;";
 
-    char query[512];
-    if (limit > 0) {
-        snprintf(query, sizeof query, "%s LIMIT %d;", sql, limit);
-    } else {
-        snprintf(query, sizeof query, "%s;", sql);
-    }
-
-    sqlite3_stmt *stmt;
-    int           rc = sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
-    if (rc != SQLITE_OK) {
-        printf("Error preparing query: %s\n", sqlite3_errmsg(db));
+    sqlite3_stmt *stmt = db_prepare(db, sql, "recent runs query");
+    if (stmt == NULL) {
+        printf("Error preparing query\n");
         return;
     }
+    db_bind_limit(stmt, limit);
 
     // Column indices for recent runs query
     enum {
@@ -849,24 +927,15 @@ void faultline_show_recent_runs(sqlite3 *db, int limit) {
            "------");
 
     while (sqlite3_step(stmt) == SQLITE_ROW) {
-        int         id         = sqlite3_column_int(stmt, COL_ID);
-        char const *suite_name = (char const *)sqlite3_column_text(stmt, COL_SUITE_NAME);
-        char const *timestamp  = (char const *)sqlite3_column_text(stmt, COL_TIMESTAMP);
-
-        // A NULL column (SQL NULL or an OOM inside sqlite3_column_text) must not
-        // reach strncpy_s/strlen, which abort on NULL under MSVC.
-        if (suite_name == NULL) {
-            suite_name = "(null)";
-        }
-        if (timestamp == NULL) {
-            timestamp = "(null)";
-        }
-        int    test_cases   = sqlite3_column_int(stmt, COL_TEST_CASES);
-        int    tests_run    = sqlite3_column_int(stmt, COL_TESTS_RUN);
-        int    tests_passed = sqlite3_column_int(stmt, COL_TESTS_PASSED);
-        double elapsed_time = sqlite3_column_double(stmt, COL_ELAPSED_TIME);
-        double pass_rate    = sqlite3_column_double(stmt, COL_PASS_RATE);
-        int    fault_sites  = sqlite3_column_int(stmt, COL_FAULT_SITES);
+        int         id           = sqlite3_column_int(stmt, COL_ID);
+        char const *suite_name   = db_column_text(stmt, COL_SUITE_NAME, "(null)");
+        char const *timestamp    = db_column_text(stmt, COL_TIMESTAMP, "(null)");
+        int         test_cases   = sqlite3_column_int(stmt, COL_TEST_CASES);
+        int         tests_run    = sqlite3_column_int(stmt, COL_TESTS_RUN);
+        int         tests_passed = sqlite3_column_int(stmt, COL_TESTS_PASSED);
+        double      elapsed_time = sqlite3_column_double(stmt, COL_ELAPSED_TIME);
+        double      pass_rate    = sqlite3_column_double(stmt, COL_PASS_RATE);
+        int         fault_sites  = sqlite3_column_int(stmt, COL_FAULT_SITES);
 
         // Truncate timestamp to remove seconds
         char short_timestamp[20];
@@ -896,33 +965,20 @@ void faultline_show_recent_runs(sqlite3 *db, int limit) {
 /**
  * @brief Prepare a suite-filtered report query with an optional row limit.
  *
- * Appends "LIMIT n" when limit > 0, prepares base_sql, and binds ?1 to the suite filter
- * (NULL binds SQL NULL, which the report queries treat as "all suites"). Callers bind
- * any further parameters (e.g. ?2) on the returned statement.
+ * Prepares sql, binds ?1 to the suite filter (NULL binds SQL NULL, which the report
+ * queries treat as "all suites") and :limit to the row cap. Callers bind any further
+ * positional parameters (e.g. ?2) on the returned statement.
  *
+ * @param sql Report query text, ending in "LIMIT :limit;"
  * @return Prepared statement, or NULL on a prepare error.
  */
-static sqlite3_stmt *prepare_suite_report(sqlite3 *db, char const *base_sql,
+static sqlite3_stmt *prepare_suite_report(sqlite3 *db, char const *sql,
                                           char const *suite_name, int limit) {
-    char query[1024];
-    if (limit > 0) {
-        snprintf(query, sizeof query, "%s LIMIT %d;", base_sql, limit);
-    } else {
-        snprintf(query, sizeof query, "%s;", base_sql);
+    sqlite3_stmt *stmt = db_prepare(db, sql, "report query");
+    if (stmt != NULL) {
+        db_bind_filter(stmt, 1, suite_name);
+        db_bind_limit(stmt, limit);
     }
-
-    sqlite3_stmt *stmt = NULL;
-    if (sqlite3_prepare_v2(db, query, -1, &stmt, NULL) != SQLITE_OK) {
-        LOG_WARN(faultline_db, "report query prepare failed: %s", sqlite3_errmsg(db));
-        return NULL;
-    }
-
-    if (suite_name != NULL) {
-        sqlite3_bind_text(stmt, 1, suite_name, -1, SQLITE_STATIC);
-    } else {
-        sqlite3_bind_null(stmt, 1);
-    }
-
     return stmt;
 }
 
@@ -963,7 +1019,8 @@ int faultline_for_each_regression(sqlite3 *db, char const *suite_name, int limit
           "           AND last_execution_time > baseline_execution_time * (1.0 + ?2))) "
           "ORDER BY (CAST(baseline_fault_sites - last_fault_sites AS REAL) / "
           "          CASE WHEN baseline_fault_sites = 0 THEN 1 "
-          "               ELSE baseline_fault_sites END) DESC, suite_name, test_name";
+          "               ELSE baseline_fault_sites END) DESC, suite_name, test_name "
+          "LIMIT :limit;";
 
     sqlite3_stmt *stmt = prepare_suite_report(db, base_sql, suite_name, limit);
     if (stmt == NULL) {
@@ -983,8 +1040,8 @@ int faultline_for_each_regression(sqlite3 *db, char const *suite_name, int limit
     int count = 0;
     while (sqlite3_step(stmt) == SQLITE_ROW) {
         FLRegression r;
-        r.suite_name              = (char const *)sqlite3_column_text(stmt, COL_SUITE);
-        r.test_name               = (char const *)sqlite3_column_text(stmt, COL_TEST);
+        r.suite_name              = db_column_text(stmt, COL_SUITE, "(null)");
+        r.test_name               = db_column_text(stmt, COL_TEST, "(null)");
         r.baseline_fault_sites    = sqlite3_column_int64(stmt, COL_BASE_SITES);
         r.last_fault_sites        = sqlite3_column_int64(stmt, COL_LAST_SITES);
         r.baseline_execution_time = sqlite3_column_double(stmt, COL_BASE_TIME);
@@ -1089,32 +1146,15 @@ int faultline_reset_baselines(sqlite3 *db, char const *suite_name,
                       "WHERE (?1 IS NULL OR suite_name = ?1) "
                       "  AND (?2 IS NULL OR test_name = ?2);";
 
-    sqlite3_stmt *stmt;
-    if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
-        LOG_WARN(faultline_db, "baseline reset prepare failed: %s", sqlite3_errmsg(db));
+    sqlite3_stmt *stmt = db_prepare(db, sql, "baseline reset");
+    if (stmt == NULL) {
         return -1;
     }
 
-    if (suite_name != NULL) {
-        sqlite3_bind_text(stmt, 1, suite_name, -1, SQLITE_STATIC);
-    } else {
-        sqlite3_bind_null(stmt, 1);
-    }
-    if (test_name != NULL) {
-        sqlite3_bind_text(stmt, 2, test_name, -1, SQLITE_STATIC);
-    } else {
-        sqlite3_bind_null(stmt, 2);
-    }
+    db_bind_filter(stmt, 1, suite_name);
+    db_bind_filter(stmt, 2, test_name);
 
-    int updated = -1;
-    if (sqlite3_step(stmt) == SQLITE_DONE) {
-        updated = sqlite3_changes(db);
-    } else {
-        LOG_WARN(faultline_db, "baseline reset failed: %s", sqlite3_errmsg(db));
-    }
-
-    sqlite3_finalize(stmt);
-    return updated;
+    return db_run(db, stmt, "baseline reset");
 }
 
 /**
@@ -1159,7 +1199,8 @@ int faultline_for_each_trend(sqlite3 *db, char const *suite_name, int limit,
           "    GROUP BY ts.suite_name, day"
           ") "
           "WINDOW w AS (PARTITION BY suite_name ORDER BY day) "
-          "ORDER BY suite_name, day DESC";
+          "ORDER BY suite_name, day DESC "
+          "LIMIT :limit;";
 
     sqlite3_stmt *stmt = prepare_suite_report(db, base_sql, suite_name, limit);
     if (stmt == NULL) {
@@ -1181,8 +1222,8 @@ int faultline_for_each_trend(sqlite3 *db, char const *suite_name, int limit,
     int count = 0;
     while (sqlite3_step(stmt) == SQLITE_ROW) {
         FLSuiteTrend tr;
-        tr.suite_name          = (char const *)sqlite3_column_text(stmt, COL_SUITE);
-        tr.day                 = (char const *)sqlite3_column_text(stmt, COL_DAY);
+        tr.suite_name          = db_column_text(stmt, COL_SUITE, "(null)");
+        tr.day                 = db_column_text(stmt, COL_DAY, "(null)");
         tr.total_runs          = sqlite3_column_int(stmt, COL_RUNS);
         tr.avg_pass_rate       = sqlite3_column_double(stmt, COL_PASS);
         tr.avg_execution_time  = sqlite3_column_double(stmt, COL_EXEC);
@@ -1287,7 +1328,8 @@ int faultline_for_each_hotspot(sqlite3 *db, char const *suite_name, int limit,
           "JOIN test_suites ts ON ts.suite_id = rtr.suite_id "
           "WHERE (?1 IS NULL OR ts.suite_name = ?1) "
           "GROUP BY rf.source_file, rf.source_line "
-          "ORDER BY failure_count DESC, rf.source_file, rf.source_line";
+          "ORDER BY failure_count DESC, rf.source_file, rf.source_line "
+          "LIMIT :limit;";
 
     sqlite3_stmt *stmt = prepare_suite_report(db, base_sql, suite_name, limit);
     if (stmt == NULL) {
@@ -1304,7 +1346,7 @@ int faultline_for_each_hotspot(sqlite3 *db, char const *suite_name, int limit,
     int count = 0;
     while (sqlite3_step(stmt) == SQLITE_ROW) {
         FLFaultHotspot h;
-        h.source_file    = (char const *)sqlite3_column_text(stmt, COL_FILE);
+        h.source_file    = db_column_text(stmt, COL_FILE, "(null)");
         h.source_line    = sqlite3_column_int(stmt, COL_LINE);
         h.failure_count  = sqlite3_column_int64(stmt, COL_FAILURES);
         h.tests_affected = sqlite3_column_int64(stmt, COL_TESTS);
@@ -1383,7 +1425,8 @@ void faultline_show_test_failures(sqlite3 *db, char const *suite_name, int limit
                    "LEFT JOIN raw_faults rf ON rts.id = rf.summary_id "
                    "WHERE (?1 IS NULL OR ts.suite_name = ?1) "
                    "AND rts.result_code > 1 " // Exclude FL_NOT_RUN (0) and FL_PASS (1)
-                   "ORDER BY rtr.timestamp DESC";
+                   "ORDER BY rtr.timestamp DESC "
+                   "LIMIT :limit;";
     } else {
         // Default: show only failures from the most recent test run per suite
         base_sql = "SELECT rtr.id, ts.suite_name, rts.test_name, rts.result_code, "
@@ -1400,7 +1443,8 @@ void faultline_show_test_failures(sqlite3 *db, char const *suite_name, int limit
                    "    FROM raw_test_runs rtr2 "
                    "    WHERE rtr2.suite_id = rtr.suite_id"
                    ") "
-                   "ORDER BY rtr.timestamp DESC";
+                   "ORDER BY rtr.timestamp DESC "
+                   "LIMIT :limit;";
     }
 
     sqlite3_stmt *stmt = prepare_suite_report(db, base_sql, suite_name, limit);
@@ -1437,12 +1481,14 @@ void faultline_show_test_failures(sqlite3 *db, char const *suite_name, int limit
            "----------------------------------------");
 
     while (sqlite3_step(stmt) == SQLITE_ROW) {
-        int         run_id    = sqlite3_column_int(stmt, COL_RUN_ID);
-        char const *suite     = (char const *)sqlite3_column_text(stmt, COL_SUITE_NAME);
-        char const *test_name = (char const *)sqlite3_column_text(stmt, COL_TEST_NAME);
+        int         run_id      = sqlite3_column_int(stmt, COL_RUN_ID);
+        char const *suite       = db_column_text(stmt, COL_SUITE_NAME, "(null)");
+        char const *test_name   = db_column_text(stmt, COL_TEST_NAME, "(null)");
         int         result_code = sqlite3_column_int(stmt, COL_RESULT_CODE);
-        char const *reason      = (char const *)sqlite3_column_text(stmt, COL_REASON);
-        char const *details     = (char const *)sqlite3_column_text(stmt, COL_DETAILS);
+        char const *reason      = db_column_text(stmt, COL_REASON, "");
+        char const *details     = db_column_text(stmt, COL_DETAILS, "");
+        // A NULL source_file means the LEFT JOIN found no fault row, which the
+        // location formatting below distinguishes from an empty path.
         char const *source_file
             = (char const *)sqlite3_column_text(stmt, COL_SOURCE_FILE);
         int           source_line   = sqlite3_column_int(stmt, COL_SOURCE_LINE);
@@ -1474,7 +1520,7 @@ void faultline_show_test_failures(sqlite3 *db, char const *suite_name, int limit
             } else {
                 snprintf(location, sizeof location, "%s:%d", filename, source_line);
             }
-        } else if (reason != NULL && strlen(reason) > 0) {
+        } else if (strlen(reason) > 0) {
             // Fall back to reason if no location available
             snprintf(location, sizeof location, "Reason: %.32s", reason);
         } else {
@@ -1484,9 +1530,7 @@ void faultline_show_test_failures(sqlite3 *db, char const *suite_name, int limit
         // printf("reason=%s, details=%s, source=%s:%d, %zd\n",reason, details,
         // source_file, source_line, resource_addr);
         printf("%-4d %-15.15s %-25.25s %-12s %-12s %-40.40s\n", run_id, suite, test_name,
-               result_str,
-               details != NULL && strlen(details) != 0 ? details : "no details",
-               location);
+               result_str, strlen(details) != 0 ? details : "no details", location);
     }
 
     sqlite3_finalize(stmt);
@@ -1513,10 +1557,9 @@ void faultline_show_run_details(sqlite3 *db, int run_id) {
           "JOIN test_suites ts ON rtr.suite_id = ts.suite_id "
           "WHERE rtr.id = ?";
 
-    sqlite3_stmt *stmt;
-    int           rc = sqlite3_prepare_v2(db, run_sql, -1, &stmt, NULL);
-    if (rc != SQLITE_OK) {
-        printf("Error preparing run query: %s\n", sqlite3_errmsg(db));
+    sqlite3_stmt *stmt = db_prepare(db, run_sql, "run details query");
+    if (stmt == NULL) {
+        printf("Error preparing run query\n");
         return;
     }
 
@@ -1537,18 +1580,16 @@ void faultline_show_run_details(sqlite3 *db, int run_id) {
     sqlite3_bind_int(stmt, 1, run_id);
 
     if (sqlite3_step(stmt) == SQLITE_ROW) {
-        char const *suite_name
-            = (char const *)sqlite3_column_text(stmt, RUN_COL_SUITE_NAME);
-        char const *timestamp
-            = (char const *)sqlite3_column_text(stmt, RUN_COL_TIMESTAMP);
-        int    test_cases         = sqlite3_column_int(stmt, RUN_COL_TEST_CASES);
-        int    tests_run          = sqlite3_column_int(stmt, RUN_COL_TESTS_RUN);
-        int    tests_passed       = sqlite3_column_int(stmt, RUN_COL_TESTS_PASSED);
-        double elapsed_time       = sqlite3_column_double(stmt, RUN_COL_ELAPSED_TIME);
-        double pass_rate          = sqlite3_column_double(stmt, RUN_COL_PASS_RATE);
-        int    total_fault_sites  = sqlite3_column_int(stmt, RUN_COL_TOTAL_FAULT_SITES);
-        int    discovery_failures = sqlite3_column_int(stmt, RUN_COL_DISCOVERY_FAILURES);
-        int    injection_failures = sqlite3_column_int(stmt, RUN_COL_INJECTION_FAILURES);
+        char const *suite_name   = db_column_text(stmt, RUN_COL_SUITE_NAME, "(null)");
+        char const *timestamp    = db_column_text(stmt, RUN_COL_TIMESTAMP, "(null)");
+        int         test_cases   = sqlite3_column_int(stmt, RUN_COL_TEST_CASES);
+        int         tests_run    = sqlite3_column_int(stmt, RUN_COL_TESTS_RUN);
+        int         tests_passed = sqlite3_column_int(stmt, RUN_COL_TESTS_PASSED);
+        double      elapsed_time = sqlite3_column_double(stmt, RUN_COL_ELAPSED_TIME);
+        double      pass_rate    = sqlite3_column_double(stmt, RUN_COL_PASS_RATE);
+        int total_fault_sites    = sqlite3_column_int(stmt, RUN_COL_TOTAL_FAULT_SITES);
+        int discovery_failures   = sqlite3_column_int(stmt, RUN_COL_DISCOVERY_FAILURES);
+        int injection_failures   = sqlite3_column_int(stmt, RUN_COL_INJECTION_FAILURES);
 
         printf("\n=== Test Run Details (ID: %d) ===\n", run_id);
         printf("Suite: %s\n", suite_name);
@@ -1589,8 +1630,8 @@ void faultline_show_run_details(sqlite3 *db, int run_id) {
             TEST_COL_SOURCE_LINE
         };
 
-        rc = sqlite3_prepare_v2(db, tests_sql, -1, &stmt, NULL);
-        if (rc == SQLITE_OK) {
+        stmt = db_prepare(db, tests_sql, "run test results query");
+        if (stmt != NULL) {
             sqlite3_bind_int(stmt, 1, run_id);
 
             printf("\n--- Individual Test Results ---\n");
@@ -1603,14 +1644,15 @@ void faultline_show_run_details(sqlite3 *db, int run_id) {
 
             while (sqlite3_step(stmt) == SQLITE_ROW) {
                 char const *test_name
-                    = (char const *)sqlite3_column_text(stmt, TEST_COL_TEST_NAME);
+                    = db_column_text(stmt, TEST_COL_TEST_NAME, "(null)");
                 int         result_code = sqlite3_column_int(stmt, TEST_COL_RESULT_CODE);
                 double      elapsed     = sqlite3_column_double(stmt, TEST_COL_ELAPSED);
                 int         faults      = sqlite3_column_int(stmt, TEST_COL_FAULTS);
-                char const *reason
-                    = (char const *)sqlite3_column_text(stmt, TEST_COL_REASON);
+                char const *reason      = db_column_text(stmt, TEST_COL_REASON, "");
                 char const *details
-                    = (char const *)sqlite3_column_text(stmt, TEST_COL_DETAILS);
+                    = db_column_text(stmt, TEST_COL_DETAILS, "no details");
+                // A NULL source_file means the LEFT JOIN found no fault row, which
+                // the location formatting below distinguishes from an empty path.
                 char const *source_file
                     = (char const *)sqlite3_column_text(stmt, TEST_COL_SOURCE_FILE);
                 int source_line = sqlite3_column_int(stmt, TEST_COL_SOURCE_LINE);
@@ -1641,8 +1683,8 @@ void faultline_show_run_details(sqlite3 *db, int run_id) {
                 }
 
                 printf("%-25.25s %-12s %8.3f %6d %-30.30s %-30.30s %-30.30s\n",
-                       test_name, result_str, elapsed, faults, reason ? reason : "",
-                       details ? details : "no details", location);
+                       test_name, result_str, elapsed, faults, reason, details,
+                       location);
             }
             sqlite3_finalize(stmt);
         }
@@ -1674,10 +1716,9 @@ void faultline_show_suite_summary(sqlite3 *db, char const *suite_name) {
                       "JOIN test_suites ts ON rtr.suite_id = ts.suite_id "
                       "WHERE ts.suite_name = ?";
 
-    sqlite3_stmt *stmt;
-    int           rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
-    if (rc != SQLITE_OK) {
-        printf("Error preparing query: %s\n", sqlite3_errmsg(db));
+    sqlite3_stmt *stmt = db_prepare(db, sql, "suite summary query");
+    if (stmt == NULL) {
+        printf("Error preparing query\n");
         return;
     }
 
@@ -1696,19 +1737,19 @@ void faultline_show_suite_summary(sqlite3 *db, char const *suite_name) {
     if (sqlite3_step(stmt) == SQLITE_ROW) {
         int         total_runs    = sqlite3_column_int(stmt, COL_TOTAL_RUNS);
         double      avg_pass_rate = sqlite3_column_double(stmt, COL_AVG_PASS_RATE);
-        char const *first_run = (char const *)sqlite3_column_text(stmt, COL_FIRST_RUN);
-        char const *last_run  = (char const *)sqlite3_column_text(stmt, COL_LAST_RUN);
-        int         total_faults = sqlite3_column_int(stmt, COL_TOTAL_FAULTS);
-        double      avg_runtime  = sqlite3_column_double(stmt, COL_AVG_RUNTIME);
+        char const *first_run
+            = db_column_text(stmt, COL_FIRST_RUN, "First Run state not recorded");
+        char const *last_run
+            = db_column_text(stmt, COL_LAST_RUN, "Last Run state not recorded");
+        int    total_faults = sqlite3_column_int(stmt, COL_TOTAL_FAULTS);
+        double avg_runtime  = sqlite3_column_double(stmt, COL_AVG_RUNTIME);
 
         printf("\n=== Suite Summary: %s ===\n", suite_name);
         printf("Total Runs: %d\n", total_runs);
         if (total_runs > 0) {
             printf("Average Pass Rate: %.1f%%\n", avg_pass_rate * 100.0);
-            printf("First Run: %s\n",
-                   first_run ? first_run : "First Run state not recorded");
-            printf("Last Run: %s\n",
-                   last_run ? last_run : "Last Run state not recorded");
+            printf("First Run: %s\n", first_run);
+            printf("Last Run: %s\n", last_run);
             printf("Total Fault Sites: %d\n", total_faults);
             printf("Average Runtime: %.2f seconds\n", avg_runtime);
         } else {
@@ -1756,7 +1797,8 @@ void faultline_show_suites(sqlite3 *db, int limit, bool verbose) {
                    "FROM test_suites ts "
                    "LEFT JOIN raw_test_runs rtr ON rtr.suite_id = ts.suite_id "
                    "GROUP BY ts.suite_id, ts.suite_name "
-                   "ORDER BY last_run DESC";
+                   "ORDER BY last_run DESC "
+                   "LIMIT :limit;";
     } else {
         base_sql = "SELECT ts.suite_name, "
                    "       COUNT(rtr.id) AS total_runs, "
@@ -1766,22 +1808,16 @@ void faultline_show_suites(sqlite3 *db, int limit, bool verbose) {
                    "FROM test_suites ts "
                    "LEFT JOIN raw_test_runs rtr ON rtr.suite_id = ts.suite_id "
                    "GROUP BY ts.suite_id, ts.suite_name "
-                   "ORDER BY last_run DESC";
+                   "ORDER BY last_run DESC "
+                   "LIMIT :limit;";
     }
 
-    char query[1024];
-    if (limit > 0) {
-        snprintf(query, sizeof query, "%s LIMIT %d;", base_sql, limit);
-    } else {
-        snprintf(query, sizeof query, "%s;", base_sql);
-    }
-
-    sqlite3_stmt *stmt;
-    int           rc = sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
-    if (rc != SQLITE_OK) {
-        printf("Error preparing query: %s\n", sqlite3_errmsg(db));
+    sqlite3_stmt *stmt = db_prepare(db, base_sql, "suite list query");
+    if (stmt == NULL) {
+        printf("Error preparing query\n");
         return;
     }
+    db_bind_limit(stmt, limit);
 
     enum {
         COL_SUITE_NAME = 0,
@@ -1811,12 +1847,12 @@ void faultline_show_suites(sqlite3 *db, int limit, bool verbose) {
 
     int count = 0;
     while (sqlite3_step(stmt) == SQLITE_ROW) {
-        char const *suite_name = (char const *)sqlite3_column_text(stmt, COL_SUITE_NAME);
+        char const *suite_name = db_column_text(stmt, COL_SUITE_NAME, "(null)");
         int         total_runs = sqlite3_column_int(stmt, COL_TOTAL_RUNS);
 
         if (verbose) {
-            char const *first_run = (char const *)sqlite3_column_text(stmt, COL_MID);
-            char const *last_run  = (char const *)sqlite3_column_text(stmt, COL_4);
+            char const *first_run = db_column_text(stmt, COL_MID, "-");
+            char const *last_run  = db_column_text(stmt, COL_4, "-");
             double      pass_rate = sqlite3_column_double(stmt, COL_5);
             int         faults    = sqlite3_column_int(stmt, COL_FAULTS);
             double      runtime   = sqlite3_column_double(stmt, COL_RUNTIME);
@@ -1824,16 +1860,15 @@ void faultline_show_suites(sqlite3 *db, int limit, bool verbose) {
             int         cases     = sqlite3_column_int(stmt, COL_CASES);
 
             printf("%-30.30s %5d %5d %-19.19s %-19.19s %5.1f%% %7d %8.3f %6d\n",
-                   suite_name, total_runs, cases, first_run ? first_run : "-",
-                   last_run ? last_run : "-", pass_rate * 100.0, faults, runtime,
-                   failures);
+                   suite_name, total_runs, cases, first_run, last_run, pass_rate * 100.0,
+                   faults, runtime, failures);
         } else {
-            char const *last_run  = (char const *)sqlite3_column_text(stmt, COL_MID);
+            char const *last_run  = db_column_text(stmt, COL_MID, "-");
             double      pass_rate = sqlite3_column_double(stmt, COL_4);
             int         faults    = sqlite3_column_int(stmt, COL_5);
 
             printf("%-30.30s %5d %-19.19s %5.1f%% %7d\n", suite_name, total_runs,
-                   last_run ? last_run : "-", pass_rate * 100.0, faults);
+                   last_run, pass_rate * 100.0, faults);
         }
         count++;
     }
@@ -1876,13 +1911,15 @@ void faultline_show_cases(sqlite3 *db, char const *suite_name, int limit, bool v
                    "       baseline_execution_time, last_execution_time, baseline_date "
                    "FROM test_case_evolution "
                    "WHERE (?1 IS NULL OR suite_name = ?1) "
-                   "ORDER BY suite_name, test_name";
+                   "ORDER BY suite_name, test_name "
+                   "LIMIT :limit;";
     } else {
         base_sql = "SELECT suite_name, test_name, total_appearances, total_failures, "
                    "       last_fault_sites "
                    "FROM test_case_evolution "
                    "WHERE (?1 IS NULL OR suite_name = ?1) "
-                   "ORDER BY suite_name, test_name";
+                   "ORDER BY suite_name, test_name "
+                   "LIMIT :limit;";
     }
 
     sqlite3_stmt *stmt = prepare_suite_report(db, base_sql, suite_name, limit);
@@ -1921,8 +1958,8 @@ void faultline_show_cases(sqlite3 *db, char const *suite_name, int limit, bool v
 
     int count = 0;
     while (sqlite3_step(stmt) == SQLITE_ROW) {
-        char const *suite = (char const *)sqlite3_column_text(stmt, COL_SUITE_NAME);
-        char const *test  = (char const *)sqlite3_column_text(stmt, COL_TEST_NAME);
+        char const *suite = db_column_text(stmt, COL_SUITE_NAME, "(null)");
+        char const *test  = db_column_text(stmt, COL_TEST_NAME, "(null)");
         int         runs  = sqlite3_column_int(stmt, COL_APPEARANCES);
         int         fails = sqlite3_column_int(stmt, COL_FAILURES);
 
@@ -1931,12 +1968,11 @@ void faultline_show_cases(sqlite3 *db, char const *suite_name, int limit, bool v
             int         last_faults = sqlite3_column_int(stmt, COL_LAST_FAULTS);
             double      base_time   = sqlite3_column_double(stmt, COL_BASE_TIME);
             double      last_time   = sqlite3_column_double(stmt, COL_LAST_TIME);
-            char const *base_date
-                = (char const *)sqlite3_column_text(stmt, COL_BASE_DATE);
+            char const *base_date   = db_column_text(stmt, COL_BASE_DATE, "-");
 
             printf("%-25.25s %-25.25s %5d %5d %5d %5d %8.3f %8.3f %-19.19s\n", suite,
                    test, runs, fails, base_faults, last_faults, base_time, last_time,
-                   base_date ? base_date : "-");
+                   base_date);
         } else {
             int last_faults = sqlite3_column_int(stmt, COL_BASE_FAULTS); // index 4
             printf("%-25.25s %-30.30s %5d %5d %7d\n", suite, test, runs, fails,
