@@ -879,90 +879,6 @@ void faultline_record_test_summary(sqlite3 *db, int run_id, FLTestSummary *summa
 }
 
 /**
- * @brief Show recent test runs with summary statistics
- *
- * @param db Database connection
- * @param limit Maximum number of runs to display (0 = no limit)
- */
-void faultline_show_recent_runs(sqlite3 *db, int limit) {
-    if (db == NULL) {
-        printf("No database connection available\n");
-        return;
-    }
-
-    char const *sql = "SELECT rtr.id, ts.suite_name, rtr.timestamp, rtr.test_cases, "
-                      "       rtr.tests_run, rtr.tests_passed, rtr.total_elapsed_time, "
-                      "rtr.pass_rate, "
-                      "       rtr.total_fault_sites "
-                      "FROM raw_test_runs rtr "
-                      "JOIN test_suites ts ON rtr.suite_id = ts.suite_id "
-                      "ORDER BY rtr.timestamp DESC "
-                      "LIMIT :limit;";
-
-    sqlite3_stmt *stmt = db_prepare(db, sql, "recent runs query");
-    if (stmt == NULL) {
-        printf("Error preparing query\n");
-        return;
-    }
-    db_bind_limit(stmt, limit);
-
-    // Column indices for recent runs query
-    enum {
-        COL_ID = 0,
-        COL_SUITE_NAME,
-        COL_TIMESTAMP,
-        COL_TEST_CASES,
-        COL_TESTS_RUN,
-        COL_TESTS_PASSED,
-        COL_ELAPSED_TIME,
-        COL_PASS_RATE,
-        COL_FAULT_SITES
-    };
-
-    printf("\n=== Recent Test Runs ===\n");
-    printf("%-4s %-20s %-19s %-6s %-7s %-4s/%-4s %-8s %-6s\n", "ID", "Suite",
-           "Timestamp", "Cases", "Faults", "Pass", "Run", "Time(s)", "Rate%");
-    printf("%-4s %-20s %-19s %-6s %-7s %-9s %-8s %-6s\n", "----", "--------------------",
-           "-------------------", "------", "-------", "---------", "--------",
-           "------");
-
-    while (sqlite3_step(stmt) == SQLITE_ROW) {
-        int         id           = sqlite3_column_int(stmt, COL_ID);
-        char const *suite_name   = db_column_text(stmt, COL_SUITE_NAME, "(null)");
-        char const *timestamp    = db_column_text(stmt, COL_TIMESTAMP, "(null)");
-        int         test_cases   = sqlite3_column_int(stmt, COL_TEST_CASES);
-        int         tests_run    = sqlite3_column_int(stmt, COL_TESTS_RUN);
-        int         tests_passed = sqlite3_column_int(stmt, COL_TESTS_PASSED);
-        double      elapsed_time = sqlite3_column_double(stmt, COL_ELAPSED_TIME);
-        double      pass_rate    = sqlite3_column_double(stmt, COL_PASS_RATE);
-        int         fault_sites  = sqlite3_column_int(stmt, COL_FAULT_SITES);
-
-        // Truncate timestamp to remove seconds
-        char short_timestamp[20];
-        strncpy_s(short_timestamp, sizeof short_timestamp, timestamp, 16);
-        short_timestamp[16] = '\0';
-
-        // Truncate suite name if too long to maintain table alignment
-        char truncated_suite[21]; // 20 chars + null terminator
-        if (strlen(suite_name) > 20) {
-            strncpy_s(truncated_suite, sizeof truncated_suite, suite_name, 17);
-            truncated_suite[17] = '.';
-            truncated_suite[18] = '.';
-            truncated_suite[19] = '.';
-            truncated_suite[20] = '\0';
-        } else {
-            strcpy_s(truncated_suite, sizeof truncated_suite, suite_name);
-        }
-
-        printf("%-4d %-20s %-19s %-6d %-7d %-4d/%-4d %-8.3f %5.1f%%\n", id,
-               truncated_suite, short_timestamp, test_cases, fault_sites, tests_passed,
-               tests_run, elapsed_time, pass_rate * 100.0);
-    }
-
-    sqlite3_finalize(stmt);
-}
-
-/**
  * @brief Prepare a suite-filtered report query with an optional row limit.
  *
  * Prepares sql, binds ?1 to the suite filter (NULL binds SQL NULL, which the report
@@ -980,6 +896,94 @@ static sqlite3_stmt *prepare_suite_report(sqlite3 *db, char const *sql,
         db_bind_limit(stmt, limit);
     }
     return stmt;
+}
+
+/**
+ * @brief Show recent test runs with summary statistics
+ *
+ * @param db Database connection
+ * @param suite_name Suite to report on, or NULL for all suites
+ * @param limit Maximum number of runs to display (0 = no limit)
+ */
+void faultline_show_recent_runs(sqlite3 *db, char const *suite_name, int limit) {
+    if (db == NULL) {
+        printf("No database connection available\n");
+        return;
+    }
+
+    char const *sql = "SELECT rtr.id, ts.suite_name, rtr.timestamp, rtr.test_cases, "
+                      "       rtr.tests_run, rtr.tests_passed, rtr.total_elapsed_time, "
+                      "rtr.pass_rate, "
+                      "       rtr.total_fault_sites "
+                      "FROM raw_test_runs rtr "
+                      "JOIN test_suites ts ON rtr.suite_id = ts.suite_id "
+                      "WHERE (?1 IS NULL OR ts.suite_name = ?1) "
+                      "ORDER BY rtr.timestamp DESC "
+                      "LIMIT :limit;";
+
+    sqlite3_stmt *stmt = prepare_suite_report(db, sql, suite_name, limit);
+    if (stmt == NULL) {
+        printf("Error preparing query\n");
+        return;
+    }
+
+    // Column indices for recent runs query
+    enum {
+        COL_ID = 0,
+        COL_SUITE_NAME,
+        COL_TIMESTAMP,
+        COL_TEST_CASES,
+        COL_TESTS_RUN,
+        COL_TESTS_PASSED,
+        COL_ELAPSED_TIME,
+        COL_PASS_RATE,
+        COL_FAULT_SITES
+    };
+
+    printf("\n=== Recent Test Runs ===\n");
+    if (suite_name != NULL) {
+        printf("Suite: %s\n", suite_name);
+    }
+    printf("%-4s %-20s %-19s %-6s %-7s %-4s/%-4s %-8s %-6s\n", "ID", "Suite",
+           "Timestamp", "Cases", "Faults", "Pass", "Run", "Time(s)", "Rate%");
+    printf("%-4s %-20s %-19s %-6s %-7s %-9s %-8s %-6s\n", "----", "--------------------",
+           "-------------------", "------", "-------", "---------", "--------",
+           "------");
+
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        int         id           = sqlite3_column_int(stmt, COL_ID);
+        char const *row_suite    = db_column_text(stmt, COL_SUITE_NAME, "(null)");
+        char const *timestamp    = db_column_text(stmt, COL_TIMESTAMP, "(null)");
+        int         test_cases   = sqlite3_column_int(stmt, COL_TEST_CASES);
+        int         tests_run    = sqlite3_column_int(stmt, COL_TESTS_RUN);
+        int         tests_passed = sqlite3_column_int(stmt, COL_TESTS_PASSED);
+        double      elapsed_time = sqlite3_column_double(stmt, COL_ELAPSED_TIME);
+        double      pass_rate    = sqlite3_column_double(stmt, COL_PASS_RATE);
+        int         fault_sites  = sqlite3_column_int(stmt, COL_FAULT_SITES);
+
+        // Truncate timestamp to remove seconds
+        char short_timestamp[20];
+        strncpy_s(short_timestamp, sizeof short_timestamp, timestamp, 16);
+        short_timestamp[16] = '\0';
+
+        // Truncate suite name if too long to maintain table alignment
+        char truncated_suite[21]; // 20 chars + null terminator
+        if (strlen(row_suite) > 20) {
+            strncpy_s(truncated_suite, sizeof truncated_suite, row_suite, 17);
+            truncated_suite[17] = '.';
+            truncated_suite[18] = '.';
+            truncated_suite[19] = '.';
+            truncated_suite[20] = '\0';
+        } else {
+            strcpy_s(truncated_suite, sizeof truncated_suite, row_suite);
+        }
+
+        printf("%-4d %-20s %-19s %-6d %-7d %-4d/%-4d %-8.3f %5.1f%%\n", id,
+               truncated_suite, short_timestamp, test_cases, fault_sites, tests_passed,
+               tests_run, elapsed_time, pass_rate * 100.0);
+    }
+
+    sqlite3_finalize(stmt);
 }
 
 /**

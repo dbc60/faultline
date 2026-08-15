@@ -37,7 +37,7 @@ extern void faultline_record_test_summary(sqlite3 *db, int run_id,
                                           FLTestSummary *summary, char const *test_name);
 
 // Database query and reporting functions
-extern void faultline_show_recent_runs(sqlite3 *db, int limit);
+extern void faultline_show_recent_runs(sqlite3 *db, char const *suite_name, int limit);
 extern void faultline_show_test_failures(sqlite3 *db, char const *suite_name, int limit,
                                          bool show_all_history);
 extern void faultline_show_run_details(sqlite3 *db, int run_id);

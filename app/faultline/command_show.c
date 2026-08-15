@@ -39,7 +39,7 @@ COMMAND_HANDLER(show_results_cmd) {
         faultline_show_test_failures(ectx->db, suite, limit, false);
     } else {
         // Show recent runs (default view)
-        faultline_show_recent_runs(ectx->db, limit);
+        faultline_show_recent_runs(ectx->db, suite, limit);
     }
 
     // Note: type_filter, phase_filter, and show_source will be used once
