@@ -321,9 +321,13 @@ FL_TEST("Rethrow Preserves Metadata", test_rethrow_preserves_metadata) {
 }
 
 FL_TEST("Catch All Rethrow", test_catch_all_rethrow) {
-    int cleanup_ran  = 0;
-    int no_throw_ran = 0;
-    int caught       = 0;
+    // cleanup_ran must be volatile, because it's set between the setjmp in the outer
+    // FL_TRY and the RETHROW (longjmp) in the inner FL_END_TRY. See section §7.13.2.1
+    // ¶3 of the C11 spec for details. no_throw_ran and caught are each read without an
+    // intervening longjmp, so they need no such qualification.
+    int volatile cleanup_ran = 0;
+    int no_throw_ran         = 0;
+    int caught               = 0;
 
     // No exception: the block must not run.
     FL_TRY {
