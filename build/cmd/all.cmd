@@ -213,6 +213,13 @@ if %test% EQU 1 (
         flp_memory_service_tests.dll ^
         flp_file_service_tests.dll ^
         flp_stream_service_tests.dll
+    REM The driver returns 0 for ordinary test failures, so a non-zero status
+    REM means it died or could not start. A crash takes down every suite listed
+    REM after the one that crashed, and those suites report nothing at all -- the
+    REM results table then backfills with older runs, which looks like a normal
+    REM listing. Fail the build rather than let a truncated run pass for a
+    REM complete one.
+    set "_run_rc=!errorlevel!"
     .\faultline.exe show results --limit 24
     REM Split-architecture smoke: the same suites driven through the split host.
     REM Its log goes to faultline.log; the results table shows the runs.
@@ -221,8 +228,19 @@ if %test% EQU 1 (
         flp_file_service_tests.dll ^
         flp_stream_service_tests.dll ^
         timer_tests.dll
+    set "_split_rc=!errorlevel!"
     .\win32_faultline.exe show results --limit 4
     popd
+    if not "!_run_rc!"=="0" (
+        ECHO ALL.CMD ERROR: test driver exited with !_run_rc! -- suites listed 1>&2
+        ECHO after the failure point did not run. 1>&2
+        GOTO :ERROR
+    )
+    if not "!_split_rc!"=="0" (
+        ECHO ALL.CMD ERROR: split host exited with !_split_rc! -- suites listed 1>&2
+        ECHO after the failure point did not run. 1>&2
+        GOTO :ERROR
+    )
 )
 GOTO :SUCCESS
 

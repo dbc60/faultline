@@ -118,6 +118,12 @@ if [[ $_has_test -eq 1 ]]; then
         flp_memory_service_tests.dll \
         flp_file_service_tests.dll \
         flp_stream_service_tests.dll
+    # The driver returns 0 for ordinary test failures, so a non-zero status means
+    # it died or could not start. A crash takes down every suite listed after the
+    # one that crashed, and those suites report nothing at all -- the results
+    # table then backfills with older runs, which looks like a normal listing.
+    # Fail the build instead of letting a truncated run pass for a complete one.
+    _run_rc=$?
     ./faultline.exe show results --limit 24
     # Split-architecture smoke: the same suites driven through the split host.
     ./win32_faultline.exe run \
@@ -125,8 +131,20 @@ if [[ $_has_test -eq 1 ]]; then
         flp_file_service_tests.dll \
         flp_stream_service_tests.dll \
         timer_tests.dll
+    _split_rc=$?
     ./win32_faultline.exe show results --limit 4
     popd > /dev/null
+
+    if [[ $_run_rc -ne 0 ]]; then
+        echo "all.sh: ERROR: the test driver exited with $_run_rc;" \
+             "suites after the failure point did not run" >&2
+        exit 1
+    fi
+    if [[ $_split_rc -ne 0 ]]; then
+        echo "all.sh: ERROR: the split host exited with $_split_rc;" \
+             "suites after the failure point did not run" >&2
+        exit 1
+    fi
 fi
 
-unset _forward_args _has_test _junit_opt
+unset _forward_args _has_test _junit_opt _run_rc _split_rc
