@@ -12,9 +12,10 @@
 #include <faultline/flp_fault_memory_context.h> // FLFaultMemoryContext (full definition)
 #include "output_junit.h"                       // write_junit_xml
 
-#include <faultline/fl_log.h>          // LOG_ERROR, LOG_WARN, LOG_INFO
-#include <faultline/fl_try.h>          // FL_TRY, FL_CATCH_ALL, FL_END_TRY
-#include <faultline/fl_test.h>         // FLTestSuite, fl_get_test_suite_fn
+#include <faultline/fl_log.h>  // LOG_ERROR, LOG_WARN, LOG_INFO
+#include <faultline/fl_try.h>  // FL_TRY, FL_CATCH_ALL, FL_END_TRY
+#include <faultline/fl_test.h> // FLTestSuite, fl_get_test_suite_fn
+#include <faultline/fl_abi.h> // FLAbiInfo, fl_abi_check, fla_get_abi_fn, FLA_GET_ABI_STR
 #include <faultline/fl_context.h>      // FLContext, faultline_initialize, etc.
 #include <faultline_driver.h>          // faultline_run_test
 #include <faultline_sqlite.h>          // faultline_record_test_run_start, etc.
@@ -418,6 +419,55 @@ static FaultInjector *suite_injector(ExecutionContext *ectx) {
 
 #endif // FL_PLATFORM_BUILD
 
+// Compare a suite's build identity with this driver's. A suite built before the
+// descriptor existed does not export it; that is reported and allowed through,
+// since refusing it would break every module built against an older contract.
+static bool suite_abi_ok(ExecutionContext *ectx, SuiteHandle suite,
+                         char const *dll_path) {
+    static char const module[] = COMMAND_MODULE_NAME;
+
+    fla_get_abi_fn *get_abi
+        = (fla_get_abi_fn *)(uintptr_t)suite_symbol(ectx, suite, FLA_GET_ABI_STR);
+    if (get_abi == NULL) {
+        LOG_WARN(module,
+                 "\"%s\" reports no build identity; running it unchecked. Rebuild it "
+                 "to have the driver verify compatibility.",
+                 dll_path);
+        return true;
+    }
+
+    FLAbiInfo host = {0};
+    FLAbiInfo mod  = {0};
+    fl_fill_abi_info(&host);
+    get_abi(&mod);
+
+    FLAbiVerdict verdict = fl_abi_check(&host, &mod);
+    if (verdict == FL_ABI_OK) {
+        return true;
+    }
+
+    LOG_ERROR(module, "\"%s\" is incompatible with this driver: %s - skipping", dll_path,
+              fl_abi_verdict_str(verdict));
+    LOG_ERROR(
+        module,
+        "  suite:  %s %u, %s, %s (mtx_t %u, thrd_t %u), compatibility v%u, v%u.%u.%u",
+        fl_abi_compiler_str(mod.compiler_id), mod.compiler_version,
+        fl_abi_crt_str(mod.crt_id),
+        mod.threads_use_shim ? "fl_threads shim" : "toolchain <threads.h>",
+        mod.sizeof_mtx_t, mod.sizeof_thrd_t, mod.compatibility_version,
+        mod.version_major, mod.version_minor, mod.version_patch);
+    LOG_ERROR(
+        module,
+        "  driver: %s %u, %s, %s (mtx_t %u, thrd_t %u), compatibility v%u, v%u.%u.%u",
+        fl_abi_compiler_str(host.compiler_id), host.compiler_version,
+        fl_abi_crt_str(host.crt_id),
+        host.threads_use_shim ? "fl_threads shim" : "toolchain <threads.h>",
+        host.sizeof_mtx_t, host.sizeof_thrd_t, host.compatibility_version,
+        host.version_major, host.version_minor, host.version_patch);
+    LOG_ERROR(module, "  rebuild the suite with the toolchain that built the driver");
+    return false;
+}
+
 /**
  * @brief Handler for "run" command
  *
@@ -447,6 +497,15 @@ COMMAND_HANDLER(run_cmd) {
             SuiteHandle test_suite = suite_load(ectx, dll_path);
             if (test_suite == NULL) {
                 LOG_ERROR(module, "Failed to load \"%s\"", dll_path);
+                continue;
+            }
+
+            // Check build identity before injecting anything. Injection installs
+            // this driver's throw hook into the suite, and a suite whose setjmp
+            // comes from a different runtime would take that longjmp and corrupt
+            // the process. Skipping one suite keeps the rest of the run alive.
+            if (!suite_abi_ok(ectx, test_suite, dll_path)) {
+                suite_unload(ectx, test_suite);
                 continue;
             }
 

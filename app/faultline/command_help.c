@@ -8,6 +8,7 @@
  * See LICENSE.txt for copyright and licensing information about this file.
  */
 #include "faultline_commands.h"
+#include <faultline/fl_abi.h> // FLAbiInfo, fl_fill_abi_info, FL_VERSION_*
 #include <stdio.h>
 #include <string.h>
 
@@ -115,7 +116,23 @@ COMMAND_HANDLER(help_cmd) {
  */
 COMMAND_HANDLER(version_cmd) {
     FL_UNUSED(cmd);
-    printf("FaultLine version 0.3.0\n");
+    printf("FaultLine version %d.%d.%d\n", FL_VERSION_MAJOR, FL_VERSION_MINOR,
+           FL_VERSION_PATCH);
     printf("Fault Injection Testing Framework\n");
     printf("Copyright (c) 2025 Douglas Cuthbertson\n");
+
+    // A suite must be built against the same runtime as this driver. Printing the
+    // identity used for that comparison is what makes a refusal diagnosable: run
+    // this, compare with what the refused suite reported, rebuild the odd one out.
+    FLAbiInfo abi;
+    fl_fill_abi_info(&abi);
+    printf("\nBuild identity\n");
+    printf("  compiler       %s %u\n", fl_abi_compiler_str(abi.compiler_id),
+           abi.compiler_version);
+    printf("  c runtime      %s\n", fl_abi_crt_str(abi.crt_id));
+    printf("  c11 threads    %s (mtx_t %u, thrd_t %u)\n",
+           abi.threads_use_shim ? "fl_threads shim" : "toolchain <threads.h>",
+           abi.sizeof_mtx_t, abi.sizeof_thrd_t);
+    printf("  exception env  %u bytes (jmp_buf %u)\n", abi.sizeof_exception_env,
+           abi.sizeof_jmp_buf);
 }

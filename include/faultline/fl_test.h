@@ -15,6 +15,7 @@
  */
 #include <faultline/fl_macros.h> // FL_UNUSED, FL_SPEC_EXPORT
 #include <faultline/fl_try.h>    // FL_THROW
+#include <faultline/fl_abi.h>    // FLA_GET_ABI_FN, fl_fill_abi_info
 
 #include <string.h> // strcmp
 
@@ -163,7 +164,10 @@ typedef struct FLTestSuite FLTestSuite;
            .count      = sizeof SUITE##_cases / sizeof SUITE##_cases[0], \
            .test_cases = SUITE##_cases}
 
-// Define suite with auto count
+// Define suite with auto count.
+//
+// Also exports fla_get_abi, so every suite reports the toolchain with which it was built
+// so the driver can refuse an incompatible one by name instead of crashing.
 #define FL_GET_TEST_SUITE(NAME, SUITE)                                   \
     static FLTestSuite SUITE##_ts                                        \
         = {.name       = NAME,                                           \
@@ -171,6 +175,9 @@ typedef struct FLTestSuite FLTestSuite;
            .test_cases = SUITE##_cases};                                 \
     FL_SPEC_EXPORT FLTestSuite *fl_get_test_suite(void) {                \
         return &SUITE##_ts;                                              \
+    }                                                                    \
+    FL_SPEC_EXPORT FLA_GET_ABI_FN(fla_get_abi) {                         \
+        fl_fill_abi_info(out);                                           \
     }
 
 // a macro to define a common field for test-case structs to embed a FLTestCase.
