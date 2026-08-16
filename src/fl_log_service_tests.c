@@ -42,10 +42,19 @@ static int tmp_counter = 0;
 /**
  * @brief Initialize the logger with output directed to a temp file.
  * Sets log level to LOG_LEVEL_TRACE so all messages are captured.
+ *
+ * The name is built from a process-local counter, so a given test always gets
+ * the same one, and the log service opens its output append-mode. Removing the
+ * file first is what makes a test independent of whatever the previous run left
+ * behind: a run that dies mid-test, or whose remove() loses a race with a
+ * virus scanner holding the handle, would otherwise leave content that the next
+ * run appends to -- surfacing the failure in a later run than the one that
+ * caused it.
  */
 static void init_to_tmpfile(char *path, size_t size) {
     flp_log_init();
     snprintf(path, size, "fl_log_test_%d.tmp", ++tmp_counter);
+    remove(path);
     flp_log_set_output_path(path);
     flp_log_set_level(LOG_LEVEL_TRACE);
 }
