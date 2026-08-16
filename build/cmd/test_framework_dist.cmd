@@ -8,10 +8,12 @@ SETLOCAL ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 :: The package ships the test-declaration header a suite DLL compiles against:
 :: the FL_TEST / FL_SUITE_* / FL_GET_TEST_SUITE macro family and the
 :: FLTestCase / FLTestSuite structures the driver enumerates through the
-:: fl_get_test_suite export. It is header-only and declares a dependency on
-:: exception_service, which supplies the fl_try.h / fl_macros.h closure the
-:: header includes and the exception sources a suite links against. Import
-:: exception_service first; fl_import enforces the order.
+:: fl_get_test_suite export. The same macro emits the build-identity export a
+:: host reads before it trusts a module, so the package also ships fl_abi.h and
+:: the fl_threads.h it takes its C11 threads types from. It is header-only and
+:: declares a dependency on exception_service, which supplies the fl_try.h /
+:: fl_macros.h closure the headers include and the exception sources a suite
+:: links against. Import exception_service first; fl_import enforces the order.
 ::
 :: Usage:
 ::   build\cmd\test_framework_dist.cmd [clean]
@@ -37,7 +39,7 @@ SET DIR_INC=%DIR_REPO%\include\faultline
 
 :: Package metadata recorded in manifest.txt (bump SVC_VERSION on release).
 SET SVC_NAME=test_framework
-SET SVC_VERSION=0.1.0
+SET SVC_VERSION=0.2.0
 SET SVC_DEPENDS=exception_service
 
 :: Handle clean
@@ -61,6 +63,8 @@ MD "%DIR_DIST%\include\faultline"
 :: -----------------------------------------------------------------------
 ECHO Copying public headers...
 COPY /Y "%DIR_INC%\fl_test.h"                "%DIR_DIST%\include\faultline\" > NUL
+COPY /Y "%DIR_INC%\fl_abi.h"                 "%DIR_DIST%\include\faultline\" > NUL
+COPY /Y "%DIR_INC%\fl_threads.h"             "%DIR_DIST%\include\faultline\" > NUL
 
 :: -----------------------------------------------------------------------
 :: Generate the package manifest (authoritative file list used by fl_import)

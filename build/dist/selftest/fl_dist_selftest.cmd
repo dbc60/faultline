@@ -9,7 +9,9 @@ SETLOCAL ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 :: (2) imports the package into an isolated scratch tree via fl_import.ps1,
 :: (3) compiles a consumer test against the *imported* tree in /DFL_EMBEDDED
 :: mode, and (4) runs it. A failure at any stage is reported and counted; the
-:: harness still attempts the remaining packages.
+:: harness still attempts the remaining packages. test_framework is the one
+:: package whose subject is a host/module boundary, so step (3) builds two
+:: binaries for it and step (4) has the host load the module.
 ::
 :: This recovers the coverage the deleted standalone tests provided (the
 :: application-side log service and the single-binary memory-service assembly)
@@ -254,6 +256,57 @@ IF ERRORLEVEL 1 ( ECHO   [compile] FAILED & TYPE "%CL_LOG%" & SET /A FAILS+=1 & 
 IF ERRORLEVEL 1 ( ECHO   [run]     FAILED & SET /A FAILS+=1 & GOTO :after_stream )
 ECHO   [ok]
 :after_stream
+
+:: =======================================================================
+::  test_framework: a suite module and the host that loads it
+::
+::  The package is header-only and describes a host/module boundary, so this
+::  block builds both halves over one imported tree instead of a single
+::  consumer binary: the suite as a DLL (/DDLL_BUILD, no FL_PLATFORM_BUILD, so
+::  the headers select the fla_ exception service it waits to have injected)
+::  and the host as a platform binary (/DFL_PLATFORM_BUILD, owning the flp_
+::  service it injects). Each half compiles fl_exception_service.c under
+::  different defines, so they need separate object directories.
+:: =======================================================================
+ECHO.
+ECHO ============================================================
+ECHO  test_framework
+ECHO ============================================================
+CALL "%DIR_CMDS%\exception_service_dist.cmd" > NUL
+IF ERRORLEVEL 1 ( ECHO   [dist]    FAILED & SET /A FAILS+=1 & GOTO :after_tf )
+CALL "%DIR_CMDS%\test_framework_dist.cmd" > NUL
+IF ERRORLEVEL 1 ( ECHO   [dist]    FAILED & SET /A FAILS+=1 & GOTO :after_tf )
+SET INTO=%DIR_SELF%\test_framework
+:: test_framework declares SVC_DEPENDS=exception_service: import the dependency
+:: first, then layer the package into the same tree (fl_import checks the dep).
+CALL :IMPORT "%DIR_REPO%\dist\exception_service" "%INTO%"
+IF ERRORLEVEL 1 ( ECHO   [import]  FAILED & SET /A FAILS+=1 & GOTO :after_tf )
+CALL :IMPORT_ADD "%DIR_REPO%\dist\test_framework" "%INTO%"
+IF ERRORLEVEL 1 ( ECHO   [import]  FAILED & SET /A FAILS+=1 & GOTO :after_tf )
+SET OBJ_DLL=%INTO%\_obj_dll
+SET OBJ_EXE=%INTO%\_obj_exe
+IF NOT EXIST "%OBJ_DLL%" MD "%OBJ_DLL%"
+IF NOT EXIST "%OBJ_EXE%" MD "%OBJ_EXE%"
+cl %CommonCompilerFlagsFinal% /DDLL_BUILD /wd4456 ^
+    /I"%INTO%\include" ^
+    "%INTO%\src\fl_exception_service.c" ^
+    "%INTO%\src\fla_exception_service.c" ^
+    "%HERE%\test_framework_suite.c" ^
+    /Fo:"%OBJ_DLL%\\" /Fd:"%OBJ_DLL%\tf_suite.pdb" /LD /Fe:"%INTO%\tf_suite.dll" ^
+    /link %CommonLinkerFlagsFinal% > "%CL_LOG%" 2>&1
+IF ERRORLEVEL 1 ( ECHO   [compile] suite FAILED & TYPE "%CL_LOG%" & SET /A FAILS+=1 & GOTO :after_tf )
+cl %CommonCompilerFlagsFinal% /DFL_PLATFORM_BUILD /DFL_EMBEDDED /wd4456 ^
+    /I"%INTO%\include" ^
+    "%INTO%\src\fl_exception_service.c" ^
+    "%INTO%\src\flp_exception_service.c" ^
+    "%HERE%\test_framework_host_test.c" ^
+    /Fo:"%OBJ_EXE%\\" /Fd:"%INTO%\tf_host.pdb" /Fe:"%INTO%\tf_host.exe" ^
+    /link %CommonLinkerFlagsFinal% /ENTRY:mainCRTStartup > "%CL_LOG%" 2>&1
+IF ERRORLEVEL 1 ( ECHO   [compile] host FAILED & TYPE "%CL_LOG%" & SET /A FAILS+=1 & GOTO :after_tf )
+"%INTO%\tf_host.exe" "%INTO%\tf_suite.dll"
+IF ERRORLEVEL 1 ( ECHO   [run]     FAILED & SET /A FAILS+=1 & GOTO :after_tf )
+ECHO   [ok]
+:after_tf
 
 IF EXIST "%CL_LOG%" DEL "%CL_LOG%" 2> NUL
 
