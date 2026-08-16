@@ -16,7 +16,7 @@
  *
  * Selection is by capability, not age: the shim activates whenever <threads.h> is
  * absent (detected via __has_include / __STDC_NO_THREADS__), which includes current
- * toolchains that simply omit C11 threads.
+ * toolchains that simply omit C11 threads. See FL_THREADS_USE_SHIM below.
  *
  * Shim backends:
  *   Windows  (_WIN32) : CRITICAL_SECTION + CreateThread
@@ -26,10 +26,39 @@
  */
 
 /*
- * Prefer __has_include over __STDC_NO_THREADS__ alone: some MinGW
- * configurations omit threads.h without defining __STDC_NO_THREADS__.
+ * FL_THREADS_USE_SHIM is 1 when this header supplies the C11 names itself, and 0 when it
+ * forwards to the toolchain's <threads.h>. This header and fl_threads.c both test it, so
+ * the two cannot disagree about which side they are on.
+ *
+ * Prefer __has_include over __STDC_NO_THREADS__ alone: some MinGW configurations
+ * omit threads.h without defining __STDC_NO_THREADS__. The branches are kept
+ * separate so a toolchain lacking __has_include never has to parse an
+ * __has_include expression.
+ *
+ * FL_THREADS_USE_SHIM's value is decided only by detecting whether <threads.h>
+ * exists. There is deliberately no macro to force the shim on where it does exist.
+ *
+ * The shim defines the same function names the C runtime defines -- mtx_init,
+ * thrd_create, and the rest -- so on a toolchain that ships <threads.h>, the shim
+ * and that runtime can each satisfy those names at link time. A program that
+ * includes this header with the shim selected but does not link fl_threads.c takes
+ * its declarations from the shim (mtx_t is a CRITICAL_SECTION, 40 bytes; thrd_t is
+ * a HANDLE, 8) and its definitions from the C runtime (32 and 16 bytes). The
+ * linker reports nothing, and the disagreement corrupts memory at run time.
+ *
+ * A macro that forced the shim on would therefore need a link-time guard: some
+ * symbol that fails the build when fl_threads.c is absent from the link. Until
+ * such a guard exists, no forcing macro is offered.
  */
-#if !defined(__STDC_NO_THREADS__) && defined(__has_include) && __has_include(<threads.h>)
+#if defined(__STDC_NO_THREADS__) || !defined(__has_include)
+#define FL_THREADS_USE_SHIM 1
+#elif __has_include(<threads.h>)
+#define FL_THREADS_USE_SHIM 0
+#else
+#define FL_THREADS_USE_SHIM 1
+#endif
+
+#if !FL_THREADS_USE_SHIM
 #include <threads.h>
 #else
 

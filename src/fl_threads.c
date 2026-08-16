@@ -6,7 +6,9 @@
  * @version 0.1
  * @date 2026-02-19
  *
- * Compiled only when <threads.h> is unavailable on the target platform.
+ * Compiled when <threads.h> is unavailable on the target platform, which
+ * fl_threads.h resolves into FL_THREADS_USE_SHIM. Otherwise this file is an
+ * empty translation unit.
  * Windows:  CRITICAL_SECTION for mutexes, CreateThread for threads.
  * POSIX:    pthread_mutex_t for mutexes, pthread_create for threads.
  *
@@ -14,7 +16,7 @@
  */
 #include <faultline/fl_threads.h>
 
-#if defined(__STDC_NO_THREADS__) || !defined(__has_include) || !__has_include(<threads.h>)
+#if FL_THREADS_USE_SHIM
 
 #include <stddef.h> // for NULL
 
@@ -249,10 +251,10 @@ int thrd_sleep(const struct timespec *duration, struct timespec *remaining) {
 #endif /* compatibility shim needed */
 
 /* --- tss shim ---------------------------------------------------------- */
-/* Compiled only when <threads.h> is unavailable, like the rest of the shim.
+/* Selected by FL_THREADS_USE_SHIM, like the rest of the shim.
  * Windows: one FLS slot holds a per-thread value array; the FLS callback runs
  * the registered destructors at thread exit. POSIX: pthread keys map 1:1. */
-#if defined(__STDC_NO_THREADS__) || !defined(__has_include) || !__has_include(<threads.h>)
+#if FL_THREADS_USE_SHIM
 
 #if defined(_WIN32) || defined(WIN32)
 
