@@ -201,7 +201,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Allocate Zero Bytes", ArenaExtendEdgeTest,
     FL_ASSERT_EQ_SIZE_T((size_t)1, arena_allocation_count(arena));
 
     // The chunk backing this allocation should be at least CHUNK_MIN_SIZE
-    FL_ASSERT_GE_SIZE_T(arena_allocation_size(mem), CHUNK_MIN_SIZE);
+    FL_ASSERT_GE_SIZE_T(ARENA_ALLOCATION_SIZE_THROW(arena, mem), CHUNK_MIN_SIZE);
 }
 
 // ============================================================================
@@ -217,7 +217,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Allocate One Byte", ArenaExtendEdgeTest, allocate_on
     FL_ASSERT_NOT_NULL(mem);
 
     // Chunk must be at least CHUNK_MIN_SIZE
-    size_t alloc_size = arena_allocation_size(mem);
+    size_t alloc_size = ARENA_ALLOCATION_SIZE_THROW(arena, mem);
     FL_ASSERT_GE_SIZE_T(alloc_size, CHUNK_MIN_SIZE);
 
     // Chunk must be aligned
@@ -238,7 +238,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Allocate Boundary Small/Large", ArenaExtendEdgeTest,
     // Allocate at the small/large boundary
     void *small_mem
         = arena_malloc_throw(arena, ARENA_MAX_SMALL_REQUEST, __FILE__, __LINE__);
-    size_t small_size = arena_allocation_size(small_mem);
+    size_t small_size = ARENA_ALLOCATION_SIZE_THROW(arena, small_mem);
 
     // Should be a small chunk
     FL_ASSERT_GE_SIZE_T(small_size, CHUNK_SIZE_FROM_REQUEST(ARENA_MAX_SMALL_REQUEST));
@@ -247,7 +247,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Allocate Boundary Small/Large", ArenaExtendEdgeTest,
     // Allocate one byte beyond the small boundary
     void *large_mem
         = arena_malloc_throw(arena, ARENA_MAX_SMALL_REQUEST + 1, __FILE__, __LINE__);
-    size_t large_size = arena_allocation_size(large_mem);
+    size_t large_size = ARENA_ALLOCATION_SIZE_THROW(arena, large_mem);
 
     // Should be a large chunk
     FL_ASSERT_GE_SIZE_T(large_size, (size_t)ARENA_MIN_LARGE_CHUNK);

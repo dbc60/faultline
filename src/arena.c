@@ -224,8 +224,9 @@ static Arena *new_arena_common(size_t commit, u32 reserve, bool synchronized) {
         DLIST_INIT(&arena->small_bins[i]);
     }
 
-    arena->footprint     = committed;
-    arena->max_footprint = committed;
+    ARENA_STAT_SET(arena, footprint, committed);
+    ARENA_STAT_SET(arena, max_footprint, committed);
+    ARENA_STAT_SET(arena, allocations, 0);
 
     /** note that trim_check could/should be configurable through a global
      * struct malloc_params that's initialized at startup. */
@@ -567,7 +568,7 @@ static void *extend(Arena *arena, size_t request, char const *file, int line) {
     }
 
     if (arena->footprint_limit != 0
-        && arena->footprint + extend_size > arena->footprint_limit) {
+        && ARENA_STAT_GET(arena, footprint) + extend_size > arena->footprint_limit) {
         FL_THROW(arena_out_of_memory);
     }
 
@@ -620,9 +621,12 @@ static void *extend(Arena *arena, size_t request, char const *file, int line) {
     free_chunk_set_inuse(top);
 
     // update footprints
-    arena->footprint += committed;
-    arena->max_footprint = MAX(arena->footprint, arena->max_footprint);
-    mem                  = CHUNK_TO_MEMORY(top);
+    size_t const footprint = ARENA_STAT_GET(arena, footprint) + committed;
+    ARENA_STAT_SET(arena, footprint, footprint);
+    if (footprint > ARENA_STAT_GET(arena, max_footprint)) {
+        ARENA_STAT_SET(arena, max_footprint, footprint);
+    }
+    mem = CHUNK_TO_MEMORY(top);
 
     // FIXME: we called integrity checks here, but they don't yet deal with multiple
     // regions ARENA_CHECK_TOP_CHUNK_FILE_LINE(arena, file, line);
@@ -781,7 +785,7 @@ static void *arena_aligned_alloc_impl(Arena *arena, size_t alignment, size_t siz
     // Freeing the gap chunk decremented the allocation count, but the aligned chunk
     // carved from the same allocation is still outstanding; restore the count so the
     // caller's eventual free balances it instead of underflowing.
-    arena->allocations++;
+    ARENA_STAT_INC(arena, allocations);
 
     return (void *)aligned_addr;
 }
@@ -908,7 +912,7 @@ static void arena_free_impl(Arena *arena, void *mem, char const *file, int line)
         }
 
         // Returning, because there's no need to insert the chunk into a bin.
-        arena->allocations--;
+        ARENA_STAT_DEC(arena, allocations);
         return;
     }
 
@@ -930,7 +934,7 @@ static void arena_free_impl(Arena *arena, void *mem, char const *file, int line)
                 }
 
                 // Returning, because there's no need to insert the chunk into a bin.
-                arena->allocations--;
+                ARENA_STAT_DEC(arena, allocations);
                 return;
             }
         }
@@ -947,7 +951,7 @@ static void arena_free_impl(Arena *arena, void *mem, char const *file, int line)
             free_chunk_merge_next(ch);
             arena->fast_size = fast_size;
             arena->fast      = ch;
-            arena->allocations--;
+            ARENA_STAT_DEC(arena, allocations);
             return; // there's no need to insert the chunk into a bin.
         } else {
             // merge forward with a node in a bin
@@ -1015,7 +1019,7 @@ static void arena_free_impl(Arena *arena, void *mem, char const *file, int line)
                       "Expected 0x%04zx. Actual 0x%04zx", CHUNK_SIZE(ch),
                       free_chunk_footer_size(ch));
 
-    arena->allocations--;
+    ARENA_STAT_DEC(arena, allocations);
 }
 
 static void arena_free_pointer_impl(Arena *arena, void **ptr, char const *file,
@@ -1112,7 +1116,7 @@ static void *arena_malloc_impl(Arena *arena, size_t request, char const *file,
     }
     CHUNK_VALIDATE(ch, size);
     ch->owner = arena;
-    arena->allocations++;
+    ARENA_STAT_INC(arena, allocations);
     return mem;
 }
 
@@ -1199,26 +1203,50 @@ void *arena_realloc_throw(Arena *arena, void *mem, size_t size, char const *file
 // ============================================================================
 
 size_t arena_footprint(Arena const *arena) {
-    return arena->footprint;
+    return ARENA_STAT_GET(arena, footprint);
 }
 
 size_t arena_max_footprint(Arena const *arena) {
-    return arena->max_footprint;
+    return ARENA_STAT_GET(arena, max_footprint);
 }
 
 size_t arena_allocation_count(Arena const *arena) {
-    return arena->allocations;
+    return ARENA_STAT_GET(arena, allocations);
 }
 
-size_t arena_allocation_size(void *mem) {
-    if (mem == NULL) {
-        return 0;
+static size_t arena_allocation_size_impl(Arena *arena, void *mem, char const *file,
+                                         int line) {
+    // Reject a NULL or misaligned pointer before deriving a header from it.
+    Chunk *ch = chunk_from_memory_validate(mem, file, line);
+
+    // Bound the header against the arena's regions before dereferencing it, so
+    // a wild pointer is reported rather than followed. The bound alone is not
+    // an ownership test: a pointer into the middle of a block lies inside a
+    // region just as a real allocation does. The owner backpointer distinguishes
+    // one arena's blocks from another's exactly, and is stable for as long as
+    // the block is in use.
+    ARENA_ADDRESS_VALID(arena, ch, file, line);
+    if (ch->owner != arena) {
+        FL_THROW_DETAILS_FILE_LINE(fl_invalid_address,
+                                   "0x%p is not an allocation from arena 0x%p", file,
+                                   line, mem, (void *)arena);
     }
-    // Get chunk header (reverse of CHUNK_TO_MEMORY)
-    Chunk *ch = (Chunk *)(((char *)mem) - CHUNK_ALIGNED_SIZE);
+
     return CHUNK_SIZE(ch);
 }
 
+size_t arena_allocation_size_throw(Arena *arena, void *mem, char const *file, int line) {
+    if (mem == NULL) {
+        return 0;
+    }
+
+    size_t size = 0;
+    ARENA_GUARDED_CALL(arena, size = arena_allocation_size_impl(arena, mem, file, line));
+    return size;
+}
+
 bool arena_is_valid_allocation(Arena *arena, void const *mem) {
-    return arena_address_ok(arena, mem);
+    bool valid = false;
+    ARENA_GUARDED_CALL(arena, valid = arena_address_ok(arena, mem));
+    return valid;
 }

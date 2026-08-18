@@ -46,7 +46,7 @@ extern "C" {
 
 /** Project version, reported by the version command and carried in FLAbiInfo. */
 #define FL_VERSION_MAJOR 0
-#define FL_VERSION_MINOR 4
+#define FL_VERSION_MINOR 5
 #define FL_VERSION_PATCH 0
 
 /** Identifies the struct below as this contract's, and its revision. "FLA1" in ASCII hex

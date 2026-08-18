@@ -338,17 +338,18 @@ struct Arena {
         *large_bins[ARENA_LARGE_BIN_COUNT]; ///< Each bin represents a size class and the
                                             ///< set of chunks within are maintained in a
                                             ///< digital search tree.
-    size_t footprint;       ///< the number of bytes reserved from system memory.
-    size_t max_footprint;   ///< a statistic tracking the largest number of bytes used.
-    size_t footprint_limit; ///< A configurable maximum number of bytes that this
-                            ///< allocator may use. Zero means there is no limit.
-    size_t trim_check;      ///< TBD.
-    size_t release_checks;  ///< a counter that is initialized to MAX_RELEASE_CHECK_RATE
-                            ///< and decremented once per call to free(). When it is
-                            ///< zero, free any Regions that don't contain used chunks
-                            ///< and reset the counter to MAX_RELEASE_CHECK_RATE or the
-                            ///< current number of regions, whichever is greater.
-    size_t          allocations;
+    _Atomic size_t footprint;     ///< the number of bytes reserved from system memory.
+    _Atomic size_t max_footprint; ///< a statistic tracking the largest number of bytes
+                                  ///< used.
+    size_t footprint_limit;       ///< A configurable maximum number of bytes that this
+                                  ///< allocator may use. Zero means there is no limit.
+    size_t trim_check;            ///< TBD.
+    size_t release_checks; ///< a counter that is initialized to MAX_RELEASE_CHECK_RATE
+                           ///< and decremented once per call to free(). When it is
+                           ///< zero, free any Regions that don't contain used chunks
+                           ///< and reset the counter to MAX_RELEASE_CHECK_RATE or the
+                           ///< current number of regions, whichever is greater.
+    _Atomic size_t  allocations;
     _Atomic(void *) remote_free_head; ///< blocks freed by non-owning threads
                                       ///< (arena_free_remote); the owner
                                       ///< reclaims them at its next allocation.
@@ -368,6 +369,31 @@ _Static_assert(ARENA_SMALL_MAP_BITS == sizeof(((struct Arena *)0)->small_map) * 
                "ARENA_SMALL_MAP_BITS does not match the width of Arena::small_map");
 _Static_assert(ARENA_LARGE_BIN_COUNT <= sizeof(((struct Arena *)0)->large_map) * U08_BIT,
                "large bins outnumber the bits of Arena::large_map that indexes them");
+
+/*
+ * The statistics counters, footprint, max_footprint and allocations, are the
+ * only arena fields read outside the arena's serialization, because the
+ * inspection APIs report them without taking the lock. Making them _Atomic
+ * leaves those reads defined rather than a data race, and stops a compiler from
+ * caching one across a loop that waits for it to change.
+ *
+ * Writers are already mutually excluded: a synchronized arena holds its lock,
+ * and an unsynchronized one is owned by a single thread. Relaxed loads and
+ * stores are therefore sufficient, and an atomic read-modify-write is not
+ * needed. Use these accessors rather than touching the fields directly. An
+ * ordinary increment of an _Atomic is a sequentially consistent
+ * read-modify-write, which puts a locked instruction on the allocation path,
+ * while the relaxed load and store below compile to the same instructions a
+ * plain size_t did.
+ */
+#define ARENA_STAT_GET(AR, FIELD) \
+    atomic_load_explicit(&(AR)->FIELD, memory_order_relaxed)
+#define ARENA_STAT_SET(AR, FIELD, VALUE) \
+    atomic_store_explicit(&(AR)->FIELD, (VALUE), memory_order_relaxed)
+#define ARENA_STAT_INC(AR, FIELD) \
+    ARENA_STAT_SET(AR, FIELD, ARENA_STAT_GET(AR, FIELD) + 1)
+#define ARENA_STAT_DEC(AR, FIELD) \
+    ARENA_STAT_SET(AR, FIELD, ARENA_STAT_GET(AR, FIELD) - 1)
 
 extern FLExceptionReason arena_out_of_memory;
 extern FLExceptionReason fl_internal_error;

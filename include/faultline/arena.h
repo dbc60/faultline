@@ -22,6 +22,8 @@ extern "C" {
 
 #define ARENA_ALIGNED_ALLOC_THROW(AR, ALIGN, SZ) \
     arena_aligned_alloc_throw((AR), (ALIGN), (SZ), __FILE__, __LINE__)
+#define ARENA_ALLOCATION_SIZE_THROW(AR, PTR) \
+    arena_allocation_size_throw((AR), (PTR), __FILE__, __LINE__)
 #define ARENA_CALLOC_THROW(AR, COUNT, BYTES) \
     arena_calloc_throw((AR), (COUNT), (BYTES), __FILE__, __LINE__)
 #define ARENA_FREE_THROW(AR, PTR) arena_free_throw((AR), (PTR), __FILE__, __LINE__)
@@ -219,6 +221,12 @@ void *arena_malloc_throw(Arena *arena, size_t request, char const *file, int lin
  * @param arena The arena to query.
  * @return The number of bytes currently committed from the OS.
  * @note This includes overhead for arena structures and free chunks.
+ * @note This and the two counters below are read without taking a synchronized
+ *       arena's lock, so a value collected while another thread is allocating
+ *       is a snapshot that may already be stale. Each counter is individually
+ *       well defined; two of them read in succession are not guaranteed to
+ *       agree with each other. Read them from a quiescent arena when an exact
+ *       figure matters.
  */
 size_t arena_footprint(Arena const *arena);
 
@@ -249,12 +257,27 @@ size_t arena_allocation_count(Arena const *arena);
  * which may be larger than the requested size due to alignment and
  * minimum chunk size requirements.
  *
+ * The arena is required for two reasons: the read is serialized against it,
+ * because freeing a neighboring block rewrites flag bits in this block's own
+ * header word, and it lets the call confirm that mem really is one of this
+ * arena's allocations rather than trust the caller's pointer.
+ *
+ * @param arena The arena mem was allocated from.
  * @param mem A pointer to an allocated memory block.
+ * @param file The source file of the caller, for diagnostics.
+ * @param line The source line of the caller, for diagnostics.
  * @return The size of the chunk containing this allocation.
+ * @throw fl_invalid_address if mem is misaligned, lies outside the arena's
+ *        regions, or was not allocated from this arena.
  * @note The returned size includes chunk metadata overhead.
  * @note Returns 0 if mem is NULL.
+ * @note mem must still be allocated. A freed block's header carries free-chunk
+ *       linkage where its owner used to be, so passing one is a use-after-free
+ *       whether or not this call happens to detect it.
+ * @note Prefer the ARENA_ALLOCATION_SIZE_THROW macro, which supplies file and
+ *       line.
  */
-size_t arena_allocation_size(void *mem);
+size_t arena_allocation_size_throw(Arena *arena, void *mem, char const *file, int line);
 
 /**
  * @brief Check if an address is a valid allocation from this arena.
@@ -267,7 +290,10 @@ size_t arena_allocation_size(void *mem);
  * @param mem The address to validate.
  * @return true if mem is a valid allocation from this arena, false otherwise.
  * @note This checks region bounds, not whether the specific address is
- *       currently allocated vs. freed.
+ *       currently allocated vs. freed. Use arena_allocation_size_throw when the
+ *       answer must also confirm that this arena owns the block.
+ * @note The bounds check walks the arena's region list, so on a synchronized
+ *       arena this call takes the lock for its duration.
  */
 bool arena_is_valid_allocation(Arena *arena, void const *mem);
 

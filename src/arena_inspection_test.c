@@ -15,6 +15,7 @@
  *  19. allocation_size_returns_chunk_size
  *  20. is_valid_allocation_true
  *  21. is_valid_allocation_false
+ *  22. allocation_size_rejects_foreign_pointer
  */
 // Test framework
 #include <faultline/fl_test.h>
@@ -162,7 +163,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Allocation Count Lifecycle", ArenaInspectionTest,
 
 // ============================================================================
 // Test 19: allocation_size_returns_chunk_size
-// Allocate various sizes, verify arena_allocation_size returns a value >= request.
+// Allocate various sizes, verify the reported size is >= the request.
 // Verify it returns 0 for NULL.
 // ============================================================================
 
@@ -172,7 +173,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Allocation Size Returns Chunk Size", ArenaInspection
     Arena *arena = t->arena;
 
     // NULL should return 0
-    FL_ASSERT_EQ_SIZE_T((size_t)0, arena_allocation_size(NULL));
+    FL_ASSERT_EQ_SIZE_T((size_t)0, ARENA_ALLOCATION_SIZE_THROW(arena, NULL));
 
     // Test a range of request sizes
     size_t requests[] = {1, 8, 16, 32, 64, 128, 256, 512, 1024, 4096};
@@ -180,7 +181,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Allocation Size Returns Chunk Size", ArenaInspection
         size_t request = requests[i];
         void  *mem     = arena_malloc_throw(arena, request, __FILE__, __LINE__);
 
-        size_t alloc_size = arena_allocation_size(mem);
+        size_t alloc_size = ARENA_ALLOCATION_SIZE_THROW(arena, mem);
 
         // The chunk size should be >= the request (it includes chunk overhead
         // and may be rounded up for alignment)
@@ -236,4 +237,47 @@ FL_TYPE_TEST_SETUP_CLEANUP("Is Valid Allocation False", ArenaInspectionTest,
     // An address far outside the arena should not be valid
     void *bogus = (void *)(uintptr_t)0xDEADBEEF;
     FL_ASSERT_FALSE(arena_is_valid_allocation(arena, bogus));
+}
+
+// ============================================================================
+// Test 22: allocation_size_rejects_foreign_pointer
+// Verify the size query refuses a pointer that did not come from the arena it
+// is asked about, and still answers for the arena that owns the block.
+// ============================================================================
+
+FL_TYPE_TEST_SETUP_CLEANUP("Allocation Size Rejects Foreign Pointer",
+                           ArenaInspectionTest, allocation_size_rejects_foreign_pointer,
+                           setup_inspection, cleanup_inspection) {
+    Arena *arena = t->arena;
+    Arena *other = new_arena(KIBI(64), 0);
+    void  *mem   = arena_malloc_throw(other, 64, __FILE__, __LINE__);
+    bool   threw = false;
+
+    // A live block, but belonging to a different arena.
+    FL_TRY {
+        (void)ARENA_ALLOCATION_SIZE_THROW(arena, mem);
+    }
+    FL_CATCH(fl_invalid_address) {
+        threw = true;
+    }
+    FL_END_TRY;
+    FL_ASSERT_TRUE(threw);
+
+    // The arena that does own it answers normally.
+    FL_ASSERT_GE_SIZE_T(ARENA_ALLOCATION_SIZE_THROW(other, mem), (size_t)64);
+
+    // An address that is no allocation at all.
+    int stack_var = 42;
+    threw         = false;
+    FL_TRY {
+        (void)ARENA_ALLOCATION_SIZE_THROW(arena, &stack_var);
+    }
+    FL_CATCH(fl_invalid_address) {
+        threw = true;
+    }
+    FL_END_TRY;
+    FL_ASSERT_TRUE(threw);
+
+    arena_free_throw(other, mem, __FILE__, __LINE__);
+    release_arena(&other);
 }

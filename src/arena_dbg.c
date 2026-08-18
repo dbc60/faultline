@@ -483,8 +483,10 @@ void dbg_check_arena(Arena *arena, char const *file, int line) {
     FL_ASSERT_FILE_LINE(!find_bin(arena, arena->top), file, line);
 
     size_t total = dbg_traverse_and_check(arena, file, line);
-    FL_ASSERT_FILE_LINE(total <= arena->footprint, file, line);
-    FL_ASSERT_FILE_LINE(arena->footprint <= arena->max_footprint, file, line);
+    FL_ASSERT_FILE_LINE(total <= ARENA_STAT_GET(arena, footprint), file, line);
+    FL_ASSERT_FILE_LINE(ARENA_STAT_GET(arena, footprint)
+                            <= ARENA_STAT_GET(arena, max_footprint),
+                        file, line);
 }
 
 static void arena_tree_dbg_display_relatives(Arena *arena, DigitalSearchTree *tc,
