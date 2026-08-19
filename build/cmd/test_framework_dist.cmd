@@ -1,5 +1,5 @@
 @ECHO OFF
-SETLOCAL ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
+SETLOCAL
 
 :: See LICENSE.txt for copyright and licensing information about this file.
 ::
@@ -15,6 +15,8 @@ SETLOCAL ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 :: fl_macros.h closure the headers include and the exception sources a suite
 :: links against. Import exception_service first; fl_import enforces the order.
 ::
+:: What this package contains lives in build\dist\packages.psd1.
+::
 :: Usage:
 ::   build\cmd\test_framework_dist.cmd [clean]
 ::
@@ -26,69 +28,12 @@ SETLOCAL ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 SET PROJECT_NAME=Test Framework Distribution
 TITLE %PROJECT_NAME%
 
-:: Derive DIR_REPO from this script's location (build\cmd\test_framework_dist.cmd)
-SET DIR_CMD=%~dp0
-SET DIR_CMD=%DIR_CMD:~0,-1%
-FOR /f "delims=" %%F IN ("%DIR_CMD%") DO SET DIR_BUILD=%%~dpF
-SET DIR_BUILD=%DIR_BUILD:~0,-1%
-FOR /f "delims=" %%F IN ("%DIR_BUILD%") DO SET DIR_REPO=%%~dpF
-SET DIR_REPO=%DIR_REPO:~0,-1%
-
-SET DIR_DIST=%DIR_REPO%\dist\test_framework
-SET DIR_INC=%DIR_REPO%\include\faultline
-
-:: Package metadata recorded in manifest.txt (bump SVC_VERSION on release).
-SET SVC_NAME=test_framework
-SET SVC_VERSION=0.2.0
-SET SVC_DEPENDS=exception_service
-
-:: Handle clean
-IF /I "%~1"=="clean" (
-    IF EXIST "%DIR_DIST%" (
-        ECHO Removing %DIR_DIST%
-        RD /S /Q "%DIR_DIST%"
-    ) ELSE (
-        ECHO Nothing to clean.
-    )
-    GOTO :SUCCESS
+SET FL_CLEAN=
+IF /I "%~1"=="clean" SET FL_CLEAN=-Clean
+IF NOT "%~1"=="" IF NOT DEFINED FL_CLEAN (
+    ECHO TEST_FRAMEWORK_DIST.CMD ERROR: unknown option "%~1" -- expected "clean" or no option. 1>&2
+    EXIT /B 1
 )
 
-:: Wipe any previously-collected files so the package reflects exactly the
-:: current file set and the generated manifest matches what is on disk.
-IF EXIST "%DIR_DIST%\include" RD /S /Q "%DIR_DIST%\include"
-MD "%DIR_DIST%\include\faultline"
-
-:: -----------------------------------------------------------------------
-:: Public headers from include\faultline\
-:: -----------------------------------------------------------------------
-ECHO Copying public headers...
-COPY /Y "%DIR_INC%\fl_test.h"                "%DIR_DIST%\include\faultline\" > NUL
-COPY /Y "%DIR_INC%\fl_abi.h"                 "%DIR_DIST%\include\faultline\" > NUL
-COPY /Y "%DIR_INC%\fl_threads.h"             "%DIR_DIST%\include\faultline\" > NUL
-
-:: -----------------------------------------------------------------------
-:: Generate the package manifest (authoritative file list used by fl_import)
-:: -----------------------------------------------------------------------
-ECHO Generating manifest...
-powershell -NoProfile -ExecutionPolicy Bypass -File "%DIR_BUILD%\dist\fl_emit_manifest.ps1" -PackageDir "%DIR_DIST%" -Name "%SVC_NAME%" -Version "%SVC_VERSION%" -Depends "%SVC_DEPENDS%"
-IF ERRORLEVEL 1 (
-    ECHO ERROR: manifest generation failed.
-    GOTO :FAIL
-)
-
-ECHO.
-ECHO Done. Package written to dist\test_framework\
-ECHO.
-ECHO   Depends on            : exception_service (import it first)
-ECHO   Consumer include path : dist\test_framework\include
-ECHO   Compile these sources : none (header-only)
-
-GOTO :SUCCESS
-
-:FAIL
-ENDLOCAL
-EXIT /B 1
-
-:SUCCESS
-ENDLOCAL
-EXIT /B 0
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0..\dist\fl_dist.ps1" -Package test_framework %FL_CLEAN%
+EXIT /B %ERRORLEVEL%

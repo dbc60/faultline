@@ -261,3 +261,7 @@ $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 [System.IO.File]::WriteAllText($manifestPath, ($lines -join "`n") + "`n", $utf8NoBom)
 $state = if ($reused) { "unchanged" } else { "written  " }
 Write-Host "  manifest.txt $state ($(@($entries).Count) files, version $Version)"
+
+# Exit explicitly so a caller can read $LASTEXITCODE after every path, not just
+# the failing ones.
+exit 0
