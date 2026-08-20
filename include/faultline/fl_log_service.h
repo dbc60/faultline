@@ -11,7 +11,7 @@
  * See LICENSE.txt for copyright and licensing information about this file.
  *
  */
-#include <faultline/fl_macros.h> // FL_DECL_SPEC
+#include <faultline/fl_macros.h> // FL_DECL_SPEC, FL_PRINTF_FORMAT
 #include <stddef.h>              // size_t
 
 #if defined(__cplusplus)
@@ -29,13 +29,33 @@ typedef enum {
     LOG_LEVEL_TRACE   = 6
 } FLLogLevel;
 
-#define FL_WRITE_LOG_FN(name)                                               \
-    void name(FLLogLevel level, char const *file, int line, char const *id, \
-              char const *format, ...)
+/*
+ * The write signature, in one place. FL_WRITE_LOG_FN spells the function (this
+ * macro declares and defines it, and names its type); FL_WRITE_LOG_PTR spells a
+ * pointer to it.
+ *
+ * FL_PRINTF_FORMAT(5, 6) marks `format` as parameter 5 with its arguments
+ * starting at 6. Nothing else checks a LOG_* call site: the format is forwarded
+ * to a variadic function rather than handed to a printf-family call the compiler
+ * already knows, so without the attribute a wrong conversion is silent.
+ *
+ * It leads the function declaration because that is the only position GCC
+ * accepts on a definition, and FL_WRITE_LOG_FN spells definitions too. It is
+ * restated on the pointer because the attribute does not travel from a typedef
+ * to a call made through a pointer of that type, and a consumer build reaches
+ * the service only through the pointer.
+ */
+#define FL_WRITE_LOG_PARAMS                                                            \
+    (FLLogLevel level, char const *file, int line, char const *id, char const *format, \
+     ...)
+
+#define FL_WRITE_LOG_FN(name)  FL_PRINTF_FORMAT(5, 6) void name FL_WRITE_LOG_PARAMS
+#define FL_WRITE_LOG_PTR(name) void(*name) FL_WRITE_LOG_PARAMS FL_PRINTF_FORMAT(5, 6)
+
 typedef FL_WRITE_LOG_FN(fl_write_log_fn);
 
 typedef struct FLLogService {
-    fl_write_log_fn *write;
+    FL_WRITE_LOG_PTR(write);
 } FLLogService;
 
 // These definitions are common to both the platform and consumer implementations

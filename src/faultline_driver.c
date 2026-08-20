@@ -179,7 +179,7 @@ FL_EXERCISE_TEST(faultline_run_test) {
     // Immediate reporting of discovery phase results
     if (rc != FL_PASS) {
         if (setup_cleanup_result.unexpected_exception) {
-            LOG_ERROR(fctx->ts->name, "%u. %s: DISCOVERY FAILED - %s (%s:%d)",
+            LOG_ERROR(fctx->ts->name, "%zu. %s: DISCOVERY FAILED - %s, %s. (%s:%d)",
                       fctx->index + 1, fctx->ts->test_cases[fctx->index]->name,
                       setup_cleanup_result.reason ? setup_cleanup_result.reason
                                                   : "unknown reason",
@@ -188,12 +188,12 @@ FL_EXERCISE_TEST(faultline_run_test) {
                                                 : "unknown file",
                       setup_cleanup_result.line);
         } else {
-            LOG_WARN(fctx->ts->name, "%u. %s: DISCOVERY COMPLETED with result %d",
+            LOG_WARN(fctx->ts->name, "%zu. %s: DISCOVERY COMPLETED with result %d",
                      fctx->index + 1, fctx->ts->test_cases[fctx->index]->name, rc);
         }
 
         if (discovery_result.unexpected_exception) {
-            LOG_ERROR(fctx->ts->name, "%u. %s: DISCOVERY FAILED - %s, %s. (%s:%d)",
+            LOG_ERROR(fctx->ts->name, "%zu. %s: DISCOVERY FAILED - %s, %s. (%s:%d)",
                       fctx->index + 1, fctx->ts->test_cases[fctx->index]->name,
                       discovery_result.reason ? discovery_result.reason
                                               : "unknown reason",
@@ -201,12 +201,12 @@ FL_EXERCISE_TEST(faultline_run_test) {
                       discovery_result.file ? discovery_result.file : "unknown file",
                       discovery_result.line);
         } else {
-            LOG_WARN(fctx->ts->name, "%u. %s: DISCOVERY COMPLETED with result %d",
+            LOG_WARN(fctx->ts->name, "%zu. %s: DISCOVERY COMPLETED with result %d",
                      fctx->index + 1, fctx->ts->test_cases[fctx->index]->name, rc);
         }
     } else {
         LOG_VERBOSE(fctx->ts->name,
-                    "%u. %s: Discovery completed successfully, found %lld fault sites",
+                    "%zu. %s: Discovery completed successfully, found %lld fault sites",
                     fctx->index + 1, fctx->ts->test_cases[fctx->index]->name,
                     total_fault_sites);
     }
@@ -279,14 +279,14 @@ FL_EXERCISE_TEST(faultline_run_test) {
                     = fault_injector_get_site(injector, (size_t)(current_threshold - 1));
                 if (site) {
                     LOG_VERBOSE(fctx->ts->name,
-                                "%u. %s: injecting fault %lld/%lld (%d%%) at %s:%d",
+                                "%zu. %s: injecting fault %lld/%lld (%d%%) at %s:%d",
                                 fctx->index + 1, fctx->ts->test_cases[fctx->index]->name,
                                 current_threshold, total_fault_sites,
                                 (int)((current_threshold * 100) / total_fault_sites),
                                 site->file ? site->file : "unknown", site->line);
                 } else {
                     LOG_VERBOSE(fctx->ts->name,
-                                "%u. %s: injecting fault %lld/%lld (%d%%)",
+                                "%zu. %s: injecting fault %lld/%lld (%d%%)",
                                 fctx->index + 1, fctx->ts->test_cases[fctx->index]->name,
                                 current_threshold, total_fault_sites,
                                 (int)((current_threshold * 100) / total_fault_sites));
@@ -346,7 +346,7 @@ FL_EXERCISE_TEST(faultline_run_test) {
             // failure. Only memory leaks and invalid frees represent real bugs.
             if (injection_result.unexpected_exception) {
                 LOG_DEBUG(fctx->ts->name,
-                          "%u. %s: INJECTION FAULT %lld - %s (%s) at %s:%d",
+                          "%zu. %s: INJECTION FAULT %lld - %s (%s) at %s:%d",
                           fctx->index + 1, fctx->ts->test_cases[fctx->index]->name,
                           fault_index,
                           injection_result.reason ? injection_result.reason
@@ -365,7 +365,7 @@ FL_EXERCISE_TEST(faultline_run_test) {
             if (invalid_count > 0) {
                 LOG_ERROR(
                     fctx->ts->name,
-                    "%u. %s: INJECTION FAULT %lld - Invalid resource release detected",
+                    "%zu. %s: INJECTION FAULT %lld - Invalid resource release detected",
                     fctx->index + 1, fctx->ts->test_cases[fctx->index]->name,
                     fault_index);
 
@@ -382,7 +382,7 @@ FL_EXERCISE_TEST(faultline_run_test) {
             // Report memory leak failures immediately
             if (leaks > 0) {
                 LOG_ERROR(fctx->ts->name,
-                          "%u. %s: INJECTION FAULT %lld - Resource leak detected (%lld "
+                          "%zu. %s: INJECTION FAULT %lld - Resource leak detected (%lld "
                           "resources)",
                           fctx->index + 1, fctx->ts->test_cases[fctx->index]->name,
                           fault_index, leaks);
@@ -405,7 +405,7 @@ FL_EXERCISE_TEST(faultline_run_test) {
                 } else {
                     // False positive - infrastructure leak, not test-related
                     LOG_WARN(fctx->ts->name,
-                             "%u. %s: Infrastructure leak detected (%lld resources) - "
+                             "%zu. %s: Infrastructure leak detected (%lld resources) - "
                              "not test-related",
                              fctx->index + 1, fctx->ts->test_cases[fctx->index]->name,
                              leaks);
@@ -415,7 +415,7 @@ FL_EXERCISE_TEST(faultline_run_test) {
             // Report successful fault handling
             if (!had_failure) {
                 LOG_DEBUG("Run Test",
-                          "%u. %s: Injection fault %lld handled successfully",
+                          "%zu. %s: Injection fault %lld handled successfully",
                           fctx->index + 1, fctx->ts->test_cases[fctx->index]->name,
                           fault_index);
             }

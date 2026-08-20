@@ -382,7 +382,7 @@ FL_TEST("Format Thread Id", format_thread_id) {
 FL_TEST("Format Filename Extracted", format_filename_extracted) {
     char path[256], buf[4096];
     init_to_tmpfile(path, sizeof path);
-    flp_write_log(LOG_LEVEL_INFO, "C:\\path\\to\\source.c", 42, "my_func", "test",
+    flp_write_log(LOG_LEVEL_INFO, "C:\\path\\to\\source.c", 42, "my_func",
                   "filename check");
     read_output(path, buf, sizeof buf);
     FL_ASSERT_TRUE(strstr(buf, "source.c: 42") != NULL);

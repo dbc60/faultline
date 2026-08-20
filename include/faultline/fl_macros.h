@@ -92,6 +92,26 @@ extern "C" {
 #define FL_MAYBE_UNUSED
 #endif
 
+/**
+ * @brief Mark a variadic function as taking a printf-style format string.
+ *
+ * @param fmt_index the 1-based position of the format parameter.
+ * @param first_arg the 1-based position of the first variadic argument.
+ *
+ * Applies to any function whose format string is not handed straight to a
+ * printf-family call the compiler already knows about. Without it a format and
+ * its arguments are checked nowhere: a variadic declaration alone tells the
+ * compiler nothing about which parameter is the format. Expands to nothing on
+ * MSVC, which has no equivalent outside /analyze; the clang build covers those
+ * translation units instead.
+ */
+#if defined(__GNUC__) || defined(__clang__)
+#define FL_PRINTF_FORMAT(fmt_index, first_arg) \
+    __attribute__((format(printf, fmt_index, first_arg)))
+#else
+#define FL_PRINTF_FORMAT(fmt_index, first_arg)
+#endif
+
 /// The number of elements in a fixed-size array
 #define FL_ARRAY_COUNT(array) (sizeof(array) / sizeof((array)[0]))
 
