@@ -252,8 +252,10 @@ int thrd_sleep(const struct timespec *duration, struct timespec *remaining) {
 
 /* --- tss shim ---------------------------------------------------------- */
 /* Selected by FL_THREADS_USE_SHIM, like the rest of the shim.
- * Windows: one FLS slot holds a per-thread value array; the FLS callback runs
- * the registered destructors at thread exit. POSIX: pthread keys map 1:1. */
+ * Windows: one FLS (Fiber Local Storage) slot holds a per-thread value array.
+ * FLS is TLS plus a destructor callback, which is what tss_create's dtor
+ * argument needs; TlsAlloc has no such hook. The FLS callback runs the
+ * registered destructors at thread exit. POSIX: pthread keys map 1:1. */
 #if FL_THREADS_USE_SHIM
 
 #if defined(_WIN32) || defined(WIN32)
@@ -262,6 +264,7 @@ int thrd_sleep(const struct timespec *duration, struct timespec *remaining) {
 
 static tss_dtor_t    fl_tss_dtors_[FL_TSS_MAX];
 static volatile LONG fl_tss_count_;
+static volatile LONG fl_tss_live_;
 static DWORD         fl_tss_fls_ = FLS_OUT_OF_INDEXES;
 
 static VOID WINAPI fl_tss_thread_exit_(PVOID data) {
@@ -290,6 +293,7 @@ int tss_create(tss_t *key, tss_dtor_t dtor) {
     }
     fl_tss_dtors_[index] = dtor;
     *key                 = (tss_t)index;
+    InterlockedIncrement(&fl_tss_live_);
     return thrd_success;
 }
 
@@ -313,6 +317,21 @@ int tss_set(tss_t key, void *val) {
 
 void tss_delete(tss_t key) {
     fl_tss_dtors_[key] = NULL;
+    if (InterlockedDecrement(&fl_tss_live_) != 0) {
+        return;
+    }
+    /* The FLS callback is an address inside whichever module compiled this
+     * shim. A module that is unloaded before the process exits would leave the
+     * system holding a dangling callback, so the slot is released as soon as
+     * the last key goes away. FlsFree runs the callback for every fiber that
+     * still holds a value array, which frees those arrays here rather than at
+     * shutdown; fl_tss_count_ must stay intact until it returns. */
+    DWORD fls = fl_tss_fls_;
+    if (fls != FLS_OUT_OF_INDEXES) {
+        fl_tss_fls_ = FLS_OUT_OF_INDEXES;
+        FlsFree(fls);
+    }
+    fl_tss_count_ = 0;
 }
 
 #elif defined(__unix__) || defined(__APPLE__) || defined(__FreeBSD__)
