@@ -46,7 +46,7 @@ static FormalCommand const *find_command(FormalCommand const *formals,
 
     if (cmd == NULL) {
         // Command not found
-        FL_THROW_DETAILS(command_unknown, command);
+        FL_THROW_DETAILS(command_unknown, "%s", command);
     }
 
     return cmd;
