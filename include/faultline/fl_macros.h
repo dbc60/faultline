@@ -34,14 +34,12 @@
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L
 #define FL_THREAD_LOCAL thread_local
 #else // !(__STDC_VERSION__ && __STDC_VERSION__ >= 202311L)
-#if defined(__clang__) && defined(_WIN32) && !defined(_MSC_VER)
-// clang+MinGW: native TLS is broken without compiler-rt; emulated TLS
-// (-femulated-tls) requires libgcc_eh's pthreads-backed emutls, which is
-// unavailable here. Disable until compiler-rt is built for this target.
-// FIXME: re-enable once compiler-rt builtins are installed at
-//   lib/clang/<ver>/lib/windows/libclang_rt.builtins-x86_64.a
-#define FL_THREAD_LOCAL
-#elif defined(__clang__) || defined(__GNUC__)
+#if defined(__clang__) || defined(__GNUC__)
+// clang targeting MinGW emits native Windows TLS: a section-relative
+// displacement applied to the thread's TLS block. Such a build must be linked
+// with lld. GNU ld emits a spurious base relocation over that displacement, so
+// ASLR rebasing corrupts it and the first read of any FL_THREAD_LOCAL object
+// faults.
 #define FL_THREAD_LOCAL _Thread_local
 #elif defined(_WIN32) || defined(WIN32)
 // MSVC does not support _Thread_local; use its proprietary spelling instead.
