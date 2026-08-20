@@ -43,6 +43,7 @@ bash "$SCRIPT_DIR/chunk.sh"                 "${_forward_args[@]}"
 bash "$SCRIPT_DIR/digital_search_tree.sh"   "${_forward_args[@]}"
 bash "$SCRIPT_DIR/index.sh"                 "${_forward_args[@]}"
 bash "$SCRIPT_DIR/arena.sh"                 "${_forward_args[@]}"
+bash "$SCRIPT_DIR/arena_pool.sh"            "${_forward_args[@]}"
 bash "$SCRIPT_DIR/buffer.sh"                "${_forward_args[@]}"
 bash "$SCRIPT_DIR/fnv.sh"                   "${_forward_args[@]}"
 bash "$SCRIPT_DIR/math.sh"                  "${_forward_args[@]}"
@@ -105,6 +106,7 @@ if [[ $_has_test -eq 1 ]]; then
         index_generic_tests.dll \
         index_windows_tests.dll \
         arena_tests.dll \
+        arena_pool_tests.dll \
         buffer_tests.dll \
         fnv_tests.dll \
         math_tests.dll \
@@ -124,7 +126,7 @@ if [[ $_has_test -eq 1 ]]; then
     # table then backfills with older runs, which looks like a normal listing.
     # Fail the build instead of letting a truncated run pass for a complete one.
     _run_rc=$?
-    ./faultline.exe show results --limit 24
+    ./faultline.exe show results --limit 25
     # Split-architecture smoke: the same suites driven through the split host.
     ./win32_faultline.exe run \
         faultline_tests.dll \

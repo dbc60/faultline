@@ -220,7 +220,7 @@ if %test% EQU 1 (
     REM listing. Fail the build rather than let a truncated run pass for a
     REM complete one.
     set "_run_rc=!errorlevel!"
-    .\faultline.exe show results --limit 24
+    .\faultline.exe show results --limit 25
     REM Split-architecture smoke: the same suites driven through the split host.
     REM Its log goes to faultline.log; the results table shows the runs.
     .\win32_faultline.exe run ^
