@@ -609,6 +609,7 @@ int main(int argc, char **argv) {
     if (tss_create(&g_bench_tss_key, NULL) == thrd_success) {
         tss_set(g_bench_tss_key, &g_bench_tss_key);
         bm_run("tss_get", bm_tss_get, NULL, 10000000 / scale, 1);
+        tss_delete(g_bench_tss_key);
     }
     bm_run("FL_TRY empty frame", bm_try_frame, NULL, 2000000 / scale, 1);
     bm_run("small 64B malloc+free", bm_small_pingpong, arena, 1000000 / scale, 2);

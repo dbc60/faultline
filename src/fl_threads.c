@@ -262,61 +262,157 @@ int thrd_sleep(const struct timespec *duration, struct timespec *remaining) {
 
 #define FL_TSS_MAX 16
 
-static tss_dtor_t    fl_tss_dtors_[FL_TSS_MAX];
-static volatile LONG fl_tss_count_;
-static volatile LONG fl_tss_live_;
-static DWORD         fl_tss_fls_ = FLS_OUT_OF_INDEXES;
+/* A key is a slot index in its low bits and the generation the slot was issued
+ * under in the rest. Masking the index out of the key means it is always in
+ * range, and carrying the generation in the key keeps the validity check off
+ * the global generation array: tss_get compares against the generation stored
+ * beside the value, which shares its cache line. */
+#define FL_TSS_INDEX_BITS 4
+#define FL_TSS_INDEX_MASK ((tss_t)(FL_TSS_MAX - 1))
+#define FL_TSS_SLOT(key)  ((tss_t)((key) & FL_TSS_INDEX_MASK))
+#define FL_TSS_GEN(key)   ((LONG)((key) >> FL_TSS_INDEX_BITS))
+
+/* Slot bookkeeping. A key is an index into these arrays.
+ *
+ * fl_tss_used_ is the allocator: a slot is claimed with a compare-exchange, so
+ * tss_delete can hand it back and a later tss_create can take it again. A
+ * counter that only moved forward would burn one slot per create/destroy cycle
+ * and stop issuing keys once FL_TSS_MAX cycles had gone by. A NULL destructor is
+ * a legitimate argument to tss_create, so occupancy cannot be read off
+ * fl_tss_dtors_ and needs its own array.
+ *
+ * fl_tss_gen_ retires the values other threads still hold for a slot. Those
+ * value arrays are private to their own threads and cannot be reached from
+ * here, so tss_delete bumps the slot's generation instead: a stored value
+ * carries the generation of the key it was written for, and one written under
+ * an earlier generation reads back as absent. Without it, a slot reissued to a
+ * second key would offer the first key's values to the second key's destructor.
+ * It also makes a stale key inert rather than dangerous -- it addresses a slot
+ * that no longer answers to it.
+ */
+static tss_dtor_t     fl_tss_dtors_[FL_TSS_MAX];
+static volatile LONG  fl_tss_used_[FL_TSS_MAX];
+static volatile LONG  fl_tss_gen_[FL_TSS_MAX];
+static volatile LONG  fl_tss_live_;
+static volatile DWORD fl_tss_fls_ = FLS_OUT_OF_INDEXES;
+
+/** A per-thread value, tagged with the generation of the slot it was stored under. */
+typedef struct FLTssValue {
+    void *val;
+    LONG  gen;
+} FLTssValue;
 
 static VOID WINAPI fl_tss_thread_exit_(PVOID data) {
-    void **values = (void **)data;
-    if (values != NULL) {
-        for (LONG i = 0; i < fl_tss_count_; i++) {
-            if (fl_tss_dtors_[i] != NULL && values[i] != NULL) {
-                fl_tss_dtors_[i](values[i]);
-            }
-        }
-        free(values);
+    FLTssValue *values = (FLTssValue *)data;
+    if (values == NULL) {
+        return;
     }
+    for (LONG i = 0; i < FL_TSS_MAX; i++) {
+        if (fl_tss_dtors_[i] != NULL && values[i].val != NULL
+            && values[i].gen == fl_tss_gen_[i]) {
+            fl_tss_dtors_[i](values[i].val);
+        }
+    }
+    free(values);
+}
+
+/** @brief Claim a free slot. @return its index, or FL_TSS_MAX if all are in use. */
+static LONG fl_tss_claim_slot_(void) {
+    LONG index = FL_TSS_MAX;
+
+    for (LONG i = 0; i < FL_TSS_MAX; i++) {
+        if (InterlockedCompareExchange(&fl_tss_used_[i], 1, 0) == 0) {
+            index = i;
+            break;
+        }
+    }
+
+    return index;
 }
 
 int tss_create(tss_t *key, tss_dtor_t dtor) {
-    LONG index = InterlockedIncrement(&fl_tss_count_) - 1;
+    LONG index = fl_tss_claim_slot_();
     if (index >= FL_TSS_MAX) {
         return thrd_error;
     }
+
+    /* Counted before the FLS slot is touched. tss_delete releases that slot once
+     * the live count reaches zero, and this claim keeps it from reaching zero
+     * while the allocation below is in flight. */
+    InterlockedIncrement(&fl_tss_live_);
+    fl_tss_dtors_[index] = dtor;
+
     if (fl_tss_fls_ == FLS_OUT_OF_INDEXES) {
         DWORD fls = FlsAlloc(fl_tss_thread_exit_);
         if (fls == FLS_OUT_OF_INDEXES) {
+            fl_tss_dtors_[index] = NULL;
+            InterlockedDecrement(&fl_tss_live_);
+            InterlockedExchange(&fl_tss_used_[index], 0);
             return thrd_error;
         }
-        fl_tss_fls_ = fls;
+        /* Two threads arriving together each allocate a slot; the one that loses
+         * the exchange returns its own rather than leaking it. */
+        if (InterlockedCompareExchange((volatile LONG *)&fl_tss_fls_, (LONG)fls,
+                                       (LONG)FLS_OUT_OF_INDEXES)
+            != (LONG)FLS_OUT_OF_INDEXES) {
+            FlsFree(fls);
+        }
     }
-    fl_tss_dtors_[index] = dtor;
-    *key                 = (tss_t)index;
-    InterlockedIncrement(&fl_tss_live_);
+
+    *key = (tss_t)index | ((tss_t)fl_tss_gen_[index] << FL_TSS_INDEX_BITS);
     return thrd_success;
 }
 
 void *tss_get(tss_t key) {
-    void **values = (void **)FlsGetValue(fl_tss_fls_);
-    return values != NULL ? values[key] : NULL;
+    void *val = NULL;
+
+    if (fl_tss_fls_ != FLS_OUT_OF_INDEXES) {
+        FLTssValue *values = (FLTssValue *)FlsGetValue(fl_tss_fls_);
+        if (values != NULL && values[FL_TSS_SLOT(key)].gen == FL_TSS_GEN(key)) {
+            val = values[FL_TSS_SLOT(key)].val;
+        }
+    }
+
+    return val;
 }
 
 int tss_set(tss_t key, void *val) {
-    void **values = (void **)FlsGetValue(fl_tss_fls_);
+    if (fl_tss_fls_ == FLS_OUT_OF_INDEXES) {
+        return thrd_error;
+    }
+
+    FLTssValue *values = (FLTssValue *)FlsGetValue(fl_tss_fls_);
     if (values == NULL) {
-        values = (void **)calloc(FL_TSS_MAX, sizeof *values);
+        values = (FLTssValue *)calloc(FL_TSS_MAX, sizeof *values);
         if (values == NULL || !FlsSetValue(fl_tss_fls_, values)) {
             free(values);
             return thrd_error;
         }
     }
-    values[key] = val;
+
+    values[FL_TSS_SLOT(key)].val = val;
+    values[FL_TSS_SLOT(key)].gen = FL_TSS_GEN(key);
     return thrd_success;
 }
 
 void tss_delete(tss_t key) {
-    fl_tss_dtors_[key] = NULL;
+    tss_t slot = FL_TSS_SLOT(key);
+
+    /* Only the key the slot was issued to may release it. A stale key -- one
+     * already deleted, or one naming a slot since reissued -- fails this check,
+     * so a repeated delete is a no-op rather than a second decrement. A live
+     * count driven below zero never reaches zero again, which would leave the
+     * FLS slot below permanently held. */
+    if (fl_tss_gen_[slot] != FL_TSS_GEN(key)) {
+        return;
+    }
+    if (InterlockedCompareExchange(&fl_tss_used_[slot], 0, 1) != 1) {
+        return;
+    }
+
+    fl_tss_dtors_[slot] = NULL;
+    InterlockedIncrement(&fl_tss_gen_[slot]);
+
     if (InterlockedDecrement(&fl_tss_live_) != 0) {
         return;
     }
@@ -325,13 +421,13 @@ void tss_delete(tss_t key) {
      * system holding a dangling callback, so the slot is released as soon as
      * the last key goes away. FlsFree runs the callback for every fiber that
      * still holds a value array, which frees those arrays here rather than at
-     * shutdown; fl_tss_count_ must stay intact until it returns. */
-    DWORD fls = fl_tss_fls_;
+     * shutdown; every destructor is already NULL by this point, so the callback
+     * only reclaims the arrays. */
+    DWORD fls = (DWORD)InterlockedExchange((volatile LONG *)&fl_tss_fls_,
+                                           (LONG)FLS_OUT_OF_INDEXES);
     if (fls != FLS_OUT_OF_INDEXES) {
-        fl_tss_fls_ = FLS_OUT_OF_INDEXES;
         FlsFree(fls);
     }
-    fl_tss_count_ = 0;
 }
 
 #elif defined(__unix__) || defined(__APPLE__) || defined(__FreeBSD__)
