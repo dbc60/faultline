@@ -69,8 +69,8 @@ void dbg_display_chunk(Arena *arena, Chunk *ch, char const *note, bool details,
             (Chunk *)arena->top - arena->base);
     fprintf(stderr, "DBG %s:                   0x%08zx [%s: %d]\n", note, rel, file,
             line);
-    fprintf(stderr, "DBG %s: size:               % 8zu\n", note, sz);
-    fprintf(stderr, "DBG %s: footer size:        % 8zu\n", note, foot);
+    fprintf(stderr, "DBG %s: size:               %8zu\n", note, sz);
+    fprintf(stderr, "DBG %s: footer size:        %8zu\n", note, foot);
     if (!CHUNK_IS_INUSE(ch)) {
         FreeChunk *fch      = (FreeChunk *)ch;
         FreeChunk *prev_sib = free_chunk_previous_sibling(fch);
@@ -536,8 +536,8 @@ void arena_tree_dbg_display(Arena *arena, DigitalSearchTree *tc, char const *not
     fprintf(stderr, "DBG %s: arena top: 0x%08zx\n", note, (char *)arena->top - base);
     fprintf(stderr, "DBG %s:                   0x%08zx [%s: %d]\n", note,
             (char *)tc - base, file, line);
-    fprintf(stderr, "DBG %s: size:               % 8zu\n", note, sz);
-    fprintf(stderr, "DBG %s: footer size:        % 8zu\n", note, foot);
+    fprintf(stderr, "DBG %s: size:               %8zu\n", note, sz);
+    fprintf(stderr, "DBG %s: footer size:        %8zu\n", note, foot);
     fprintf(stderr, "DBG %s: previous sibling: 0x%08zx\n", note,
             (char *)prev_sib - base);
     fprintf(stderr, "DBG %s: next sibling:     0x%08zx\n", note,

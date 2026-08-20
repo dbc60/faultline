@@ -882,15 +882,15 @@ FL_TYPE_TEST_SETUP_CLEANUP("Large Chunk Allocation", ArenaTestLarge, test_large_
             // The chunk went into the bin for this index, so that is the one that
             // should be empty again now it has been allocated back out.
             bin = ARENA_LARGE_BIN_AT(arena, idx);
-            FL_ASSERT_DETAILS(*bin == NULL, "expected bin to be NULL, actual 0x%016p",
+            FL_ASSERT_DETAILS(*bin == NULL, "expected bin to be NULL, actual 0x%p",
                               *bin);
 
-            FL_ASSERT_DETAILS(tree == actual, "expected 0x%016p, actual 0x%016p", tree,
+            FL_ASSERT_DETAILS(tree == actual, "expected 0x%p, actual 0x%p", tree,
                               actual);
 
             FreeChunk *expected = FREE_CHUNK_NEXT(ARENA_DST_TO_FREE_CHUNK(tree));
             FL_ASSERT_DETAILS(expected == arena->top,
-                              "expected top 0x%016p, actual 0x%016p", expected,
+                              "expected top 0x%p, actual 0x%p", expected,
                               arena->top);
 
             free_chunk_merge_next(ARENA_DST_TO_FREE_CHUNK(tree));
