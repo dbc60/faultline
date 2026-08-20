@@ -6,7 +6,10 @@
 # Import-PowerShellDataFile and copies each listed file into dist\<name>\.
 #
 # Per package:
-#   Version - recorded in manifest.txt; bump on release
+#   Version - recorded in manifest.txt; bump on release.
+#           - Bump the minor version for changes to the file list.
+#           - Bump the patch version for changes to file content.
+#           - The major version will be bumped upon a stable release.
 #   Depends - space-separated package names a consumer must import first
 #   Src     - files from src\            -> dist\<name>\src\
 #   Inc     - files from include\faultline\ -> dist\<name>\include\faultline\
@@ -21,7 +24,7 @@
 
         exception_service = @{
             Title   = 'Exception Service Distribution'
-            Version = '0.2.0'
+            Version = '0.2.1'
             Depends = ''
 
             Src = @(
@@ -47,7 +50,7 @@
 
         fault_memory_service = @{
             Title   = 'Standalone Fault-Injecting Memory Service Distribution'
-            Version = '0.2.0'
+            Version = '0.2.1'
             Depends = ''
 
             Src = @(
@@ -199,7 +202,7 @@
 
         memory_service = @{
             Title   = 'Standalone Memory Service Distribution (no fault injection)'
-            Version = '0.2.0'
+            Version = '0.2.1'
             Depends = ''
 
             Src = @(
