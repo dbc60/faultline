@@ -113,8 +113,17 @@ function Write-Lock([string]$lockPath, $lock) {
     $out.Add("# FaultLine import lockfile -- managed by fl_import. Do not edit by hand.")
     foreach ($name in $lock.Svc.Keys) {
         $out.Add("svc $name $($lock.Svc[$name])")
-        foreach ($f in ($lock.Files | Where-Object { $_.Svc -eq $name } | Sort-Object Path)) {
-            $out.Add("f $name $($f.Path)")
+        # Ordinal, not Sort-Object: that cmdlet's culture-sensitive collation ranks '.'
+        # against '_' differently under Windows PowerShell 5.1 (NLS) and PowerShell 7
+        # (ICU), so row order would depend on which host ran the import and the
+        # lockfile would churn whenever a consumer switched between them. The manifest
+        # writer orders its rows the same way for the same reason.
+        $paths = [string[]]@(
+            $lock.Files | Where-Object { $_.Svc -eq $name } | Select-Object -ExpandProperty Path
+        )
+        [Array]::Sort($paths, [System.StringComparer]::Ordinal)
+        foreach ($p in $paths) {
+            $out.Add("f $name $p")
         }
     }
     # LF, no BOM -- the lockfile is also read by fl_import.sh, and CRLF/BOM

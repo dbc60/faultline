@@ -43,10 +43,15 @@ done
 LOCKPATH="$INTO/faultline.lock"
 
 declare -A LOCK_SVC      # service name -> version
+# Service names in first-import order. A bash associative array iterates in hash
+# order, so "${!LOCK_SVC[@]}" would emit the svc blocks in an order unrelated to
+# the one the PowerShell writer produces from its [ordered] hashtable.
+LOCK_SVC_ORDER=()
 LOCK_FILES=()            # entries of the form "svc\tpath"
 
 read_lock() {
     LOCK_SVC=()
+    LOCK_SVC_ORDER=()
     LOCK_FILES=()
     [[ -f "$LOCKPATH" ]] || return 0
     local line kind a b
@@ -55,7 +60,12 @@ read_lock() {
         [[ -z "$line" || "${line:0:1}" == "#" ]] && continue
         read -r kind a b <<<"$line"
         case "$kind" in
-            svc) [[ -n "$a" && -n "$b" ]] && LOCK_SVC["$a"]="$b" ;;
+            svc)
+                if [[ -n "$a" && -n "$b" ]]; then
+                    [[ -n "${LOCK_SVC[$a]:-}" ]] || LOCK_SVC_ORDER+=("$a")
+                    LOCK_SVC["$a"]="$b"
+                fi
+                ;;
             f)   [[ -n "$a" && -n "$b" ]] && LOCK_FILES+=("$a"$'\t'"$b") ;;
         esac
     done < "$LOCKPATH"
@@ -66,13 +76,25 @@ write_lock() {
     {
         echo "# FaultLine import lockfile -- managed by fl_import. Do not edit by hand."
         local name entry s p
-        for name in "${!LOCK_SVC[@]}"; do
+        local -a paths
+        for name in "${LOCK_SVC_ORDER[@]:-}"; do
+            [[ -z "$name" ]] && continue
             echo "svc $name ${LOCK_SVC[$name]}"
+            paths=()
             for entry in "${LOCK_FILES[@]:-}"; do
                 [[ -z "$entry" ]] && continue
                 s="${entry%%$'\t'*}"; p="${entry#*$'\t'}"
-                [[ "$s" == "$name" ]] && echo "f $name $p"
+                [[ "$s" == "$name" ]] && paths+=("$p")
             done
+            # LC_ALL=C so the rows land in the same ordinal order the PowerShell
+            # writer produces. A locale-aware collation ranks '.' against '_'
+            # differently from host to host, which would make row order -- and so
+            # the consumer's lockfile diff -- depend on who ran the import.
+            if [[ ${#paths[@]} -gt 0 ]]; then
+                printf '%s\n' "${paths[@]}" | LC_ALL=C sort | while IFS= read -r q; do
+                    printf 'f %s %s\n' "$name" "$q"
+                done
+            fi
         done
     } > "$LOCKPATH"
 }
@@ -126,7 +148,8 @@ if [[ $DO_LIST -eq 1 ]]; then
         exit 0
     fi
     echo "Imported services under $INTO:"
-    for name in "${!LOCK_SVC[@]}"; do
+    for name in "${LOCK_SVC_ORDER[@]:-}"; do
+        [[ -z "$name" ]] && continue
         cnt=0
         for entry in "${LOCK_FILES[@]:-}"; do
             [[ -z "$entry" ]] && continue
@@ -155,6 +178,12 @@ if [[ -n "$REMOVE" ]]; then
     done
     drop_svc_files "$REMOVE"
     unset 'LOCK_SVC[$REMOVE]'
+    kept_order=()
+    for name in "${LOCK_SVC_ORDER[@]:-}"; do
+        [[ -z "$name" || "$name" == "$REMOVE" ]] && continue
+        kept_order+=("$name")
+    done
+    LOCK_SVC_ORDER=("${kept_order[@]:-}")
     write_lock
     prune_empty_dirs
     echo "Removed '$REMOVE' ($deleted file(s) deleted; shared files kept for other services)."
@@ -258,6 +287,7 @@ drop_svc_files "$M_NAME"
 for p in "${M_PATHS[@]}"; do
     LOCK_FILES+=("$M_NAME"$'\t'"$p")
 done
+[[ -n "${LOCK_SVC[$M_NAME]:-}" ]] || LOCK_SVC_ORDER+=("$M_NAME")
 LOCK_SVC["$M_NAME"]="$M_VERSION"
 write_lock
 prune_empty_dirs
