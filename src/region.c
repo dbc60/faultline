@@ -10,6 +10,7 @@
 #include "bits.h"                         // ALIGN_UP
 #include "region.h"                       // Region
 #include "region_os.h"                    // extend_region() prototype
+#include "fl_lock.h"                      // fl_lock_acquire, fl_lock_release
 #include <faultline/fl_exception_types.h> // FLExceptionReason
 #include <faultline/fl_try.h>             // FL_TRY, FL_FINALLY, FL_END_TRY
 
@@ -30,13 +31,13 @@ FLExceptionReason region_initialization_failure = "region initialization failure
 size_t region_extend(Region *region, size_t to_commit) {
     size_t committed = 0;
 
-    mtx_lock(&region->lock);
+    fl_lock_acquire(&region->lock);
     FL_TRY {
         to_commit = ALIGN_UP(to_commit, region->page_size);
         committed = extend_region(region, to_commit);
     }
     FL_FINALLY {
-        mtx_unlock(&region->lock);
+        fl_lock_release(&region->lock);
     }
     FL_END_TRY;
 

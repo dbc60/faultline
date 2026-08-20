@@ -169,11 +169,15 @@
 
         log_service = @{
             Title   = 'Log Service Distribution'
-            Version = '0.2.0'
+            Version = '0.3.0'
             Depends = 'stream_service'
 
             Src = @(
                 'fl_threads.c'
+                'fl_lock.h'
+                'lock_os.c'
+                'win32_lock.c'
+                'generic_lock.c'
                 'flp_log_service.c'
                 'fla_log_service.c'
             )

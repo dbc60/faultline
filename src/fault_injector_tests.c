@@ -13,7 +13,6 @@
 #include "buffer.c"
 #include "digital_search_tree.c"
 #include "fl_exception_service.c"  // fl_test_exception and other exception reasons
-#include "fl_threads.c"            // mtx_init, mtx_lock, mtx_unlock, mtx_destroy
 #include "fla_exception_service.c" // app-side TLS exception service
 #include "fla_log_service.c"       // app-side TLS log service
 #include "fla_memory_service.c"

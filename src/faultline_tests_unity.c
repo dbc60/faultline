@@ -22,7 +22,6 @@
 #include "faultline_sqlite_test.c"
 #include "faultline_test.c"
 #include "fl_exception_service.c"
-#include "fl_threads.c" // mtx_init, mtx_lock, mtx_unlock, mtx_destroy
 #include "fla_exception_service.c"
 #include "fla_log_service.c"
 #include "fla_timer_service.c" // g_fla_timer_service for the driver's injected timing

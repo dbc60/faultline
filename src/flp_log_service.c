@@ -9,11 +9,11 @@
  *
  */
 #include <faultline/fl_log_service.h> // for FLLogLevel, FL_WRITE_LOG_FN, FLLogS...
-#include <faultline/fl_threads.h>     // for mtx_destroy, mtx_init, mtx_lock
 #include <faultline/fl_try.h>         // FL_ASSERT_REASON_IMPL indirectly
 #include <faultline/fl_exception_service_assert.h> // FL_ASSERT_NOT_NULL
 #include <flp_stream_service.h> // for flp_stream_open/write/close/console, FLFile
 #include <flp_log_service.h>    // for FLP_INIT_LOG_SERVICE_FN
+#include "fl_lock.h"            // for FLLock, fl_lock_init, fl_lock_acquire
 #include <stdarg.h>             // for va_end, va_list, va_start
 #include <stdbool.h>            // for false, bool, true
 #include <stdio.h>              // for fprintf, snprintf, NULL, fflush, FILE, stdout
@@ -56,7 +56,7 @@ typedef struct {
     FLPLogOutputKind output_kind;
     FILE            *stdio_output;  // valid iff output_kind == FLP_LOG_OUTPUT_STDIO
     FLFile          *stream_output; // valid iff output_kind == FLP_LOG_OUTPUT_STREAM
-    mtx_t            mutex;
+    FLLock           mutex;
     bool             initialized;
 } FLPLogger;
 
@@ -163,7 +163,7 @@ void flp_log_init_custom(FLLogLevel level, char const *path) {
     if (!g_logger.initialized) {
         // Must precede any call that locks g_logger.mutex (flp_log_set_output[_path]
         // below, and flp_write_log from other threads once initialized is visible).
-        if (mtx_init(&g_logger.mutex, mtx_plain) != thrd_success) {
+        if (!fl_lock_init(&g_logger.mutex)) {
             fprintf(stderr, "Fatal: Failed to initialize logging mutex\n");
             fflush(stderr);
             abort();
@@ -186,7 +186,7 @@ void flp_log_init(void) {
 }
 
 void flp_log_cleanup(void) {
-    mtx_lock(&g_logger.mutex);
+    fl_lock_acquire(&g_logger.mutex);
 
     if (g_logger.output_kind == FLP_LOG_OUTPUT_STDIO) {
         if (g_logger.stdio_output != NULL) {
@@ -199,9 +199,9 @@ void flp_log_cleanup(void) {
         g_logger.stream_output = NULL;
     }
 
-    mtx_unlock(&g_logger.mutex);
+    fl_lock_release(&g_logger.mutex);
 
-    mtx_destroy(&g_logger.mutex);
+    fl_lock_destroy(&g_logger.mutex);
     g_logger.initialized = false;
 }
 
@@ -210,15 +210,15 @@ void flp_log_set_level(FLLogLevel level) {
 }
 
 void flp_log_set_output(FILE *file) {
-    mtx_lock(&g_logger.mutex);
+    fl_lock_acquire(&g_logger.mutex);
     release_current_output_locked();
     g_logger.output_kind  = FLP_LOG_OUTPUT_STDIO;
     g_logger.stdio_output = file ? file : stdout;
-    mtx_unlock(&g_logger.mutex);
+    fl_lock_release(&g_logger.mutex);
 }
 
 void flp_log_set_output_path(char const *path) {
-    mtx_lock(&g_logger.mutex);
+    fl_lock_acquire(&g_logger.mutex);
     release_current_output_locked();
 
     // The stream service opens append-mode (Win32 FILE_APPEND_DATA), so every write
@@ -238,7 +238,7 @@ void flp_log_set_output_path(char const *path) {
         g_logger.stream_output = file;
     }
 
-    mtx_unlock(&g_logger.mutex);
+    fl_lock_release(&g_logger.mutex);
 }
 
 // Opt-in only: nothing in this module calls this automatically. The default output
@@ -249,7 +249,7 @@ void flp_log_set_output_path(char const *path) {
 // automatically. A caller that wants the log service's console output to be
 // fault-injectable (or wants stderr instead of stdout) must call this explicitly.
 void flp_log_set_output_console(FLConsoleStream which) {
-    mtx_lock(&g_logger.mutex);
+    fl_lock_acquire(&g_logger.mutex);
     release_current_output_locked();
 
     FLFile *file = flp_stream_console(which);
@@ -262,7 +262,7 @@ void flp_log_set_output_console(FLConsoleStream which) {
         g_logger.stream_output = file;
     }
 
-    mtx_unlock(&g_logger.mutex);
+    fl_lock_release(&g_logger.mutex);
 }
 
 // ---------------------------------------------------------------------------
@@ -282,7 +282,7 @@ FL_WRITE_LOG_FN(flp_write_log) {
     // g_logger.stream_output in the gap, and this thread would then write through (or
     // close a second time) a handle that is no longer valid. Locking the whole section
     // prevents that handle swap from occurring mid-write.
-    mtx_lock(&g_logger.mutex);
+    fl_lock_acquire(&g_logger.mutex);
 
     char timestamp[32];
     format_timestamp(timestamp, sizeof(timestamp));
@@ -320,7 +320,7 @@ FL_WRITE_LOG_FN(flp_write_log) {
         fflush(g_logger.stdio_output);
     }
 
-    mtx_unlock(&g_logger.mutex);
+    fl_lock_release(&g_logger.mutex);
 }
 
 FLP_INIT_LOG_SERVICE_FN(flp_init_log_service) {

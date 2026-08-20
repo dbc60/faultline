@@ -10,7 +10,6 @@
  */
 #include <faultline/fl_abbreviated_types.h>        // for u32, u64
 #include <faultline/fl_exception_service_assert.h> // for FL_ASSERT*
-#include <faultline/fl_threads.h>                  // for mtx_init, WIN32_LEAN_AND_MEAN
 #include <faultline/fl_try.h>                      // for FL_THROW_DETAILS, FL_THROW
 #include <stdatomic.h>                             // for atomic_fetch_add
 #include <stddef.h>                                // for size_t, NULL, ptrdiff_t
@@ -18,6 +17,7 @@
 #include "bits.h"                                  // for ALIGN_UP, ALIGN_DOWN
 #include <faultline/fl_exception_service.h>        // for fl_internal_error
 #include "region.h"                                // for Region, region_initializati...
+#include "fl_lock.h"                               // for fl_lock_init, fl_lock_destroy
 #include "win32_platform.h"                        // for get_memory_info
 
 #ifndef WIN32_LEAN_AND_MEAN
@@ -99,7 +99,11 @@ Region *new_custom_region(size_t commit, u32 reserve, u32 granularity_multiplier
         FL_THROW(region_initialization_failure);
     }
 
-    mtx_init(&region->lock, mtx_plain);
+    if (!fl_lock_init(&region->lock)) {
+        VirtualFree(top, 0, MEM_RELEASE);
+        FL_THROW(region_initialization_failure);
+    }
+
     region->end_reserved  = top + to_reserve;
     region->end_committed = top + to_commit;
     region->granularity   = applied_granularity;
@@ -109,6 +113,7 @@ Region *new_custom_region(size_t commit, u32 reserve, u32 granularity_multiplier
 }
 
 void release_region(Region *region) {
+    fl_lock_destroy(&region->lock);
     FL_ASSERT_TRUE(VirtualFree(region, 0, MEM_RELEASE));
 }
 

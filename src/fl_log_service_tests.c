@@ -28,6 +28,7 @@
 #include "fla_exception_service.c" // TLS exception service (app-side)
 #include "fla_memory_service.c"    // g_fla_memory_service (FL_MALLOC backing)
 #include "flp_stream_service.c"    // flp_log_service.c's append/console output path
+#include "lock_os.c"               // FLLock backend for flp_log_service.c
 #include "flp_log_service.c"       // code under test (platform log service)
 #include "fla_log_service.c"       // code under test (application log service)
 

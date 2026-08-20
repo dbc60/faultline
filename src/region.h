@@ -12,11 +12,11 @@
  */
 #include <faultline/fl_abbreviated_types.h> // for u32
 #include <faultline/fl_exception_types.h>   // for FLExceptionReason
-#include <faultline/fl_threads.h>           // for mtx_t
 #include <faultline/size.h>                 // for TWO_SIZE_T_SIZES
 #include <stddef.h>                         // for size_t
 #include "atomic.h"                         // for AtomicCharPtr
 #include "bits.h"                           // for ALIGN_UP
+#include "fl_lock.h"                        // for FLLock
 
 #if defined(__cplusplus)
 extern "C" {
@@ -62,7 +62,7 @@ extern FLExceptionReason region_initialization_failure;
  * called.
  */
 struct Region {
-    mtx_t lock;
+    FLLock lock;
     /** The end of reserved memory. */
     AtomicCharPtr end_reserved;
     /** The end of committed memory. */
