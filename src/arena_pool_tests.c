@@ -85,7 +85,9 @@ FL_TYPE_TEST_SETUP_CLEANUP("Realloc preserves", TestPool, test_pool_realloc, set
 
 /* ------------------------- cross-thread scenarios ------------------------ */
 
-enum { POOL_TEST_BLOCKS = 100 };
+enum {
+    POOL_TEST_BLOCKS = 100
+};
 
 typedef struct RemoteFreeArg {
     ArenaPool *pool;
@@ -129,9 +131,9 @@ FL_TYPE_TEST_SETUP_CLEANUP("Remote free + absorb", TestPool, test_pool_remote_fr
 
 typedef struct AdoptArg {
     ArenaPool *pool;
-    Arena     *owner;   ///< set by the worker: its shard's arena
-    void      *block;   ///< set by the first worker, freed by the second
-    size_t     leftover;///< set by the second worker: final allocation count
+    Arena     *owner;    ///< set by the worker: its shard's arena
+    void      *block;    ///< set by the first worker, freed by the second
+    size_t     leftover; ///< set by the second worker: final allocation count
 } AdoptArg;
 
 static int adopt_first_worker(void *arg) {
@@ -142,7 +144,7 @@ static int adopt_first_worker(void *arg) {
 }
 
 static int adopt_second_worker(void *arg) {
-    AdoptArg *aa = (AdoptArg *)arg;
+    AdoptArg *aa  = (AdoptArg *)arg;
     void     *mem = arena_pool_malloc_throw(aa->pool, 32, __FILE__, __LINE__);
     aa->owner     = arena_owner(mem);
     arena_pool_free_throw(aa->pool, mem, __FILE__, __LINE__);
