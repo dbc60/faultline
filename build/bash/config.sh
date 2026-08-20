@@ -5,8 +5,8 @@
 
 # --- Clang binary detection ---
 # Primary location; use POSIX path for bash file test in MSYS2/MINGW64
-_CLANG_POSIX="/c/Users/dougc/llvm21/bin/clang.exe"
-_CLANG_WIN="C:/Users/dougc/llvm21/bin/clang.exe"
+_CLANG_POSIX="/c/Users/dougc/llvm22/bin/clang.exe"
+_CLANG_WIN="C:/Users/dougc/llvm22/bin/clang.exe"
 
 if [[ -f "$_CLANG_POSIX" ]]; then
     CLANG="$_CLANG_WIN"
