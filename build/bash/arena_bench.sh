@@ -59,5 +59,7 @@ if [[ $test -eq 1 ]]; then
     [[ $verbose -eq 1 ]] && echo "Run $PROJECT_NAME"
     pushd "$DIR_REPO/bench_clang" > /dev/null
     ./arena_bench.exe
+    echo
+    ./arena_bench_nosync.exe
     popd > /dev/null
 fi

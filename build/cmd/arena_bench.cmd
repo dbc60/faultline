@@ -79,6 +79,8 @@ if %test% EQU 1 (
     echo Running %DIR_REPO%\bench\arena_bench.exe
     PUSHD "%DIR_REPO%\bench"
     arena_bench.exe
+    ECHO.
+    arena_bench_nosync.exe
     POPD
 )
 GOTO :SUCCESS
