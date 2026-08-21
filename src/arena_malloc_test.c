@@ -128,17 +128,17 @@ FL_TYPE_TEST_SETUP_CLEANUP("In-Order Delete", TestRequest, test_in_order_delete,
         FL_CATCH(arena_out_of_memory) {
             char details[1024];
             strcpy_s(details, sizeof details, FL_DETAILS);
-            strcat_s(details, sizeof details, "Failed on iteration %zu");
-            FL_THROW_DETAILS_FILE_LINE(FL_REASON, details, FL_FILE, FL_LINE, i);
+            FL_THROW_DETAILS_FILE_LINE(FL_REASON, "%sFailed on iteration %zu", FL_FILE,
+                                       FL_LINE, details, i);
         }
         FL_CATCH_ALL {
             char details[1024];
             strcpy_s(details, sizeof details, FL_DETAILS);
-            strcat_s(details, sizeof details, "Failed on iteration %zu");
             printf("Arena Malloc Test: Test In Order Delete. %s, Failed on iteration "
                    "%zu at %s[%d]\n",
                    FL_REASON, i, FL_FILE, FL_LINE);
-            FL_THROW_DETAILS_FILE_LINE(FL_REASON, details, FL_FILE, FL_LINE, i);
+            FL_THROW_DETAILS_FILE_LINE(FL_REASON, "%sFailed on iteration %zu", FL_FILE,
+                                       FL_LINE, details, i);
         }
         FL_END_TRY;
 
@@ -174,8 +174,8 @@ FL_TYPE_TEST_SETUP_CLEANUP("Reverse-Order Delete", TestRequest,
         FL_CATCH(arena_out_of_memory) {
             char details[1024];
             strcpy_s(details, sizeof details, FL_DETAILS);
-            strcat_s(details, sizeof details, "Failed on iteration %zu");
-            FL_THROW_DETAILS_FILE_LINE(FL_REASON, details, FL_FILE, FL_LINE, i);
+            FL_THROW_DETAILS_FILE_LINE(FL_REASON, "%sFailed on iteration %zu", FL_FILE,
+                                       FL_LINE, details, i);
         }
         FL_END_TRY;
 

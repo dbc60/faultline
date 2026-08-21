@@ -4,7 +4,7 @@
 #include <faultline/fl_context.h>                  // FLContext
 #include <faultline/fl_exception_service_assert.h> // for FL_ASSERT_NOT_NULL, FL_ASSE...
 #include <faultline/fl_log.h>                      // LOG_ERROR, LOG_WARN, LOG_INFO
-#include <faultline/fl_macros.h>                   // FL_UNUSED
+#include <faultline/fl_macros.h>                   // FL_UNUSED, FL_PRINTF_FORMAT
 #include <faultline/fl_result_codes.h>             // FL_PASS
 #include <faultline/fl_test.h>                     // FLTestSuite, FLTestCase
 #include <faultline/fl_test_summary.h> // FLTestSummary, faultline_test_summary_buffer_get
@@ -97,7 +97,7 @@ static void out_char(JUnitOut *out, char c) {
 
 // Formatted output for bounded content (numbers, timestamps, fixed text). Unbounded
 // strings (test names, failure details) go through out_puts / xml_write_escaped.
-static void out_printf(JUnitOut *out, char const *fmt, ...) {
+static FL_PRINTF_FORMAT(2, 3) void out_printf(JUnitOut *out, char const *fmt, ...) {
     char    tmp[512];
     va_list args;
 

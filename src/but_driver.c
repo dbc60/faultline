@@ -39,11 +39,11 @@ BD_IS_VALID(bd_is_valid) {
 BD_LOG_ERROR(bd_log_error) {
     if (file != NULL) {
         if (details != NULL) {
-            LOG_ERROR_FILE_LINE("Test Failure", file, line, test_case,
+            LOG_ERROR_FILE_LINE("Test Failure", file, line,
                                 "%s: Unexpected Exception: %s: %s", test_case, reason,
                                 details);
         } else {
-            LOG_ERROR_FILE_LINE("Test Failure", file, line, test_case,
+            LOG_ERROR_FILE_LINE("Test Failure", file, line,
                                 "%s: Unexpected Exception: %s", test_case, reason);
         }
     } else {

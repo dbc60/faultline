@@ -56,9 +56,15 @@ if [[ -n "$MINGW_SYSROOT" ]]; then
 fi
 
 # --- Common compiler flags (both debug and release) ---
+# -Wformat-nonliteral is not in -Wall or -Wextra. -Wformat-security, which is,
+# only fires on a runtime format with no arguments; a runtime format that does
+# take arguments -- a caught message spliced into one, say -- goes unremarked
+# without this. Worth the flag: the LOG_* family and FL_THROW_DETAILS both take
+# a format from their caller.
 _COMMON_BASE="-target x86_64-w64-mingw32
     -std=c17
     -Wall -Wextra -Werror
+    -Wformat-nonliteral
     -fno-stack-protector
     -D_UNICODE -DUNICODE -D_WIN32 -DWIN32 -D__STDC_WANT_LIB_EXT1__=1"
 

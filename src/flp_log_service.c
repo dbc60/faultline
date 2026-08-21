@@ -114,7 +114,8 @@ static char const *get_filename(char const *path) {
 // call. Clamping guarantees buf stays NUL-terminated and pos stays a valid offset after
 // every partial append, so an oversized record truncates cleanly instead of corrupting
 // the offset math.
-static int appendv(char *buf, size_t bufsize, int pos, char const *fmt, va_list args) {
+static FL_PRINTF_FORMAT(4, 0) int appendv(char *buf, size_t bufsize, int pos,
+                                          char const *fmt, va_list args) {
     if (bufsize == 0) {
         return 0;
     }
@@ -136,7 +137,8 @@ static int appendv(char *buf, size_t bufsize, int pos, char const *fmt, va_list 
 // (prefix, optional id, separators, newline). flp_write_log's own va_list (from its
 // message format/args) is forwarded to appendv directly instead, since a va_list can
 // only be consumed once.
-static int append(char *buf, size_t bufsize, int pos, char const *fmt, ...) {
+static FL_PRINTF_FORMAT(4, 5) int append(char *buf, size_t bufsize, int pos,
+                                         char const *fmt, ...) {
     va_list args;
     va_start(args, fmt);
     int result = appendv(buf, bufsize, pos, fmt, args);
