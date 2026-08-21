@@ -52,6 +52,7 @@ _ai_team/
 test/
 test_sh/
 test_clang/
+bench/
 ctime/
 metrics/
 

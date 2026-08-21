@@ -41,6 +41,14 @@ if [[ $build -eq 1 ]]; then
         "$DIR_OUT_OBJ/arena_bench_main_nosync.o" \
         $COMMON_LINKER_FLAGS \
         -o "$DIR_OUT_BIN/arena_bench_nosync.exe"
+
+    # Keep a copy outside target/, which is what clean removes. A benchmark is
+    # only worth reading against its own history, so whatever a run leaves beside
+    # the executable -- captured output, a results file later on -- has to outlive
+    # a rebuild. The test directories keep their accumulated results the same way.
+    mkdir -p "$DIR_REPO/bench"
+    cp -f "$DIR_OUT_BIN/arena_bench.exe" "$DIR_REPO/bench/"
+    cp -f "$DIR_OUT_BIN/arena_bench_nosync.exe" "$DIR_REPO/bench/"
 fi
 
 if [[ $timed -eq 1 ]]; then
@@ -49,7 +57,7 @@ fi
 
 if [[ $test -eq 1 ]]; then
     [[ $verbose -eq 1 ]] && echo "Run $PROJECT_NAME"
-    pushd "$DIR_OUT_BIN" > /dev/null
+    pushd "$DIR_REPO/bench" > /dev/null
     ./arena_bench.exe
     popd > /dev/null
 fi

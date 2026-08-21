@@ -58,6 +58,14 @@ IF %build% EQU 1 (
         GOTO :ERROR
     )
     del "%TEMP_OUT%"
+
+    :: Keep a copy outside target\, which is what clean removes. A benchmark
+    :: is only worth reading against its own history, so whatever a run leaves
+    :: beside the executable -- captured output, a results file later on -- has
+    :: to outlive a rebuild. The test directories keep results the same way.
+    IF NOT EXIST "%DIR_REPO%\bench" MD "%DIR_REPO%\bench"
+    COPY /Y "%DIR_OUT_BIN%\arena_bench.exe" "%DIR_REPO%\bench\arena_bench.exe" >NUL
+    COPY /Y "%DIR_OUT_BIN%\arena_bench_nosync.exe" "%DIR_REPO%\bench\arena_bench_nosync.exe" >NUL
 )
 if %timed% EQU 1 (
     ctime.exe -end metrics\vs\arena_bench.ctm %errorlevel%
@@ -67,8 +75,10 @@ if %test% EQU 1 (
     if %verbose% EQU 1 (
         ECHO Run %PROJECT_NAME%
     )
-    echo Running %DIR_OUT_BIN%\arena_bench.exe
-    %DIR_OUT_BIN%\arena_bench.exe
+    echo Running %DIR_REPO%\bench\arena_bench.exe
+    PUSHD "%DIR_REPO%\bench"
+    arena_bench.exe
+    POPD
 )
 GOTO :SUCCESS
 
