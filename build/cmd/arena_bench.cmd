@@ -59,10 +59,11 @@ IF %build% EQU 1 (
     )
     del "%TEMP_OUT%"
 
-    :: Keep a copy outside target\, which is what clean removes. A benchmark
-    :: is only worth reading against its own history, so whatever a run leaves
-    :: beside the executable -- captured output, a results file later on -- has
-    :: to outlive a rebuild. The test directories keep results the same way.
+    REM Keep a copy outside the target tree, which is what clean removes. A
+    REM benchmark is only worth reading against its own history, so whatever a
+    REM run leaves beside the executable -- captured output, a results file
+    REM later on -- has to outlive a rebuild. REM, not ::, because a label
+    REM inside a parenthesised block breaks cmd's parser.
     IF NOT EXIST "%DIR_REPO%\bench" MD "%DIR_REPO%\bench"
     COPY /Y "%DIR_OUT_BIN%\arena_bench.exe" "%DIR_REPO%\bench\arena_bench.exe" >NUL
     COPY /Y "%DIR_OUT_BIN%\arena_bench_nosync.exe" "%DIR_REPO%\bench\arena_bench_nosync.exe" >NUL

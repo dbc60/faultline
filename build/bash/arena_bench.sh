@@ -46,9 +46,9 @@ if [[ $build -eq 1 ]]; then
     # only worth reading against its own history, so whatever a run leaves beside
     # the executable -- captured output, a results file later on -- has to outlive
     # a rebuild. The test directories keep their accumulated results the same way.
-    mkdir -p "$DIR_REPO/bench"
-    cp -f "$DIR_OUT_BIN/arena_bench.exe" "$DIR_REPO/bench/"
-    cp -f "$DIR_OUT_BIN/arena_bench_nosync.exe" "$DIR_REPO/bench/"
+    mkdir -p "$DIR_REPO/bench_clang"
+    cp -f "$DIR_OUT_BIN/arena_bench.exe" "$DIR_REPO/bench_clang/"
+    cp -f "$DIR_OUT_BIN/arena_bench_nosync.exe" "$DIR_REPO/bench_clang/"
 fi
 
 if [[ $timed -eq 1 ]]; then
@@ -57,7 +57,7 @@ fi
 
 if [[ $test -eq 1 ]]; then
     [[ $verbose -eq 1 ]] && echo "Run $PROJECT_NAME"
-    pushd "$DIR_REPO/bench" > /dev/null
+    pushd "$DIR_REPO/bench_clang" > /dev/null
     ./arena_bench.exe
     popd > /dev/null
 fi
