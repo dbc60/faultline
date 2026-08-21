@@ -50,7 +50,7 @@
 
         fault_memory_service = @{
             Title   = 'Standalone Fault-Injecting Memory Service Distribution'
-            Version = '0.2.2'
+            Version = '0.2.3'
             Depends = ''
 
             Src = @(
@@ -172,7 +172,7 @@
 
         log_service = @{
             Title   = 'Log Service Distribution'
-            Version = '0.3.1'
+            Version = '0.3.2'
             Depends = 'stream_service'
 
             Src = @(
@@ -202,7 +202,7 @@
 
         memory_service = @{
             Title   = 'Standalone Memory Service Distribution (no fault injection)'
-            Version = '0.2.2'
+            Version = '0.2.3'
             Depends = ''
 
             Src = @(
