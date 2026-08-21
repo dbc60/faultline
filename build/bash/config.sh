@@ -81,8 +81,13 @@ unset _COMMON_BASE
 
 # --- Common linker flags ---
 #COMMON_LINKER_FLAGS="-Wl,--stack,1048576"
-# -fuse-ld=lld: use LLVM's LLD instead of MinGW's ld. Required for release
-# builds because -flto produces LLVM bitcode objects that GNU ld cannot read.
+# -fuse-ld=lld: use LLVM's LLD instead of MinGW's ld. Required for every build,
+# not just release. Release needs it because -flto produces LLVM bitcode objects
+# GNU ld cannot read -- a loud failure. Every build needs it because clang emits
+# native Windows TLS for this target, and GNU ld lays a spurious base relocation
+# over the section-relative displacement: ASLR then rebases a value that must not
+# be rebased, and the first read of any FL_THREAD_LOCAL object faults. That one
+# is silent until it segfaults, so do not narrow this to release builds.
 COMMON_LINKER_FLAGS="-fuse-ld=lld -Wl,--stack,1048576"
 
 if [[ $trace -eq 1 ]]; then

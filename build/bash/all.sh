@@ -90,6 +90,8 @@ fi
 
 # Run all tests
 if [[ $_has_test -eq 1 ]]; then
+    _run_rc=0
+    _split_rc=0
     [[ $verbose -eq 1 ]] && echo "Run all unit tests"
     _junit_opt=()
     [[ $junit -eq 1 ]] && _junit_opt=(--junit-xml junit.xml)
@@ -119,21 +121,23 @@ if [[ $_has_test -eq 1 ]]; then
         malloc_cleanup_config_tests.dll \
         flp_memory_service_tests.dll \
         flp_file_service_tests.dll \
-        flp_stream_service_tests.dll
+        flp_stream_service_tests.dll || _run_rc=$?
     # The driver returns 0 for ordinary test failures, so a non-zero status means
     # it died or could not start. A crash takes down every suite listed after the
     # one that crashed, and those suites report nothing at all -- the results
     # table then backfills with older runs, which looks like a normal listing.
     # Fail the build instead of letting a truncated run pass for a complete one.
-    _run_rc=$?
+    # The status is captured with `|| _run_rc=$?` rather than a following
+    # `_run_rc=$?`: under `set -e` a bare non-zero command exits the script on the
+    # spot, so the checks at the end of this block would never be reached and the
+    # split-host smoke below would be skipped along with them.
     ./faultline.exe show results --limit 25
     # Split-architecture smoke: the same suites driven through the split host.
     ./win32_faultline.exe run \
         faultline_tests.dll \
         flp_file_service_tests.dll \
         flp_stream_service_tests.dll \
-        timer_tests.dll
-    _split_rc=$?
+        timer_tests.dll || _split_rc=$?
     ./win32_faultline.exe show results --limit 4
     popd > /dev/null
 
