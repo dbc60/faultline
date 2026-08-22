@@ -273,6 +273,42 @@ FL_TYPE_TEST_SETUP_CLEANUP("Arena Free Pointer Matches Free", ArenaServiceTestCa
     FL_ASSERT_EQ_SIZE_T(arena_allocation_count(arena), after_free);
 }
 
+// -- Tests: realloc ------------------------------------------------------------
+
+// C17 7.22.3.5: a null first argument makes realloc behave like malloc. The
+// fault-injecting provider must record only the new allocation -- charging a
+// release for the absent prior block fabricates an invalid free the caller never
+// committed, and that fault fails an otherwise clean test.
+FL_TYPE_TEST_SETUP_CLEANUP("Fault Realloc Accepts Null Pointer", MemServiceTestCase,
+                           fault_realloc_accepts_null_pointer, flp_setup, flp_cleanup) {
+    FL_ASSERT_ZERO_INT64(fault_injector_get_invalid_address_count(&t->fi));
+
+    void *ptr = flp_fault_realloc(NULL, 64, __FILE__, __LINE__);
+    FL_ASSERT_NOT_NULL(ptr);
+    FL_ASSERT_ZERO_INT64(fault_injector_get_invalid_address_count(&t->fi));
+
+    // The block was recorded as a live allocation, so releasing it is a clean
+    // free rather than an invalid one.
+    flp_fault_free(ptr, __FILE__, __LINE__);
+    FL_ASSERT_ZERO_INT64(fault_injector_get_invalid_address_count(&t->fi));
+}
+
+// Resizing a real block keeps the accounting balanced whether the block moves or
+// is resized in place: the old address must not be left looking live, and the
+// returned address must be the one that is tracked.
+FL_TYPE_TEST_SETUP_CLEANUP("Fault Realloc Tracks Resized Block", MemServiceTestCase,
+                           fault_realloc_tracks_resized_block, flp_setup, flp_cleanup) {
+    void *ptr = flp_fault_malloc(64, __FILE__, __LINE__);
+    FL_ASSERT_NOT_NULL(ptr);
+
+    void *grown = flp_fault_realloc(ptr, 4096, __FILE__, __LINE__);
+    FL_ASSERT_NOT_NULL(grown);
+    FL_ASSERT_ZERO_INT64(fault_injector_get_invalid_address_count(&t->fi));
+
+    flp_fault_free(grown, __FILE__, __LINE__);
+    FL_ASSERT_ZERO_INT64(fault_injector_get_invalid_address_count(&t->fi));
+}
+
 // -- Cross-boundary injection --------------------------------------------------
 //
 // Unlike the tests above -- whose setups self-inject a service built from a
@@ -315,6 +351,8 @@ FL_SUITE_ADD_EMBEDDED(free_pointer_clears_pointer)
 FL_SUITE_ADD_EMBEDDED(free_pointer_accepts_null_target)
 FL_SUITE_ADD_EMBEDDED(fault_free_pointer_clears_pointer)
 FL_SUITE_ADD_EMBEDDED(arena_free_pointer_matches_free)
+FL_SUITE_ADD_EMBEDDED(fault_realloc_accepts_null_pointer)
+FL_SUITE_ADD_EMBEDDED(fault_realloc_tracks_resized_block)
 FL_SUITE_END;
 
 FL_GET_TEST_SUITE("Memory Service", ts)

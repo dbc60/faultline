@@ -163,7 +163,11 @@ FL_REALLOC_FN(flp_fault_realloc) {
         fault_injector_try_throw_with_site(g_fault_ctx->fi, file, line);
         mem = arena_realloc(g_fault_ctx->arena, ptr, size, file, line);
         if (mem != NULL && mem != ptr) {
-            fault_injector_record_free(g_fault_ctx->fi, ptr, file, line);
+            // A null ptr means this call is a plain allocation, so there is no
+            // prior block whose release should be recorded.
+            if (ptr != NULL) {
+                fault_injector_record_free(g_fault_ctx->fi, ptr, file, line);
+            }
             fault_injector_record_allocate(g_fault_ctx->fi, mem, file, line);
         }
     }
