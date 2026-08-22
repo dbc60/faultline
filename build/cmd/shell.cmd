@@ -5,16 +5,13 @@ SETLOCAL ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 
 :: Locate and activate a Visual Studio C++ build environment.
 ::
-:: Visual Studio is found via vswhere.exe -- which ships at a fixed location with
-:: VS 2017 and later -- rather than by probing hardcoded install directories. The
-:: build therefore keeps working across VS editions and versions, including new
-:: versions that appear on updated CI runner images (e.g. VS 2026 on the
-:: windows-latest runner). The located edition's vcvars{64,32}.bat is called to
-:: put cl on PATH and export the SDK environment.
+:: Visual Studio is found via vswhere.exe rather than by probing hardcoded
+:: install directories. The build therefore keeps working across VS editions
+:: and versions. The located edition's vcvars{64,32}.bat is called to put cl on
+:: PATH and export the SDK environment.
 ::
-:: Visual Studio 2022 (17.x) is the oldest version supported; there is no upper
-:: bound, so a newer VS than any named here is used when it is the newest one
-:: installed.
+:: Visual Studio 2022 (17.x) is the oldest version supported. A newer VS than the
+:: ones named here can be used when it is the newest one installed.
 ::
 :: This script is called once per build script (all.cmd plus each component), so
 :: it has two paths:
@@ -28,6 +25,10 @@ SETLOCAL ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 :: On success this sets, in the caller's environment:
 ::   VSSOLUTION   - vsYYYY (e.g. vs2022, vs2026); used as the target\ subfolder
 ::   VSINSTALLDIR plus the rest of the VS/SDK variables exported by vcvars
+::
+:: Every failure path returns exit code 1 and leaves VSSOLUTION unset, so a caller can
+:: test for failure. setup.cmd tests VSSOLUTION rather than ERRORLEVEL because it needs
+:: to tell a build apart from a clean, and only the build case is fatal.
 
 :: Already inside a developer environment? Reuse it; just take the active version
 :: so VSSOLUTION can still be derived below. vcvars sets VisualStudioVersion.
@@ -40,24 +41,24 @@ SET "VSWHERE=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
 IF NOT EXIST "%VSWHERE%" (
     ECHO Visual Studio locator vswhere.exe not found at: 1>&2
     ECHO   "%VSWHERE%" 1>&2
-    ECHO Visual Studio 2022 or later with the C++ toolset is required. 1>&2
-    GOTO :EOF
+    ECHO Visual Studio 2022 or later with the C/C++ compiler & linker is required. 1>&2
+    EXIT /B 1
 )
 
-:: When exactly one VS year is requested, constrain vswhere to that major
-:: version; otherwise take the latest installed VS at or above the oldest
-:: supported major. The open upper end of the default range is what admits a VS
-:: newer than any named here. The ranges are left UNquoted: the SET "..."
-:: protects the ')' on this line, and below VS_RANGE is expanded with delayed
-:: expansion inside the FOR /F (so the ')' is absent at parse time and merely a
-:: literal argument char -- with no matching '(' -- at run time). Quoting the
-:: range here instead unbalances the quotes around "%VSWHERE%" when the FOR /F
-:: command is executed, dropping vswhere's leading quote.
+:: When exactly one VS year is requested, constrain vswhere to that major version;
+:: otherwise take the latest installed VS at or above the oldest supported major version.
+:: The open upper end of the default range is what admits a VS newer than any named here.
+:: The ranges are left unquoted: the SET "..." protects the ')' on this line, and below
+:: VS_RANGE is expanded with delayed expansion inside the FOR /F (so the ')' is absent at
+:: parse time and merely a literal argument char with no matching '(' at run time).
+:: Quoting the range here instead unbalances the quotes around "%VSWHERE%" when the
+:: "FOR /F" command is executed, dropping vswhere's leading quote.
+::
 ::   VS2022 = 17.x, VS2026 = 18.x
-:: VS2019 (16.x) and older are not supported -- they have no C11 <stdatomic.h>,
-:: which the core allocator requires -- so even the unconstrained case floors the
-:: range at 17.0 rather than leaving it open. That way a machine with only VS2019
-:: reports "no installation found" here instead of failing later inside cl.
+::
+:: VS2019 (16.x) and older are not supported, because they have no C11 <stdatomic.h>,
+:: which the core allocator requires. A host with only VS2019 fails here instead of
+:: failing later inside cl.
 SET "VS_RANGE=-version [17.0,)"
 IF %vs2022% EQU 1 IF %vs2026% EQU 0 SET "VS_RANGE=-version [17.0,18.0)"
 IF %vs2026% EQU 1 IF %vs2022% EQU 0 SET "VS_RANGE=-version [18.0,19.0)"
@@ -74,7 +75,7 @@ IF "%VSINSTALL%"=="" (
     ECHO No Visual Studio installation with the C++ x86/x64 toolset was found 1>&2
     ECHO in the requested version range: !VS_RANGE! 1>&2
     ECHO   vswhere : "%VSWHERE%" 1>&2
-    GOTO :EOF
+    EXIT /B 1
 )
 
 :have_version
@@ -84,9 +85,10 @@ IF "%VSINSTALL%"=="" (
 :: Unknown future majors fall through as vs<major>, which is still stable.
 FOR /f "tokens=1 delims=." %%V IN ("%VS_VER%") DO SET "VS_MAJOR=%%V"
 
-:: Reject a too-old toolchain here rather than only in the vswhere range: the
-:: already-activated path above skips vswhere entirely, so an inherited VS 2019
-:: developer environment would otherwise reach the compiler and fail obscurely.
+:: Reject versions of VS that are too-old here rather than only in the vswhere range,
+:: because the already-activated path above skips vswhere entirely, so a VS 2019
+:: developer environment would otherwise reach the compiler and fail with multiple
+:: compiler errors.
 IF "%VS_MAJOR%"=="" GOTO :badversion
 IF %VS_MAJOR% LSS 17 GOTO :badversion
 
@@ -149,7 +151,7 @@ ENDLOCAL & (
     SET "FrameworkVersion64=%FrameworkVersion64%"
     SET "FrameworkVersion32=%FrameworkVersion32%"
 )
-GOTO :EOF
+EXIT /B 0
 
 :: -----------------------------------------------------------------------
 :: :VSWHERE_PROP <vswhere-property> <out-var>
@@ -166,9 +168,10 @@ EXIT /B 0
 ECHO VSINSTALLDIR is not defined after calling vcvars. 1>&2
 ECHO The located Visual Studio install may be missing the C++ toolset: 1>&2
 ECHO   "%VSINSTALL%" 1>&2
-GOTO :EOF
+EXIT /B 1
 
 :badversion
 ECHO Unsupported Visual Studio version: "%VS_VER%" 1>&2
 ECHO Visual Studio 2022 ^(17.x^) or later with the C++ toolset is required. It 1>&2
 ECHO needs C11 ^<stdatomic.h^>, which VS2019 and older do not provide. 1>&2
+EXIT /B 1
