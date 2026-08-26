@@ -53,16 +53,15 @@ FL_TEST("Sum Over Scaled Range", sum_over_scaled_range) {
 FL_TEST("Count Leading Zeros 16-bit", count_leading_zeros16) {
     u16 val;
     u16 count;
-    // __pragma(warning(push)) // for when /analyze is on
-    // __pragma(warning(disable:6292)) // for when /analyze is on
 
-    // This loop relies on val wrapping around to zero.
+    // This loop relies on val wrapping around to zero. 6292 reports that as a
+    // counter that never reaches its bound.
+    FL_ANALYSIS_SUPPRESS(6292)
     for (val = 1; val != 0; val++) {
         count            = math_count_leading_zeros16(val);
         u16 expected_clz = (u16)(15 - math_log2_bit16(val));
         FL_ASSERT_EQ_UINT16(count, expected_clz);
     }
-    // __pragma(warning(pop)) // for when /analyze is on
 
     FL_ASSERT_ZERO_UINT16(val);
 

@@ -135,7 +135,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("In-Order Delete", TestRequest, test_in_order_delete,
             char details[1024];
             strcpy_s(details, sizeof details, FL_DETAILS);
             printf("Arena Malloc Test: Test In Order Delete. %s, Failed on iteration "
-                   "%zu at %s[%d]\n",
+                   "%zu at %s[%u]\n",
                    FL_REASON, i, FL_FILE, FL_LINE);
             FL_THROW_DETAILS_FILE_LINE(FL_REASON, "%sFailed on iteration %zu", FL_FILE,
                                        FL_LINE, details, i);

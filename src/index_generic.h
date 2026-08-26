@@ -220,19 +220,19 @@
  * @param P2 the power-of-2 (exponent) of the smallest value to be mapped to index 0.
  * @return IDX the zero-based index for the value.
  */
-#define INDEX_BY_VALUE64(VAL, CNT, P2, IDX)                            \
-    do {                                                               \
-        flag64 X     = (VAL) >> (P2);                                  \
-        flag64 MAX_X = (1ull << ((CNT) - 1)) - 1;                      \
-        if (X == 0) {                                                  \
-            IDX = 0;                                                   \
-        } else if (X > MAX_X) {                                        \
-            IDX = (CNT) - 1;                                           \
-        } else {                                                       \
-            u32 K;                                                     \
-            COMPUTE_MSB2IDX64(X, K);                                   \
-            IDX = (u32)((K << 1) + (((VAL) >> (K + ((P2) - 1)) & 1))); \
-        }                                                              \
+#define INDEX_BY_VALUE64(VAL, CNT, P2, IDX)                          \
+    do {                                                             \
+        flag64 X     = (VAL) >> (P2);                                \
+        flag64 MAX_X = (1ull << ((CNT) - 1)) - 1;                    \
+        if (X == 0) {                                                \
+            IDX = 0;                                                 \
+        } else if (X > MAX_X) {                                      \
+            IDX = (CNT) - 1;                                         \
+        } else {                                                     \
+            u32 K;                                                   \
+            COMPUTE_MSB2IDX64(X, K);                                 \
+            IDX = (K << 1) + (u32)(((VAL) >> (K + ((P2) - 1))) & 1); \
+        }                                                            \
     } while (0)
 
 /**
@@ -255,7 +255,7 @@ static inline u32 index_by_value(flag64 val, u32 cnt, u32 exp) {
     } else if (x != 0) {
         u32 k;
         COMPUTE_MSB2IDX64(x, k);
-        idx = (u32)((k << 1) + ((val >> (k + (exp - 1))) & 1));
+        idx = (k << 1) + (u32)((val >> (k + (exp - 1))) & 1);
     }
 
     return idx;

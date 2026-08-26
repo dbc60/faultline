@@ -129,7 +129,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Threshold Test", FaultTestCase, threshold, setup_con
     // setjmp-time value, making i indeterminate (UB) in the FL_CATCH block. The
     // optimizer then inserts unreachable after FL_HANDLED, eliminating the catch body
     // entirely.
-    int volatile i;
+    int volatile i = 0;
 
     FL_TRY {
         fault_injector_enable(injector);
@@ -161,7 +161,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Disable", FaultTestCase, disable_fault, setup_config
                            cleanup_config) {
     FaultInjector *injector  = &t->injector;
     int const      threshold = 3, max_count = 10;
-    int volatile i; // C11 §7.13.2.1 ¶3 - modified in FL_TRY, read in FL_CATCH
+    int volatile i = 0; // C11 §7.13.2.1 ¶3 - modified in FL_TRY, read in FL_CATCH
 
     FL_TRY {
         fault_injector_disable(injector);
@@ -447,7 +447,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Advance Threshold", FaultTestCase, advance_threshold
                            setup_config, cleanup_config) {
     FaultInjector *injector  = &t->injector;
     int const      threshold = 2;
-    int volatile i; // C11 §7.13.2.1 ¶3 - modified in FL_TRY, read in FL_CATCH
+    int volatile i = 0; // C11 §7.13.2.1 ¶3 - modified in FL_TRY, read in FL_CATCH
 
     fault_injector_enable(injector);
     fault_injector_set_threshold(injector, threshold);
@@ -612,7 +612,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Try Throw With Site", FaultTestCase, try_throw_with_
                            setup_config, cleanup_config) {
     FaultInjector *injector  = &t->injector;
     int const      threshold = 3, max_count = 10;
-    int volatile i; // C11 §7.13.2.1 ¶3 - modified in FL_TRY, read in FL_CATCH
+    int volatile i = 0; // C11 §7.13.2.1 ¶3 - modified in FL_TRY, read in FL_CATCH
 
     FL_TRY {
         fault_injector_enable(injector);

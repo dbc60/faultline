@@ -34,15 +34,16 @@
 extern "C" {
 #endif
 
-// disable warning C28251: Inconsistent annotation for 'memcpy': this instance has no
-// annotations.
-// #pragma warning(disable : 28251) // for when /analyze is on
-
+// 28251: these declarations carry no SAL annotations, so /analyze reports them as
+// inconsistent with the CRT's annotated ones. Annotating them is not an option: the
+// point of declaring them here is to replace the CRT versions.
+FL_ANALYSIS_SUPPRESS(28251)
 void *CDECL memcpy(void *restrict dst, void const *restrict src, size_t n);
 #ifdef _MSC_VER
 #pragma intrinsic(memcpy)
 #endif
 
+FL_ANALYSIS_SUPPRESS(28251)
 void *CDECL memset(void *, int, size_t);
 #ifdef _MSC_VER
 #pragma intrinsic(memset)

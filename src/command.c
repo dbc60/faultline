@@ -9,8 +9,9 @@
  *
  */
 #include "command.h"
-#include <faultline/fl_log.h> // for LOG_VERBOSE
-#include <faultline/fl_try.h> // for FL_THROW
+#include <faultline/fl_log.h>    // for LOG_VERBOSE
+#include <faultline/fl_macros.h> // for FL_ANALYSIS_SUPPRESS
+#include <faultline/fl_try.h>    // for FL_THROW
 #if defined(__clang__) || defined(__GNUC__)
 #include <sec_api/string_s.h> // for strncpy_s
 #endif
@@ -488,7 +489,11 @@ RuntimeCommand *parse_command_with_globals(FormalCommand const *formals,
     int n          = 0;
     reordered[n++] = argv[0];         // program name
     reordered[n++] = argv[cmd_index]; // command
+    // 6386: the three writes below store 2 + (cmd_index - 1) + (argc - cmd_index
+    // - 1) == argc entries. cmd_index is in [2, argc - 1] here: 1 returns above
+    // and argc or more throws above.
     for (int j = 1; j < cmd_index; j++) {
+        FL_ANALYSIS_SUPPRESS(6386)
         reordered[n++] = argv[j]; // leading options and their arguments
     }
     for (int j = cmd_index + 1; j < argc; j++) {

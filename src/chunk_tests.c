@@ -480,7 +480,9 @@ FL_TEST("Maximum Request", max_request) {
  * should be a great enough range to ensure this macro is correct.
  */
 FL_TEST("Request to Size", request_to_size) {
-    for (size_t req = 0; req <= KIBI(8); req++) {
+    // (size_t): KIBI yields long long, and the mixed comparison makes /analyze
+    // mis-model the loop bound.
+    for (size_t req = 0; req <= (size_t)KIBI(8); req++) {
         request_to_size_is_valid(req);
     }
 }
@@ -515,7 +517,9 @@ FL_TEST("Pad Request", pad_request) {
  * less the size of a ChunkHeader.
  */
 FL_TEST("Payload vs Chunk Size", payload_vs_chunk_size) {
-    for (size_t req = 0; req < KIBI(64); req++) {
+    // (size_t): KIBI yields long long, and the mixed comparison makes /analyze
+    // mis-model the loop bound.
+    for (size_t req = 0; req < (size_t)KIBI(64); req++) {
         size_t chunk_size = CHUNK_SIZE_FROM_REQUEST(req);
         size_t expected   = chunk_size - CHUNK_ALIGNED_SIZE;
         size_t actual     = CHUNK_REQUEST_TO_PAYLOAD(req);

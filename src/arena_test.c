@@ -250,7 +250,7 @@ FL_TEST("Small Size to Index", test_chunk_size_to_index) {
         size_t payload = CHUNK_REQUEST_TO_PAYLOAD(req);
         FL_ASSERT_DETAILS(
             actual < ARENA_SMALL_BIN_COUNT,
-            "Request %zu. Expected index < %zu. Actual %d. sizeof(Chunk) %zu. "
+            "Request %zu. Expected index < %zu. Actual %u. sizeof(Chunk) %zu. "
             "Chunk size %zu. CHUNK_MIN_PAYLOAD %zu, CHUNK_MIN_SIZE %zu, "
             "ARENA_MAX_SMALL_CHUNK %zu, ARENA_MAX_SMALL_REQUEST %zu. Aligned Header "
             "Size %zu. Payload %zu. Footer size %zu",
@@ -271,7 +271,7 @@ FL_TEST("Small Size to Index", test_chunk_size_to_index) {
                        : (u32)(ALIGN_UP(req, CHUNK_ALIGNMENT) / CHUNK_ALIGNMENT
                                - CHUNK_MIN_PAYLOAD / CHUNK_ALIGNMENT);
         FL_ASSERT_DETAILS(actual == expected,
-                          "Expected %d for request %zd (chunk size %zd). Actual %d. "
+                          "Expected %u for request %zd (chunk size %zd). Actual %u. "
                           "(CHUNK_MIN_PAYLOAD %zd), (CHUNK_MIN_SIZE %zd), "
                           "(ARENA_MAX_SMALL_REQUEST %zd).",
                           expected, req, chunk_size, actual, CHUNK_MIN_PAYLOAD,
@@ -290,11 +290,11 @@ FL_TEST("Small Index to Size", test_small_index_to_chunk_size) {
     for (u32 idx = 0; idx < ARENA_SMALL_BIN_COUNT; idx++) {
         actual = ARENA_SMALL_INDEX_TO_SIZE(idx);
         FL_ASSERT_DETAILS(actual <= ARENA_MAX_SMALL_CHUNK,
-                          "Index %d. Expected size <= %zd. Actual %zd", idx,
+                          "Index %u. Expected size <= %zd. Actual %zd", idx,
                           ARENA_MAX_SMALL_CHUNK, actual);
 
         expected = CHUNK_MIN_SIZE + CHUNK_ALIGNMENT * idx;
-        FL_ASSERT_DETAILS(actual == expected, "Index %d. Expected %zd. Actual %zd", idx,
+        FL_ASSERT_DETAILS(actual == expected, "Index %u. Expected %zd. Actual %zd", idx,
                           expected, actual);
     }
 }
@@ -319,7 +319,7 @@ FL_TEST("Select Small Bin Index", test_select_small_bins) {
                                                   : ((i & 0x4)   ? 2
                                                      : (i & 0x8) ? 3
                                                                  : 0));
-        FL_ASSERT_DETAILS(actual == expected, "Index %d. Expected %d. Actual %d", i,
+        FL_ASSERT_DETAILS(actual == expected, "Index %u. Expected %u. Actual %u", i,
                           expected, actual);
     }
 }
@@ -455,9 +455,9 @@ FL_TEST("Map Large Chunks to Index", test_large_chunk_to_index) {
         INDEX_BY_VALUE64(low, max_index, ARENA_LOG2_MIN_LARGE_CHUNK, actual);
         FL_ASSERT_DETAILS(
             idx == actual,
-            "Expected %u. Actual %u\n        log2: %d\n        range: %zd\n        "
+            "Expected %u. Actual %u\n        log2: %u\n        range: %zd\n        "
             "low:   %zd\n        mid:   %zd\n        high:  %zd\n        bins:  %u",
-            (u32)ARENA_LOG2_MIN_LARGE_CHUNK, idx, actual, range, low, mid, high,
+            idx, actual, (u32)ARENA_LOG2_MIN_LARGE_CHUNK, range, low, mid, high,
             max_index);
 
         // test mid
@@ -498,7 +498,7 @@ static void setup_small_from_large_arena_test(FLTestCase *btc) {
     for (u32 i = 0; i < cnt; i++) {
         FL_ASSERT_DETAILS(
             CHUNK_SIZE_FROM_REQUEST(request) == lower,
-            "i=%d, hdr=%zd, align=%zd, request %zd: Expected %zd. Actual %zd", i,
+            "i=%u, hdr=%zd, align=%zd, request %zd: Expected %zd. Actual %zd", i,
             CHUNK_ALIGNED_SIZE, CHUNK_ALIGNMENT, request, lower,
             CHUNK_SIZE_FROM_REQUEST(request));
         mem[i] = arena_malloc_throw(at->arena, request, __FILE__, __LINE__);
@@ -513,7 +513,7 @@ static void setup_small_from_large_arena_test(FLTestCase *btc) {
         ch   = FREE_CHUNK_FROM_MEMORY(mem[i], __FILE__, __LINE__);
         next = CHUNK_NEXT(ch);
         FL_ASSERT_DETAILS(i == 0 || at->arena->large_map != 0,
-                          "i=%d, large map is zero!", i);
+                          "i=%u, large map is zero!", i);
 
         arena_free_throw(at->arena, mem[i], __FILE__, __LINE__);
         Arena *arena = at->arena;
@@ -606,7 +606,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Small Exact-Fit Allocation", ArenaTestSmall,
 
     for (u32 i = 0; i < ARENA_SMALL_BIN_COUNT; i++) {
         bin = ARENA_SMALL_BIN_AT(arena, i);
-        FL_ASSERT_DETAILS(DLIST_IS_EMPTY(bin), "bin %d is not empty", i);
+        FL_ASSERT_DETAILS(DLIST_IS_EMPTY(bin), "bin %u is not empty", i);
     }
 
     // use allocation requests in the middle of each bin's range
@@ -657,47 +657,47 @@ FL_TYPE_TEST_SETUP_CLEANUP("Small Exact-Fit Allocation", ArenaTestSmall,
         insert_small_chunk(arena, ch, __FILE__, __LINE__);
 
         FL_ASSERT_DETAILS(ARENA_SMALL_MAP_IS_MARKED(arena, idx),
-                          "small bin map is not set for index %d and chunk size %zd",
+                          "small bin map is not set for index %u and chunk size %zd",
                           idx, sz);
 
         bin = ARENA_SMALL_BIN_AT(arena, idx);
-        FL_ASSERT_DETAILS(!DLIST_IS_EMPTY(bin), "bin %d is empty", idx);
+        FL_ASSERT_DETAILS(!DLIST_IS_EMPTY(bin), "bin %u is empty", idx);
     }
 
     // allocate small chunks again, but this time they should all be pulled from small
     // bins.
     sz  = CHUNK_SIZE_FROM_REQUEST(sizeof(DList)); // sized for bin 0
     idx = ARENA_SMALL_INDEX(sz);
-    FL_ASSERT_DETAILS(idx < ARENA_SMALL_BIN_COUNT, "bin index %d out of range", idx);
+    FL_ASSERT_DETAILS(idx < ARENA_SMALL_BIN_COUNT, "bin index %u out of range", idx);
 
     Chunk *allocated = allocate_exact_fit(arena, sz, __FILE__, __LINE__);
     ch               = chunk_free(allocated);
     free_chunk_insert(&head, ch);
 
     FL_ASSERT_DETAILS(!ARENA_SMALL_MAP_IS_MARKED(arena, idx),
-                      "small bin map should be unset, but is set for index %d and "
+                      "small bin map should be unset, but is set for index %u and "
                       "chunk size %zd",
                       idx, sz);
 
     bin = ARENA_SMALL_BIN_AT(arena, idx);
-    FL_ASSERT_DETAILS(DLIST_IS_EMPTY(bin), "bin %d is not empty", idx);
+    FL_ASSERT_DETAILS(DLIST_IS_EMPTY(bin), "bin %u is not empty", idx);
 
     // allocate the chunks from all succeeding bins
     for (sz += CHUNK_ALIGNMENT; sz < ARENA_MAX_SMALL_REQUEST; sz += CHUNK_ALIGNMENT) {
         idx = ARENA_SMALL_INDEX(sz);
-        FL_ASSERT_DETAILS(idx < ARENA_SMALL_BIN_COUNT, "bin index %d out of range", idx);
+        FL_ASSERT_DETAILS(idx < ARENA_SMALL_BIN_COUNT, "bin index %u out of range", idx);
 
         allocated = allocate_exact_fit(arena, sz, __FILE__, __LINE__);
         ch        = chunk_free(allocated);
         free_chunk_insert(&head, ch);
 
         FL_ASSERT_DETAILS(!ARENA_SMALL_MAP_IS_MARKED(arena, idx),
-                          "small bin map should be unset, but is set for index %d and "
+                          "small bin map should be unset, but is set for index %u and "
                           "chunk size %zd",
                           idx, sz);
 
         bin = ARENA_SMALL_BIN_AT(arena, idx);
-        FL_ASSERT_DETAILS(DLIST_IS_EMPTY(bin), "bin %d is not empty", idx);
+        FL_ASSERT_DETAILS(DLIST_IS_EMPTY(bin), "bin %u is not empty", idx);
     }
 
     // one more check of the map and each bin to verify there are no chunks stored there.
@@ -705,7 +705,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Small Exact-Fit Allocation", ArenaTestSmall,
 
     for (u32 i = 0; i < ARENA_SMALL_BIN_COUNT; i++) {
         bin = ARENA_SMALL_BIN_AT(arena, i);
-        FL_ASSERT_DETAILS(DLIST_IS_EMPTY(bin), "bin %d is not empty", i);
+        FL_ASSERT_DETAILS(DLIST_IS_EMPTY(bin), "bin %u is not empty", i);
     }
 }
 
@@ -795,7 +795,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Large Chunk Allocation", ArenaTestLarge, test_large_
 
     for (u32 i = 0; i < ARENA_LARGE_BIN_COUNT; i++) {
         bin = ARENA_LARGE_BIN_AT(arena, i);
-        FL_ASSERT_DETAILS(*bin == NULL, "bin %d is not empty", i);
+        FL_ASSERT_DETAILS(*bin == NULL, "bin %u is not empty", i);
     }
 
     FL_ASSERT_DETAILS(CHUNK_SIZE(arena->top) >= t->max_size,
@@ -865,7 +865,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Large Chunk Allocation", ArenaTestLarge, test_large_
             insert_large_chunk(arena, tree, __FILE__, __LINE__);
 
             FL_ASSERT_DETAILS((arena->large_map & 1ull << idx) != 0,
-                              "expected map bit set at %d, actual map 0x%016llx", idx,
+                              "expected map bit set at %u, actual map 0x%016llx", idx,
                               arena->large_map);
 
             DigitalSearchTree *actual;
@@ -876,7 +876,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Large Chunk Allocation", ArenaTestLarge, test_large_
                               req, size);
 
             FL_ASSERT_DETAILS(arena->large_map == 0,
-                              "expected map bit set at %d, actual map 0x%016llx", idx,
+                              "expected map bit set at %u, actual map 0x%016llx", idx,
                               arena->large_map);
 
             // The chunk went into the bin for this index, so that is the one that

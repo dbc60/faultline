@@ -21,6 +21,7 @@
 // Unity build: include implementation files directly
 // Order matters: exception service first, then code under test
 #include <faultline/fl_exception_service_assert.h> // FL_ASSERT_* macros
+#include <faultline/fl_macros.h>                   // FL_ANALYSIS_SUPPRESS
 #include <faultline/fl_test.h> // FL_TEST, FL_SUITE_*, FL_GET_TEST_SUITE
 #include <faultline/fl_try.h> // FL_TRY, FL_CATCH, FL_THROW (resolves to FLA_* in DLL builds)
 
@@ -113,8 +114,9 @@ static int suppress_stderr(void) {
  */
 static void restore_stderr(int saved) {
     fflush(stderr);
-    _dup2(saved, _fileno(stderr));
+    int restored = _dup2(saved, _fileno(stderr));
     _close(saved);
+    FL_ASSERT_TRUE(restored != -1);
 }
 
 // ---------------------------------------------------------------------------
@@ -553,6 +555,12 @@ static int thread_writer(void *arg) {
     }
     return 0;
 }
+
+// 6262: 200 log lines need a larger buffer than the per-frame stack budget /analyze
+// allows, and 64 KB of the 1 MB default stack is not a risk. The heap is not an
+// alternative here: malloc in this translation unit is the injectable memory service,
+// so a heap buffer would make this scaffolding a fault-injection site.
+FL_ANALYSIS_SUPPRESS(6262)
 
 FL_TEST("Concurrent Writes No Corruption", concurrent_writes_no_corruption) {
     char path[256];

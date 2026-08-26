@@ -19,7 +19,7 @@
 
 #include <faultline/arena.h>
 #include <faultline/fl_exception_types.h> // FLExceptionReason
-#include <faultline/fl_macros.h>          // FL_THREAD_LOCAL
+#include <faultline/fl_macros.h>          // FL_THREAD_LOCAL, FL_ANALYSIS_SUPPRESS
 #include <faultline/fl_threads.h>         // tss_t
 #include <faultline/fl_try.h>             // FL_TRY, FL_THROW
 #include "chunk.h"                        // CHUNK_PAYLOAD_SIZE
@@ -122,7 +122,11 @@ static ShardRecord *arena_pool_thread_shard(ArenaPool *pool, char const *file,
             fl_lock_release(&pool->lock);
             FL_THROW_FILE_LINE(arena_pool_exhausted, file, line);
         }
+        // 6011: rec is non-NULL here. The branch above throws when no shard is
+        // free, and a throw does not return, but the service call it goes through
+        // is deliberately not marked noreturn (see FLExceptionService.throw_exc).
         FL_TRY {
+            FL_ANALYSIS_SUPPRESS(6011)
             rec->arena = new_arena(pool->shard_commit, pool->shard_reserve);
         }
         FL_CATCH_ALL_RETHROW {

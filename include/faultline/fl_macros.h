@@ -112,6 +112,23 @@ extern "C" {
 #define FL_PRINTF_FORMAT(fmt_index, first_arg)
 #endif
 
+/**
+ * @brief Suppress one MSVC code-analysis warning on the statement that follows.
+ *
+ * @param code the warning number, without the leading C (e.g. 6250).
+ *
+ * For a finding the analyzer cannot rule out on its own but the code has already
+ * ruled out. Applies to the next line only, so it cannot leak into unrelated code
+ * the way a file-scope disable does. Expands to nothing outside MSVC, whose
+ * /analyze is the only pass that reports these numbers. Every use needs a comment
+ * saying what makes the finding wrong here.
+ */
+#if defined(_MSC_VER)
+#define FL_ANALYSIS_SUPPRESS(code) __pragma(warning(suppress : code))
+#else
+#define FL_ANALYSIS_SUPPRESS(code)
+#endif
+
 /// The number of elements in a fixed-size array
 #define FL_ARRAY_COUNT(array) (sizeof(array) / sizeof((array)[0]))
 

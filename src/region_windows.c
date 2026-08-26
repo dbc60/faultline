@@ -9,6 +9,7 @@
  * See LICENSE.txt for copyright and licensing information about this file.
  */
 #include <faultline/fl_abbreviated_types.h>        // for u32, u64
+#include <faultline/fl_macros.h>                   // for FL_ANALYSIS_SUPPRESS
 #include <faultline/fl_exception_service_assert.h> // for FL_ASSERT*
 #include <faultline/fl_try.h>                      // for FL_THROW_DETAILS, FL_THROW
 #include <stdatomic.h>                             // for atomic_fetch_add
@@ -153,6 +154,10 @@ size_t commit(Region *region, size_t to_commit) {
 void decommit(Region *region, size_t decommit_size) {
     void *page = region->end_committed - decommit_size;
 
+    // 6250: decommitting pages inside a reserved region is the point of this
+    // function. The address space itself is returned by release_region, which
+    // frees the whole reservation with MEM_RELEASE.
+    FL_ANALYSIS_SUPPRESS(6250)
     FL_ASSERT_TRUE(VirtualFree(page, decommit_size, MEM_DECOMMIT));
     region->end_committed = page;
 }

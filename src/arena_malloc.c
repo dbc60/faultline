@@ -42,7 +42,7 @@ void *arena_aligned_alloc(Arena *arena, size_t alignment, size_t size, char cons
 }
 
 void *arena_calloc(Arena *arena, size_t count, size_t size, char const *file, int line) {
-    void *mem;
+    void *mem = NULL;
     FL_TRY {
         mem = arena_calloc_throw(arena, count, size, file, line);
     }
@@ -84,7 +84,7 @@ void arena_free_pointer(Arena *arena, void **ptr, char const *file, int line) {
 }
 
 void *arena_malloc(Arena *arena, size_t bytes, char const *file, int line) {
-    void *mem;
+    void *mem = NULL;
 
     FL_TRY {
         mem = arena_malloc_throw(arena, bytes, file, line);
@@ -104,7 +104,7 @@ void *arena_malloc(Arena *arena, size_t bytes, char const *file, int line) {
 }
 
 void *arena_realloc(Arena *arena, void *mem, size_t size, char const *file, int line) {
-    void *p;
+    void *p = NULL;
 
     FL_TRY {
         p = arena_realloc_throw(arena, mem, size, file, line);

@@ -136,21 +136,21 @@
  * @param P2 the power-of-2 (exponent) of the smallest value to be mapped to index 0.
  * @return IDX the zero-based index for the value.
  */
-#define INDEX_BY_VALUE64(VAL, CNT, P2, IDX)                                \
-    do {                                                                   \
-        flag64 X     = (VAL) >> (P2);                                      \
-        flag64 MAX_X = (1ull << ((CNT) - 1)) - 1;                          \
-        if (X > MAX_X) {                                                   \
-            IDX = (CNT) - 1;                                               \
-        } else {                                                           \
-            u32 K;                                                         \
-            u08 ok = fl_bit_scan_reverse64(&K, X);                         \
-            if (ok) {                                                      \
-                IDX = (u32)((K << 1) + (((VAL) >> (K + ((P2) - 1)) & 1))); \
-            } else {                                                       \
-                IDX = 0;                                                   \
-            }                                                              \
-        }                                                                  \
+#define INDEX_BY_VALUE64(VAL, CNT, P2, IDX)                              \
+    do {                                                                 \
+        flag64 X     = (VAL) >> (P2);                                    \
+        flag64 MAX_X = (1ull << ((CNT) - 1)) - 1;                        \
+        if (X > MAX_X) {                                                 \
+            IDX = (CNT) - 1;                                             \
+        } else {                                                         \
+            u32 K;                                                       \
+            u08 ok = fl_bit_scan_reverse64(&K, X);                       \
+            if (ok) {                                                    \
+                IDX = (K << 1) + (u32)(((VAL) >> (K + ((P2) - 1))) & 1); \
+            } else {                                                     \
+                IDX = 0;                                                 \
+            }                                                            \
+        }                                                                \
     } while (0)
 
 /**
@@ -228,8 +228,11 @@ static inline u32 index_by_value(flag64 val, u32 cnt, u32 exp) {
             // even/odd pair of bins covers an entire power-of-2 range. The second term
             // is the least significant bit of the value shifted to the right by (k +
             // (exp - 1)) and determines which of the two bins covering a power-of-2
-            // range is selected.
-            idx = (u32)((k << 1) + ((val >> (k + (exp - 1))) & 1));
+            // range is selected. The second term is narrowed before the addition so
+            // that "k << 1" is not widened to 64 bits by it: both terms are known to
+            // fit in u32, and a 32-bit shift promoted to 64 bits is what /analyze
+            // reports as C6297.
+            idx = (k << 1) + (u32)((val >> (k + (exp - 1))) & 1);
         }
     }
 
