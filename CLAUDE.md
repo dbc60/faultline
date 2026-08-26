@@ -7,6 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Building the Project
 - **Build all components**: `build\cmd\all.cmd` - Builds the entire project including all libraries and test suites
 - **Build specific components**: Use individual build scripts in `build\cmd\` (e.g., `build\cmd\faultline.cmd`, `build\cmd\arena.cmd`)
+- **Code analysis**: `build\cmd\faultline_analyze.cmd` - Runs `/analyze` over the 31 first-party translation units as a pass of its own, naming no third-party source. `faultline_lib.cmd` and `std_faultline.cmd` are not represented: both put `FNV64.c` and `sqlite3.c` on the same `cl` line as first-party code, and the four unity translation units already cover the same sources. Findings print but do not fail the build (`/analyze:WX-`), so unlike every other script here this one always prints its `cl` capture instead of only on failure
 - **Build with options**:
   - `build\cmd\all.cmd test` - Build and run all unit tests
   - `build\cmd\all.cmd debug` - Build debug version (default)
@@ -15,6 +16,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - `build\cmd\all.cmd x86` - Build for 32-bit
   - `build\cmd\all.cmd clean` - Clean current build type
   - `build\cmd\all.cmd cleanall` - Clean all build artifacts
+  - `build\cmd\all.cmd analyze` - Run MSVC code analysis after the build
 
 ### Running Tests
 - **All tests**: `build\cmd\all.cmd test` - Builds and runs all unit test suites

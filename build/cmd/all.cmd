@@ -171,6 +171,16 @@ if errorlevel 1 (
     GOTO :ERROR
 )
 
+:: Code analysis is opt-in and runs after the build, so producing the binaries is
+:: never delayed by it. The pass links nothing, so it adds no artifact to copy into
+:: test\ below.
+if %analyze% EQU 1 (
+    call %DIR_CMD%\faultline_analyze.cmd !args!
+    if errorlevel 1 (
+        GOTO :ERROR
+    )
+)
+
 IF NOT EXIST test MD test
 copy /y %DIR_OUT_BIN%\*.exe test\ > NUL
 copy /y %DIR_OUT_BIN%\*.dll test\ > NUL

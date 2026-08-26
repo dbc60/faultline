@@ -44,8 +44,19 @@ SETLOCAL ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 ::             declaring exm_env_. This warning is not a problem.
 ::   /wd28301: No annotations for first declaration of "var"
 
-:: TODO: add a build option to include /analyze. This is a static code analysis tool
-SET ANALYZE_FLAGS= /analyze /wd6246 /wd28301
+:: Static code analysis flags for the "analyze" build option. Only
+:: faultline_analyze.cmd consumes these; no ordinary build line carries them, because
+:: several ordinary build lines also name third-party sources.
+::
+:: /analyze:only     analyze without generating code, so the pass writes no object
+::                   files and needs no link step.
+:: /analyze:WX-      report findings as warnings rather than errors, even though
+::                   CommonCompilerFlags carries /WX. Findings stay advisory until
+::                   the backlog is triaged.
+:: /analyze:external- skip analysis of headers marked external. The analyze script
+::                   marks third_party and the SDK/CRT include path, which keeps
+::                   SQLite, cwalk, FNV, and the Windows headers out of the report.
+SET ANALYZE_FLAGS=/analyze /analyze:only /analyze:WX- /analyze:external- /wd6246 /wd28301
 
 :: /FC use full pathnames in diagnostics
 
@@ -230,4 +241,5 @@ ENDLOCAL & (
     SET "CommonLinkerFlagsFinal=%CommonLinkerFlagsFinal%"
     SET "CommonLibrarianFlags=%CommonLibrarianFlags%"
     SET "CommonCompilerFlagsBuildMFC=%CommonCompilerFlagsBuildMFC%"
+    SET "ANALYZE_FLAGS=%ANALYZE_FLAGS%"
 )

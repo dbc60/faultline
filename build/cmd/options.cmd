@@ -29,9 +29,12 @@ SETLOCAL ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 ::  verbose:    Display details of steps during the build process.
 ::  trace:      Display the values of these options.
 ::  timed:      Enable timing metrics collection with ctime.
+::  analyze:    Run MSVC code analysis (/analyze) over the first-party translation
+::              units. A separate pass after the build; findings are reported but
+::              do not fail it. See faultline_analyze.cmd.
 
 :: Remember to export these in the ENDLOCAL section below
-SET "options=build: debug: release: cleanall: clean: cleanplat: x64: x86: win32: test: junit: vs2022: vs2026: verbose: trace: timed:"
+SET "options=build: debug: release: cleanall: clean: cleanplat: x64: x86: win32: test: junit: vs2022: vs2026: verbose: trace: timed: analyze:"
 :: Initialize flags to zero
 FOR %%O in (%options%) DO FOR /f "tokens=1,* delims=:" %%A in ("%%O") DO (
     if NOT "%%~B"=="" (
@@ -111,4 +114,5 @@ ENDLOCAL & (
     SET "verbose=%verbose%"
     SET "trace=%trace%"
     SET "timed=%timed%"
+    SET "analyze=%analyze%"
 )
