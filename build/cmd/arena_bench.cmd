@@ -23,13 +23,18 @@ CALL %DIR_CMD%\setup.cmd %*
 :: cl output capture, named per script inside this configuration's obj directory
 SET "TEMP_OUT=%DIR_OUT_OBJ%\%~n0_cl_out.tmp"
 
+:: Both compiles below are first-party, so they take whichever dialect the
+:: caller picked with cxx.
+SET "BENCH_FLAGS=%CommonCompilerFlagsFinal%"
+IF %cxx% EQU 1 SET "BENCH_FLAGS=%CommonCompilerFlagsFinalCXX%"
+
 :: Build the project: one driver with synchronized-arena support compiled in,
 :: and one with the project default (FL_ARENA_SYNCHRONIZED undefined).
 IF %build% EQU 1 (
     IF %verbose% EQU 1 (
         ECHO Build %PROJECT_NAME%
     )
-    cl %CommonCompilerFlagsFinal% /wd4456 /I%DIR_INCLUDE% /I%DIR_THIRD_PARTY% ^
+    cl %BENCH_FLAGS% /wd4456 /I%DIR_INCLUDE% /I%DIR_THIRD_PARTY% ^
     /I%DIR_REPO%\src /DFL_PLATFORM_BUILD /DFL_ARENA_SYNCHRONIZED ^
     %DIR_REPO%\app\arena_bench\arena_bench_main.c /Fo:%DIR_OUT_OBJ%\ ^
     /Fd:%DIR_OUT_BIN%\arena_bench.pdb /Fe:%DIR_OUT_BIN%\arena_bench.exe /link ^
@@ -45,7 +50,7 @@ IF %build% EQU 1 (
     IF %verbose% EQU 1 (
         ECHO Build %PROJECT_NAME% without synchronized-arena support
     )
-    cl %CommonCompilerFlagsFinal% /wd4456 /I%DIR_INCLUDE% /I%DIR_THIRD_PARTY% ^
+    cl %BENCH_FLAGS% /wd4456 /I%DIR_INCLUDE% /I%DIR_THIRD_PARTY% ^
     /I%DIR_REPO%\src /DFL_PLATFORM_BUILD ^
     %DIR_REPO%\app\arena_bench\arena_bench_main.c /Fo:%DIR_OUT_OBJ%\ ^
     /Fd:%DIR_OUT_BIN%\arena_bench_nosync.pdb ^

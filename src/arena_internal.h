@@ -29,6 +29,10 @@
 #include <stddef.h>    // size_t
 #include <stdio.h>     // snprintf
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 /**
  * @brief LOG2(ARENA_MIN_LARGE_CHUNK).
  *
@@ -444,5 +448,9 @@ static inline bool arena_address_ok(Arena const *arena, void const *addr) {
 
     return false;
 }
+
+#if defined(__cplusplus)
+} // extern "C"
+#endif
 
 #endif // ARENA_INTERNAL_H_

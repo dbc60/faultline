@@ -31,12 +31,17 @@ IF NOT "%release%"=="" (
     )
 )
 
+:: Both compiles below are first-party, so they take whichever dialect the
+:: caller picked with cxx.
+SET "INDEX_FLAGS=%CommonCompilerFlagsFinal%"
+IF %cxx% EQU 1 SET "INDEX_FLAGS=%CommonCompilerFlagsFinalCXX%"
+
 :: Build the generic version of the test suite
 IF %build% EQU 1 (
     if %verbose% EQU 1 (
         ECHO Build the Generic %PROJECT_NAME% test suite: %*
     )
-    cl %CommonCompilerFlagsFinal% /I%DIR_INCLUDE% /I%DIR_REPO%\src /DDLL_BUILD ^
+    cl %INDEX_FLAGS% /I%DIR_INCLUDE% /I%DIR_REPO%\src /DDLL_BUILD ^
     %DIR_REPO%\src\index_generic_tests.c /Fo:%DIR_OUT_OBJ%\ /Fd:%DIR_OUT_LIB%\index_generic_tests.pdb ^
     /LD /link %CommonLinkerFlagsFinal% ^
     /OUT:%DIR_OUT_BIN%\index_generic_tests.dll ^
@@ -55,7 +60,7 @@ IF %build% EQU 1 (
     if %verbose% EQU 1 (
         ECHO Build the Windows %PROJECT_NAME% test suite: %*
     )
-    cl %CommonCompilerFlagsFinal% /I%DIR_INCLUDE% /I%DIR_REPO%\src /DDLL_BUILD ^
+    cl %INDEX_FLAGS% /I%DIR_INCLUDE% /I%DIR_REPO%\src /DDLL_BUILD ^
     %DIR_REPO%\src\index_windows_tests.c /Fo:%DIR_OUT_OBJ%\ /Fd:%DIR_OUT_LIB%\index_windows_tests.pdb ^
     /LD /link %CommonLinkerFlagsFinal% ^
     /OUT:%DIR_OUT_BIN%\index_windows_tests.dll ^

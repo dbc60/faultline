@@ -31,12 +31,16 @@ IF NOT "%release%"=="" (
     )
 )
 
+:: First-party, so it takes whichever dialect the caller picked with cxx.
+SET "MCC_FLAGS=%CommonCompilerFlagsFinal%"
+IF %cxx% EQU 1 SET "MCC_FLAGS=%CommonCompilerFlagsFinalCXX%"
+
 :: Build the project
 IF %build% EQU 1 (
     IF %verbose% EQU 1 (
         ECHO Build the %PROJECT_NAME% test suite: %*
     )
-    cl %CommonCompilerFlagsFinal% /wd4456 /I%DIR_INCLUDE% /I%DIR_REPO%\src /DDLL_BUILD ^
+    cl %MCC_FLAGS% /wd4456 /I%DIR_INCLUDE% /I%DIR_REPO%\src /DDLL_BUILD ^
     "%DIR_REPO%\src\malloc_cleanup_config_tests.c" /Fo:%DIR_OUT_OBJ%\ ^
     /Fd:%DIR_OUT_BIN%\malloc_cleanup_config_tests.pdb ^
     /LD /link %CommonLinkerFlagsFinal% /OUT:%DIR_OUT_BIN%\malloc_cleanup_config_tests.dll ^

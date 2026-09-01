@@ -16,6 +16,10 @@
 #include <stdbool.h>             // for bool
 #include <stddef.h>              // for size_t
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 // debug checks
 #if defined(_DEBUG) || defined(DEBUG)
 #define ARENA_CHECK_FREE_CHUNK(AR, CH, FILE, LINE) \
@@ -90,5 +94,9 @@ extern void dbg_display_chunk(Arena *arean, Chunk *ch, char const *note, bool de
                               char const *file, int line);
 extern void arena_tree_dbg_display(Arena *arena, DigitalSearchTree *tc, char const *note,
                                    char const *file, int line);
+
+#if defined(__cplusplus)
+} // extern "C"
+#endif
 
 #endif // ARENA_DBG_H_

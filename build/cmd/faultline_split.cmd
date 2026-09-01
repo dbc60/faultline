@@ -73,21 +73,27 @@ if %timed% EQU 1 (
     ctime.exe -begin metrics\vs\faultline_split.ctm
 )
 
+:: The unity TU is first-party, so it takes whichever dialect the caller
+:: picked with cxx. /TP treats every file cl sees as source, prebuilt
+:: faultline_core.lib/sqlite3.obj/cwalk.obj included, so they are passed as
+:: /link arguments instead of ahead of it -- correct for the plain C build too.
+SET "SPLIT_FLAGS=%CommonCompilerFlagsFinal%"
+IF %cxx% EQU 1 SET "SPLIT_FLAGS=%CommonCompilerFlagsFinalCXX%"
+
 :: Build the platform layer and link the core lib + prebuilt objs.
 IF %build% EQU 1 (
     IF %verbose% EQU 1 (
         ECHO.
         ECHO Build the %PROJECT_NAME% platform layer ^(unity^): win32_faultline.exe
     )
-    cl %CommonCompilerFlagsFinal% /wd4200 /wd4115 /wd4456 /DFL_PLATFORM_BUILD ^
+    cl %SPLIT_FLAGS% /wd4200 /wd4115 /wd4456 /DFL_PLATFORM_BUILD ^
     /DFL_EMBEDDED ^
     /I%DIR_INCLUDE% /I%DIR_REPO%\src /I"%DIR_THIRD_PARTY%" ^
     /I"%DIR_THIRD_PARTY%\cwalk\include" ^
-    %DIR_REPO%\app\faultline\win32_faultline_unity.c ^
-    %DIR_OUT_LIB%\faultline_core.lib ^
-    %DIR_OUT_OBJ%\sqlite3.obj %DIR_OUT_OBJ%\cwalk.obj /Fo:%DIR_OUT_OBJ%\ ^
+    %DIR_REPO%\app\faultline\win32_faultline_unity.c /Fo:%DIR_OUT_OBJ%\ ^
     /Fd:%DIR_OUT_BIN%\win32_faultline.pdb /Fe:%DIR_OUT_BIN%\win32_faultline.exe /link ^
-    %CommonLinkerFlagsFinal% /ENTRY:mainCRTStartup > "%TEMP_OUT%"
+    %CommonLinkerFlagsFinal% %DIR_OUT_LIB%\faultline_core.lib ^
+    %DIR_OUT_OBJ%\sqlite3.obj %DIR_OUT_OBJ%\cwalk.obj /ENTRY:mainCRTStartup > "%TEMP_OUT%"
     if errorlevel 1 (
         type "%TEMP_OUT%"
         del "%TEMP_OUT%"

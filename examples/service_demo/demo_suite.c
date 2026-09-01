@@ -40,6 +40,14 @@ static char const *module = "demo-suite";
 // same translation unit, FL_CATCH (pointer identity) matches it.
 static FLExceptionReason demo_reason = "demo: simulated recoverable error";
 
+// demo_run and demo_throw_uncaught have no other declaration anywhere -- the
+// driver finds each by GetProcAddress's plain string name, not through a
+// shared header -- so without extern "C" a C++ compile mangles their linkage
+// and GetProcAddress silently returns NULL instead of failing loudly.
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 /**
  * @brief Happy-path worker: allocate through the memory service, log via the
  * log service, and throw/catch a module-local exception. All caught locally;
@@ -51,7 +59,7 @@ FL_SPEC_EXPORT int demo_run(void) {
     // malloc() expands to g_fla_memory_service.fl_malloc(...), which the driver
     // wired to its arena-backed allocator. The bytes come from the driver.
     size_t const cap = 64;
-    char        *buf = malloc(cap);
+    char        *buf = (char *)malloc(cap);
     if (buf == NULL) {
         LOG_ERROR(module, "demo_run: allocation failed");
         return 1;
@@ -85,3 +93,7 @@ FL_SPEC_EXPORT void demo_throw_uncaught(void) {
     LOG_INFO(module, "demo_throw_uncaught: throwing fl_invalid_value, NOT catching it");
     FL_THROW(fl_invalid_value);
 }
+
+#if defined(__cplusplus)
+} // extern "C"
+#endif

@@ -31,13 +31,17 @@ IF NOT "%release%"=="" (
     )
 )
 
+:: First-party, so it takes whichever dialect the caller picked with cxx.
+SET "LOGEX_FLAGS=%CommonCompilerFlagsFinal%"
+IF %cxx% EQU 1 SET "LOGEX_FLAGS=%CommonCompilerFlagsFinalCXX%"
+
 :: Build the project
 IF %build% EQU 1 (
     IF %verbose% EQU 1 (
         ECHO Build %PROJECT_NAME%
     )
-    cl %CommonCompilerFlagsFinal% /I%DIR_INCLUDE% /I%DIR_REPO%\src ^
-    %DIR_REPO%\cmd\log_example\main.c  /Fo:%DIR_OUT_OBJ%\ ^
+    cl %LOGEX_FLAGS% /I%DIR_INCLUDE% /I%DIR_REPO%\src ^
+    %DIR_REPO%\app\log_example\main.c  /Fo:%DIR_OUT_OBJ%\ ^
     /Fd:%DIR_OUT_BIN%\log_example.pdb /Fe:%DIR_OUT_BIN%\log_example.exe /link ^
     %CommonLinkerFlagsFinal% /ENTRY:mainCRTStartup > "%TEMP_OUT%"
     if errorlevel 1 (

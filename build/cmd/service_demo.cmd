@@ -106,6 +106,11 @@ IF NOT EXIST "%BIN%"     MD "%BIN%"
 IF NOT EXIST "%OBJ_DLL%" MD "%OBJ_DLL%"
 IF NOT EXIST "%OBJ_EXE%" MD "%OBJ_EXE%"
 
+:: Both compiles below are entirely first-party (the imported package tree),
+:: so they take whichever dialect the caller picked with cxx.
+SET "DEMO_FLAGS=%CommonCompilerFlagsFinal%"
+IF %cxx% EQU 1 SET "DEMO_FLAGS=%CommonCompilerFlagsFinalCXX%"
+
 :: -----------------------------------------------------------------------
 :: 3. Build the suite DLL (application side). DLL_BUILD makes FL_DECL_SPEC
 ::    dllexport so fla_set_* are exported; no FL_PLATFORM_BUILD, so the unified
@@ -114,7 +119,7 @@ IF NOT EXIST "%OBJ_EXE%" MD "%OBJ_EXE%"
 ::    compiled here.
 :: -----------------------------------------------------------------------
 ECHO Building demo_suite.dll ...
-cl %CommonCompilerFlagsFinal% /DDLL_BUILD /wd4456 ^
+cl %DEMO_FLAGS% /DDLL_BUILD /wd4456 ^
     /I"%TREE%\include" /I"%TREE%\src" ^
     "%TREE%\src\fl_exception_service.c" ^
     "%TREE%\src\fla_exception_service.c" ^
@@ -132,7 +137,7 @@ IF ERRORLEVEL 1 ( ECHO   [compile] demo_suite.dll FAILED & TYPE "%CL_LOG%" & GOT
 ::    by region_os.c) and every fla_ source (the DLL owns those).
 :: -----------------------------------------------------------------------
 ECHO Building demo_driver.exe ...
-cl %CommonCompilerFlagsFinal% /experimental:c11atomics /DFL_PLATFORM_BUILD /DFL_EMBEDDED /wd4456 ^
+cl %DEMO_FLAGS% /DFL_PLATFORM_BUILD /DFL_EMBEDDED /wd4456 ^
     /I"%TREE%\include" /I"%TREE%\src" ^
     "%TREE%\src\fl_exception_service.c" ^
     "%TREE%\src\flp_exception_service.c" ^

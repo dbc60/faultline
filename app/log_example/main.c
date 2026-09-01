@@ -128,8 +128,8 @@ int worker_thread(void *arg) {
         char message[MAX_LOG_MESSAGE];
         snprintf(message, MAX_LOG_MESSAGE, "Message from thread %d", id);
         enqueue_log(message, 1);
-        thrd_sleep(&(struct timespec){.tv_sec = 0, .tv_nsec = 100000000},
-                   NULL); // Sleep for 100ms
+        struct timespec sleep_time = {.tv_sec = 0, .tv_nsec = 100000000};
+        thrd_sleep(&sleep_time, NULL); // Sleep for 100ms
     }
     free(arg);
     return 0;
@@ -148,7 +148,7 @@ int main(void) {
 
     // Create worker threads
     for (int i = 0; i < NUM_THREADS; i++) {
-        int *id = malloc(sizeof(int));
+        int *id = (int *)malloc(sizeof(int));
         *id     = i;
         // thrd_create( thrd_t *thr, thrd_start_t func, void *arg );
         thrd_create(&worker_tids[i], worker_thread, id);

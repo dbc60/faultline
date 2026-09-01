@@ -190,9 +190,15 @@ SET CommonLinkerFlags=/MACHINE:X64 /nologo /incremental:no /MANIFESTUAC /opt:ref
 :: under the C dialect and a /WX error under this one. cpp_probe.cmd's /WX- never
 :: saw this class of warning either; expect more of them as first-party files that
 :: happen to call an "unsafe" CRT function are found.
+::
+:: /wd4477 /wd4313: NULL is ((void *)0) in C but a plain 0 (int) in C++, so every
+:: %p-formatted assert macro called as FL_ASSERT_NOT_NULL(NULL) -- fl_assert_tests.c
+:: exercises exactly that -- passes an int where snprintf's %p wants void*. Silent
+:: under C, a /WX error here; the fix is the same NULL-literal difference the
+:: project already works around elsewhere, not a bug in the macro or the test.
 SET "CommonCompilerFlagsCXX=%CommonCompilerFlags:/std:c17=%"
 SET "CommonCompilerFlagsCXX=%CommonCompilerFlagsCXX:/experimental:c11atomics=%"
-SET "CommonCompilerFlagsCXX=%CommonCompilerFlagsCXX% /TP /std:c++20 /DFL_EXC_BACKEND_CXX /wd5054 /wd4996"
+SET "CommonCompilerFlagsCXX=%CommonCompilerFlagsCXX% /TP /std:c++20 /DFL_EXC_BACKEND_CXX /wd5054 /wd4996 /wd4477 /wd4313"
 
 ::SET CStandardLibraryIncludeFlags=/I"%VSINSTALLDIR%SDK\ScopeCppSDK\SDK\include\ucrt"
 ::SET CMicrosoftIncludeFlags=/I"%VSINSTALLDIR%SDK\ScopeCppSDK\SDK\include\um" ^

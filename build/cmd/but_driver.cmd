@@ -30,12 +30,17 @@ IF NOT "%release%"=="" (
     )
 )
 
+:: All three compiles below are first-party, so they take whichever dialect
+:: the caller picked with cxx.
+SET "BUT_FLAGS=%CommonCompilerFlagsFinal%"
+IF %cxx% EQU 1 SET "BUT_FLAGS=%CommonCompilerFlagsFinalCXX%"
+
 :: Build the project
 IF %build% EQU 1 (
     IF %verbose% EQU 1 (
         ECHO Build the %PROJECT_NAME% test suite
     )
-    cl %CommonCompilerFlagsFinal% /wd4456 /I%DIR_INCLUDE% /I%DIR_THIRD_PARTY% ^
+    cl %BUT_FLAGS% /wd4456 /I%DIR_INCLUDE% /I%DIR_THIRD_PARTY% ^
     /I%DIR_REPO%\src /DDLL_BUILD %DIR_REPO%\src\but_tests.c ^
     /Fo:%DIR_OUT_OBJ%\ /Fd:%DIR_OUT_LIB%\but_tests.pdb ^
     /LD /link %CommonLinkerFlagsFinal% ^
@@ -53,7 +58,7 @@ IF %build% EQU 1 (
         ECHO.
         ECHO Build the %PROJECT_NAME% driver test-data DLL
     )
-    cl %CommonCompilerFlagsFinal% /I"%DIR_INCLUDE%" /I%DIR_THIRD_PARTY% ^
+    cl %BUT_FLAGS% /I"%DIR_INCLUDE%" /I%DIR_THIRD_PARTY% ^
     /DDLL_BUILD /DFL_PLATFORM_BUILD ^
     %DIR_REPO%\src\but_test_data.c ^
     /Fo:%DIR_OUT_OBJ%\ /Fd:%DIR_OUT_BIN%\but_test_data.pdb ^
@@ -72,7 +77,7 @@ IF %build% EQU 1 (
         ECHO.
         ECHO Build the %PROJECT_NAME% Driver
     )
-    cl %CommonCompilerFlagsFinal% /wd4456 /I%DIR_INCLUDE% /I%DIR_THIRD_PARTY% ^
+    cl %BUT_FLAGS% /wd4456 /I%DIR_INCLUDE% /I%DIR_THIRD_PARTY% ^
     /I%DIR_REPO%\src /DFL_PLATFORM_BUILD /DFL_EMBEDDED ^
     %DIR_REPO%\app\but\win32_main.c  /Fo:%DIR_OUT_OBJ%\ ^
     /Fd:%DIR_OUT_BIN%\but_driver.pdb /Fe:%DIR_OUT_BIN%\but_driver.exe /link ^

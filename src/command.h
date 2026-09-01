@@ -18,6 +18,10 @@
 
 #include <stdbool.h>
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 extern FLExceptionReason command_unknown;
 extern FLExceptionReason command_error;
 extern FLExceptionReason command_out_of_memory;
@@ -141,5 +145,9 @@ char const *get_string_option(RuntimeCommand const *cmd, char const *option_name
                               char const *default_value);
 int         get_int_option(RuntimeCommand const *cmd, char const *option_name,
                            int default_value);
+
+#if defined(__cplusplus)
+} // extern "C"
+#endif
 
 #endif // COMMAND_H_

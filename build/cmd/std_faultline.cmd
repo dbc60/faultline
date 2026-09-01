@@ -58,11 +58,19 @@ if %timed% EQU 1 (
     ctime.exe -begin metrics\vs\std_faultline.ctm
 )
 
+:: Both compiles below are entirely first-party (plus FNV64.c, already handled
+:: in CommonCompilerFlagsFinalCXX), so they take whichever dialect cxx picked.
+:: /TP treats every file cl sees as source, prebuilt sqlite3.obj/cwalk.obj
+:: included, so they are passed as /link arguments instead of ahead of it --
+:: correct for the plain C build too.
+SET "STD_FLAGS=%CommonCompilerFlagsFinal%"
+IF %cxx% EQU 1 SET "STD_FLAGS=%CommonCompilerFlagsFinalCXX%"
+
 IF %build% EQU 1 (
     if %verbose% EQU 1 (
         ECHO Build the %PROJECT_NAME% test suite ^(non-unity^): std_faultline_tests.dll
     )
-    cl %CommonCompilerFlagsFinal% /MP /wd4456 /wd4200 /wd4115 ^
+    cl %STD_FLAGS% /MP /wd4456 /wd4200 /wd4115 ^
     /I"%DIR_INCLUDE%" /I"%DIR_THIRD_PARTY%" /I"%DIR_THIRD_PARTY%\cwalk\include" ^
     /DDLL_BUILD ^
     %DIR_REPO%\src\faultline_tests.c ^
@@ -78,9 +86,10 @@ IF %build% EQU 1 (
     %DIR_REPO%\src\lock_os.c ^
     %DIR_REPO%\src\set.c %DIR_REPO%\src\win_timer.c ^
     %DIR_THIRD_PARTY%\fnv\FNV64.c %DIR_REPO%\src\fla_timer_service.c ^
-    %DIR_OUT_OBJ%\sqlite3.obj %DIR_OUT_OBJ%\cwalk.obj /Fo:%DIR_OUT_OBJ%\ ^
+    /Fo:%DIR_OUT_OBJ%\ ^
     /Fd:%DIR_OUT_BIN%\std_faultline_tests.pdb ^
     /LD /link %CommonLinkerFlagsFinal% /LIBPATH:%DIR_OUT_LIB% ^
+    %DIR_OUT_OBJ%\sqlite3.obj %DIR_OUT_OBJ%\cwalk.obj ^
     /OUT:%DIR_OUT_BIN%\std_faultline_tests.dll /IMPLIB:%DIR_OUT_LIB%\std_faultline_tests.lib > "%TEMP_OUT%"
     if errorlevel 1 (
         type "%TEMP_OUT%"
@@ -94,7 +103,7 @@ IF %build% EQU 1 (
         ECHO.
         ECHO Build the Faultline Test Program ^(non-unity^): std_faultline.exe
     )
-    cl %CommonCompilerFlagsFinal% /MP /wd4200 /wd4115 /wd4456 /DFL_PLATFORM_BUILD ^
+    cl %STD_FLAGS% /MP /wd4200 /wd4115 /wd4456 /DFL_PLATFORM_BUILD ^
     /I%DIR_INCLUDE% /I"%DIR_THIRD_PARTY%" /I"%DIR_THIRD_PARTY%\cwalk\include" ^
     /I%DIR_REPO%\src ^
     %DIR_REPO%\app\faultline\main_windows.c ^
@@ -116,10 +125,10 @@ IF %build% EQU 1 (
     %DIR_REPO%\src\region.c %DIR_REPO%\src\region_node.c %DIR_REPO%\src\region_os.c ^
     %DIR_REPO%\src\lock_os.c ^
     %DIR_REPO%\src\set.c %DIR_REPO%\src\win_timer.c ^
-    %DIR_THIRD_PARTY%\fnv\FNV64.c ^
-    %DIR_OUT_OBJ%\sqlite3.obj %DIR_OUT_OBJ%\cwalk.obj /Fo:%DIR_OUT_OBJ%\ ^
+    %DIR_THIRD_PARTY%\fnv\FNV64.c /Fo:%DIR_OUT_OBJ%\ ^
     /Fd:%DIR_OUT_BIN%\std_faultline.pdb /Fe:%DIR_OUT_BIN%\std_faultline.exe /link ^
-    %CommonLinkerFlagsFinal% /ENTRY:mainCRTStartup > "%TEMP_OUT%"
+    %CommonLinkerFlagsFinal% %DIR_OUT_OBJ%\sqlite3.obj %DIR_OUT_OBJ%\cwalk.obj ^
+    /ENTRY:mainCRTStartup > "%TEMP_OUT%"
     if errorlevel 1 (
         type "%TEMP_OUT%"
         del "%TEMP_OUT%"
