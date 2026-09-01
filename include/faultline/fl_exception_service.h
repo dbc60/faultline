@@ -59,6 +59,14 @@ extern FLExceptionReason fl_internal_error;
 extern FLExceptionReason fl_invalid_address;
 
 /**
+ * @brief fl_foreign_exception is the reason FL_CATCH_ALL/FL_CATCH_ALL_RETHROW report for
+ * a std::exception (or other C++ exception) that reached an FL_TRY without going through
+ * FL_THROW. Only meaningful under the C++ exception backend (FL_EXC_BACKEND_CXX); the
+ * setjmp backend has no way for a foreign exception to arrive.
+ */
+extern FLExceptionReason fl_foreign_exception;
+
+/**
  * @brief Exception handling service provided by the test driver.
  *
  * The driver owns this struct and populates it with the push/pop/throw function

@@ -29,7 +29,15 @@
 #include <stddef.h>
 #include <string.h> // memcpy, memset
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 FLExceptionReason arena_pool_exhausted = "arena pool exhausted";
+
+#if defined(__cplusplus)
+}
+#endif
 
 enum {
     ARENA_POOL_MAX_SHARDS = 64,

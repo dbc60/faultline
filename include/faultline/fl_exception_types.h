@@ -10,8 +10,7 @@
  *
  * See LICENSE.txt for copyright and licensing information about this file.
  */
-#include <faultline/fl_abbreviated_types.h> // u32
-#include <setjmp.h>                         // jmp_buf
+#include <setjmp.h> // jmp_buf
 
 #if defined(__cplusplus)
 extern "C" {
@@ -54,7 +53,7 @@ typedef struct FLExceptionEnvironment {
                                        ///< the exception.
     char const *volatile details;      ///< extra details about the exception
     char const *volatile file;         ///< the file where the exception was thrown.
-    u32 volatile line;                 ///< the line where the exception was thrown.
+    int volatile line;                 ///< the line where the exception was thrown.
     FLExceptionState volatile state;   ///< a try block is entered, thrown, handled, or
                                        ///< finalized.
 } FLExceptionEnvironment;
@@ -77,6 +76,68 @@ typedef FL_EXCEPTION_HANDLER_FN(fl_exception_handler_fn);
 
 #if defined(__cplusplus)
 }
-#endif
+
+#if defined(FL_EXC_BACKEND_CXX)
+#include <exception> // std::exception_ptr
+
+/**
+ * @brief The object thrown by the C++ exception backend (FL_EXC_BACKEND_CXX).
+ *
+ * Mirrors the four arguments flp_throw() would otherwise hand to longjmp(): reason,
+ * details, file and line. details is deliberately not owned here -- it borrows the
+ * same per-thread scratch buffer as the setjmp backend (fl_details_buf(), fl_try.h),
+ * so it is valid only until the next detail-formatting throw or foreign-exception
+ * catch on the same thread, exactly as FL_DETAILS is documented today; see
+ * fl_details_buf()'s comment for the full lifetime rule.
+ */
+class FLException {
+  public:
+    FLException()
+        : reason(nullptr)
+        , details(nullptr)
+        , file(nullptr)
+        , line(0) {
+    }
+
+    FLException(FLExceptionReason reason, char const *details, char const *file,
+                int line)
+        : reason(reason)
+        , details(details)
+        , file(file)
+        , line(line) {
+    }
+
+    FLExceptionReason reason;
+    char const       *details;
+    char const       *file;
+    int               line;
+};
+
+/**
+ * @brief Per-FL_TRY bookkeeping for the C++ backend; the C++ analogue of
+ * FLExceptionEnvironment.
+ *
+ * FL_REASON/FL_DETAILS/FL_FILE/FL_LINE (fl_exception_service.h) read fl_env_.reason,
+ * .details, .file and .line unconditionally, so this type carries them as flat fields
+ * rather than nesting them inside an FLException member -- keeping those accessor
+ * macros identical across both backends. There is no jmp_buf and no push/pop stack:
+ * C++ unwinding finds its own way back to the matching catch.
+ *
+ * foreign holds the original exception when the pending one did not come from FL_THROW
+ * -- a std::exception or anything else caught by FL_CXX_STAGE_END. FL_END_TRY rethrows
+ * it directly (std::rethrow_exception) instead of reconstructing an FLException, so a
+ * foreign exception passing through an FL_TRY with no clause that wants it keeps its
+ * original type and payload, rather than always surfacing as an FLException.
+ */
+struct FLExceptionFrame {
+    FLExceptionState   state;
+    FLExceptionReason  reason;
+    char const        *details;
+    char const        *file;
+    int                line;
+    std::exception_ptr foreign;
+};
+#endif // FL_EXC_BACKEND_CXX
+#endif // __cplusplus
 
 #endif // FL_EXCEPTION_TYPES_H_

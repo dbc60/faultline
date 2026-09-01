@@ -22,8 +22,17 @@
 #include <string.h>                         // for size_t, memcmp, memcpy
 #include <faultline/fl_exception_types.h>   // for FLExceptionReason
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 FLExceptionReason set_release_bucket_not_allowed
-    = "cannot release bucket memory for an allocated set, call set_clear() instead";
+= "cannot release bucket memory for an allocated set, call set_clear() instead";
+
+#if defined(__cplusplus)
+}
+#endif
+
 
 u64 set_do_hash(Set const *set, void const *value) {
     u64 hash   = 0;

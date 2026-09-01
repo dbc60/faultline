@@ -25,9 +25,17 @@
     (((size_t)atomic_load(&(RGN)->end_reserved) - (size_t)(RGN)) % (RGN)->granularity \
      == 0)
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 // Region exceptions
 FLExceptionReason region_out_of_memory          = "region out of memory";
 FLExceptionReason region_initialization_failure = "region initialization failure";
+
+#if defined(__cplusplus)
+}
+#endif
 
 size_t region_extend(Region *region, size_t to_commit) {
     size_t committed = 0;

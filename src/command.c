@@ -21,9 +21,17 @@
 #include <string.h>                       // for strcmp, strchr
 #include <faultline/fl_exception_types.h> // for FLExceptionReason
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 FLExceptionReason command_unknown       = "unknown command";
 FLExceptionReason command_error         = "command error";
 FLExceptionReason command_out_of_memory = "command parser out of memory";
+
+#if defined(__cplusplus)
+}
+#endif
 
 /**
  * @brief search the array of formals for the named command
@@ -272,7 +280,7 @@ RuntimeCommand *parse_command(FormalCommand const *formals, int argc,
 
     FL_TRY {
         // Parse options - collect them in a dynamic array first
-        option_array = (RuntimeOption *)(sizeof(RuntimeOption) * option_capacity);
+        option_array = (RuntimeOption *)malloc(sizeof(RuntimeOption) * option_capacity);
         if (option_array == NULL) {
             FL_THROW(command_out_of_memory);
         }

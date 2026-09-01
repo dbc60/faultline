@@ -24,7 +24,16 @@
 #define TIMESTAMP_FORMAT "%Y-%m-%dT%H:%M:%SZ" // ISO 8601 for XML content
 #define JUNIT_MODULE     "JUNIT XML"
 
-FLExceptionReason const junit_open_failure = "failed to open junit file";
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
+FLExceptionReason junit_open_failure = "failed to open junit file";
+
+#if defined(__cplusplus)
+}
+#endif
+
 
 // -- Buffered writer over the file / stream services -----------------------------------
 // Neither service has a formatted-output primitive and each of their writes is a whole

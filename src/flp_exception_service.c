@@ -45,6 +45,14 @@ FL_POP_EXCEPTION_SERVICE_FN(flp_pop) {
     g_stack                     = env->next;
 }
 
+#if defined(FL_EXC_BACKEND_CXX)
+// Under the C++ backend there is no jump buffer and no environment stack: the throw
+// crosses this function's extern "C" boundary (requires /EHs; see config.cmd) and
+// C++ unwinding finds its own way back to the matching FL_CATCH.
+FL_THROW_EXCEPTION_SERVICE_FN(flp_throw) {
+    throw FLException(reason, details, file, line);
+}
+#else
 FL_THROW_EXCEPTION_SERVICE_FN(flp_throw) {
     FLExceptionEnvironment *env = g_stack;
 
@@ -68,6 +76,7 @@ FL_THROW_EXCEPTION_SERVICE_FN(flp_throw) {
     env->line    = line;
     longjmp(env->jmp, FL_THROWN);
 }
+#endif // FL_EXC_BACKEND_CXX
 
 // A binary that also links the consumer accessor (fla_exception_service.c) gets
 // fl_throw_assertion from there (routing asserts through the injected service) and

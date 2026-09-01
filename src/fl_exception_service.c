@@ -9,6 +9,10 @@
  */
 #include <faultline/fl_exception_types.h> // FLExceptionEnvironment, FLExceptionReason
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 //
 // Exception reason constants
 //
@@ -22,3 +26,9 @@ FLExceptionReason fl_not_implemented = "not implemented"; ///< useful in develop
 FLExceptionReason fl_invalid_value   = "invalid value";   ///< an argument is invalid
 FLExceptionReason fl_internal_error  = "internal error";  ///< a bad state
 FLExceptionReason fl_invalid_address = "invalid address"; ///< address not valid
+FLExceptionReason fl_foreign_exception
+    = "foreign exception"; ///< a non-FLException C++ exception reached an FL_TRY
+
+#if defined(__cplusplus)
+}
+#endif

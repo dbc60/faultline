@@ -26,8 +26,17 @@
 #include <faultline/fl_test.h>              // for FLTestSuite
 #include "flp_time.h"                       // for fl_gmtime
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 FLExceptionReason faultline_db_create_failed = "failed to create database";
 FLExceptionReason faultline_db_not_found     = "database not found";
+
+#if defined(__cplusplus)
+}
+#endif
+
 
 static char const *faultline_db = "Faultline DB Initialization";
 

@@ -24,7 +24,16 @@
 #include <faultline/fl_abbreviated_types.h> // for i64
 #include <faultline/fl_try.h> // for FL_THROW (selects flp or fla based on FL_PLATFORM_BUILD)
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 FLExceptionReason fault_injector_exception = "fault injected";
+
+#if defined(__cplusplus)
+}
+#endif
+
 
 FaultInjector *fault_injector_create(Arena *arena) {
     FaultInjector *injector

@@ -31,7 +31,15 @@
 #include "region_node.h"                           // for RegionNode, new_region_node
 #include "win32_platform.h"                        // for get_memory_info
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 FLExceptionReason arena_out_of_memory = "arena out of memory";
+
+#if defined(__cplusplus)
+}
+#endif
 
 /**
  * @brief malloc_params holds global properties, including those that can be dynamically

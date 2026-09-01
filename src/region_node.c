@@ -19,7 +19,15 @@
 #include "bits.h"                           // for ALIGN_UP
 #include <faultline/fl_abbreviated_types.h> // for u32
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 FLExceptionReason region_node_out_of_memory = "failed to allocate a RegionNode";
+
+#if defined(__cplusplus)
+}
+#endif
 
 RegionNode *new_region_node(size_t commit, u32 reserve) {
     size_t  commit_size = REGION_NODE_ALIGNED_SIZE + ALIGN_UP(commit, TWO_SIZE_T_SIZES)

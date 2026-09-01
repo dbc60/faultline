@@ -35,6 +35,21 @@ static FL_POP_EXCEPTION_SERVICE_FN(default_pop) {
     abort();
 }
 
+#if defined(FL_EXC_BACKEND_CXX)
+// Under the setjmp backend this is effectively unreachable: FL_TRY calls FL_EXC_PUSH
+// before anything can throw, and an uninjected service means push_env is still
+// default_push, which aborts first. There is no such ordering here. The C++ backend's
+// FL_TRY does not call FL_EXC_PUSH at all. so an uninjected throw_exc really is called,
+// and a throw here reaches whatever FL_TRY encloses the call. That changes the failure
+// mode: a suite whose own FL_CATCH_ALL happens to enclose the call now reports an
+// uninjected service as an ordinary caught exception rather than a hard abort. The
+// stderr line below is the only diagnostic guaranteed to survive that.
+static FL_THROW_EXCEPTION_SERVICE_FN(default_throw) {
+    fprintf(stderr, "Exception service is uninitialized - no throw function provided\n");
+    fflush(stderr);
+    throw FLException(reason, details, file, line);
+}
+#else
 static FL_THROW_EXCEPTION_SERVICE_FN(default_throw) {
     FL_UNUSED(reason);
     FL_UNUSED(details);
@@ -44,6 +59,7 @@ static FL_THROW_EXCEPTION_SERVICE_FN(default_throw) {
     fflush(stderr);
     abort();
 }
+#endif // FL_EXC_BACKEND_CXX
 
 // FIXME: revisit FL_THREAD_LOCAL and consider either removing it and adding a mutex, or
 // ensuring the set function gets called for each new thread.
