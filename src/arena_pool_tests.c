@@ -25,7 +25,7 @@
 #include <faultline/fl_test.h>
 #include <faultline/fl_threads.h>
 
-#include <stdatomic.h>
+#include "atomic.h" // FL_ATOMIC and the C11 atomic_* calls
 #include <string.h>
 
 typedef struct TestPool {
@@ -64,7 +64,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Roundtrip", TestPool, test_pool_roundtrip, setup_poo
 
 FL_TYPE_TEST_SETUP_CLEANUP("Calloc zeroes", TestPool, test_pool_calloc, setup_pool,
                            cleanup_pool) {
-    unsigned char *mem = ARENA_POOL_CALLOC_THROW(t->pool, 8, 8);
+    unsigned char *mem = (unsigned char *)ARENA_POOL_CALLOC_THROW(t->pool, 8, 8);
     for (size_t i = 0; i < 64; i++) {
         FL_ASSERT_EQ_SIZE_T((size_t)mem[i], 0);
     }
@@ -73,10 +73,10 @@ FL_TYPE_TEST_SETUP_CLEANUP("Calloc zeroes", TestPool, test_pool_calloc, setup_po
 
 FL_TYPE_TEST_SETUP_CLEANUP("Realloc preserves", TestPool, test_pool_realloc, setup_pool,
                            cleanup_pool) {
-    char *mem = ARENA_POOL_MALLOC_THROW(t->pool, 32);
+    char *mem = (char *)ARENA_POOL_MALLOC_THROW(t->pool, 32);
     memset(mem, 0x5C, 32);
 
-    char *grown = ARENA_POOL_REALLOC_THROW(t->pool, mem, 4096);
+    char *grown = (char *)ARENA_POOL_REALLOC_THROW(t->pool, mem, 4096);
     for (size_t i = 0; i < 32; i++) {
         FL_ASSERT_EQ_SIZE_T((size_t)(unsigned char)grown[i], 0x5C);
     }
@@ -193,7 +193,8 @@ static int distinct_worker(void *arg) {
     // Hold the shard until both workers have one, so they cannot share.
     atomic_fetch_add(da->arrived, 1);
     while (atomic_load(da->arrived) < 2) {
-        thrd_sleep(&(struct timespec){.tv_nsec = 1000000}, NULL);
+        struct timespec nap = {.tv_sec = 0, .tv_nsec = 1000000};
+        thrd_sleep(&nap, NULL);
     }
 
     arena_pool_free_throw(da->pool, mem, __FILE__, __LINE__);

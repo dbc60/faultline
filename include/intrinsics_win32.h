@@ -38,7 +38,7 @@ extern "C" {
 // inconsistent with the CRT's annotated ones. Annotating them is not an option: the
 // point of declaring them here is to replace the CRT versions.
 FL_ANALYSIS_SUPPRESS(28251)
-void *CDECL memcpy(void *restrict dst, void const *restrict src, size_t n);
+void *CDECL memcpy(void *FL_RESTRICT dst, void const *FL_RESTRICT src, size_t n);
 #ifdef _MSC_VER
 #pragma intrinsic(memcpy)
 #endif

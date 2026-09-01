@@ -200,7 +200,7 @@ static Arena *new_arena_common(size_t commit, u32 reserve, bool synchronized) {
         = ARENA_ALIGNED_SIZE + ALIGN_UP(commit, TWO_SIZE_T_SIZES) + CHUNK_SENTINEL_SIZE;
     Region *region = new_region(size, reserve);
 
-    Arena *arena       = REGION_TO_MEM(region);
+    Arena *arena       = (Arena *)REGION_TO_MEM(region);
     arena->initialized = true;
     arena->base        = (Chunk *)(((char *)arena) + ARENA_ALIGNED_SIZE);
     arena->top         = (FreeChunk *)arena->base;

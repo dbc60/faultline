@@ -150,7 +150,7 @@ DigitalSearchTree *dst_rightmost_leaf(DigitalSearchTree *dst);
  * @param left_shift the number of bits to left-shift the key to place the discriminator
  * bit in the most significant position.
  */
-void dst_insert(DigitalSearchTree *restrict dst, DigitalSearchTree *restrict node,
+void dst_insert(DigitalSearchTree *FL_RESTRICT dst, DigitalSearchTree *FL_RESTRICT node,
                 flag64 left_shift);
 
 /**

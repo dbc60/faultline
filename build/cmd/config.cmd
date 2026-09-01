@@ -23,9 +23,11 @@ SETLOCAL ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 
 :: /GR- disable C++ RTTI. We don't need runtime type information.
 
-:: /EHsc enable C++ EH (no SEH exceptions) (/EHs),
-:: and  extern "C" defaults to nothrow (/EHc). That is, the compiler assumes
-:: that functions declared as extern "C" never throw a C++ exception.
+:: /EHs enable C++ EH (no SEH exceptions). /EHc is deliberately absent: it
+:: assumes extern "C" functions never throw, which lets the compiler drop the
+:: cleanup around a call into the exception service. A throw routed through
+:: that service would then skip destructors in any C++ frame between the
+:: throw site and the handler, with no diagnostic.
 
 :: /EHa- disable C++ Exception Handling, so we don't have stack unwind code.
 :: Casey says we don't need it.
@@ -129,7 +131,7 @@ SET ANALYZE_FLAGS=/analyze /analyze:only /analyze:WX- /analyze:external- /wd6246
 :: /Gm-     disable minimal rebuild
 :: /GR-     disable C++ RTTI
 :: /EHa-    disable C++ EH (w/ SEH exceptions)
-:: /EHsc    enable C++ EH, extern "C" defaults to nothrow
+:: /EHs     enable C++ EH; extern "C" functions may throw
 :: /GS-     turn off security checks
 :: /Gs9999999 set the stack probe size to 9,999,999 bytes. This value will basically
 ::            eliminate stack probes.
@@ -153,14 +155,14 @@ SET ANALYZE_FLAGS=/analyze /analyze:only /analyze:WX- /analyze:external- /wd6246
 :: Choose 32-bit or 64-bit build
 if %x86% EQU 1 (
 SET CommonCompilerFlags=/nologo ^
-    /Zc:wchar_t,forScope,inline /Gd /Gm- /GR- /EHa- /EHsc ^
+    /Zc:wchar_t,forScope,inline /Gd /Gm- /GR- /EHa- /EHs ^
     /GS- /Gs9999999 /std:c17 /experimental:c11atomics /Oi /WX /W4 /volatile:iso /wd4127 /FC /D_UNICODE ^
     /DUNICODE /D_WIN32 /DWIN32 /D_X86_=1 /D__STDC_WANT_LIB_EXT1__=1
 SET CommonLinkerFlags=/MACHINE:X86 /nologo /incremental:no /MANIFESTUAC /opt:ref ^
     /DEBUG /STACK:0x100000,0x100000
 ) else if %x64% EQU 1 (
 SET CommonCompilerFlags=/nologo ^
-    /Zc:wchar_t,forScope,inline /Gd /Gm- /GR- /EHa- /EHsc ^
+    /Zc:wchar_t,forScope,inline /Gd /Gm- /GR- /EHa- /EHs ^
     /GS- /Gs9999999 /std:c17 /experimental:c11atomics /Oi /WX /W4 /volatile:iso /wd4127 /FC /D_UNICODE ^
     /DUNICODE /D_WIN32 /DWIN32 /D_WIN64 /D_AMD64_=1 /D__STDC_WANT_LIB_EXT1__=1
 SET CommonLinkerFlags=/MACHINE:X64 /nologo /incremental:no /MANIFESTUAC /opt:ref ^

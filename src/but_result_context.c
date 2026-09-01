@@ -33,7 +33,8 @@ static void grow_capacity(BasicContext *bctx) {
         count        = increment;
     }
 
-    new_results = realloc(bctx->results, new_capacity * sizeof(ResultContext));
+    new_results
+        = (ResultContext *)realloc(bctx->results, new_capacity * sizeof(ResultContext));
     if (new_results) {
         // Initialize new memory block
         memset(&new_results[bctx->results_capacity], 0, count * sizeof(ResultContext));

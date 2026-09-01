@@ -64,11 +64,12 @@ static DWORD dword_transfer_size(size_t bytes) {
  * @return an open handle, or INVALID_HANDLE_VALUE on failure
  */
 static HANDLE open_long_path(char const *path, int wlen, DWORD access, DWORD creation) {
-    HANDLE handle = INVALID_HANDLE_VALUE;
-    WCHAR *full   = NULL;
-    WCHAR *ext    = NULL;
+    HANDLE handle   = INVALID_HANDLE_VALUE;
+    WCHAR *full     = NULL;
+    WCHAR *ext      = NULL;
+    DWORD  full_len = 0;
 
-    WCHAR *wpath = FL_MALLOC((size_t)wlen * sizeof(WCHAR));
+    WCHAR *wpath = (WCHAR *)FL_MALLOC((size_t)wlen * sizeof(WCHAR));
     if (wpath == NULL) {
         return INVALID_HANDLE_VALUE;
     }
@@ -81,11 +82,11 @@ static HANDLE open_long_path(char const *path, int wlen, DWORD access, DWORD cre
         goto cleanup;
     }
 
-    DWORD full_len = GetFullPathNameW(wpath, 0, NULL, NULL);
+    full_len = GetFullPathNameW(wpath, 0, NULL, NULL);
     if (full_len == 0) {
         goto cleanup;
     }
-    full = FL_MALLOC((size_t)full_len * sizeof(WCHAR));
+    full = (WCHAR *)FL_MALLOC((size_t)full_len * sizeof(WCHAR));
     if (full == NULL) {
         goto cleanup;
     }
@@ -100,7 +101,7 @@ static HANDLE open_long_path(char const *path, int wlen, DWORD access, DWORD cre
         size_t       prefix_len = wcslen(prefix);
         size_t       body_len   = wcslen(body);
 
-        ext = FL_MALLOC((prefix_len + body_len + 1) * sizeof(WCHAR));
+        ext = (WCHAR *)FL_MALLOC((prefix_len + body_len + 1) * sizeof(WCHAR));
         if (ext == NULL) {
             goto cleanup;
         }

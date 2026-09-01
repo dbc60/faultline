@@ -15,6 +15,7 @@
 #include "bits.h"                                  // for BITS_RIGHT_MSB_LEAST
 #include "chunk.h"                                 // for CHUNK_SIZE
 #include <faultline/fl_abbreviated_types.h>        // for flag64
+#include <faultline/fl_macros.h>                   // for FL_RESTRICT
 #include <faultline/fl_exception_service_assert.h> // for assert, FL_ASSERT_DETAILS
 
 DigitalSearchTree *dst_leftmost_leaf(DigitalSearchTree *dst) {
@@ -39,7 +40,7 @@ DigitalSearchTree *dst_rightmost_leaf(DigitalSearchTree *dst) {
     return child;
 }
 
-void dst_insert(DigitalSearchTree *restrict root, DigitalSearchTree *restrict node,
+void dst_insert(DigitalSearchTree *FL_RESTRICT root, DigitalSearchTree *FL_RESTRICT node,
                 flag64 left_shift) {
     DigitalSearchTree *child = root;
     size_t             size  = CHUNK_SIZE(node);

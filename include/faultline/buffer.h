@@ -142,7 +142,7 @@ static inline void buffer_initialize(Buffer *buf, Arena *arena, size_t capacity,
     buf->count        = 0;
     buf->capacity     = capacity;
     buf->element_size = element_size;
-    buf->mem          = mem;
+    buf->mem          = (char *)mem;
     buf->initialized  = true;
     buf->created      = created;
 }

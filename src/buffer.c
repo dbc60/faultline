@@ -51,11 +51,12 @@ static void increase_capacity(Buffer *buf, size_t count) {
 
     if (buf->capacity == 0) {
         FL_ASSERT_NULL(buf->mem);
-        buf->mem = ARENA_MALLOC_THROW(buf->arena, new_capacity * buf->element_size);
+        buf->mem
+            = (char *)ARENA_MALLOC_THROW(buf->arena, new_capacity * buf->element_size);
     } else {
         FL_ASSERT_NOT_NULL(buf->mem);
-        buf->mem = ARENA_REALLOC_THROW(buf->arena, buf->mem,
-                                       new_capacity * buf->element_size);
+        buf->mem = (char *)ARENA_REALLOC_THROW(buf->arena, buf->mem,
+                                               new_capacity * buf->element_size);
     }
     buf->capacity = new_capacity;
 }
@@ -63,7 +64,7 @@ static void increase_capacity(Buffer *buf, size_t count) {
 Buffer *new_buffer(Arena *arena, size_t capacity, size_t element_size) {
     FL_ASSERT_DETAILS(element_size != 0, "element_size is zero");
 
-    Buffer *buf = ARENA_MALLOC_THROW(arena, sizeof *buf);
+    Buffer *buf = (Buffer *)ARENA_MALLOC_THROW(arena, sizeof *buf);
     void   *mem = NULL;
     if (capacity > 0) {
         mem = ARENA_CALLOC_THROW(arena, capacity, element_size);

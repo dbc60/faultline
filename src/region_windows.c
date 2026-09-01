@@ -12,14 +12,14 @@
 #include <faultline/fl_macros.h>                   // for FL_ANALYSIS_SUPPRESS
 #include <faultline/fl_exception_service_assert.h> // for FL_ASSERT*
 #include <faultline/fl_try.h>                      // for FL_THROW_DETAILS, FL_THROW
-#include <stdatomic.h>                             // for atomic_fetch_add
-#include <stddef.h>                                // for size_t, NULL, ptrdiff_t
-#include <stdint.h>                                // for UINT32_MAX
-#include "bits.h"                                  // for ALIGN_UP, ALIGN_DOWN
-#include <faultline/fl_exception_service.h>        // for fl_internal_error
-#include "region.h"                                // for Region, region_initializati...
-#include "fl_lock.h"                               // for fl_lock_init, fl_lock_destroy
-#include "win32_platform.h"                        // for get_memory_info
+#include "atomic.h"                         // FL_ATOMIC and the C11 atomic_* calls
+#include <stddef.h>                         // for size_t, NULL, ptrdiff_t
+#include <stdint.h>                         // for UINT32_MAX
+#include "bits.h"                           // for ALIGN_UP, ALIGN_DOWN
+#include <faultline/fl_exception_service.h> // for fl_internal_error
+#include "region.h"                         // for Region, region_initializati...
+#include "fl_lock.h"                        // for fl_lock_init, fl_lock_destroy
+#include "win32_platform.h"                 // for get_memory_info
 
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
@@ -86,7 +86,7 @@ Region *new_custom_region(size_t commit, u32 reserve, u32 granularity_multiplier
     // of the granularity.
     to_reserve = (size_t)reserve * (size_t)applied_granularity
                  + ALIGN_UP(to_commit, applied_granularity);
-    top        = VirtualAlloc(0, to_reserve, MEM_RESERVE, PAGE_NOACCESS);
+    top        = (char *)VirtualAlloc(0, to_reserve, MEM_RESERVE, PAGE_NOACCESS);
     if (top == NULL) {
         FL_THROW(region_initialization_failure);
     }
@@ -136,9 +136,9 @@ size_t commit(Region *region, size_t to_commit) {
     }
 
     /* Check returned pointer for consistency */
-    FL_ASSERT_DETAILS(commit_address == region->end_committed,
+    FL_ASSERT_DETAILS(commit_address == end_committed,
                       "commit address(0x%p), top committed(0x%p), to-commit(%zu)",
-                      commit_address, region->end_committed, to_commit);
+                      commit_address, end_committed, to_commit);
 
     /* address must be on a page boundary */
     FL_ASSERT_ZERO_SIZE_T((size_t)commit_address % region->page_size);
@@ -159,7 +159,7 @@ void decommit(Region *region, size_t decommit_size) {
     // frees the whole reservation with MEM_RELEASE.
     FL_ANALYSIS_SUPPRESS(6250)
     FL_ASSERT_TRUE(VirtualFree(page, decommit_size, MEM_DECOMMIT));
-    region->end_committed = page;
+    region->end_committed = (char *)page;
 }
 
 /**
@@ -206,7 +206,7 @@ size_t extend_region(Region *region, size_t to_commit) {
                 if (base_reserved == NULL) {
                     FL_THROW_DETAILS(region_out_of_memory,
                                      "failed to reserve %zu bytes at 0x%p", to_reserve,
-                                     region->end_reserved);
+                                     atomic_load(&region->end_reserved));
                 }
 
                 // Verify that the returned pointer is the expected address
@@ -254,7 +254,7 @@ void shrink(Region *region, size_t release_size, size_t to_decommit) {
         FL_ASSERT_TRUE(VirtualFree(memory_info.AllocationBase, 0, MEM_RELEASE));
 
         // Lather, rinse, and repeat
-        region->end_reserved = memory_info.AllocationBase;
+        region->end_reserved = (char *)memory_info.AllocationBase;
         end_reserved         = region->end_reserved - 1;
         to_release -= last_reserved_size;
         VirtualQuery(end_reserved, &memory_info, sizeof memory_info);
@@ -264,7 +264,7 @@ void shrink(Region *region, size_t release_size, size_t to_decommit) {
     // Ensure committed memory pointer is within bounds of reserved memory
     if (region->end_committed > region->end_reserved) {
         to_decommit -= region->end_committed - region->end_reserved;
-        region->end_committed = region->end_reserved;
+        atomic_store(&region->end_committed, atomic_load(&region->end_reserved));
     }
 
     if (to_decommit > 0) {
