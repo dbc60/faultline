@@ -231,7 +231,7 @@ static inline void set_initialize(Set *set, Arena *arena, size_t capacity,
 static inline void init_set_custom(Set *set, Arena *arena, size_t capacity,
                                    size_t element_size, hash_fn_t hash,
                                    compare_fn_t compare) {
-    set->buckets = ARENA_CALLOC_THROW(arena, capacity, sizeof(SetEntry));
+    set->buckets = (SetEntry *)ARENA_CALLOC_THROW(arena, capacity, sizeof(SetEntry));
     for (size_t i = 0; i < capacity; i++) {
         DLIST_INIT(&set->buckets[i].link);
     }

@@ -255,7 +255,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Fault Free Pointer Clears Pointer", MemServiceTestCa
 
 // arena_free_pointer is the layer the providers delegate to. Freeing through it
 // must leave the arena in the same state as arena_free plus a manual clear, so
-// the two spellings are interchangeable at a call site.
+// the two functions are interchangeable at a call site.
 FL_TYPE_TEST_SETUP_CLEANUP("Arena Free Pointer Matches Free", ArenaServiceTestCase,
                            arena_free_pointer_matches_free, arena_setup, arena_cleanup) {
     Arena *arena = t->ctx.arena;

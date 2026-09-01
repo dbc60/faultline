@@ -52,7 +52,8 @@ int main(int argc, char **argv) {
     FL_TRY {
         RuntimeCommand *parsed_cmd
             = parse_command_with_globals(get_faultline_commands(),
-                                         get_faultline_global_options(), argc, argv);
+                                         get_faultline_global_options(), argc,
+                                         (char const **)argv);
 
         // Configure logging from parsed options
         FLLogLevel log_level

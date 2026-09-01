@@ -106,7 +106,7 @@ static bool is_option(char const *str) {
  * @throw command_error if option is invalid or missing required argument
  * @throw command_out_of_memory if an allocation fails
  */
-static RuntimeOption *parse_option(FormalCommand const *cmd, char **argv,
+static RuntimeOption *parse_option(FormalCommand const *cmd, char const **argv,
                                    int argc_remaining, int *consumed_out) {
     char const *arg            = argv[0];
     char const *option_name    = NULL;
@@ -130,11 +130,11 @@ static RuntimeOption *parse_option(FormalCommand const *cmd, char **argv,
         option_name = arg + 2; // skip "--"
 
         // Check for "="
-        char *equals = strchr(option_name, '=');
+        char const *equals = (char const *)strchr(option_name, '=');
         if (equals != NULL) {
             // Option has embedded argument: --option=value
             size_t name_len  = equals - option_name;
-            char  *name_copy = malloc(name_len + 1);
+            char  *name_copy = (char *)malloc(name_len + 1);
             if (name_copy == NULL) {
                 FL_THROW(command_out_of_memory);
             }
@@ -146,7 +146,7 @@ static RuntimeOption *parse_option(FormalCommand const *cmd, char **argv,
         }
     } else if (arg[0] == '-' && arg[1] != '\0') {
         // Parse short form: -o or -o=value
-        char *short_name = malloc(2);
+        char *short_name = (char *)malloc(2);
         if (short_name == NULL) {
             FL_THROW(command_out_of_memory);
         }
@@ -182,7 +182,7 @@ static RuntimeOption *parse_option(FormalCommand const *cmd, char **argv,
     }
 
     // Allocate and populate RuntimeOption
-    RuntimeOption *runtime_opt = malloc(sizeof(RuntimeOption));
+    RuntimeOption *runtime_opt = (RuntimeOption *)malloc(sizeof(RuntimeOption));
     if (runtime_opt == NULL) {
         FL_THROW(command_out_of_memory);
     }
@@ -230,7 +230,8 @@ void free_command(RuntimeCommand *cmd) {
  * @throw command_error if the command, subcommand, or their options can't be parsed.
  * @throw command_out_of_memory if an allocation fails.
  */
-RuntimeCommand *parse_command(FormalCommand const *formals, int argc, char **argv) {
+RuntimeCommand *parse_command(FormalCommand const *formals, int argc,
+                              char const **argv) {
     if (argc < 2) {
         FL_THROW(command_error);
     }
@@ -239,7 +240,7 @@ RuntimeCommand *parse_command(FormalCommand const *formals, int argc, char **arg
     FormalCommand const *cmd = find_command(formals, argv[1]);
 
     // Allocate RuntimeCommand
-    RuntimeCommand *runtime_cmd = malloc(sizeof(RuntimeCommand));
+    RuntimeCommand *runtime_cmd = (RuntimeCommand *)malloc(sizeof(RuntimeCommand));
     if (runtime_cmd == NULL) {
         FL_THROW(command_out_of_memory);
     }
@@ -256,9 +257,9 @@ RuntimeCommand *parse_command(FormalCommand const *formals, int argc, char **arg
     // the catch block, which releases them and the partially built runtime_cmd before
     // rethrowing. Each pointer is cleared as its ownership transfers so the catch block
     // never frees an object twice.
-    RuntimeOption *volatile option_array = NULL;
-    char **volatile positional_array     = NULL;
-    char **volatile sub_argv             = NULL;
+    RuntimeOption *volatile option_array   = NULL;
+    char const **volatile positional_array = NULL;
+    char const **volatile sub_argv         = NULL;
 
     // Permute options and operands (GNU-style) for commands that take no subcommands, so
     // options may appear before or after positional arguments (e.g. `run a.dll --db x`).
@@ -271,14 +272,14 @@ RuntimeCommand *parse_command(FormalCommand const *formals, int argc, char **arg
 
     FL_TRY {
         // Parse options - collect them in a dynamic array first
-        option_array = malloc(sizeof(RuntimeOption) * option_capacity);
+        option_array = (RuntimeOption *)(sizeof(RuntimeOption) * option_capacity);
         if (option_array == NULL) {
             FL_THROW(command_out_of_memory);
         }
 
         if (permute) {
             // argc is a safe upper bound on the number of operands.
-            positional_array = malloc(sizeof(char *) * argc);
+            positional_array = (char const **)malloc(sizeof(char *) * argc);
             if (positional_array == NULL) {
                 FL_THROW(command_out_of_memory);
             }
@@ -300,7 +301,8 @@ RuntimeCommand *parse_command(FormalCommand const *formals, int argc, char **arg
 
             // Try to parse as option
             int            consumed;
-            RuntimeOption *opt = parse_option(cmd, &argv[i], argc - i, &consumed);
+            RuntimeOption *opt
+                = parse_option(cmd, (char const **)&argv[i], argc - i, &consumed);
 
             if (opt == NULL) {
                 // For a command with subcommands, the first non-option token begins the
@@ -318,7 +320,8 @@ RuntimeCommand *parse_command(FormalCommand const *formals, int argc, char **arg
             if (option_count >= option_capacity) {
                 option_capacity *= 2;
                 RuntimeOption *new_array
-                    = realloc(option_array, sizeof(RuntimeOption) * option_capacity);
+                    = (RuntimeOption *)realloc(option_array,
+                                               sizeof(RuntimeOption) * option_capacity);
                 if (new_array == NULL) {
                     free(opt); // loop-local; the catch block cannot reach it
                     FL_THROW(command_out_of_memory);
@@ -333,7 +336,8 @@ RuntimeCommand *parse_command(FormalCommand const *formals, int argc, char **arg
 
         // NULL-terminate the options array
         RuntimeOption *final_options
-            = realloc(option_array, sizeof(RuntimeOption) * (option_count + 1));
+            = (RuntimeOption *)realloc(option_array,
+                                       sizeof(RuntimeOption) * (option_count + 1));
         if (final_options == NULL) {
             FL_THROW(command_out_of_memory);
         }
@@ -358,7 +362,7 @@ RuntimeCommand *parse_command(FormalCommand const *formals, int argc, char **arg
             if (subcmd != NULL) {
                 // Parse subcommand recursively
                 // Create new argv starting with "program subcommand ..."
-                sub_argv = malloc(sizeof(char *) * (argc - i + 1));
+                sub_argv = (char const **)malloc(sizeof(char *) * (argc - i + 1));
                 if (sub_argv == NULL) {
                     FL_THROW(command_out_of_memory);
                 }
@@ -396,14 +400,15 @@ RuntimeCommand *parse_command(FormalCommand const *formals, int argc, char **arg
             } else {
                 int remaining = argc - i;
                 if (remaining > 0) {
-                    runtime_cmd->args = malloc(sizeof(char *) * remaining);
+                    runtime_cmd->args
+                        = (char const **)malloc(sizeof(char *) * remaining);
                     if (runtime_cmd->args == NULL) {
                         FL_THROW(command_out_of_memory);
                     }
 
                     runtime_cmd->argc = remaining;
                     for (int j = 0; j < remaining; j++) {
-                        runtime_cmd->args[j] = argv[i + j];
+                        runtime_cmd->args[j] = (char const *)argv[i + j];
                     }
                 }
             }
@@ -450,7 +455,7 @@ RuntimeCommand *parse_command(FormalCommand const *formals, int argc, char **arg
  */
 RuntimeCommand *parse_command_with_globals(FormalCommand const *formals,
                                            FormalOption const *globals, int argc,
-                                           char **argv) {
+                                           char const **argv) {
     if (argc < 2) {
         FL_THROW(command_error);
     }
@@ -482,7 +487,7 @@ RuntimeCommand *parse_command_with_globals(FormalCommand const *formals,
 
     // Reorder to "program <command> <leading options...> <rest...>" so the
     // leading options are parsed as the command's own options.
-    char **reordered = malloc(sizeof(char *) * argc);
+    char const **reordered = (char const **)malloc(sizeof(char *) * argc);
     if (reordered == NULL) {
         FL_THROW(command_out_of_memory);
     }

@@ -30,8 +30,8 @@ typedef enum {
 } FLLogLevel;
 
 /*
- * The write signature, in one place. FL_WRITE_LOG_FN spells the function (this
- * macro declares and defines it, and names its type); FL_WRITE_LOG_PTR spells a
+ * The write signature, in one place. FL_WRITE_LOG_FN names the function (this
+ * macro declares and defines it, and names its type); FL_WRITE_LOG_PTR names a
  * pointer to it.
  *
  * FL_PRINTF_FORMAT(5, 6) marks `format` as parameter 5 with its arguments
@@ -40,7 +40,7 @@ typedef enum {
  * already knows, so without the attribute a wrong conversion is silent.
  *
  * It leads the function declaration because that is the only position GCC
- * accepts on a definition, and FL_WRITE_LOG_FN spells definitions too. It is
+ * accepts on a definition, and FL_WRITE_LOG_FN names definitions too. It is
  * restated on the pointer because the attribute does not travel from a typedef
  * to a call made through a pointer of that type, and a consumer build reaches
  * the service only through the pointer.

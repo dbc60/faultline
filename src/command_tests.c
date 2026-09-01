@@ -88,8 +88,8 @@ static void cleanup_command_tests(FLTestCase *tc) {
 // ============================================================================
 FL_TYPE_TEST_SETUP_CLEANUP("find command valid", TestCommand, test_find_command_valid,
                            setup_command_tests, cleanup_command_tests) {
-    char *argv[] = {"program", "simple"};
-    int   argc   = 2;
+    char const *argv[] = {"program", (char *)"simple"};
+    int         argc   = 2;
 
     RuntimeCommand *cmd = parse_command(t->commands, argc, argv);
 
@@ -100,8 +100,8 @@ FL_TYPE_TEST_SETUP_CLEANUP("find command valid", TestCommand, test_find_command_
 
 FL_TYPE_TEST_SETUP_CLEANUP("find invalid command", TestCommand,
                            test_find_command_invalid, setup_command_tests, NULL) {
-    char *argv[] = {"program", "nonexistent"};
-    int   argc   = 2;
+    char const *argv[] = {"program", (char *)"nonexistent"};
+    int         argc   = 2;
 
     // Should throw command_unknown exception
     FL_TRY {
@@ -118,8 +118,8 @@ FL_TYPE_TEST_SETUP_CLEANUP("find invalid command", TestCommand,
 // ============================================================================
 FL_TYPE_TEST_SETUP_CLEANUP("parse simple command", TestCommand,
                            test_parse_simple_command, setup_command_tests, NULL) {
-    char *argv[] = {"program", "simple"};
-    int   argc   = 2;
+    char const *argv[] = {"program", (char *)"simple"};
+    int         argc   = 2;
 
     RuntimeCommand *cmd = parse_command(t->commands, argc, argv);
 
@@ -133,8 +133,8 @@ FL_TYPE_TEST_SETUP_CLEANUP("parse simple command", TestCommand,
 FL_TYPE_TEST_SETUP_CLEANUP("parse command with long option", TestCommand,
                            test_parse_command_with_long_option, setup_command_tests,
                            NULL) {
-    char *argv[] = {"program", "options", "--force"};
-    int   argc   = 3;
+    char const *argv[] = {"program", (char *)"options", (char *)"--force"};
+    int         argc   = 3;
 
     RuntimeCommand *cmd = parse_command(t->commands, argc, argv);
 
@@ -147,8 +147,8 @@ FL_TYPE_TEST_SETUP_CLEANUP("parse command with long option", TestCommand,
 FL_TYPE_TEST_SETUP_CLEANUP("parse command with short option", TestCommand,
                            test_parse_command_with_short_option, setup_command_tests,
                            NULL) {
-    char *argv[] = {"program", "options", "-f"};
-    int   argc   = 3;
+    char const *argv[] = {"program", (char *)"options", (char *)"-f"};
+    int         argc   = 3;
 
     RuntimeCommand *cmd = parse_command(t->commands, argc, argv);
 
@@ -159,8 +159,8 @@ FL_TYPE_TEST_SETUP_CLEANUP("parse command with short option", TestCommand,
 FL_TYPE_TEST_SETUP_CLEANUP("parse option with argument space", TestCommand,
                            test_parse_option_with_argument_space, setup_command_tests,
                            NULL) {
-    char *argv[] = {"program", "options", "--limit", "10"};
-    int   argc   = 4;
+    char const *argv[] = {"program", (char *)"options", (char *)"--limit", (char *)"10"};
+    int         argc   = 4;
 
     RuntimeCommand *cmd = parse_command(t->commands, argc, argv);
 
@@ -175,8 +175,8 @@ FL_TYPE_TEST_SETUP_CLEANUP("parse option with argument space", TestCommand,
 FL_TYPE_TEST_SETUP_CLEANUP("parse option with argument equals", TestCommand,
                            test_parse_option_with_argument_equals, setup_command_tests,
                            NULL) {
-    char *argv[] = {"program", "options", "--limit=25"};
-    int   argc   = 3;
+    char const *argv[] = {"program", (char *)"options", (char *)"--limit=25"};
+    int         argc   = 3;
 
     RuntimeCommand *cmd = parse_command(t->commands, argc, argv);
 
@@ -189,8 +189,9 @@ FL_TYPE_TEST_SETUP_CLEANUP("parse option with argument equals", TestCommand,
 
 FL_TYPE_TEST_SETUP_CLEANUP("parse multiple options", TestCommand,
                            test_parse_multiple_options, setup_command_tests, NULL) {
-    char *argv[] = {"program", "options", "-f", "-v", "--limit", "5"};
-    int   argc   = 6;
+    char const *argv[] = {"program",    (char *)"options", (char *)"-f",
+                          (char *)"-v", (char *)"--limit", (char *)"5"};
+    int         argc   = 6;
 
     RuntimeCommand *cmd = parse_command(t->commands, argc, argv);
 
@@ -205,8 +206,9 @@ FL_TYPE_TEST_SETUP_CLEANUP("parse multiple options", TestCommand,
 
 FL_TYPE_TEST_SETUP_CLEANUP("parse positional arguments", TestCommand,
                            test_parse_positional_arguments, setup_command_tests, NULL) {
-    char *argv[] = {"program", "simple", "arg1", "arg2", "arg3"};
-    int   argc   = 5;
+    char const *argv[]
+        = {"program", (char *)"simple", (char *)"arg1", (char *)"arg2", (char *)"arg3"};
+    int argc = 5;
 
     RuntimeCommand *cmd = parse_command(t->commands, argc, argv);
 
@@ -219,8 +221,9 @@ FL_TYPE_TEST_SETUP_CLEANUP("parse positional arguments", TestCommand,
 
 FL_TYPE_TEST_SETUP_CLEANUP("parse options and arguments", TestCommand,
                            test_parse_options_and_arguments, setup_command_tests, NULL) {
-    char *argv[]
-        = {"program", "options", "-f", "--limit", "10", "file1.txt", "file2.txt"};
+    char const *argv[]
+        = {"program",    (char *)"options",   (char *)"-f",       (char *)"--limit",
+           (char *)"10", (char *)"file1.txt", (char *)"file2.txt"};
     int argc = 7;
 
     RuntimeCommand *cmd = parse_command(t->commands, argc, argv);
@@ -237,8 +240,9 @@ FL_TYPE_TEST_SETUP_CLEANUP("parse interspersed options", TestCommand,
                            test_parse_interspersed_options, setup_command_tests, NULL) {
     // A command without subcommands permutes options and operands, so an option
     // after the first positional (like `run a.dll --db x`) is still recognized.
-    char *argv[] = {"program", "options", "file1.txt", "--limit", "5", "file2.txt"};
-    int   argc   = 6;
+    char const *argv[] = {"program",         (char *)"options", (char *)"file1.txt",
+                          (char *)"--limit", (char *)"5",       (char *)"file2.txt"};
+    int         argc   = 6;
 
     RuntimeCommand *cmd = parse_command(t->commands, argc, argv);
 
@@ -253,8 +257,9 @@ FL_TYPE_TEST_SETUP_CLEANUP("parse leading global options", TestCommand,
                            test_parse_global_options, setup_command_tests, NULL) {
     // --force and --limit appear before the command; with a globals set they are
     // consumed as global options and the command still parses.
-    char *argv[] = {"program", "--force", "--limit", "9", "options", "file.txt"};
-    int   argc   = 6;
+    char const *argv[] = {"program",   (char *)"--force", (char *)"--limit",
+                          (char *)"9", (char *)"options", (char *)"file.txt"};
+    int         argc   = 6;
 
     RuntimeCommand *cmd
         = parse_command_with_globals(t->commands, test_options, argc, argv);
@@ -270,9 +275,9 @@ FL_TYPE_TEST_SETUP_CLEANUP("parse leading global options", TestCommand,
 FL_TYPE_TEST_SETUP_CLEANUP("unknown leading option errors", TestCommand,
                            test_parse_unknown_global, setup_command_tests, NULL) {
     // A leading option that is not in the globals set is an error, not a command.
-    char *argv[] = {"program", "--nope", "options"};
-    int   argc   = 3;
-    bool  threw  = false;
+    char const *argv[] = {"program", (char *)"--nope", (char *)"options"};
+    int         argc   = 3;
+    bool        threw  = false;
 
     FL_TRY {
         (void)parse_command_with_globals(t->commands, test_options, argc, argv);
@@ -287,8 +292,9 @@ FL_TYPE_TEST_SETUP_CLEANUP("unknown leading option errors", TestCommand,
 
 FL_TYPE_TEST_SETUP_CLEANUP("parse double-dash separator", TestCommand,
                            test_parse_double_dash_separator, setup_command_tests, NULL) {
-    char *argv[] = {"program", "simple", "--", "--not-an-option", "-f"};
-    int   argc   = 5;
+    char const *argv[] = {"program", (char *)"simple", (char *)"--",
+                          (char *)"--not-an-option", (char *)"-f"};
+    int         argc   = 5;
 
     RuntimeCommand *cmd = parse_command(t->commands, argc, argv);
 
@@ -302,8 +308,8 @@ FL_TYPE_TEST_SETUP_CLEANUP("parse double-dash separator", TestCommand,
 
 FL_TYPE_TEST_SETUP_CLEANUP("parse subcommand", TestCommand, test_parse_subcommand,
                            setup_command_tests, NULL) {
-    char *argv[] = {"program", "nested", "sub1"};
-    int   argc   = 3;
+    char const *argv[] = {"program", (char *)"nested", (char *)"sub1"};
+    int         argc   = 3;
 
     RuntimeCommand *cmd = parse_command(t->commands, argc, argv);
 
@@ -316,8 +322,9 @@ FL_TYPE_TEST_SETUP_CLEANUP("parse subcommand", TestCommand, test_parse_subcomman
 FL_TYPE_TEST_SETUP_CLEANUP("parse subcommand with options", TestCommand,
                            test_parse_subcommand_with_options, setup_command_tests,
                            NULL) {
-    char *argv[] = {"program", "nested", "sub2", "--force", "--limit", "42"};
-    int   argc   = 6;
+    char const *argv[] = {"program",         (char *)"nested",  (char *)"sub2",
+                          (char *)"--force", (char *)"--limit", (char *)"42"};
+    int         argc   = 6;
 
     RuntimeCommand *cmd = parse_command(t->commands, argc, argv);
 
@@ -334,8 +341,8 @@ FL_TYPE_TEST_SETUP_CLEANUP("parse subcommand with options", TestCommand,
 
 FL_TYPE_TEST_SETUP_CLEANUP("has option", TestCommand, test_has_option,
                            setup_command_tests, NULL) {
-    char *argv[] = {"program", "options", "-f", "-v"};
-    int   argc   = 4;
+    char const *argv[] = {"program", (char *)"options", (char *)"-f", (char *)"-v"};
+    int         argc   = 4;
 
     RuntimeCommand *cmd = parse_command(t->commands, argc, argv);
 
@@ -347,8 +354,9 @@ FL_TYPE_TEST_SETUP_CLEANUP("has option", TestCommand, test_has_option,
 
 FL_TYPE_TEST_SETUP_CLEANUP("get string option", TestCommand, test_get_string_option,
                            setup_command_tests, NULL) {
-    char *argv[] = {"program", "options", "--limit", "hello"};
-    int   argc   = 4;
+    char const *argv[]
+        = {"program", (char *)"options", (char *)"--limit", (char *)"hello"};
+    int argc = 4;
 
     RuntimeCommand *cmd = parse_command(t->commands, argc, argv);
 
@@ -361,8 +369,8 @@ FL_TYPE_TEST_SETUP_CLEANUP("get string option", TestCommand, test_get_string_opt
 
 FL_TYPE_TEST_SETUP_CLEANUP("get int option", TestCommand, test_get_int_option,
                            setup_command_tests, NULL) {
-    char *argv[] = {"program", "options", "--limit", "99"};
-    int   argc   = 4;
+    char const *argv[] = {"program", (char *)"options", (char *)"--limit", (char *)"99"};
+    int         argc   = 4;
 
     RuntimeCommand *cmd = parse_command(t->commands, argc, argv);
 
@@ -381,8 +389,9 @@ FL_TYPE_TEST_SETUP_CLEANUP("get int option", TestCommand, test_get_int_option,
 // global option (e.g. --db) works regardless of where it sits on the line.
 FL_TYPE_TEST_SETUP_CLEANUP("option resolves from subcommand", TestCommand,
                            test_option_from_subcommand, setup_command_tests, NULL) {
-    char *argv[] = {"program", "nested", "sub2", "--force", "--limit", "42"};
-    int   argc   = 6;
+    char const *argv[] = {"program",         (char *)"nested",  (char *)"sub2",
+                          (char *)"--force", (char *)"--limit", (char *)"42"};
+    int         argc   = 6;
 
     RuntimeCommand *cmd = parse_command(t->commands, argc, argv);
 
@@ -397,8 +406,10 @@ FL_TYPE_TEST_SETUP_CLEANUP("option resolves from subcommand", TestCommand,
 // When the same option is set at both levels, the outer (current) level wins.
 FL_TYPE_TEST_SETUP_CLEANUP("parent option wins over subcommand", TestCommand,
                            test_option_parent_precedence, setup_command_tests, NULL) {
-    char *argv[] = {"program", "nested", "--limit", "5", "sub2", "--limit", "42"};
-    int   argc   = 7;
+    char const *argv[]
+        = {"program",      (char *)"nested",  (char *)"--limit", (char *)"5",
+           (char *)"sub2", (char *)"--limit", (char *)"42"};
+    int argc = 7;
 
     RuntimeCommand *cmd = parse_command(t->commands, argc, argv);
 
@@ -411,8 +422,8 @@ FL_TYPE_TEST_SETUP_CLEANUP("parent option wins over subcommand", TestCommand,
 // An option present at no level returns the default through the whole chain.
 FL_TYPE_TEST_SETUP_CLEANUP("option absent through chain", TestCommand,
                            test_option_absent_through_chain, setup_command_tests, NULL) {
-    char *argv[] = {"program", "nested", "sub1"};
-    int   argc   = 3;
+    char const *argv[] = {"program", (char *)"nested", (char *)"sub1"};
+    int         argc   = 3;
 
     RuntimeCommand *cmd = parse_command(t->commands, argc, argv);
 

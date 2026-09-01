@@ -20,8 +20,8 @@
 #endif
 #include <Windows.h> // SRWLOCK, AcquireSRWLockExclusive
 
-_Static_assert(sizeof(SRWLOCK) <= sizeof(FLLock),
-               "FLLock storage is too small for SRWLOCK");
+FL_STATIC_ASSERT(sizeof(SRWLOCK) <= sizeof(FLLock),
+                 "FLLock storage is too small for SRWLOCK");
 
 bool fl_lock_init(FLLock *lock) {
     InitializeSRWLock((PSRWLOCK)lock);

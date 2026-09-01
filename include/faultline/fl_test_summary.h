@@ -89,7 +89,7 @@ static inline char const *faultline_details_copy(Arena *arena, char const *detai
         return "";
     }
     size_t len  = strlen(details) + 1;
-    char  *copy = ARENA_MALLOC_THROW(arena, len);
+    char  *copy = (char *)ARENA_MALLOC_THROW(arena, len);
     memcpy(copy, details, len);
     return copy;
 }

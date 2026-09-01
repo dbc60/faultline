@@ -205,18 +205,19 @@ typedef struct FreeChunk {
  * margin and on a 32-bit one by a narrow one, so they are checked at compile time on
  * whichever target is being built rather than left to a test run.
  */
-_Static_assert((CHUNK_ALIGNMENT & (CHUNK_ALIGNMENT - 1)) == 0,
-               "CHUNK_ALIGNMENT must be a power of two");
-_Static_assert(CHUNK_INUSE_FLAGS < CHUNK_ALIGNMENT,
-               "the in-use flags must fit in the low bits an aligned size leaves clear");
-_Static_assert(CHUNK_MIN_SIZE >= sizeof(FreeChunk),
-               "a minimal chunk must hold a free chunk's bookkeeping");
-_Static_assert(CHUNK_MIN_SIZE > CHUNK_ALIGNED_SIZE,
-               "a minimal chunk must leave room for a payload after its header");
-_Static_assert((CHUNK_MIN_SIZE % CHUNK_ALIGNMENT) == 0,
-               "CHUNK_MIN_SIZE must be a multiple of CHUNK_ALIGNMENT");
-_Static_assert((CHUNK_ALIGNED_SIZE % CHUNK_ALIGNMENT) == 0,
-               "CHUNK_ALIGNED_SIZE must be a multiple of CHUNK_ALIGNMENT");
+FL_STATIC_ASSERT((CHUNK_ALIGNMENT & (CHUNK_ALIGNMENT - 1)) == 0,
+                 "CHUNK_ALIGNMENT must be a power of two");
+FL_STATIC_ASSERT(
+    CHUNK_INUSE_FLAGS < CHUNK_ALIGNMENT,
+    "the in-use flags must fit in the low bits an aligned size leaves clear");
+FL_STATIC_ASSERT(CHUNK_MIN_SIZE >= sizeof(FreeChunk),
+                 "a minimal chunk must hold a free chunk's bookkeeping");
+FL_STATIC_ASSERT(CHUNK_MIN_SIZE > CHUNK_ALIGNED_SIZE,
+                 "a minimal chunk must leave room for a payload after its header");
+FL_STATIC_ASSERT((CHUNK_MIN_SIZE % CHUNK_ALIGNMENT) == 0,
+                 "CHUNK_MIN_SIZE must be a multiple of CHUNK_ALIGNMENT");
+FL_STATIC_ASSERT((CHUNK_ALIGNED_SIZE % CHUNK_ALIGNMENT) == 0,
+                 "CHUNK_ALIGNED_SIZE must be a multiple of CHUNK_ALIGNMENT");
 
 /**
  * @brief Return the size of the previous chunk in memory.

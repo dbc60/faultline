@@ -30,8 +30,8 @@
 static FL_THREAD_LOCAL FLExceptionEnvironment *g_stack;
 
 static FLExceptionService g_exception_service = {
-    .pop_env   = flp_pop,
     .push_env  = flp_push,
+    .pop_env   = flp_pop,
     .throw_exc = flp_throw,
 };
 

@@ -17,7 +17,8 @@ SETLOCAL ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 ::
 :: Per-unit cl output lands in <obj>\cpp_probe\<stem>.txt so a failing unit can be
 :: read without rerunning. The first error in each file is the one worth reading:
-:: when many units report the same header, one fix there clears all of them.
+:: when many units report the same header, one fix there clears all of them. Pass
+:: verbose to list every error of every failing unit instead of only the first.
 
 SET PROJECT_NAME="FaultLine C++ Probe"
 SET PROJECT_NAME=%PROJECT_NAME:"=%
@@ -118,7 +119,8 @@ SET /A PROBE_ERRS=0
 :: parsed twice, which eats one level of escaping.
 FOR /F "usebackq delims=" %%L IN (`%SystemRoot%\System32\findstr.exe /C:"error C" "%DIR_PROBE%\%STEM%.txt"`) DO CALL :PROBE_TALLY "%%L"
 ECHO   FAIL %~1 -- !PROBE_ERRS! errors
-IF DEFINED PROBE_FIRST ECHO          first: !PROBE_FIRST!
+IF %verbose% EQU 1 CALL :PROBE_LIST "%DIR_PROBE%\%STEM%.txt"
+IF %verbose% NEQ 1 IF DEFINED PROBE_FIRST ECHO          first: !PROBE_FIRST!
 EXIT /B 0
 
 :PROBE_OK
@@ -132,6 +134,23 @@ EXIT /B 0
 :PROBE_TALLY
 SET /A PROBE_ERRS+=1
 IF NOT DEFINED PROBE_FIRST SET "PROBE_FIRST=%~1"
+EXIT /B 0
+
+:: List every diagnostic in one unit's capture, for a verbose run. A second pass
+:: over the same file rather than a buffer filled by the first: the count line has
+:: to print before the list it introduces, and the count is not known until that
+:: first pass ends.
+:PROBE_LIST
+FOR /F "usebackq delims=" %%L IN (`%SystemRoot%\System32\findstr.exe /C:"error C" %1`) DO CALL :PROBE_ECHO "%%L"
+EXIT /B 0
+
+:: Echo one diagnostic. The text reaches ECHO through a variable and delayed
+:: expansion because cl writes < and > in type names: delayed expansion runs after
+:: the line is parsed for redirection, so those characters print instead of
+:: opening a file.
+:PROBE_ECHO
+SET "PROBE_LINE=%~1"
+ECHO          !PROBE_LINE!
 EXIT /B 0
 
 :SUCCESS

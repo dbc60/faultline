@@ -42,7 +42,7 @@
 // faults.
 #define FL_THREAD_LOCAL _Thread_local
 #elif defined(_WIN32) || defined(WIN32)
-// MSVC does not support _Thread_local; use its proprietary spelling instead.
+// MSVC does not support _Thread_local; use its proprietary definition instead.
 #define FL_THREAD_LOCAL __declspec(thread)
 #else
 #define FL_THREAD_LOCAL _Thread_local
@@ -127,6 +127,33 @@ extern "C" {
 #define FL_ANALYSIS_SUPPRESS(code) __pragma(warning(suppress : code))
 #else
 #define FL_ANALYSIS_SUPPRESS(code)
+#endif
+
+/**
+ * @brief Assert a condition at compile time.
+ *
+ * C defines _Static_assert; C++ has static_assert and does not declare the C keyword. A
+ * translation unit that compiles under either dialect needs the version chosen for it,
+ * e.g. src\chunk.h's layout invariants, which the unity builds compile as C and a C++
+ * suite host would compile as C++.
+ */
+#if defined(__cplusplus)
+#define FL_STATIC_ASSERT(cond, msg) static_assert(cond, msg)
+#else
+#define FL_STATIC_ASSERT(cond, msg) _Static_assert(cond, msg)
+#endif
+
+/**
+ * @brief Declare a pointer parameter as non-aliasing.
+ *
+ * restrict is a C keyword with no C++ equivalent in the standard; both MSVC and
+ * clang accept __restrict there instead. Same meaning to the optimizer, a different
+ * name in each dialect.
+ */
+#if defined(__cplusplus)
+#define FL_RESTRICT __restrict
+#else
+#define FL_RESTRICT restrict
 #endif
 
 /// The number of elements in a fixed-size array

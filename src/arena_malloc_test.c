@@ -85,8 +85,8 @@ static void setup_top(FLTestCase *btc) {
 
 // Allocate all of the top chunk and verify the chunk and the new top
 FL_TYPE_TEST_SETUP_CLEANUP("Allocate - Top", TestRequest, test_top, setup_top, cleanup) {
-    Chunk *all = arena_malloc_throw(t->arena, CHUNK_PAYLOAD_SIZE(t->arena->top),
-                                    __FILE__, __LINE__);
+    Chunk *all = (Chunk *)arena_malloc_throw(t->arena, CHUNK_PAYLOAD_SIZE(t->arena->top),
+                                             __FILE__, __LINE__);
     ARENA_CHECK_INUSE_CHUNK(t->arena, CHUNK_FROM_MEMORY(all));
     ARENA_CHECK_TOP_CHUNK(t->arena);
 }
@@ -114,7 +114,8 @@ static void setup_many(FLTestCase *btc) {
 // delete in the same order in which items were allocated
 FL_TYPE_TEST_SETUP_CLEANUP("In-Order Delete", TestRequest, test_in_order_delete,
                            setup_many, cleanup) {
-    DListI64 *head = arena_malloc_throw(t->arena, sizeof(*head), __FILE__, __LINE__);
+    DListI64 *head
+        = (DListI64 *)arena_malloc_throw(t->arena, sizeof(*head), __FILE__, __LINE__);
 
     DLIST_INIT(&head->link);
     head->value = -1;
@@ -123,7 +124,8 @@ FL_TYPE_TEST_SETUP_CLEANUP("In-Order Delete", TestRequest, test_in_order_delete,
         DListI64 *node = NULL;
 
         FL_TRY {
-            node = arena_malloc_throw(t->arena, sizeof(*node), __FILE__, __LINE__);
+            node = (DListI64 *)arena_malloc_throw(t->arena, sizeof(*node), __FILE__,
+                                                  __LINE__);
         }
         FL_CATCH(arena_out_of_memory) {
             char details[1024];
@@ -160,7 +162,8 @@ FL_TYPE_TEST_SETUP_CLEANUP("In-Order Delete", TestRequest, test_in_order_delete,
 // delete in the reverse order in which items were allocated
 FL_TYPE_TEST_SETUP_CLEANUP("Reverse-Order Delete", TestRequest,
                            test_reverse_order_delete, setup_many, cleanup) {
-    DListI64 *head = arena_malloc_throw(t->arena, sizeof(*head), __FILE__, __LINE__);
+    DListI64 *head
+        = (DListI64 *)arena_malloc_throw(t->arena, sizeof(*head), __FILE__, __LINE__);
 
     DLIST_INIT(&head->link);
     head->value = -1;
@@ -169,7 +172,8 @@ FL_TYPE_TEST_SETUP_CLEANUP("Reverse-Order Delete", TestRequest,
         DListI64 *node = NULL;
 
         FL_TRY {
-            node = arena_malloc_throw(t->arena, sizeof(*node), __FILE__, __LINE__);
+            node = (DListI64 *)arena_malloc_throw(t->arena, sizeof(*node), __FILE__,
+                                                  __LINE__);
         }
         FL_CATCH(arena_out_of_memory) {
             char details[1024];

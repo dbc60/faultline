@@ -73,11 +73,12 @@ static DWORD stream_dword_transfer_size(size_t bytes) {
  * @return an open handle, or INVALID_HANDLE_VALUE on failure
  */
 static HANDLE stream_open_long_path(char const *path, int wlen) {
-    HANDLE handle = INVALID_HANDLE_VALUE;
-    WCHAR *full   = NULL;
-    WCHAR *ext    = NULL;
+    HANDLE handle   = INVALID_HANDLE_VALUE;
+    WCHAR *full     = NULL;
+    WCHAR *ext      = NULL;
+    DWORD  full_len = 0;
 
-    WCHAR *wpath = FL_MALLOC((size_t)wlen * sizeof(WCHAR));
+    WCHAR *wpath = (WCHAR *)FL_MALLOC((size_t)wlen * sizeof(WCHAR));
     if (wpath == NULL) {
         return INVALID_HANDLE_VALUE;
     }
@@ -90,11 +91,11 @@ static HANDLE stream_open_long_path(char const *path, int wlen) {
         goto cleanup;
     }
 
-    DWORD full_len = GetFullPathNameW(wpath, 0, NULL, NULL);
+    full_len = GetFullPathNameW(wpath, 0, NULL, NULL);
     if (full_len == 0) {
         goto cleanup;
     }
-    full = FL_MALLOC((size_t)full_len * sizeof(WCHAR));
+    full = (WCHAR *)FL_MALLOC((size_t)full_len * sizeof(WCHAR));
     if (full == NULL) {
         goto cleanup;
     }
@@ -109,7 +110,7 @@ static HANDLE stream_open_long_path(char const *path, int wlen) {
         size_t       prefix_len = wcslen(prefix);
         size_t       body_len   = wcslen(body);
 
-        ext = FL_MALLOC((prefix_len + body_len + 1) * sizeof(WCHAR));
+        ext = (WCHAR *)FL_MALLOC((prefix_len + body_len + 1) * sizeof(WCHAR));
         if (ext == NULL) {
             goto cleanup;
         }
@@ -180,10 +181,9 @@ FL_STREAM_CLOSE_FN(flp_stream_close) {
 }
 
 FL_STREAM_CONSOLE_FN(flp_stream_console) {
-    FlpConsoleHandle *slot   = (which == FL_STREAM_STDERR) ? &g_stderr_handle
-                                                             : &g_stdout_handle;
-    DWORD             std_id = (which == FL_STREAM_STDERR) ? STD_ERROR_HANDLE
-                                                             : STD_OUTPUT_HANDLE;
+    FlpConsoleHandle *slot
+        = (which == FL_STREAM_STDERR) ? &g_stderr_handle : &g_stdout_handle;
+    DWORD std_id = (which == FL_STREAM_STDERR) ? STD_ERROR_HANDLE : STD_OUTPUT_HANDLE;
 
     // Re-queried on every call (not cached at first use) so a caller that redirects
     // the process's std handle after this service has already been used still gets

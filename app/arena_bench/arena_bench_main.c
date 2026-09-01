@@ -59,7 +59,7 @@
 #include <faultline/fl_try.h>               // FL_TRY, FL_CATCH_ALL, FL_END_TRY
 #include <faultline/size.h>                 // MEBI
 
-#include <stdatomic.h>
+#include "atomic.h" // FL_ATOMIC and the C11 atomic_* calls
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -431,7 +431,7 @@ typedef struct XferShared {
     size_t          iters;
     atomic_int     *ready;
     atomic_int     *go;
-    _Atomic(void *) ring[BM_XFER_RING];
+    FL_ATOMIC(void *) ring[BM_XFER_RING];
 } XferShared;
 
 typedef struct XferArg {
@@ -456,7 +456,7 @@ static int bm_xfer_worker(void *arg) {
             for (size_t i = 0; i < sh->iters; i++) {
                 void *mem             = ARENA_POOL_MALLOC_THROW(sh->pool, 64);
                 *(char *)mem          = (char)i;
-                _Atomic(void *) *slot = &sh->ring[i % BM_XFER_RING];
+                FL_ATOMIC(void *) *slot = &sh->ring[i % BM_XFER_RING];
                 while (atomic_load_explicit(slot, memory_order_relaxed) != NULL) {
                     YieldProcessor();
                 }
@@ -464,7 +464,7 @@ static int bm_xfer_worker(void *arg) {
             }
         } else {
             for (size_t i = 0; i < sh->iters; i++) {
-                _Atomic(void *) *slot = &sh->ring[i % BM_XFER_RING];
+                FL_ATOMIC(void *) *slot = &sh->ring[i % BM_XFER_RING];
                 void            *mem;
                 while ((mem = atomic_load_explicit(slot, memory_order_acquire))
                        == NULL) {

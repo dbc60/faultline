@@ -47,7 +47,8 @@ Set *new_set_custom(Arena *arena, size_t capacity, size_t element_size, hash_fn_
     }
 
     // Allocate a Set plus capacity buckets where each bucket is a SetEntry
-    Set *set = ARENA_CALLOC_THROW(arena, 1, sizeof(*set) + capacity * sizeof(SetEntry));
+    Set *set     = (Set *)ARENA_CALLOC_THROW(arena, 1,
+                                             sizeof(*set) + capacity * sizeof(SetEntry));
     set->buckets = (SetEntry *)(set + 1);
 
     for (size_t i = 0; i < capacity; i++) {
@@ -119,7 +120,8 @@ bool set_insert(Set *set, void const *value) {
 
     if (!already_in_set) {
         SetEntry *entry
-            = ARENA_MALLOC_THROW(set->arena, sizeof *entry + set->element_size);
+            = (SetEntry *)ARENA_MALLOC_THROW(set->arena,
+                                             sizeof *entry + set->element_size);
         DLIST_INIT(&entry->link);
         memcpy(entry + 1, value, set->element_size);
         DLIST_INSERT_NEXT(&bucket->link, &entry->link);

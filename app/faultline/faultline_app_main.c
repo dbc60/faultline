@@ -62,7 +62,8 @@ FL_APP_MAIN(faultline_app_main) {
     FL_TRY {
         RuntimeCommand *parsed_cmd
             = parse_command_with_globals(get_faultline_commands(),
-                                         get_faultline_global_options(), argc, argv);
+                                         get_faultline_global_options(), argc,
+                                         (char const **)argv);
 
         // Logging level/destination are platform-owned resources; hand the user's parsed
         // choices back to the platform to apply.
@@ -97,8 +98,8 @@ FL_APP_MAIN(faultline_app_main) {
             .fctx           = &fctx,
             .log_level      = (int)log_level,
             .arena          = platform->arena,
-            .platform       = platform, // lets command_run load/inject suites
             .junit_xml_path = get_string_option(parsed_cmd, "junit-xml", NULL),
+            .platform       = platform, // lets command_run load/inject suites
         };
 
         ectx.cmd.command->handler((RuntimeCommand *)&ectx);

@@ -67,7 +67,7 @@ static FL_EXCEPTION_HANDLER_FN(exception_handler) {
 
     if (FL_UNEXPECTED_EXCEPTION(reason)) {
         FLTestSuite *ts = bctx->ts;
-        char        *name;
+        char const  *name;
         if (bctx->index < ts->count) {
             name = ts->test_cases[bctx->index]->name;
         } else {

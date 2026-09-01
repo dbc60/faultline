@@ -21,10 +21,11 @@
 #include <faultline/fl_abbreviated_types.h> // FL_COMPARE
 #include <faultline/fl_exception_types.h>   // FLExceptionReason
 #include <faultline/fl_exception_service_assert.h> // FL_ASSERT* and fl_unexpected_failure declaration
+#include <faultline/fl_macros.h>                   // FL_STATIC_ASSERT
 #include <faultline/fl_try.h>                      // FL_THROW* macros
 #include <faultline/size.h>                        // SIZE_ macros
 
-#include <stdatomic.h> // _Atomic, atomic_load_explicit
+#include "atomic.h" // FL_ATOMIC and the C11 atomic_* calls
 #include <stddef.h>    // size_t
 #include <stdio.h>     // snprintf
 
@@ -284,15 +285,15 @@
  * to either can put the size classes out of step with the maps that index them. These
  * catch that at compile time, on whichever target is being built.
  */
-_Static_assert(ARENA_SMALL_BIN_COUNT <= ARENA_SMALL_MAP_BITS,
+FL_STATIC_ASSERT(ARENA_SMALL_BIN_COUNT <= ARENA_SMALL_MAP_BITS,
                "small bins outnumber the bits of the small-bin map that indexes them");
-_Static_assert(((size_t)1 << ARENA_LOG2_MIN_LARGE_CHUNK) == ARENA_MIN_LARGE_CHUNK,
+FL_STATIC_ASSERT(((size_t)1 << ARENA_LOG2_MIN_LARGE_CHUNK) == ARENA_MIN_LARGE_CHUNK,
                "ARENA_LOG2_MIN_LARGE_CHUNK is not the log2 of ARENA_MIN_LARGE_CHUNK");
-_Static_assert(ARENA_MIN_LARGE_CHUNK == ARENA_MAX_SMALL_CHUNK + CHUNK_ALIGNMENT,
+FL_STATIC_ASSERT(ARENA_MIN_LARGE_CHUNK == ARENA_MAX_SMALL_CHUNK + CHUNK_ALIGNMENT,
                "a gap or overlap sits between the largest small chunk and the "
                "smallest large one");
-_Static_assert(ARENA_LARGE_BIN_COUNT > 0, "there must be at least one large bin");
-_Static_assert(ARENA_LARGE_BIN_COUNT <= ARENA_LARGE_BIN_COUNT_MAX,
+FL_STATIC_ASSERT(ARENA_LARGE_BIN_COUNT > 0, "there must be at least one large bin");
+FL_STATIC_ASSERT(ARENA_LARGE_BIN_COUNT <= ARENA_LARGE_BIN_COUNT_MAX,
                "the topmost large bin describes chunks a size_t cannot express");
 
 /**
@@ -338,8 +339,9 @@ struct Arena {
         *large_bins[ARENA_LARGE_BIN_COUNT]; ///< Each bin represents a size class and the
                                             ///< set of chunks within are maintained in a
                                             ///< digital search tree.
-    _Atomic size_t footprint;     ///< the number of bytes reserved from system memory.
-    _Atomic size_t max_footprint; ///< a statistic tracking the largest number of bytes
+    FL_ATOMIC(size_t) footprint; ///< the number of bytes reserved from system memory.
+    FL_ATOMIC(size_t)
+    max_footprint;          ///< a statistic tracking the largest number of bytes
                                   ///< used.
     size_t footprint_limit;       ///< A configurable maximum number of bytes that this
                                   ///< allocator may use. Zero means there is no limit.
@@ -349,8 +351,9 @@ struct Arena {
                            ///< zero, free any Regions that don't contain used chunks
                            ///< and reset the counter to MAX_RELEASE_CHECK_RATE or the
                            ///< current number of regions, whichever is greater.
-    _Atomic size_t  allocations;
-    _Atomic(void *) remote_free_head; ///< blocks freed by non-owning threads
+    FL_ATOMIC(size_t) allocations;
+    FL_ATOMIC(void *)
+    remote_free_head;  ///< blocks freed by non-owning threads
                                       ///< (arena_free_remote); the owner
                                       ///< reclaims them at its next allocation.
     bool synchronized;                ///< when true, the public mutating entry points
@@ -365,9 +368,11 @@ typedef struct Arena Arena;
  * to the fields that actually carry the bits, so narrowing either map breaks the build
  * rather than silently shifting past the end of a word.
  */
-_Static_assert(ARENA_SMALL_MAP_BITS == sizeof(((struct Arena *)0)->small_map) * U08_BIT,
+FL_STATIC_ASSERT(ARENA_SMALL_MAP_BITS
+                     == sizeof(((struct Arena *)0)->small_map) * U08_BIT,
                "ARENA_SMALL_MAP_BITS does not match the width of Arena::small_map");
-_Static_assert(ARENA_LARGE_BIN_COUNT <= sizeof(((struct Arena *)0)->large_map) * U08_BIT,
+FL_STATIC_ASSERT(ARENA_LARGE_BIN_COUNT
+                     <= sizeof(((struct Arena *)0)->large_map) * U08_BIT,
                "large bins outnumber the bits of Arena::large_map that indexes them");
 
 /*

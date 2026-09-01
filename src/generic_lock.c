@@ -12,11 +12,13 @@
  */
 #include "fl_lock.h"
 
+#include <faultline/fl_macros.h>  // FL_STATIC_ASSERT
 #include <faultline/fl_threads.h> // mtx_t, mtx_init, mtx_lock
 
-_Static_assert(sizeof(mtx_t) <= sizeof(FLLock), "FLLock storage is too small for mtx_t");
-_Static_assert(_Alignof(mtx_t) <= _Alignof(FLLock),
-               "FLLock storage is under-aligned for mtx_t");
+FL_STATIC_ASSERT(sizeof(mtx_t) <= sizeof(FLLock),
+                 "FLLock storage is too small for mtx_t");
+FL_STATIC_ASSERT(_Alignof(mtx_t) <= _Alignof(FLLock),
+                 "FLLock storage is under-aligned for mtx_t");
 
 bool fl_lock_init(FLLock *lock) {
     return mtx_init((mtx_t *)lock, mtx_plain) == thrd_success;

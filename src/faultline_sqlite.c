@@ -1498,7 +1498,8 @@ void faultline_show_test_failures(sqlite3 *db, char const *suite_name, int limit
         int           source_line   = sqlite3_column_int(stmt, COL_SOURCE_LINE);
         sqlite3_int64 resource_addr = sqlite3_column_int64(stmt, COL_RESOURCE_ADDR);
 
-        char const *result_str = faultline_result_code_to_string(result_code);
+        char const *result_str
+            = faultline_result_code_to_string((FLResultCode)result_code);
 
         // Format allocation location with resource address if available
         char location[41]; // 40 chars + null terminator
@@ -1661,7 +1662,8 @@ void faultline_show_run_details(sqlite3 *db, int run_id) {
                     = (char const *)sqlite3_column_text(stmt, TEST_COL_SOURCE_FILE);
                 int source_line = sqlite3_column_int(stmt, TEST_COL_SOURCE_LINE);
 
-                char const *result_str = faultline_result_code_to_string(result_code);
+                char const *result_str
+                    = faultline_result_code_to_string((FLResultCode)result_code);
 
                 // Format location string
                 char location[31]; // 30 chars + null terminator

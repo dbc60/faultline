@@ -362,8 +362,8 @@ typedef struct LeakRecordCtx {
 } LeakRecordCtx;
 
 static inline void record_one_leak(void const *value, void *ctx_) {
-    InjectorResource const *ir  = value;
-    LeakRecordCtx          *ctx = ctx_;
+    InjectorResource const *ir  = (InjectorResource const *)value;
+    LeakRecordCtx          *ctx = (LeakRecordCtx *)ctx_;
     faultline_test_summary_add_fault(ctx->summary, ctx->fault_index, FL_LEAK, ir->value,
                                      "resource leak detected", "memory not freed",
                                      ir->file, ir->line);

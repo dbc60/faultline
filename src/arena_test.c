@@ -493,7 +493,8 @@ static void setup_small_from_large_arena_test(FLTestCase *btc) {
 
     SUM_OVER_SCALED_RANGE(lower, upper, CHUNK_ALIGNMENT, size);
     at->arena  = new_arena(size + cnt * sizeof(void *), 0);
-    void **mem = arena_malloc_throw(at->arena, cnt * sizeof(void *), __FILE__, __LINE__);
+    void **mem = (void **)arena_malloc_throw(at->arena, cnt * sizeof(void *), __FILE__,
+                                             __LINE__);
 
     for (u32 i = 0; i < cnt; i++) {
         FL_ASSERT_DETAILS(
@@ -615,7 +616,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Small Exact-Fit Allocation", ArenaTestSmall,
 
     // write to a small part of the chunk to simulate it being in use and to
     // dispel any lingering spirits of invalid memory address.
-    char *mem = CHUNK_TO_MEMORY(ch);
+    char *mem = (char *)CHUNK_TO_MEMORY(ch);
     for (u32 j = 0; j < CHUNK_MIN_PAYLOAD; j++) {
         mem[j] = 0;
     }
@@ -633,7 +634,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Small Exact-Fit Allocation", ArenaTestSmall,
     for (; sz < ARENA_MAX_SMALL_REQUEST; sz += CHUNK_ALIGNMENT) {
         ch = (FreeChunk *)allocate_from_top(arena, sz, __FILE__, __LINE__);
         // use the allocated memory
-        mem = CHUNK_TO_MEMORY(ch);
+        mem = (char *)CHUNK_TO_MEMORY(ch);
         for (u32 j = 0; j < CHUNK_MIN_PAYLOAD; j++) {
             mem[j] = 0;
         }
@@ -839,7 +840,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Large Chunk Allocation", ArenaTestLarge, test_large_
 
             // write to a small part of the chunk to simulate it being in use and to
             // dispel any lingering spirits of invalid memory address.
-            char *mem = CHUNK_TO_MEMORY(tree);
+            char *mem = (char *)CHUNK_TO_MEMORY(tree);
             for (u32 j = 0; j < CHUNK_MIN_PAYLOAD; j++) {
                 mem[j] = 0;
             }
@@ -889,9 +890,8 @@ FL_TYPE_TEST_SETUP_CLEANUP("Large Chunk Allocation", ArenaTestLarge, test_large_
                               actual);
 
             FreeChunk *expected = FREE_CHUNK_NEXT(ARENA_DST_TO_FREE_CHUNK(tree));
-            FL_ASSERT_DETAILS(expected == arena->top,
-                              "expected top 0x%p, actual 0x%p", expected,
-                              arena->top);
+            FL_ASSERT_DETAILS(expected == arena->top, "expected top 0x%p, actual 0x%p",
+                              expected, arena->top);
 
             free_chunk_merge_next(ARENA_DST_TO_FREE_CHUNK(tree));
             FL_ASSERT_DETAILS(CHUNK_SIZE(tree) == top_size,

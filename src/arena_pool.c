@@ -25,7 +25,7 @@
 #include "chunk.h"                        // CHUNK_PAYLOAD_SIZE
 #include "fl_lock.h"                      // FLLock
 
-#include <stdatomic.h>
+#include "atomic.h" // FL_ATOMIC and the C11 atomic_* calls
 #include <stddef.h>
 #include <string.h> // memcpy, memset
 
@@ -42,8 +42,8 @@ typedef enum ShardState {
 } ShardState;
 
 typedef struct ShardRecord {
-    Arena      *arena;
-    _Atomic int state;
+    Arena *arena;
+    FL_ATOMIC(int) state;
 } ShardRecord;
 
 struct ArenaPool {
@@ -64,7 +64,7 @@ struct ArenaPool {
  * destructor. The generation check prevents a stale binding from matching a
  * new pool that happens to occupy a released pool's address.
  */
-static _Atomic unsigned long g_pool_generation;
+static FL_ATOMIC(unsigned long) g_pool_generation;
 
 static FL_THREAD_LOCAL struct {
     ArenaPool    *pool;
@@ -151,7 +151,8 @@ static ShardRecord *arena_pool_thread_shard(ArenaPool *pool, char const *file,
 
 ArenaPool *new_arena_pool(size_t shard_commit, unsigned int shard_reserve) {
     Arena     *book = new_arena(0, 0);
-    ArenaPool *pool = arena_malloc_throw(book, sizeof(ArenaPool), __FILE__, __LINE__);
+    ArenaPool *pool
+        = (ArenaPool *)arena_malloc_throw(book, sizeof(ArenaPool), __FILE__, __LINE__);
 
     memset(pool, 0, sizeof *pool);
     pool->book          = book;

@@ -21,8 +21,9 @@
     (REGION_BYTES_COMMITTED(RGN) < (SZ) ? (SZ) - REGION_BYTES_COMMITTED(RGN) : 0)
 
 // region's reserved bytes are a multiple of the system granularity
-#define REGION_IS_RESERVED(RGN) \
-    (((size_t)(RGN)->end_reserved - (size_t)RGN) % RGN->granularity == 0)
+#define REGION_IS_RESERVED(RGN)                                                       \
+    (((size_t)atomic_load(&(RGN)->end_reserved) - (size_t)(RGN)) % (RGN)->granularity \
+     == 0)
 
 // Region exceptions
 FLExceptionReason region_out_of_memory          = "region out of memory";

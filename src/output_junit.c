@@ -176,7 +176,7 @@ void junit_init(JUnitXML *junit, Arena *arena, char const *path) {
 
     size_t norm_len = cwk_path_normalize(path, NULL, 0);
     size_t buf_size = norm_len + 1;
-    char  *buf      = ARENA_CALLOC_THROW(arena, 1, buf_size);
+    char  *buf      = (char *)ARENA_CALLOC_THROW(arena, 1, buf_size);
     initialize(junit, arena, path, buf, buf_size, JUNIT_PATH_ONLY);
 }
 
@@ -185,8 +185,8 @@ JUnitXML *new_junit(Arena *arena, char const *path) {
 
     size_t    norm_len = cwk_path_normalize(path, NULL, 0);
     size_t    buf_size = norm_len + 1;
-    JUnitXML *junit    = ARENA_CALLOC_THROW(arena, 1, sizeof(JUnitXML));
-    char     *buf      = ARENA_CALLOC_THROW(arena, 1, buf_size);
+    JUnitXML *junit    = (JUnitXML *)ARENA_CALLOC_THROW(arena, 1, sizeof(JUnitXML));
+    char     *buf      = (char *)ARENA_CALLOC_THROW(arena, 1, buf_size);
     initialize(junit, arena, path, buf, buf_size, JUNIT_ALL);
     return junit;
 }

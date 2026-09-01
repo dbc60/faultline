@@ -112,13 +112,13 @@ struct RuntimeCommand {
     FormalCommand const  *command; // link back to formal definition
     struct RuntimeOption *options; // NULL-terminated array
     struct RuntimeCommand
-          *subcommand; // a subcommand read from the command line, NULL if none
-    char **args;       // positional arguments
-    int    argc;       // argument count
+                *subcommand; // a subcommand read from the command line, NULL if none
+    char const **args;       // positional arguments
+    int          argc;       // argument count
 };
 
 // Command parsing
-RuntimeCommand *parse_command(FormalCommand const *formals, int argc, char **argv);
+RuntimeCommand *parse_command(FormalCommand const *formals, int argc, char const **argv);
 
 // Release a RuntimeCommand built by parse_command or parse_command_with_globals,
 // including its options array, positional-argument array, and subcommand chain.
@@ -130,7 +130,7 @@ void free_command(RuntimeCommand *cmd);
 // get parse_command's behavior.
 RuntimeCommand *parse_command_with_globals(FormalCommand const *formals,
                                            FormalOption const *globals, int argc,
-                                           char **argv);
+                                           char const **argv);
 
 // Command validation
 bool validate_command(RuntimeCommand const *cmd, char **error_msg);

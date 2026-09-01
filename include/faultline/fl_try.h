@@ -10,7 +10,7 @@
  * provider (flp_push/pop/throw) and the injected consumer accessor
  * (g_fla_exception_service); this header selects the hooks by whether
  * FL_PLATFORM_BUILD is defined, then defines the whole family once over them. A
- * translation unit gets exactly one backend, and call sites spell FL_TRY/FL_THROW
+ * translation unit gets exactly one backend, and call sites use FL_TRY/FL_THROW
  * the same either way.
  */
 #include <faultline/fl_exception_service.h> // fl_not_implemented, FL_*_EXCEPTION_SERVICE_FN

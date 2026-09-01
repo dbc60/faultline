@@ -10,7 +10,7 @@
  *
  * A 32-bit target provides only the 32-bit _BitScanForward and _BitScanReverse
  * intrinsics; the _BitScanForward64 and _BitScanReverse64 forms exist solely on
- * 64-bit targets. These wrappers present one spelling to callers, using the
+ * 64-bit targets. These wrappers present one function to callers, using the
  * native 64-bit intrinsic where it exists and composing two 32-bit scans where it
  * does not.
  *

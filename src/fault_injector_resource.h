@@ -38,7 +38,7 @@ static inline void injector_resource_init(InjectorResource    *ir,
 static inline u64 injector_resource_hash(Set const *set, void const *value) {
     FL_UNUSED(set);
     u64                     hash = 0;
-    InjectorResource const *ir   = value;
+    InjectorResource const *ir   = (InjectorResource const *)value;
     LOG_DEBUG("FAULT INJECTOR", "hash: SetEntry=0x%p", value);
     LOG_DEBUG("FAULT INJECTOR", "hash: InjectorResource=0x%p", ir);
     LOG_DEBUG("FAULT INJECTOR", "hash: IR value=0x%p", ir->value);
@@ -55,8 +55,8 @@ static inline u64 injector_resource_hash(Set const *set, void const *value) {
 static inline bool injector_resource_compare(Set const *set, void const *a,
                                              void const *b) {
     FL_UNUSED(set);
-    InjectorResource const *ira = a;
-    InjectorResource const *irb = b;
+    InjectorResource const *ira = (InjectorResource const *)a;
+    InjectorResource const *irb = (InjectorResource const *)b;
     LOG_VERBOSE("FAULT INJECTOR", "comparing 0x%p == 0x%p", ira->value, irb->value);
     return ira->value == irb->value;
 }

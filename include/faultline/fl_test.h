@@ -58,8 +58,8 @@ typedef struct FLTestSuite FLTestSuite;
     }                                            \
     FLTestCase TEST##_case = {                   \
         .name    = NAME,                         \
-        .setup   = fl_default_setup,             \
         .test    = TEST##_wrapper,               \
+        .setup   = fl_default_setup,             \
         .cleanup = fl_default_cleanup,           \
     };                                           \
     static void TEST(void)
@@ -80,8 +80,8 @@ typedef struct FLTestSuite FLTestSuite;
     }                                                     \
     FLTestCase TEST##_case = {                            \
         .name    = (NAME),                                \
-        .setup   = (SETUP),                               \
         .test    = TEST##_wrapper,                        \
+        .setup   = (SETUP),                               \
         .cleanup = (CLEANUP),                             \
     };                                                    \
     static void TEST(void)
@@ -107,10 +107,8 @@ typedef struct FLTestSuite FLTestSuite;
         TEST(t);                                                     \
     }                                                                \
     TYPE TEST##_case = {                                             \
-        .tc.name    = NAME,                                          \
-        .tc.setup   = SETUP,                                         \
-        .tc.test    = TEST##_wrapper,                                \
-        .tc.cleanup = CLEANUP,                                       \
+        .tc                                                                           \
+        = {.name = NAME, .test = TEST##_wrapper, .setup = SETUP, .cleanup = CLEANUP}, \
     };                                                               \
     static void TEST(TYPE *t)
 
@@ -121,10 +119,10 @@ typedef struct FLTestSuite FLTestSuite;
         TEST(t);                                   \
     }                                              \
     TYPE TEST##_case = {                           \
-        .tc.name    = NAME,                        \
-        .tc.setup   = fl_default_setup,            \
-        .tc.test    = TEST##_wrapper,              \
-        .tc.cleanup = fl_default_cleanup,          \
+        .tc = {.name    = NAME,                    \
+               .test    = TEST##_wrapper,          \
+               .setup   = fl_default_setup,        \
+               .cleanup = fl_default_cleanup},     \
     };                                             \
     static void TEST(TYPE *t)
 
@@ -146,10 +144,8 @@ typedef struct FLTestSuite FLTestSuite;
         TEST();                                                      \
     }                                                                \
     TYPE TEST##_case = {                                             \
-        .tc.name    = NAME,                                          \
-        .tc.setup   = SETUP,                                         \
-        .tc.test    = TEST##_wrapper,                                \
-        .tc.cleanup = CLEANUP,                                       \
+        .tc                                                                           \
+        = {.name = NAME, .test = TEST##_wrapper, .setup = SETUP, .cleanup = CLEANUP}, \
     };                                                               \
     static void TEST(void)
 
@@ -224,7 +220,7 @@ typedef FL_CLEANUP_FN(fl_cleanup_fn);
  * needed.
  */
 struct FLTestCase {
-    char          *name;    ///< the name of the test case
+    char const    *name;    ///< the name of the test case
     fl_test_fn    *test;    ///< the function that defines the test case
     fl_setup_fn   *setup;   ///< setup function. Use fl_default_setup if none needed
     fl_cleanup_fn *cleanup; ///< cleanup function. Use fl_default_cleanup if none needed
@@ -256,7 +252,7 @@ static inline FL_CLEANUP_FN(fl_default_cleanup) {
  * @brief A test suite has a name and an array of test cases.
  */
 struct FLTestSuite {
-    char        *name;       ///< the name of the test suite
+    char const  *name;       ///< the name of the test suite
     size_t       count;      ///< the number of test cases in the test suite
     FLTestCase **test_cases; ///< an array of test cases.
 };
