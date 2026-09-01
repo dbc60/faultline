@@ -133,6 +133,7 @@ COMMAND_HANDLER(version_cmd) {
     printf("  c11 threads    %s (mtx_t %u, thrd_t %u)\n",
            abi.threads_use_shim ? "fl_threads shim" : "toolchain <threads.h>",
            abi.sizeof_mtx_t, abi.sizeof_thrd_t);
-    printf("  exception env  %u bytes (jmp_buf %u)\n", abi.sizeof_exception_env,
-           abi.sizeof_jmp_buf);
+    printf("  exception env  %u bytes (jmp_buf %u), backend %s\n",
+           abi.sizeof_exception_env, abi.sizeof_jmp_buf,
+           fl_abi_backend_str(abi.backend));
 }

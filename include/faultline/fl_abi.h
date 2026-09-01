@@ -42,7 +42,7 @@ extern "C" {
  * non-breaking changes, like marketing new features or transitioning from development
  * (e.g., 0.MINOR.PATCH) to a stable release (e.g., 1.0.0). without tying compatibility
  * to the release. */
-#define FL_COMPATIBILITY_VERSION 1
+#define FL_COMPATIBILITY_VERSION 2
 
 /** Project version, reported by the version command and carried in FLAbiInfo. */
 #define FL_VERSION_MAJOR 0
@@ -69,6 +69,14 @@ extern "C" {
 #define FL_ABI_CRT_MSVC    1u
 #define FL_ABI_CRT_MINGW   2u
 #define FL_ABI_CRT_POSIX   3u
+
+// The exception backend (setjmp/longjmp vs. a real C++ throw, FL_EXC_BACKEND_CXX)
+// changes what FLExceptionEnvironment/FLExceptionFrame mean at the ABI level even when
+// their sizes happen to collide, so it is reported and checked alongside them rather
+// than folded into sizeof_exception_env.
+
+#define FL_ABI_BACKEND_SETJMP 0u
+#define FL_ABI_BACKEND_CXX    1u
 
 #if defined(__clang__)
 #define FL_ABI_COMPILER_ID  FL_ABI_COMPILER_CLANG
@@ -120,6 +128,8 @@ typedef struct FLAbiInfo {
     uint16_t sizeof_thrd_t;         ///< differs with the threads selection
     uint16_t sizeof_jmp_buf;        ///< equal size does not imply interchangeable
     uint16_t sizeof_exception_env;  ///< compare sizes between the executable and module
+    uint16_t backend;               ///< FL_ABI_BACKEND_*; zero on an image built before
+                                     ///< this field existed, which is FL_ABI_BACKEND_SETJMP
 } FLAbiInfo;
 
 /*
@@ -154,6 +164,11 @@ static inline void fl_fill_abi_info(FLAbiInfo *out) {
     out->sizeof_thrd_t         = (uint16_t)sizeof(thrd_t);
     out->sizeof_jmp_buf        = (uint16_t)sizeof(jmp_buf);
     out->sizeof_exception_env  = (uint16_t)sizeof(FLExceptionEnvironment);
+#if defined(FL_EXC_BACKEND_CXX)
+    out->backend = FL_ABI_BACKEND_CXX;
+#else
+    out->backend = FL_ABI_BACKEND_SETJMP;
+#endif
 }
 
 /**
@@ -177,7 +192,8 @@ static inline FLAbiVerdict fl_abi_check(FLAbiInfo const *host, FLAbiInfo const *
                || mod->sizeof_thrd_t != host->sizeof_thrd_t) {
         verdict = FL_ABI_THREADS_MISMATCH;
     } else if (mod->sizeof_jmp_buf != host->sizeof_jmp_buf
-               || mod->sizeof_exception_env != host->sizeof_exception_env) {
+               || mod->sizeof_exception_env != host->sizeof_exception_env
+               || mod->backend != host->backend) {
         verdict = FL_ABI_LAYOUT_MISMATCH;
     } else if (mod->compatibility_version != host->compatibility_version) {
         verdict = FL_ABI_VERSION_MISMATCH;
@@ -246,6 +262,22 @@ static inline char const *fl_abi_crt_str(uint32_t crt_id) {
         break;
     default:
         text = "unknown runtime";
+        break;
+    }
+    return text;
+}
+
+static inline char const *fl_abi_backend_str(uint32_t backend) {
+    char const *text;
+    switch (backend) {
+    case FL_ABI_BACKEND_SETJMP:
+        text = "setjmp/longjmp";
+        break;
+    case FL_ABI_BACKEND_CXX:
+        text = "C++ throw";
+        break;
+    default:
+        text = "unknown backend";
         break;
     }
     return text;
