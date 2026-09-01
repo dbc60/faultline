@@ -287,9 +287,18 @@ static inline char const *fl_abi_backend_str(uint32_t backend) {
  * @brief The symbol a loadable module exports so a host can read its identity.
  *
  * FL_GET_TEST_SUITE emits the definition, so a module gains it with no edit.
+ *
+ * The prototype below is what makes that definition safe to find by name under
+ * FL_EXC_BACKEND_CXX: fla_get_abi has no other declaration anywhere, so without
+ * one visible before FL_GET_TEST_SUITE's definition, a C++ compile gives it
+ * mangled linkage and GetProcAddress(FLA_GET_ABI_STR) stops finding it. A prior
+ * declaration inside this header's extern "C" block fixes that -- linkage comes
+ * from the first declaration a translation unit sees, and the definition then
+ * matches it even though FL_GET_TEST_SUITE never says extern "C" itself.
  */
 #define FLA_GET_ABI_FN(name) void name(FLAbiInfo *out)
 typedef FLA_GET_ABI_FN(fla_get_abi_fn);
+extern FL_SPEC_EXPORT fla_get_abi_fn fla_get_abi;
 #define FLA_GET_ABI_STR FL_STR(fla_get_abi)
 
 #if defined(__cplusplus)

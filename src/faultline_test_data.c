@@ -32,6 +32,15 @@
 #include "set.c"
 #include "win_timer.c"
 
+// None of the FL_INITIALIZE/FL_IS_VALID/... wrappers below have a prior
+// declaration anywhere -- each names a macro-generated signature, not a
+// specific extern symbol -- so under FL_EXC_BACKEND_CXX they would otherwise
+// get C++-mangled linkage and stop being findable by GetProcAddress's plain
+// string name.
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 // Dummy fla_set_exception_service so the driver can load it via GetProcAddress.
 FL_DECL_SPEC FLA_SET_EXCEPTION_SERVICE_FN(fla_set_exception_service) {
     FL_UNUSED(svc);
@@ -119,3 +128,7 @@ FL_SPEC_EXPORT FL_GET_CLEANUP_FAIL_COUNT(test_data_get_cleanup_fail_count) {
 FL_SPEC_EXPORT FL_GET_RESULTS_COUNT(test_data_get_results_count) {
     return faultline_get_results_count(fctx);
 }
+
+#if defined(__cplusplus)
+} // extern "C"
+#endif

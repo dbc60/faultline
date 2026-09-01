@@ -51,8 +51,24 @@ IF %build% EQU 1 (
     if exist %DIR_OUT_OBJ%\sqlite3.obj            del %DIR_OUT_OBJ%\sqlite3.obj
     if exist %DIR_OUT_LIB%\faultline.lib          del %DIR_OUT_LIB%\faultline.lib
 
-    REM Compile all library source files
-    cl /c %CommonCompilerFlagsFinal% /wd4200 /wd4115 /DFL_EMBEDDED /I%DIR_INCLUDE% ^
+    REM sqlite3.c is third-party and stays C regardless of cxx: it cannot share
+    REM a cl invocation with the first-party sources below once /TP applies to
+    REM the whole command line.
+    cl /c %CommonCompilerFlagsFinal% /wd4200 /wd4115 /I%DIR_THIRD_PARTY% ^
+        %DIR_THIRD_PARTY%\sqlite\sqlite3.c ^
+        /Fo:%DIR_OUT_OBJ%\ /Fd:%DIR_OUT_LIB%\faultline.pdb > "%TEMP_OUT%"
+    IF ERRORLEVEL 1 (
+        type "%TEMP_OUT%"
+        del "%TEMP_OUT%"
+        echo Failed to compile sqlite3.c
+        GOTO :ERROR
+    )
+    del "%TEMP_OUT%"
+
+    REM Compile the first-party library source files, in whichever dialect cxx picked.
+    SET "LIB_FLAGS=%CommonCompilerFlagsFinal%"
+    IF %cxx% EQU 1 SET "LIB_FLAGS=%CommonCompilerFlagsFinalCXX%"
+    cl /c !LIB_FLAGS! /wd4200 /wd4115 /DFL_EMBEDDED /I%DIR_INCLUDE% ^
         /I%DIR_REPO%\src /I%DIR_THIRD_PARTY% /I%DIR_THIRD_PARTY%\fnv ^
         %DIR_REPO%\src\arena.c ^
         %DIR_REPO%\src\arena_dbg.c ^
@@ -72,7 +88,6 @@ IF %build% EQU 1 (
         %DIR_REPO%\src\region_node.c ^
         %DIR_REPO%\src\set.c ^
         %DIR_REPO%\src\win_timer.c ^
-        %DIR_THIRD_PARTY%\sqlite\sqlite3.c ^
         /Fo:%DIR_OUT_OBJ%\ /Fd:%DIR_OUT_LIB%\faultline.pdb > "%TEMP_OUT%"
     IF ERRORLEVEL 1 (
         type "%TEMP_OUT%"

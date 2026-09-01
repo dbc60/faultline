@@ -172,6 +172,28 @@ SET CommonLinkerFlags=/MACHINE:X64 /nologo /incremental:no /MANIFESTUAC /opt:ref
     EXIT /B 1
 )
 
+:: A second, C++ dialect flag set, mechanically derived from CommonCompilerFlags:
+:: strip the C-only /std:c17 and /experimental:c11atomics (cl rejects /std:c17
+:: outright when /std:c++20 is also present, and /experimental:c11atomics selects
+:: a C header), add /TP and /std:c++20. C++20 rather than C++17 because the tree
+:: uses designated initializers throughout. cpp_probe.cmd derived this the same
+:: way; this promotes that recipe from a probe to a real configuration. Both sets
+:: stay exported: sqlite3.c and cwalk compile as C regardless of which dialect the
+:: first-party sources use.
+:: /wd5054: FNV64.c does arithmetic between two different enum types, which C++20
+:: deprecates and this build's /WX would otherwise turn into a hard error. C-only
+:: under /WX-, cpp_probe.cmd never saw it; the real dialect flags do. FNV64.c is
+:: third-party, so the warning is suppressed rather than the source edited.
+::
+:: /wd4996: the UCRT headers mark localtime() (and its siblings) deprecated only
+:: under C++, not C17, so flp_log_service.c's existing localtime() call is silent
+:: under the C dialect and a /WX error under this one. cpp_probe.cmd's /WX- never
+:: saw this class of warning either; expect more of them as first-party files that
+:: happen to call an "unsafe" CRT function are found.
+SET "CommonCompilerFlagsCXX=%CommonCompilerFlags:/std:c17=%"
+SET "CommonCompilerFlagsCXX=%CommonCompilerFlagsCXX:/experimental:c11atomics=%"
+SET "CommonCompilerFlagsCXX=%CommonCompilerFlagsCXX% /TP /std:c++20 /DFL_EXC_BACKEND_CXX /wd5054 /wd4996"
+
 ::SET CStandardLibraryIncludeFlags=/I"%VSINSTALLDIR%SDK\ScopeCppSDK\SDK\include\ucrt"
 ::SET CMicrosoftIncludeFlags=/I"%VSINSTALLDIR%SDK\ScopeCppSDK\SDK\include\um" ^
 ::    /I"%VSINSTALLDIR%SDK\ScopeCppSDK\SDK\include\shared"
@@ -182,6 +204,7 @@ SET CommonLinkerFlags=/MACHINE:X64 /nologo /incremental:no /MANIFESTUAC /opt:ref
 :: /Zi      enable debugging information
 :: /Od      disable optimizations (default)
 SET CommonCompilerFlagsDEBUG=/MTd /Zi /Od /DDEBUG %CommonCompilerFlags%
+SET CommonCompilerFlagsDEBUGCXX=/MTd /Zi /Od /DDEBUG %CommonCompilerFlagsCXX%
 
 :: /MT link with LIBCMT.LIB
 :: /GL enable link-time code generation
@@ -192,6 +215,7 @@ SET CommonCompilerFlagsDEBUG=/MTd /Zi /Od /DDEBUG %CommonCompilerFlags%
 ::     blend - a combination of optimizations for several different x86 processors
 ::     ATOM - Intel(R) Atom(TM) processors
 SET CommonCompilerFlagsOPTIMIZE=/MT /GL /Zi /O2 /Oi /favor:blend %CommonCompilerFlags%
+SET CommonCompilerFlagsOPTIMIZECXX=/MT /GL /Zi /O2 /Oi /favor:blend %CommonCompilerFlagsCXX%
 
 :: Preprocessor definitions for a Library build
 SET CommonCompilerFlagsBuildLIB=/D_LIB
@@ -215,16 +239,19 @@ SET CommonCompilerFlagsBuildMFC=
 :: Choose either Debug or Optimized Compiler Flags
 IF %release% EQU 1 (
     SET CommonCompilerFlagsFinal=%CommonCompilerFlagsOPTIMIZE%
+    SET CommonCompilerFlagsFinalCXX=%CommonCompilerFlagsOPTIMIZECXX%
     SET CommonLinkerFlagsFinal=%CommonLinkerFlags% /LTCG:NOSTATUS
     SET CommonLibrarianFlags=/LTCG /nologo
 ) ELSE (
     SET CommonCompilerFlagsFinal=%CommonCompilerFlagsDEBUG%
+    SET CommonCompilerFlagsFinalCXX=%CommonCompilerFlagsDEBUGCXX%
     SET CommonLinkerFlagsFinal=%CommonLinkerFlags%
     SET CommonLibrarianFlags=/nologo
 )
 
 if %trace% EQU 1 (
     ECHO CommonCompilerFlagsFinal = %CommonCompilerFlagsFinal%
+    ECHO CommonCompilerFlagsFinalCXX = %CommonCompilerFlagsFinalCXX%
     ECHO CommonLinkerFlagsFinal = %CommonLinkerFlagsFinal%
     ECHO CommonLibrarianFlags = %CommonLibrarianFlags%
 )
@@ -240,6 +267,7 @@ if %trace% EQU 1 (
 
 ENDLOCAL & (
     SET "CommonCompilerFlagsFinal=%CommonCompilerFlagsFinal%"
+    SET "CommonCompilerFlagsFinalCXX=%CommonCompilerFlagsFinalCXX%"
     SET "CommonLinkerFlagsFinal=%CommonLinkerFlagsFinal%"
     SET "CommonLibrarianFlags=%CommonLibrarianFlags%"
     SET "CommonCompilerFlagsBuildMFC=%CommonCompilerFlagsBuildMFC%"

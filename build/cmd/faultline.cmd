@@ -56,18 +56,30 @@ if %timed% EQU 1 (
     ctime.exe -begin metrics\vs\faultline.ctm
 )
 
+:: Both unity units below are first-party; sqlite3.obj/cwalk.obj are linked
+:: prebuilt, not compiled here, so nothing on either line has to stay C.
+SET "FL_FLAGS=%CommonCompilerFlagsFinal%"
+IF %cxx% EQU 1 SET "FL_FLAGS=%CommonCompilerFlagsFinalCXX%"
+
+:: /TP treats every file cl sees as a source file, .obj included -- it is not
+:: just a compiler-frontend default, it applies to the whole command line, so a
+:: prebuilt object listed ahead of /link gets fed through the C++ front end as
+:: text under cxx and fails with binary-garbage syntax errors. Passing them as
+:: /link arguments instead sidesteps that; it is also correct for the plain C
+:: build, so nothing here is conditioned on cxx.
+
 :: Build the project
 IF %build% EQU 1 (
     if %verbose% EQU 1 (
         ECHO Build the %PROJECT_NAME% test suite ^(unity^): faultline_tests.dll
     )
-    cl %CommonCompilerFlagsFinal% /wd4456 /wd4200 /wd4115 ^
+    cl %FL_FLAGS% /wd4456 /wd4200 /wd4115 ^
     /I"%DIR_INCLUDE%" /I"%DIR_THIRD_PARTY%" /I"%DIR_THIRD_PARTY%\cwalk\include" ^
     /DDLL_BUILD ^
-    %DIR_REPO%\src\faultline_tests_unity.c ^
-    %DIR_OUT_OBJ%\sqlite3.obj %DIR_OUT_OBJ%\cwalk.obj /Fo:%DIR_OUT_OBJ%\ ^
+    %DIR_REPO%\src\faultline_tests_unity.c /Fo:%DIR_OUT_OBJ%\ ^
     /Fd:%DIR_OUT_BIN%\faultline_tests.pdb ^
     /LD /link %CommonLinkerFlagsFinal% /LIBPATH:%DIR_OUT_LIB% ^
+    %DIR_OUT_OBJ%\sqlite3.obj %DIR_OUT_OBJ%\cwalk.obj ^
     /OUT:%DIR_OUT_BIN%\faultline_tests.dll /IMPLIB:%DIR_OUT_LIB%\faultline_tests.lib > "%TEMP_OUT%"
     if errorlevel 1 (
         type "%TEMP_OUT%"
@@ -81,12 +93,12 @@ IF %build% EQU 1 (
         ECHO.
         ECHO Build the Faultline Test Program ^(unity^): faultline.exe
     )
-    cl %CommonCompilerFlagsFinal% /wd4200 /wd4115 /wd4456 /DFL_PLATFORM_BUILD ^
+    cl %FL_FLAGS% /wd4200 /wd4115 /wd4456 /DFL_PLATFORM_BUILD ^
     /I%DIR_INCLUDE% /I"%DIR_THIRD_PARTY%" /I"%DIR_THIRD_PARTY%\cwalk\include" ^
-    /I%DIR_REPO%\src %DIR_REPO%\app\faultline\main_unity_windows.c ^
-    %DIR_OUT_OBJ%\sqlite3.obj %DIR_OUT_OBJ%\cwalk.obj /Fo:%DIR_OUT_OBJ%\ ^
+    /I%DIR_REPO%\src %DIR_REPO%\app\faultline\main_unity_windows.c /Fo:%DIR_OUT_OBJ%\ ^
     /Fd:%DIR_OUT_BIN%\faultline.pdb /Fe:%DIR_OUT_BIN%\faultline.exe /link ^
-    %CommonLinkerFlagsFinal% /ENTRY:mainCRTStartup > "%TEMP_OUT%"
+    %CommonLinkerFlagsFinal% %DIR_OUT_OBJ%\sqlite3.obj %DIR_OUT_OBJ%\cwalk.obj ^
+    /ENTRY:mainCRTStartup > "%TEMP_OUT%"
     if errorlevel 1 (
         type "%TEMP_OUT%"
         del "%TEMP_OUT%"

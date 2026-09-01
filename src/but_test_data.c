@@ -24,6 +24,14 @@
 #include "region_node.c"
 #include "region_os.c"
 
+// None of the BD_IS_VALID/BD_BEGIN/... wrappers below have a prior declaration
+// anywhere -- each names a macro-generated signature, not a specific extern
+// symbol -- so under FL_EXC_BACKEND_CXX they would otherwise get C++-mangled
+// linkage and stop being findable by GetProcAddress's plain string name.
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 // Dummy fla_set_exception_service so set_up_test_driver_data() in but_test_cases.c has
 // a function to load.
 FL_DECL_SPEC FLA_SET_EXCEPTION_SERVICE_FN(fla_set_exception_service) {
@@ -109,3 +117,7 @@ FL_SPEC_EXPORT BD_GET_RESULTS_COUNT(test_data_get_results_count) {
 FL_SPEC_EXPORT BD_GET_RESULT(test_data_get_result) {
     return bd_get_result(bctx, index);
 }
+
+#if defined(__cplusplus)
+} // extern "C"
+#endif

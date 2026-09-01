@@ -32,9 +32,13 @@ SETLOCAL ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 ::  analyze:    Run MSVC code analysis (/analyze) over the first-party translation
 ::              units. A separate pass after the build; findings are reported but
 ::              do not fail it. See faultline_analyze.cmd.
+::  cxx:        Compile first-party translation units with the C++ dialect flag
+::              set (CommonCompilerFlagsFinalCXX) and the C++ exception backend
+::              (FL_EXC_BACKEND_CXX) instead of the C/setjmp default. Needed only
+::              while both backends exist in the tree.
 
 :: Remember to export these in the ENDLOCAL section below
-SET "options=build: debug: release: cleanall: clean: cleanplat: x64: x86: win32: test: junit: vs2022: vs2026: verbose: trace: timed: analyze:"
+SET "options=build: debug: release: cleanall: clean: cleanplat: x64: x86: win32: test: junit: vs2022: vs2026: verbose: trace: timed: analyze: cxx:"
 :: Initialize flags to zero
 FOR %%O in (%options%) DO FOR /f "tokens=1,* delims=:" %%A in ("%%O") DO (
     if NOT "%%~B"=="" (
@@ -115,4 +119,5 @@ ENDLOCAL & (
     SET "trace=%trace%"
     SET "timed=%timed%"
     SET "analyze=%analyze%"
+    SET "cxx=%cxx%"
 )

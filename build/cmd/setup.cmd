@@ -199,6 +199,7 @@ ENDLOCAL & (
 
     REM Environment variables from config.cmd
     SET "CommonCompilerFlagsFinal=%CommonCompilerFlagsFinal%"
+    SET "CommonCompilerFlagsFinalCXX=%CommonCompilerFlagsFinalCXX%"
     SET "CommonLinkerFlagsFinal=%CommonLinkerFlagsFinal%"
     SET "CommonLibrarianFlags=%CommonLibrarianFlags%"
     SET "CommonCompilerFlagsBuildMFC=%CommonCompilerFlagsBuildMFC%"
