@@ -21,6 +21,9 @@ SETLOCAL ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 :: faultline_lib.cmd and std_faultline.cmd are not represented below. Both compile the
 :: same library and driver sources the four unity translation units already pull in,
 :: so the code is covered; only the mixed command lines are skipped.
+::
+:: pass cxx to read the first-party sources as C++ (CommonCompilerFlagsFinalCXX,
+:: FL_EXC_BACKEND_CXX) instead of the C default.
 
 SET PROJECT_NAME="FaultLine Analyze"
 SET PROJECT_NAME=%PROJECT_NAME:"=%
@@ -62,6 +65,10 @@ SET ANALYZE_EXTERNAL=/external:W0 /external:env:INCLUDE ^
 :: already suppresses, and none is an analysis warning, so suppressing them everywhere
 :: costs no finding. The build still enforces them where it always did.
 SET ANALYZE_SUPPRESS=/wd4456 /wd4200 /wd4115
+
+:: Build sources as C code by default. If cxx is 1, then build sources as C++.
+SET "ANALYZE_DIALECT_FLAGS=%CommonCompilerFlagsFinal%"
+IF %cxx% EQU 1 SET "ANALYZE_DIALECT_FLAGS=%CommonCompilerFlagsFinalCXX%"
 
 :: The unity translation units: one per binary the repository ships. Between them they
 :: pull in the whole library, the driver, and the split host.
@@ -125,7 +132,7 @@ GOTO :SUCCESS
 IF %verbose% EQU 1 (
     ECHO Analyze %~1
 )
-cl %CommonCompilerFlagsFinal% %ANALYZE_FLAGS% %ANALYZE_SUPPRESS% %~2 ^
+cl %ANALYZE_DIALECT_FLAGS% %ANALYZE_FLAGS% %ANALYZE_SUPPRESS% %~2 ^
 %ANALYZE_EXTERNAL% %ANALYZE_INCLUDES% ^
 /Fo:%DIR_OUT_OBJ%\ /Fd:%DIR_OUT_OBJ%\%~n1_analyze.pdb /c ^
 %DIR_REPO%\%~1 > "%TEMP_OUT%"

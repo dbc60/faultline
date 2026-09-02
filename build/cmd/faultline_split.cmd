@@ -73,10 +73,7 @@ if %timed% EQU 1 (
     ctime.exe -begin metrics\vs\faultline_split.ctm
 )
 
-:: The unity TU is first-party, so it takes whichever dialect the caller
-:: picked with cxx. /TP treats every file cl sees as source, prebuilt
-:: faultline_core.lib/sqlite3.obj/cwalk.obj included, so they are passed as
-:: /link arguments instead of ahead of it -- correct for the plain C build too.
+:: Build sources as C code by default. If cxx is 1, then build sources as C++.
 SET "SPLIT_FLAGS=%CommonCompilerFlagsFinal%"
 IF %cxx% EQU 1 SET "SPLIT_FLAGS=%CommonCompilerFlagsFinalCXX%"
 

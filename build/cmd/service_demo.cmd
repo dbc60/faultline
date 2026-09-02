@@ -106,8 +106,7 @@ IF NOT EXIST "%BIN%"     MD "%BIN%"
 IF NOT EXIST "%OBJ_DLL%" MD "%OBJ_DLL%"
 IF NOT EXIST "%OBJ_EXE%" MD "%OBJ_EXE%"
 
-:: Both compiles below are entirely first-party (the imported package tree),
-:: so they take whichever dialect the caller picked with cxx.
+:: Build sources as C code by default. If cxx is 1, then build sources as C++.
 SET "DEMO_FLAGS=%CommonCompilerFlagsFinal%"
 IF %cxx% EQU 1 SET "DEMO_FLAGS=%CommonCompilerFlagsFinalCXX%"
 

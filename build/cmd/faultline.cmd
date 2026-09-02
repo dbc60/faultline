@@ -56,8 +56,7 @@ if %timed% EQU 1 (
     ctime.exe -begin metrics\vs\faultline.ctm
 )
 
-:: Both unity units below are first-party; sqlite3.obj/cwalk.obj are linked
-:: prebuilt, not compiled here, so nothing on either line has to stay C.
+:: Build sources as C code by default. If cxx is 1, then build sources as C++.
 SET "FL_FLAGS=%CommonCompilerFlagsFinal%"
 IF %cxx% EQU 1 SET "FL_FLAGS=%CommonCompilerFlagsFinalCXX%"
 

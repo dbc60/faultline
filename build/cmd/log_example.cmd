@@ -31,7 +31,7 @@ IF NOT "%release%"=="" (
     )
 )
 
-:: First-party, so it takes whichever dialect the caller picked with cxx.
+:: Build sources as C code by default. If cxx is 1, then build sources as C++.
 SET "LOGEX_FLAGS=%CommonCompilerFlagsFinal%"
 IF %cxx% EQU 1 SET "LOGEX_FLAGS=%CommonCompilerFlagsFinalCXX%"
 

@@ -74,8 +74,7 @@ if %timed% EQU 1 (
     ctime.exe -begin "metrics\vs\%_BTDLL_CTM%.ctm"
 )
 
-:: The source under test is always first-party, so it takes whichever dialect
-:: the caller picked with cxx; nothing here compiles third-party C.
+:: Build sources as C code by default. If cxx is 1, then build sources as C++.
 SET "_BTDLL_FLAGS=%CommonCompilerFlagsFinal%"
 IF %cxx% EQU 1 SET "_BTDLL_FLAGS=%CommonCompilerFlagsFinalCXX%"
 

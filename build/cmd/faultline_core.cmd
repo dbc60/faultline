@@ -31,8 +31,7 @@ if %timed% EQU 1 (
     ctime.exe -begin metrics\vs\faultline_core.ctm
 )
 
-:: The unity TU is entirely first-party, so it takes whichever dialect the
-:: caller picked with cxx.
+:: Build sources as C code by default. If cxx is 1, then build sources as C++.
 SET "CORE_FLAGS=%CommonCompilerFlagsFinal%"
 IF %cxx% EQU 1 SET "CORE_FLAGS=%CommonCompilerFlagsFinalCXX%"
 

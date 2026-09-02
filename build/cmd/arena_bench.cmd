@@ -23,8 +23,7 @@ CALL %DIR_CMD%\setup.cmd %*
 :: cl output capture, named per script inside this configuration's obj directory
 SET "TEMP_OUT=%DIR_OUT_OBJ%\%~n0_cl_out.tmp"
 
-:: Both compiles below are first-party, so they take whichever dialect the
-:: caller picked with cxx.
+:: Build sources as C code by default. If cxx is 1, then build sources as C++.
 SET "BENCH_FLAGS=%CommonCompilerFlagsFinal%"
 IF %cxx% EQU 1 SET "BENCH_FLAGS=%CommonCompilerFlagsFinalCXX%"
 

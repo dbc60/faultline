@@ -58,11 +58,7 @@ if %timed% EQU 1 (
     ctime.exe -begin metrics\vs\std_faultline.ctm
 )
 
-:: Both compiles below are entirely first-party (plus FNV64.c, already handled
-:: in CommonCompilerFlagsFinalCXX), so they take whichever dialect cxx picked.
-:: /TP treats every file cl sees as source, prebuilt sqlite3.obj/cwalk.obj
-:: included, so they are passed as /link arguments instead of ahead of it --
-:: correct for the plain C build too.
+:: Build sources as C code by default. If cxx is 1, then build sources as C++.
 SET "STD_FLAGS=%CommonCompilerFlagsFinal%"
 IF %cxx% EQU 1 SET "STD_FLAGS=%CommonCompilerFlagsFinalCXX%"
 

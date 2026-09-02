@@ -31,8 +31,7 @@ IF NOT "%release%"=="" (
     )
 )
 
-:: Both compiles below are first-party, so they take whichever dialect the
-:: caller picked with cxx.
+:: Build sources as C code by default. If cxx is 1, then build sources as C++.
 SET "INDEX_FLAGS=%CommonCompilerFlagsFinal%"
 IF %cxx% EQU 1 SET "INDEX_FLAGS=%CommonCompilerFlagsFinalCXX%"
 

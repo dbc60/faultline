@@ -65,7 +65,7 @@ IF %build% EQU 1 (
     )
     del "%TEMP_OUT%"
 
-    REM Compile the first-party library source files, in whichever dialect cxx picked.
+    REM Build sources as C code by default. If cxx is 1, then build sources as C++.
     SET "LIB_FLAGS=%CommonCompilerFlagsFinal%"
     IF %cxx% EQU 1 SET "LIB_FLAGS=%CommonCompilerFlagsFinalCXX%"
     cl /c !LIB_FLAGS! /wd4200 /wd4115 /DFL_EMBEDDED /I%DIR_INCLUDE% ^
