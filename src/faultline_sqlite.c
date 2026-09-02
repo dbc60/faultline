@@ -37,7 +37,6 @@ FLExceptionReason faultline_db_not_found     = "database not found";
 }
 #endif
 
-
 static char const *faultline_db = "Faultline DB Initialization";
 
 // ---- SQLite statement primitives ------------------------------------------
@@ -424,6 +423,21 @@ sqlite3 *faultline_init_database(char const *db_path) {
 
     // enable foreign key enforcement (and ON DELETE CASCADE)
     db_exec(db, "PRAGMA foreign_keys = ON;", "foreign key enforcement");
+
+    /*
+     * The goal is to balance the number of writes to disk vs database durability across
+     * an OS crash or power loss. We select the write-ahead log (WAL) instead of the
+     * default rollback journal, because it is much faster. This PRAGMA pair also reduces
+     * the number of writes that this module still leaves auto-committed.
+     *
+     * NORMAL synchronization trades a small amount of durability across an OS crash or
+     * power loss for a significant performance gain. NORMAL only fsyncs at WAL
+     * checkpoints instead of every commit, while the default, FULL, fsyncs twice per
+     * commit. An ordinary process crash is still safe, and this database holds
+     * reproducible test results, not data worth an fsync-per-commit guarantee.
+     */
+    db_exec(db, "PRAGMA journal_mode = WAL;", "WAL journal mode");
+    db_exec(db, "PRAGMA synchronous = NORMAL;", "relaxed synchronous mode");
 
     // Initialize schema on the opened connection
     FL_TRY {
@@ -885,6 +899,24 @@ void faultline_record_test_summary(sqlite3 *db, int run_id, FLTestSummary *summa
                   FL_REASON);
     }
     FL_END_TRY;
+}
+
+/**
+ * @brief Open an explicit write transaction.
+ *
+ * Callers writing several rows in a row (one suite's run-complete plus its
+ * per-test-case summaries) should wrap them in begin/commit so the batch
+ * costs one commit instead of one auto-committed transaction per statement.
+ */
+void faultline_db_begin_transaction(sqlite3 *db) {
+    db_exec(db, "BEGIN IMMEDIATE;", "begin transaction");
+}
+
+/**
+ * @brief Commit a transaction opened with faultline_db_begin_transaction.
+ */
+void faultline_db_commit_transaction(sqlite3 *db) {
+    db_exec(db, "COMMIT;", "commit transaction");
 }
 
 /**

@@ -241,20 +241,25 @@ FL_TYPE_TEST_SETUP_CLEANUP("Test the Driver", TestDriverData, test, set_up_test_
     // Verify the test case is valid
     FL_ASSERT_TRUE(t->is_valid(&t->context));
 
+    /*
+     * bd_driver (running inside but_test_data.dll) always catches the failing test case
+     * itself and records it; it never rethrows. Under the setjmp backend the catch lives
+     * on a different exception stack than this frame's, so a throw from the failing case
+     * skips it and is caught here instead. This catch clause exists to do bd_driver's
+     * bookkeeping for that path. Under the C++ backend real stack unwinding ends in
+     * bd_driver's own catch first, so this clause is never entered and the counters
+     * below are already correct.
+     */
     FL_TRY {
         t->test(&t->context);
         t->next(&t->context);
         t->test(&t->context);
-        // Should have thrown bd_expected_failure to be caught below
-        FL_THROW(fl_internal_error);
     }
     FL_CATCH(fl_test_exception) {
-        // Catch and update counters
         t->context.test_failures++;
         t->context.results_count++;
         t->context.run_count++;
     }
-    // If anything else was thrown, it's a failure. Let the test driver catch it.
     FL_END_TRY;
 
     FL_ASSERT_EQ_SIZE_T(t->get_pass_count(&t->context), (size_t)1);

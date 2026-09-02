@@ -288,6 +288,9 @@ static void exercise_test_suite(FLContext *fctx, FLTestSuite *ts, sqlite3 *db,
     junit_write(junit, fctx);
 
     if (db != NULL && run_id > 0) {
+        // Reduce the number of writes to disk by writing test suite results in one
+        // transaction instead of one per test case.
+        faultline_db_begin_transaction(db);
         faultline_record_test_run_complete(db, run_id, fctx);
         size_t n = faultline_get_results_count(fctx);
         for (size_t i = 0; i < n; i++) {
@@ -298,6 +301,7 @@ static void exercise_test_suite(FLContext *fctx, FLTestSuite *ts, sqlite3 *db,
                                         : "Null Test Case Name";
             faultline_record_test_summary(db, run_id, summary, test_name);
         }
+        faultline_db_commit_transaction(db);
     }
 
     faultline_end(fctx);

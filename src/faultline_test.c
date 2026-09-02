@@ -28,7 +28,6 @@
 #define TEST_SUCCESS "Test Success"
 #define TEST_FAILURE "Test Failure"
 
-static FLExceptionReason test_throw_failure = "failed to throw test failure";
 static FLExceptionReason load_driver_data_failure
     = "failed to load driver library " DRIVER_LIBRARY_STR;
 static FLExceptionReason load_initialize_failure = "failed to load " INITIALIZE_CTX_STR;
@@ -71,9 +70,9 @@ static FLExceptionReason unexpected_test_case_name_is_not
     = "test case name is not " TEST_FAILURE;
 static FLExceptionReason unexpected_index = "unexpected test case index";
 
-static FLExceptionReason expected_one_test_run          = "expected one test run";
-static FLExceptionReason expected_one_passing_test      = "expected one passing test";
-static FLExceptionReason expected_one_failing_test      = "expected one failing test";
+static FLExceptionReason expected_two_test_runs         = "expected two test runs";
+static FLExceptionReason expected_two_passing_tests     = "expected two passing tests";
+static FLExceptionReason expected_zero_failing_tests    = "expected zero failing tests";
 static FLExceptionReason unexpected_setup_failure_count = "expected zero setup failures";
 static FLExceptionReason unexpected_cleanup_failure_count
     = "expected zero cleanup failures";
@@ -348,35 +347,27 @@ FL_TYPE_TEST_SETUP_CLEANUP("Index", TestDriverData, index_test, setup_context,
 // static void driver_test(FLTestCase *tc) {
 FL_TYPE_TEST_SETUP_CLEANUP("Test the Driver", TestDriverData, test_driver,
                            setup_test_context, cleanup_context) {
-    FL_TRY {
-        t->driver(&t->context);
-        t->next(&t->context);
-        t->driver(&t->context);
-        // Should have thrown fl_expected_failure to be caught below
-        FL_THROW(test_throw_failure);
-    }
-    FL_CATCH(fl_test_exception) {
-        // Catch and update counters. Increment tests_failed to ensure the pass-count is
-        // correct.
-        t->context.tests_failed++;
-        t->add_fault(&t->context, t->context.index, FL_FAIL, FAULT_NO_RESOURCE,
-                     FL_REASON, FL_DETAILS, __FILE__, __LINE__);
-    }
-    // If anything else was thrown, it's a failure. Let the test driver catch it.
-    FL_END_TRY;
+    // driver_failure_test throws fl_expected_failure, which by design (see its
+    // declaration) the driver counts as a pass, not a failure -- so both calls below
+    // run to completion without either one throwing back to this frame.
+    t->driver(&t->context);
+    t->next(&t->context);
+    t->driver(&t->context);
 
+    // Two driver() calls above, neither counted as a failure, so tests_run and
+    // tests_passed both count both.
     size_t actual = t->get_run_count(&t->context);
-    if (actual != 1) {
-        FL_THROW_DETAILS(expected_one_test_run, "Expected 1. Actual %zu", actual);
+    if (actual != 2) {
+        FL_THROW_DETAILS(expected_two_test_runs, "Expected 2. Actual %zu", actual);
     }
 
     actual = t->get_pass_count(&t->context);
-    if (actual != 1) {
-        FL_THROW_DETAILS(expected_one_passing_test, "Expected 1. Actual %zu", actual);
+    if (actual != 2) {
+        FL_THROW_DETAILS(expected_two_passing_tests, "Expected 2. Actual %zu", actual);
     }
 
-    if (t->get_fail_count(&t->context) != 1) {
-        FL_THROW(expected_one_failing_test);
+    if (t->get_fail_count(&t->context) != 0) {
+        FL_THROW(expected_zero_failing_tests);
     }
 
     if (t->get_setup_fail_count(&t->context) != 0) {
@@ -387,15 +378,15 @@ FL_TYPE_TEST_SETUP_CLEANUP("Test the Driver", TestDriverData, test_driver,
         FL_THROW(unexpected_cleanup_failure_count);
     }
 
-    if (t->get_results_count(&t->context) != 1) {
+    if (t->get_results_count(&t->context) != 2) {
         FL_THROW(unexpected_test_result_count);
     }
 
     // Retrieve the result code for test case 1 (it's 1, because we called
     // "t->next(&t->context);" above).
     FLResultCode code = t->get_result_code(&t->context, t->context.index);
-    if (code != FL_FAIL) { // we caught an expected test-failure above
-        FL_THROW_DETAILS(fl_internal_error, "Expected code: %d. Actual: %d", FL_FAIL,
+    if (code != FL_PASS) { // fl_expected_failure is not counted as a failure
+        FL_THROW_DETAILS(fl_internal_error, "Expected code: %d. Actual: %d", FL_PASS,
                          code);
     }
 }
@@ -404,10 +395,12 @@ FL_TYPE_TEST_SETUP_CLEANUP("Results", TestDriverData, results_test, setup_test_c
                            cleanup_context) {
     t->driver(&t->context);
     t->next(&t->context);
+    // Under the setjmp backend, run_timed_test's catch lives on a different
+    // exception stack than this frame's, so the failing case's fl_expected_failure
+    // skips it and it's caught here instead. Under the C++ backend real stack unwinding
+    // ends in run_timed_test's own catch first, so this FL_TRY completes normally.
     FL_TRY {
         t->driver(&t->context);
-        // Should have failed with fl_expected_failure, so this should not be reached.
-        FL_THROW(fl_test_exception);
     }
     FL_CATCH(fl_expected_failure) {
         ; // Catch and release

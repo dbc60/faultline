@@ -36,6 +36,14 @@ extern void faultline_record_test_run_complete(sqlite3 *db, int run_id, FLContex
 extern void faultline_record_test_summary(sqlite3 *db, int run_id,
                                           FLTestSummary *summary, char const *test_name);
 
+/*
+ * Explicit transaction control. Batches a suite's run-complete and per-test-case
+ * summary/fault/evolution writes into one commit instead of one auto-committed
+ * transaction per statement.
+ */
+extern void faultline_db_begin_transaction(sqlite3 *db);
+extern void faultline_db_commit_transaction(sqlite3 *db);
+
 // Database query and reporting functions
 extern void faultline_show_recent_runs(sqlite3 *db, char const *suite_name, int limit);
 extern void faultline_show_test_failures(sqlite3 *db, char const *suite_name, int limit,
