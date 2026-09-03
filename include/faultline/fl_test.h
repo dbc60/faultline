@@ -17,10 +17,9 @@
 #include <faultline/fl_try.h>    // FL_TRY, FL_CATCH, FL_CATCH_ALL, FL_THROW
 #include <faultline/fl_abi.h>    // FLA_GET_ABI_FN, fl_fill_abi_info
 #include <faultline/fl_case_outcome.h> // FLCaseOutcome, FL_RUN_CASE_FN, fl_case_outcome_*
-#include <faultline/fl_exception_service.h> // fl_expected_failure, fl_invalid_value
+#include <faultline/fl_exception_service.h> // fl_expected_failure
 
-#include <stdbool.h> // bool
-#include <string.h>  // strcmp
+#include <string.h> // strcmp
 
 #if defined(__cplusplus)
 extern "C" {
@@ -295,23 +294,24 @@ extern FL_SPEC_EXPORT FL_GET_TEST_SUITE_FN(fl_get_test_suite);
  * spanning all three phases would change behavior: an fl_expected_failure thrown by
  * setup would skip the test body instead of letting it run.
  *
- * @return false if out is NULL or smaller than this module's FLCaseOutcome, in which
- * case no test case ran. True otherwise, a failing case included.
+ * @return FL_RUN_CASE_OK when a case ran, a failing one included. Otherwise the reason
+ * no case ran, which in both cases means the caller asked for something impossible
+ * rather than that a test failed.
  */
-static inline FL_MAYBE_UNUSED bool fl_run_case_impl(FLTestSuite *ts, size_t index,
-                                                    FLCaseOutcome *out,
-                                                    size_t         out_size) {
+static inline FL_MAYBE_UNUSED FLRunCaseResult fl_run_case_impl(FLTestSuite   *ts,
+                                                               size_t         index,
+                                                               FLCaseOutcome *out,
+                                                               size_t         out_size) {
     if (out == NULL || out_size < sizeof(FLCaseOutcome)) {
-        return false;
+        return FL_RUN_CASE_BAD_OUTCOME;
     }
 
     fl_case_outcome_clear(out);
 
+    // Not a test failure: no case exists at this index, so none ran. Reporting it as a
+    // failed case would record a caller's bug as a bug in the suite.
     if (index >= ts->count) {
-        fl_case_outcome_fail(out, FL_CASE_UNEXPECTED_FAILURE, FL_FAILURE_NONE,
-                             fl_invalid_value, "test case index out of range", __FILE__,
-                             __LINE__);
-        return true;
+        return FL_RUN_CASE_NO_SUCH_CASE;
     }
 
     FLTestCase *tc = ts->test_cases[index];
@@ -330,9 +330,9 @@ static inline FL_MAYBE_UNUSED bool fl_run_case_impl(FLTestSuite *ts, size_t inde
         FL_END_TRY;
 
         // Setup acquired nothing, so there is nothing to exercise and nothing to
-        // release. Report the setup failure and stop.
+        // release. The case ran, and its outcome is the setup failure.
         if (out->status == FL_CASE_UNEXPECTED_FAILURE) {
-            return true;
+            return FL_RUN_CASE_OK;
         }
     }
 
@@ -366,7 +366,7 @@ static inline FL_MAYBE_UNUSED bool fl_run_case_impl(FLTestSuite *ts, size_t inde
         FL_END_TRY;
     }
 
-    return true;
+    return FL_RUN_CASE_OK;
 }
 
 #if defined(__cplusplus)

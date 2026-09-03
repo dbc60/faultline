@@ -37,9 +37,8 @@
 #include <faultline/fl_macros.h>          // FL_SPEC_EXPORT, FL_STR, FL_MAYBE_UNUSED
 #include <faultline/fl_types.h>           // FLFailureType
 
-#include <stdbool.h> // bool
-#include <stddef.h>  // NULL, size_t
-#include <stdio.h>   // snprintf
+#include <stddef.h> // NULL, size_t
+#include <stdio.h>  // snprintf
 
 #if defined(__cplusplus)
 extern "C" {
@@ -58,6 +57,42 @@ typedef enum FLCaseStatus {
     FL_CASE_EXPECTED_FAILURE,
     FL_CASE_UNEXPECTED_FAILURE,
 } FLCaseStatus;
+
+/**
+ * @brief Whether the call reached a test case at all.
+ *
+ * Separate from FLCaseStatus because they answer different questions: this one is
+ * about the call, that one about the test. Folding them together would put a value in
+ * FLCaseOutcome.status that can never appear there, and would report a driver asking
+ * for a case that does not exist as a test case that failed.
+ *
+ * Shaped after FLAbiVerdict (fl_abi.h), including the string function below, for the
+ * same reason: a caller gets a message naming the difference rather than a bare code.
+ */
+typedef enum FLRunCaseResult {
+    FL_RUN_CASE_OK,           ///< a case ran; the outcome is filled in
+    FL_RUN_CASE_BAD_OUTCOME,  ///< out is NULL or too small; nothing was written
+    FL_RUN_CASE_NO_SUCH_CASE, ///< index is past the end; out is cleared, no case ran
+} FLRunCaseResult;
+
+static inline FL_MAYBE_UNUSED char const *fl_run_case_result_str(FLRunCaseResult result) {
+    char const *text;
+    switch (result) {
+    case FL_RUN_CASE_OK:
+        text = "ran";
+        break;
+    case FL_RUN_CASE_BAD_OUTCOME:
+        text = "outcome buffer missing or too small";
+        break;
+    case FL_RUN_CASE_NO_SUCH_CASE:
+        text = "no test case at that index";
+        break;
+    default:
+        text = "unrecognized result";
+        break;
+    }
+    return text;
+}
 
 /**
  * @brief What one test case reports back to the driver that ran it.
@@ -126,9 +161,8 @@ static inline FL_MAYBE_UNUSED void fl_case_outcome_fail(FLCaseOutcome    *out,
  * @param out_size the caller's sizeof(FLCaseOutcome), so a suite built against a
  * different revision of the struct refuses the call rather than writing past the end
  * of it. Follows the same convention as fla_set_exception_service.
- * @return false if out is NULL or too small, in which case nothing was written and no
- * test case ran. True otherwise, including when the case failed -- a failing test is a
- * result, not a rejected call.
+ * @return FL_RUN_CASE_OK when a case ran, a failing one included -- a failing test is
+ * a result, not a rejected call. Otherwise the reason no case ran.
  *
  * FL_GET_TEST_SUITE emits the definition, so a suite gains it with no edit.
  *
@@ -139,7 +173,7 @@ static inline FL_MAYBE_UNUSED void fl_case_outcome_fail(FLCaseOutcome    *out,
  * GetProcAddress(FL_RUN_CASE_STR) would stop finding it.
  */
 #define FL_RUN_CASE_FN(name) \
-    bool name(size_t index, FLCaseOutcome *out, size_t out_size)
+    FLRunCaseResult name(size_t index, FLCaseOutcome *out, size_t out_size)
 typedef FL_RUN_CASE_FN(fl_run_case_fn);
 extern FL_SPEC_EXPORT fl_run_case_fn fl_run_case;
 #define FL_RUN_CASE_STR FL_STR(fl_run_case)

@@ -101,7 +101,19 @@ typedef struct FLCaseOutcome {
     char          details[FL_MAX_DETAILS_LENGTH]; // owned copy, not a scratch pointer
 } FLCaseOutcome;
 
-#define FL_RUN_CASE_FN(name) void name(size_t index, FLCaseOutcome *out, size_t out_size)
+// Whether the call reached a case at all -- a different question from how the test
+// did, so a separate enum. Folding FL_CASE_NOT_RUN into FLCaseStatus would put a
+// value in .status that can never appear there, and would report a driver asking for
+// a case that does not exist as a test case that failed. Shaped after FLAbiVerdict,
+// string function included.
+typedef enum FLRunCaseResult {
+    FL_RUN_CASE_OK,           // a case ran; the outcome is filled in
+    FL_RUN_CASE_BAD_OUTCOME,  // out is NULL or too small; nothing written
+    FL_RUN_CASE_NO_SUCH_CASE, // index past the end; out cleared, no case ran
+} FLRunCaseResult;
+
+#define FL_RUN_CASE_FN(name) \
+    FLRunCaseResult name(size_t index, FLCaseOutcome *out, size_t out_size)
 typedef FL_RUN_CASE_FN(fl_run_case_fn);
 extern FL_SPEC_EXPORT fl_run_case_fn fl_run_case;
 #define FL_RUN_CASE_STR FL_STR(fl_run_case)
