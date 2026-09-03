@@ -8,14 +8,12 @@
  * @version 0.1
  * @date 2026-09-02
  *
- * A driver used to wrap its calls into a suite in its own FL_TRY, so the suite's throw
- * unwound into a jump buffer the driver had filled. That made the two images share an
- * unwinding mechanism: a suite compiled with the C++ backend could not be run by a
- * driver compiled with the setjmp one, and the reverse.
- *
- * The suite now catches its own exceptions and reports what happened in an
- * FLCaseOutcome, so the boundary carries a value rather than an unwind. The mechanism
- * becomes private to each module, and one driver runs suites built either way.
+ * A suite catches its own exceptions and reports what happened in an FLCaseOutcome, so
+ * the module boundary carries a value rather than an unwind. Each module keeps its
+ * unwinding mechanism to itself, which is what lets one driver run both a suite built
+ * with the setjmp backend and a suite built with the C++ one. A driver that instead
+ * wrapped its calls into the suite in its own FL_TRY would oblige both images to share
+ * one mechanism, since it is the driver's jump buffer the suite lands in.
  *
  * details is an array, not a pointer. FL_DETAILS points into the throwing module's
  * per-thread scratch buffer (fl_details_buf, fl_try.h), which the next
@@ -26,10 +24,10 @@
  * reason and file stay pointers: both are string literals in the suite, valid for as
  * long as it is loaded.
  *
- * No elapsed time is reported here. The suite would have to read a timer service to
- * measure one, and fla_timer_service.c's uninjected defaults abort, so every suite
- * would have to link it and every host would have to inject it -- which the BUT driver
- * does not. The driver times the fl_run_case call from its own side instead.
+ * elapsed_seconds covers the test body alone: setup and cleanup fall outside the
+ * measured region, so the number means the same thing whether or not a case has them.
+ * The suite reads the timer service to measure it, so a suite links
+ * fla_timer_service.c and its host injects a timer provider.
  *
  * See LICENSE.txt for copyright and licensing information about this file.
  */
@@ -103,6 +101,7 @@ typedef struct FLCaseOutcome {
     FLExceptionReason reason;       ///< literal in the suite; valid while it is loaded
     char const       *file;         ///< same
     int               line;
+    double            elapsed_seconds; ///< the test body only; see the file comment
     char details[FL_MAX_DETAILS_LENGTH]; ///< owned copy; see the file comment
 } FLCaseOutcome;
 
@@ -110,12 +109,13 @@ typedef struct FLCaseOutcome {
  * @brief Reset an outcome to a passing result with no failure recorded.
  */
 static inline FL_MAYBE_UNUSED void fl_case_outcome_clear(FLCaseOutcome *out) {
-    out->status       = FL_CASE_PASS;
-    out->failure_type = FL_FAILURE_NONE;
-    out->reason       = NULL;
-    out->file         = NULL;
-    out->line         = 0;
-    out->details[0]   = '\0';
+    out->status          = FL_CASE_PASS;
+    out->failure_type    = FL_FAILURE_NONE;
+    out->reason          = NULL;
+    out->file            = NULL;
+    out->line            = 0;
+    out->elapsed_seconds = 0.0;
+    out->details[0]      = '\0';
 }
 
 /**

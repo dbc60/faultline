@@ -28,6 +28,7 @@
 #include "flp_file_service.c"      // read-back verification (no read in the stream contract)
 #include "flp_stream_service.c"    // code under test (platform stream service)
 #include "fla_stream_service.c"    // consumer accessor + default stubs
+#include "fla_timer_service.c"     // g_fla_timer_service, fla_set_timer_service
 
 #include <string.h> // memcmp, strlen
 

@@ -16,6 +16,7 @@
 #include "fla_exception_service.c" // app-side TLS exception service
 #include "fla_log_service.c"       // app-side TLS log service
 #include "fla_memory_service.c"
+#include "fla_timer_service.c"     // g_fla_timer_service, fla_set_timer_service
 #include "fnv/FNV64.c"
 #include "region.c"
 #include "region_node.c"

@@ -13,6 +13,7 @@
 #include "fl_exception_service.c"
 #include "fla_exception_service.c"
 #include "fla_log_service.c"
+#include "fla_timer_service.c" // g_fla_timer_service, fla_set_timer_service
 
 FL_SUITE_BEGIN(driver)
 FL_SUITE_ADD_EMBEDDED(load_driver)

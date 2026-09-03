@@ -9,6 +9,7 @@
  */
 #include "fl_exception_service.c"  // fl_expected_failure
 #include "fla_exception_service.c" // fl_throw_assertion, g_fla_exception_service
+#include "fla_timer_service.c"     // g_fla_timer_service, fla_set_timer_service
 #include <faultline/fl_test.h>     // FL_TEST
 #include <faultline/fl_try.h>      // FL_TRY, FL_CATCH, FL_THROW, etc.
 #include <faultline/fl_exception_service_assert.h> // FL_ASSERT macros and fl_unexpected_failure declaration

@@ -9,6 +9,7 @@
  */
 #include "fl_exception_service.c"  // fl_expected_failure
 #include "fla_exception_service.c" // fl_throw_assertion, g_fla_exception_service
+#include "fla_timer_service.c"     // g_fla_timer_service, fla_set_timer_service
 #include "region.c"
 #include "region_os.c"
 #include "lock_os.c"

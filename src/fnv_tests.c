@@ -22,6 +22,7 @@
 
 #include "fl_exception_service.c"  // exception reason constants
 #include "fla_exception_service.c" // TLS exception service (app-side)
+#include "fla_timer_service.c"     // g_fla_timer_service, fla_set_timer_service
 #include "fnv/FNV32.c"             // code under test
 #include "fnv/FNV64.c"             // code under test
 #include "fnv/FNV128.c"            // code under test

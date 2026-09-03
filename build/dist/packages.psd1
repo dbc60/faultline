@@ -300,12 +300,14 @@
 
         test_framework = @{
             Title   = 'Test Framework Distribution'
-            Version = '0.2.0'
-            Depends = 'exception_service'
+            Version = '0.3.0'
+            Depends = 'exception_service timer_service'
 
             Inc = @(
                 'fl_test.h'
                 'fl_abi.h'
+                'fl_case_outcome.h'
+                'fl_types.h'
                 'fl_threads.h'
             )
         }

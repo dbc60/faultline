@@ -3,6 +3,7 @@
 #include "fl_exception_service.c"
 #include "fla_exception_service.c"
 #include "fla_memory_service.c"
+#include "fla_timer_service.c" // g_fla_timer_service, fla_set_timer_service
 // this must follow fla_memory_service.c so the macros in fla_memory_service.h are
 // defined before the malloc, calloc, realloc, and free functions are declared in
 // stdlib.h brought in by malloc_cleanup_config.c

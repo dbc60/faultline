@@ -115,9 +115,9 @@ if %test% EQU 1 (
         ECHO Run the %_BTDLL_NAME% unit tests
     )
     pushd %DIR_OUT_BIN%
-    faultline.exe run %_BTDLL_DLL%.dll
-    faultline.exe show results --limit 1
-    faultline.exe show results --failures
+    .\faultline.exe run %_BTDLL_DLL%.dll
+    .\faultline.exe show results --limit 1
+    .\faultline.exe show results --failures
     popd
 )
 GOTO :_btdll_success

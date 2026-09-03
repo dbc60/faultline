@@ -26,6 +26,7 @@
 #include "fla_memory_service.c"    // g_fla_memory_service (FL_MALLOC backing)
 #include "flp_file_service.c"      // code under test (platform file service)
 #include "fla_file_service.c"      // consumer accessor + default stubs
+#include "fla_timer_service.c"     // g_fla_timer_service, fla_set_timer_service
 
 #include <string.h> // memcmp, strlen
 #include <wchar.h>  // swprintf, wcsrchr

@@ -32,6 +32,7 @@
 #include "flp_fault_memory_service.c"
 #include "flp_file_service.c"
 #include "flp_stream_service.c"
+#include "flp_timer_service.c"
 #include "fnv/FNV64.c"
 #include "region.c"
 #include "region_node.c"
@@ -91,7 +92,7 @@ static void display_test_case(BasicContext *bctx) {
     LOG_INFO(module, "%s%s", counter_buf, test_case_name);
 }
 
-static void display_test_results(BasicContext *bctx, FLTestSuite *ts) {
+static size_t display_test_results(BasicContext *bctx, FLTestSuite *ts) {
     size_t passed, setup_failures, test_failures, cleanup_failures, count_total_failures;
     char   counter_buf[6]  = {0};
     size_t test_case_count = ts->count;
@@ -142,9 +143,11 @@ static void display_test_results(BasicContext *bctx, FLTestSuite *ts) {
         LOG_INFO(module, "%sFailed Tests: %zu", counter_buf, test_failures);
         LOG_INFO(module, "%sFailed Cleanups: %zu", counter_buf, cleanup_failures);
     }
+
+    return count_total_failures;
 }
 
-static void exercise_test_suite(BasicContext *bctx, FLTestSuite *ts) {
+static size_t exercise_test_suite(BasicContext *bctx, FLTestSuite *ts) {
     bd_begin(bctx, ts);
     while (bd_has_more(bctx)) {
         display_test_case(bctx);
@@ -155,7 +158,7 @@ static void exercise_test_suite(BasicContext *bctx, FLTestSuite *ts) {
         bd_next(bctx);
     }
 
-    display_test_results(bctx, ts);
+    return display_test_results(bctx, ts);
 }
 
 /**
@@ -173,6 +176,11 @@ int main(int argc, char **argv) {
     FLTestSuite          *ts;
     BasicContext          bctx;
     Arena                *arena = new_arena(0, 0);
+
+    // volatile because FL_TRY's setjmp and a throw's longjmp bracket the writes to this
+    // counter: a non-volatile local written in between has an indeterminate value after
+    // the jump. bd_begin clears the context per suite, so the per-suite counts sum.
+    volatile size_t failures = 0;
 
     if (argc > 1) {
         FaultInjector        fi;
@@ -193,6 +201,7 @@ int main(int argc, char **argv) {
                        lastError);
                 LOG_ERROR(module, "Failed to load test suite %s, error = %lu\n", ts_path,
                           lastError);
+                failures++;
                 continue;
             }
 
@@ -211,6 +220,7 @@ int main(int argc, char **argv) {
                     GetProcAddress(test_suite, FLA_SET_EXCEPTION_SERVICE_STR);
             if (set_exception_service == NULL) {
                 LOG_ERROR(module, "Test Suite %s has no exception service", ts_path);
+                failures++;
                 continue;
             }
             flp_init_exception_service(set_exception_service);
@@ -239,12 +249,21 @@ int main(int argc, char **argv) {
                 flp_init_stream_service(fla_set_stream_service);
             }
 
+            fla_set_timer_service_fn *fla_set_timer_service
+                = (fla_set_timer_service_fn *)
+                    GetProcAddress(test_suite, FLA_SET_TIMER_SERVICE_STR);
+            // the timer service is optional
+            if (fla_set_timer_service != NULL) {
+                flp_init_timer_service(fla_set_timer_service);
+            }
+
             fl_get_test_suite
                 = (fl_get_test_suite_fn *)GetProcAddress(test_suite,
                                                          "fl_get_test_suite");
             if (fl_get_test_suite == NULL) {
                 LOG_ERROR(module, "Test suite %s doesn't export fl_get_test_suite",
                           ts_path);
+                failures++;
                 continue;
             }
 
@@ -254,13 +273,14 @@ int main(int argc, char **argv) {
                        argc - 1);
                 LOG_INFO(module, "%s (%zu): test suite %d of %d", ts->name, ts->count, i,
                          argc - 1);
-                exercise_test_suite(&bctx, ts);
+                failures += exercise_test_suite(&bctx, ts);
                 if (i < argc - 1) {
                     printf("*******************************************\n");
                 }
             }
             FL_CATCH_ALL {
                 exception_handler(&bctx, FL_REASON, FL_DETAILS, FL_FILE, FL_LINE);
+                failures++;
             }
             FL_END_TRY;
 
@@ -274,5 +294,5 @@ int main(int argc, char **argv) {
         return -1;
     }
 
-    return 0;
+    return failures == 0 ? 0 : 1;
 }

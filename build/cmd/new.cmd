@@ -144,7 +144,7 @@ if %test% EQU 1 (
     )
     TITLE Unit Tests
     pushd test
-    but_driver.exe ^
+    .\but_driver.exe ^
         fl_exception_tests.dll ^
         but_tests.dll ^
         dlist_tests.dll ^
@@ -166,7 +166,12 @@ if %test% EQU 1 (
         command_tests.dll ^
         faultline_tests.dll ^
         malloc_cleanup_config_tests.dll
+    set "_but_rc=!errorlevel!"
     popd
+    if not "!_but_rc!"=="0" (
+        ECHO NEW.CMD ERROR: but_driver.exe exited with !_but_rc! 1>&2
+        GOTO :ERROR
+    )
 )
 GOTO :SUCCESS
 

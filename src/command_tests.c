@@ -11,6 +11,7 @@
 #include "fla_exception_service.c" // fl_throw_assertion, g_fla_exception_service
 #include "fla_log_service.c"       // g_fla_log_service
 #include "fla_memory_service.c"    // g_fla_memory_service, fla_set_memory_service
+#include "fla_timer_service.c"     // g_fla_timer_service, fla_set_timer_service
 
 #include <faultline/fl_exception_service_assert.h> // FL_ASSERT_* macros
 #include <faultline/fl_macros.h>                   // FL_CONTAINER_OF, FL_UNUSED

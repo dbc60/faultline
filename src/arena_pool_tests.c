@@ -19,6 +19,7 @@
 #include "fl_threads.c"
 #include "fla_exception_service.c"
 #include "fla_log_service.c"
+#include "fla_timer_service.c" // g_fla_timer_service, fla_set_timer_service
 
 #include <faultline/arena.h>
 #include <faultline/arena_pool.h>

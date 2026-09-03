@@ -90,9 +90,16 @@ if %test% EQU 1 (
         ECHO Run the %PROJECT_NAME% unit tests
     )
     pushd %DIR_OUT_BIN%
-    but_driver.exe index_generic_tests.dll
-    but_driver.exe index_windows_tests.dll
+    set "_but_rc=0"
+    .\but_driver.exe index_generic_tests.dll
+    if not "!errorlevel!"=="0" set "_but_rc=!errorlevel!"
+    .\but_driver.exe index_windows_tests.dll
+    if not "!errorlevel!"=="0" set "_but_rc=!errorlevel!"
     popd
+    if not "!_but_rc!"=="0" (
+        ECHO INDEX.CMD ERROR: but_driver.exe exited with !_but_rc! 1>&2
+        GOTO :ERROR
+    )
 )
 GOTO :SUCCESS
 

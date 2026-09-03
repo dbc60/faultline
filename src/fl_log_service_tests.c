@@ -32,6 +32,7 @@
 #include "lock_os.c"               // FLLock backend for flp_log_service.c
 #include "flp_log_service.c"       // code under test (platform log service)
 #include "fla_log_service.c"       // code under test (application log service)
+#include "fla_timer_service.c"     // g_fla_timer_service, fla_set_timer_service
 
 #include <io.h> // _dup, _dup2, _close, _fileno (stderr suppression)
 

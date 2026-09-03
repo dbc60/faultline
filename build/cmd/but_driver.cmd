@@ -103,8 +103,13 @@ if %test% EQU 1 (
     )
     echo running %DIR_OUT_BIN%\but_driver.exe but_tests.dll
     pushd %DIR_OUT_BIN%
-    but_driver.exe but_tests.dll
+    .\but_driver.exe but_tests.dll
+    set "_but_rc=!errorlevel!"
     popd
+    if not "!_but_rc!"=="0" (
+        ECHO BUT_DRIVER.CMD ERROR: but_driver.exe exited with !_but_rc! 1>&2
+        GOTO :ERROR
+    )
 )
 GOTO :SUCCESS
 

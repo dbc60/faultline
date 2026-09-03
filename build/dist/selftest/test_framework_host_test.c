@@ -31,7 +31,9 @@
 #include <faultline/fl_exception_service.h> // fl_expected_failure, FLA_SET_EXCEPTION_SERVICE_STR
 #include <faultline/fl_test.h> // FLTestSuite, fl_get_test_suite_fn, FL_GET_TEST_SUITE_STR
 #include <faultline/fl_try.h> // FL_TRY/FL_CATCH_STR (platform side under FL_PLATFORM_BUILD)
+#include <faultline/fl_timer_service.h> // fla_set_timer_service_fn, FLA_SET_TIMER_SERVICE_STR
 #include <flp_exception_service.h> // flp_init_exception_service
+#include <flp_timer_service.h>     // flp_init_timer_service
 
 #include <stddef.h> // size_t
 #include <string.h> // strcmp
@@ -81,6 +83,16 @@ int main(int argc, char **argv) {
     CHECK(fla_set_exc != NULL);
     if (fla_set_exc != NULL) {
         flp_init_exception_service(fla_set_exc);
+    }
+
+    /* fl_run_case times the test body through the module's timer service, so a host
+     * that leaves it uninjected leaves the module holding fla_timer_service.c's abort
+     * stubs. */
+    fla_set_timer_service_fn *fla_set_timer
+        = (fla_set_timer_service_fn *)GetProcAddress(suite, FLA_SET_TIMER_SERVICE_STR);
+    CHECK(fla_set_timer != NULL);
+    if (fla_set_timer != NULL) {
+        flp_init_timer_service(fla_set_timer);
     }
 
     SECTION("suite enumeration");

@@ -10,6 +10,7 @@
 
 #include "fl_exception_service.c"
 #include "fla_exception_service.c"
+#include "fla_timer_service.c" // g_fla_timer_service, fla_set_timer_service
 #include <faultline/fl_exception_service_assert.h> // assert
 #include <faultline/fl_test.h>                     // FLTestCase. FLTestSuite
 #include <faultline/fl_macros.h>                   // FL_SPEC_EXPORT

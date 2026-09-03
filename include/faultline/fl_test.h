@@ -18,6 +18,7 @@
 #include <faultline/fl_abi.h>    // FLA_GET_ABI_FN, fl_fill_abi_info
 #include <faultline/fl_case_outcome.h> // FLCaseOutcome, FL_RUN_CASE_FN, fl_case_outcome_*
 #include <faultline/fl_exception_service.h> // fl_expected_failure
+#include <faultline/fl_timer.h>             // FL_NOW, FL_ELAPSED
 
 #include <string.h> // strcmp
 
@@ -290,9 +291,13 @@ extern FL_SPEC_EXPORT FL_GET_TEST_SUITE_FN(fl_get_test_suite);
  * the same reason fl_fill_abi_info is one (fl_abi.h).
  *
  * Each phase gets its own FL_TRY, so an exception is contained to the phase that threw
- * it. This is what three separate driver-side FL_TRY blocks used to do. A single FL_TRY
- * spanning all three phases would change behavior: an fl_expected_failure thrown by
- * setup would skip the test body instead of letting it run.
+ * it. A single FL_TRY spanning all three phases would behave differently: an
+ * fl_expected_failure thrown by setup would skip the test body rather than let it run.
+ *
+ * Only the body is timed. start is read before FL_TRY rather than inside it because a
+ * local written between setjmp and longjmp has an indeterminate value afterwards; read
+ * before, it survives the throw. The cost of the setjmp itself lands inside the
+ * measurement, which is a fixed few nanoseconds.
  *
  * @return FL_RUN_CASE_OK when a case ran, a failing one included. Otherwise the reason
  * no case ran, which in both cases means the caller asked for something impossible
@@ -336,6 +341,8 @@ static inline FL_MAYBE_UNUSED FLRunCaseResult fl_run_case_impl(FLTestSuite   *ts
         }
     }
 
+    FLTimestamp start = FL_NOW();
+
     FL_TRY {
         tc->test(tc);
     }
@@ -347,6 +354,8 @@ static inline FL_MAYBE_UNUSED FLRunCaseResult fl_run_case_impl(FLTestSuite   *ts
                              FL_REASON, FL_DETAILS, FL_FILE, FL_LINE);
     }
     FL_END_TRY;
+
+    out->elapsed_seconds = FL_ELAPSED(start, FL_NOW());
 
     if (tc->cleanup != NULL) {
         FL_TRY {

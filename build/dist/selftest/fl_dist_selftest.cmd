@@ -274,12 +274,17 @@ ECHO  test_framework
 ECHO ============================================================
 CALL "%DIR_CMDS%\exception_service_dist.cmd" > NUL
 IF ERRORLEVEL 1 ( ECHO   [dist]    FAILED & SET /A FAILS+=1 & GOTO :after_tf )
+CALL "%DIR_CMDS%\timer_service_dist.cmd" > NUL
+IF ERRORLEVEL 1 ( ECHO   [dist]    FAILED & SET /A FAILS+=1 & GOTO :after_tf )
 CALL "%DIR_CMDS%\test_framework_dist.cmd" > NUL
 IF ERRORLEVEL 1 ( ECHO   [dist]    FAILED & SET /A FAILS+=1 & GOTO :after_tf )
 SET INTO=%DIR_SELF%\test_framework
-:: test_framework declares SVC_DEPENDS=exception_service: import the dependency
-:: first, then layer the package into the same tree (fl_import checks the dep).
+:: test_framework declares SVC_DEPENDS=exception_service timer_service: import both
+:: dependencies first, then layer the package into the same tree (fl_import checks
+:: them). fl_run_case times the test body, so the suite needs the timer service too.
 CALL :IMPORT "%DIR_REPO%\dist\exception_service" "%INTO%"
+IF ERRORLEVEL 1 ( ECHO   [import]  FAILED & SET /A FAILS+=1 & GOTO :after_tf )
+CALL :IMPORT_ADD "%DIR_REPO%\dist\timer_service" "%INTO%"
 IF ERRORLEVEL 1 ( ECHO   [import]  FAILED & SET /A FAILS+=1 & GOTO :after_tf )
 CALL :IMPORT_ADD "%DIR_REPO%\dist\test_framework" "%INTO%"
 IF ERRORLEVEL 1 ( ECHO   [import]  FAILED & SET /A FAILS+=1 & GOTO :after_tf )
@@ -291,6 +296,7 @@ cl %CommonCompilerFlagsFinal% /DDLL_BUILD /wd4456 ^
     /I"%INTO%\include" ^
     "%INTO%\src\fl_exception_service.c" ^
     "%INTO%\src\fla_exception_service.c" ^
+    "%INTO%\src\fla_timer_service.c" ^
     "%HERE%\test_framework_suite.c" ^
     /Fo:"%OBJ_DLL%\\" /Fd:"%OBJ_DLL%\tf_suite.pdb" /LD /Fe:"%INTO%\tf_suite.dll" ^
     /link %CommonLinkerFlagsFinal% > "%CL_LOG%" 2>&1
@@ -299,6 +305,7 @@ cl %CommonCompilerFlagsFinal% /DFL_PLATFORM_BUILD /DFL_EMBEDDED /wd4456 ^
     /I"%INTO%\include" ^
     "%INTO%\src\fl_exception_service.c" ^
     "%INTO%\src\flp_exception_service.c" ^
+    "%INTO%\src\flp_timer_service.c" ^
     "%HERE%\test_framework_host_test.c" ^
     /Fo:"%OBJ_EXE%\\" /Fd:"%INTO%\tf_host.pdb" /Fe:"%INTO%\tf_host.exe" ^
     /link %CommonLinkerFlagsFinal% /ENTRY:mainCRTStartup > "%CL_LOG%" 2>&1

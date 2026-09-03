@@ -74,8 +74,8 @@ if %test% EQU 1 (
         ECHO Run the %PROJECT_NAME% unit tests
     )
     pushd test
-    faultline.exe run malloc_cleanup_config_tests.dll
-    faultline.exe show results --limit 1
+    .\faultline.exe run malloc_cleanup_config_tests.dll
+    .\faultline.exe show results --limit 1
     popd
 )
 GOTO :SUCCESS
