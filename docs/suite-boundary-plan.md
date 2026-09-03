@@ -95,7 +95,9 @@ typedef struct FLCaseOutcome {
     char const   *reason;          // literal in the DLL, valid while it is loaded
     char const   *file;            // same
     int           line;
-    double        elapsed_seconds; // test body only, matching today's stopwatch scope
+    // No elapsed time. Measuring one suite-side would need the timer service, whose
+    // uninjected defaults abort (fla_timer_service.c:20, :29) and which only the
+    // faultline app injects, not BUT. The driver times the fl_run_case call instead.
     char          details[FL_MAX_DETAILS_LENGTH]; // owned copy, not a scratch pointer
 } FLCaseOutcome;
 
@@ -134,11 +136,13 @@ Add `fl_case_outcome.h` as above. `FLFailureType` is reused from `fl_types.h`.
 Alongside `fl_get_test_suite` and `fla_get_abi`, emit `fl_run_case`. Body:
 
 - bounds-check `index`, report `FL_CASE_UNEXPECTED_FAILURE` if out of range
-- one `FL_TRY` covering setup → test → cleanup
+- one `FL_TRY` per phase, not one spanning all three. An `fl_expected_failure` thrown
+  by setup must leave the body still running, which is what today's three separate
+  driver-side `FL_TRY` blocks do; a single spanning `FL_TRY` would skip it.
 - the two precedence rules currently at `faultline_driver.c:63` and `:98`: a setup
   failure skips both the body and cleanup; a cleanup failure does not overwrite a
   body failure
-- bracket the body with the injected timer service, write `elapsed_seconds`
+- no timing; the driver brackets the `fl_run_case` call from its own side
 - `FL_CATCH(fl_expected_failure)` — inside the DLL the reason pointer and the constant
   are the same object, so this is pointer identity, not `FL_CATCH_STR`. The
   cross-module `strcmp` in `FL_UNEXPECTED_EXCEPTION` goes away from this path.
@@ -165,6 +169,12 @@ suite-side stack and aborts.
   stopwatch (`:85`) since the call returns normally in every case. The two-`TestResult`
   collapse at `:230-233` becomes a read of `out.failure_type`; the comment at `:226`
   already states those failures are mutually exclusive, so one outcome is sufficient.
+  The stopwatch moves from around `tc->test(tc)` (`:72`, `:86`) to around the
+  `fl_run_case` call, so the recorded per-pass duration starts including setup and
+  cleanup. That is a real change to what lands in SQLite. Recovering body-only timing
+  would mean the shim reading a timer service, which all 27 suites would then have to
+  link and every host inject — see the outcome struct comment for why that was
+  rejected.
 - `but_driver.c:120-159` — same collapse. Both drivers load the same DLLs, so both use
   the shim.
 - `build/dist/selftest/test_framework_host_test.c:110-115` — a third host, same
@@ -225,12 +235,8 @@ the driver.
 - Add `fl_case_outcome.h` to `test_framework`'s `Inc` list in
   `build/dist/packages.psd1`, then regenerate the manifest with
   `build/dist/fl_emit_manifest.ps1` (it is generated, not hand-edited).
-- The shim's `elapsed_seconds` uses the timer service, whose headers
-  `test_framework` does not currently ship. Either add a `timer_service` dependency,
-  or drop `elapsed_seconds` and let the driver time the whole `fl_run_case` call. The
-  second is simpler but changes what the number means: today's stopwatch covers the
-  test body only (`faultline_driver.c:72`, `:86`), and driver-side timing would fold
-  in setup and cleanup. Prefer the dependency.
+  That is the only header the package gains — the shim reports no elapsed time, so it
+  pulls in neither the stopwatch nor the timer service.
 - `exception_service` ships both `fla_exception_service.c` and
   `flp_exception_service.c`. Once `fla_` is self-sufficient (item 3), a consumer that
   only loads suites needs the `fla_` side alone. Worth revisiting when the packages

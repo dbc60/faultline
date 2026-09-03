@@ -14,10 +14,13 @@
  * capabilities, allowing systematic testing of error handling code paths.
  */
 #include <faultline/fl_macros.h> // FL_UNUSED, FL_SPEC_EXPORT
-#include <faultline/fl_try.h>    // FL_THROW
+#include <faultline/fl_try.h>    // FL_TRY, FL_CATCH, FL_CATCH_ALL, FL_THROW
 #include <faultline/fl_abi.h>    // FLA_GET_ABI_FN, fl_fill_abi_info
+#include <faultline/fl_case_outcome.h> // FLCaseOutcome, FL_RUN_CASE_FN, fl_case_outcome_*
+#include <faultline/fl_exception_service.h> // fl_expected_failure, fl_invalid_value
 
-#include <string.h> // strcmp
+#include <stdbool.h> // bool
+#include <string.h>  // strcmp
 
 #if defined(__cplusplus)
 extern "C" {
@@ -164,6 +167,12 @@ typedef struct FLTestSuite FLTestSuite;
 //
 // Also exports fla_get_abi, so every suite reports the toolchain with which it was built
 // so the driver can refuse an incompatible one by name instead of crashing.
+//
+// And exports fl_run_case, which runs one case with its exceptions contained inside this
+// module. That export is what lets a driver built as C run this suite whether the suite
+// itself was built as C or C++: the try/catch below is compiled by the suite's own
+// compiler, so it is setjmp here and a real catch there, and either way what crosses the
+// boundary is an FLCaseOutcome rather than an unwind.
 #define FL_GET_TEST_SUITE(NAME, SUITE)                                   \
     static FLTestSuite SUITE##_ts                                        \
         = {.name       = NAME,                                           \
@@ -174,6 +183,9 @@ typedef struct FLTestSuite FLTestSuite;
     }                                                                    \
     FL_SPEC_EXPORT FLA_GET_ABI_FN(fla_get_abi) {                         \
         fl_fill_abi_info(out);                                           \
+    }                                                                    \
+    FL_SPEC_EXPORT FL_RUN_CASE_FN(fl_run_case) {                         \
+        return fl_run_case_impl(&SUITE##_ts, index, out, out_size);      \
     }
 
 // a macro to define a common field for test-case structs to embed a FLTestCase.
@@ -269,6 +281,93 @@ typedef FL_GET_TEST_SUITE_FN(fl_get_test_suite_fn);
  * @brief The function that returns the address of a FLTestSuite instance.
  */
 extern FL_SPEC_EXPORT FL_GET_TEST_SUITE_FN(fl_get_test_suite);
+
+/**
+ * @brief Run one test case, containing every exception it throws.
+ *
+ * FL_GET_TEST_SUITE's fl_run_case export is a one-line call to this function. The body
+ * lives here rather than in the macro so it reads as ordinary C, and stays a static
+ * inline so each module compiles its own copy against its own exception backend --
+ * the same reason fl_fill_abi_info is one (fl_abi.h).
+ *
+ * Each phase gets its own FL_TRY, so an exception is contained to the phase that threw
+ * it. This is what three separate driver-side FL_TRY blocks used to do. A single FL_TRY
+ * spanning all three phases would change behavior: an fl_expected_failure thrown by
+ * setup would skip the test body instead of letting it run.
+ *
+ * @return false if out is NULL or smaller than this module's FLCaseOutcome, in which
+ * case no test case ran. True otherwise, a failing case included.
+ */
+static inline FL_MAYBE_UNUSED bool fl_run_case_impl(FLTestSuite *ts, size_t index,
+                                                    FLCaseOutcome *out,
+                                                    size_t         out_size) {
+    if (out == NULL || out_size < sizeof(FLCaseOutcome)) {
+        return false;
+    }
+
+    fl_case_outcome_clear(out);
+
+    if (index >= ts->count) {
+        fl_case_outcome_fail(out, FL_CASE_UNEXPECTED_FAILURE, FL_FAILURE_NONE,
+                             fl_invalid_value, "test case index out of range", __FILE__,
+                             __LINE__);
+        return true;
+    }
+
+    FLTestCase *tc = ts->test_cases[index];
+
+    if (tc->setup != NULL) {
+        FL_TRY {
+            tc->setup(tc);
+        }
+        FL_CATCH(fl_expected_failure) {
+            fl_case_note_expected(out);
+        }
+        FL_CATCH_ALL {
+            fl_case_outcome_fail(out, FL_CASE_UNEXPECTED_FAILURE, FL_SETUP_FAILURE,
+                                 FL_REASON, FL_DETAILS, FL_FILE, FL_LINE);
+        }
+        FL_END_TRY;
+
+        // Setup acquired nothing, so there is nothing to exercise and nothing to
+        // release. Report the setup failure and stop.
+        if (out->status == FL_CASE_UNEXPECTED_FAILURE) {
+            return true;
+        }
+    }
+
+    FL_TRY {
+        tc->test(tc);
+    }
+    FL_CATCH(fl_expected_failure) {
+        fl_case_note_expected(out);
+    }
+    FL_CATCH_ALL {
+        fl_case_outcome_fail(out, FL_CASE_UNEXPECTED_FAILURE, FL_TEST_FAILURE,
+                             FL_REASON, FL_DETAILS, FL_FILE, FL_LINE);
+    }
+    FL_END_TRY;
+
+    if (tc->cleanup != NULL) {
+        FL_TRY {
+            tc->cleanup(tc);
+        }
+        FL_CATCH(fl_expected_failure) {
+            fl_case_note_expected(out);
+        }
+        FL_CATCH_ALL {
+            // A cleanup failure does not overwrite one the body already reported.
+            if (out->status != FL_CASE_UNEXPECTED_FAILURE) {
+                fl_case_outcome_fail(out, FL_CASE_UNEXPECTED_FAILURE,
+                                     FL_CLEANUP_FAILURE, FL_REASON, FL_DETAILS,
+                                     FL_FILE, FL_LINE);
+            }
+        }
+        FL_END_TRY;
+    }
+
+    return true;
+}
 
 #if defined(__cplusplus)
 }

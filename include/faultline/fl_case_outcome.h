@@ -1,0 +1,151 @@
+#ifndef FL_CASE_OUTCOME_H_
+#define FL_CASE_OUTCOME_H_
+
+/**
+ * @file fl_case_outcome.h
+ * @author Douglas Cuthbertson
+ * @brief The result one test case reports across the module boundary.
+ * @version 0.1
+ * @date 2026-09-02
+ *
+ * A driver used to wrap its calls into a suite in its own FL_TRY, so the suite's throw
+ * unwound into a jump buffer the driver had filled. That made the two images share an
+ * unwinding mechanism: a suite compiled with the C++ backend could not be run by a
+ * driver compiled with the setjmp one, and the reverse.
+ *
+ * The suite now catches its own exceptions and reports what happened in an
+ * FLCaseOutcome, so the boundary carries a value rather than an unwind. The mechanism
+ * becomes private to each module, and one driver runs suites built either way.
+ *
+ * details is an array, not a pointer. FL_DETAILS points into the throwing module's
+ * per-thread scratch buffer (fl_details_buf, fl_try.h), which the next
+ * detail-formatting throw overwrites, so a pointer would oblige the driver to copy the
+ * text before its next call into the suite. Copying it here instead means nothing that
+ * crosses the boundary outlives the call that produced it.
+ *
+ * reason and file stay pointers: both are string literals in the suite, valid for as
+ * long as it is loaded.
+ *
+ * No elapsed time is reported here. The suite would have to read a timer service to
+ * measure one, and fla_timer_service.c's uninjected defaults abort, so every suite
+ * would have to link it and every host would have to inject it -- which the BUT driver
+ * does not. The driver times the fl_run_case call from its own side instead.
+ *
+ * See LICENSE.txt for copyright and licensing information about this file.
+ */
+#include <faultline/fl_exception_types.h> // FLExceptionReason, FL_MAX_DETAILS_LENGTH
+#include <faultline/fl_macros.h>          // FL_SPEC_EXPORT, FL_STR, FL_MAYBE_UNUSED
+#include <faultline/fl_types.h>           // FLFailureType
+
+#include <stdbool.h> // bool
+#include <stddef.h>  // NULL, size_t
+#include <stdio.h>   // snprintf
+
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
+/**
+ * @brief Whether a test case passed, and if not, which kind of failure it was.
+ *
+ * A driver reports FL_CASE_EXPECTED_FAILURE as a pass. It is distinguished from
+ * FL_CASE_PASS because the suite knows the difference and the information is free;
+ * the matching happens inside the suite, where the reason pointer and
+ * fl_expected_failure are the same object, so it needs no cross-module strcmp.
+ */
+typedef enum FLCaseStatus {
+    FL_CASE_PASS,
+    FL_CASE_EXPECTED_FAILURE,
+    FL_CASE_UNEXPECTED_FAILURE,
+} FLCaseStatus;
+
+/**
+ * @brief What one test case reports back to the driver that ran it.
+ */
+typedef struct FLCaseOutcome {
+    FLCaseStatus      status;
+    FLFailureType     failure_type; ///< which phase failed, or FL_FAILURE_NONE
+    FLExceptionReason reason;       ///< literal in the suite; valid while it is loaded
+    char const       *file;         ///< same
+    int               line;
+    char details[FL_MAX_DETAILS_LENGTH]; ///< owned copy; see the file comment
+} FLCaseOutcome;
+
+/**
+ * @brief Reset an outcome to a passing result with no failure recorded.
+ */
+static inline FL_MAYBE_UNUSED void fl_case_outcome_clear(FLCaseOutcome *out) {
+    out->status       = FL_CASE_PASS;
+    out->failure_type = FL_FAILURE_NONE;
+    out->reason       = NULL;
+    out->file         = NULL;
+    out->line         = 0;
+    out->details[0]   = '\0';
+}
+
+/**
+ * @brief Note that a phase ended in fl_expected_failure.
+ *
+ * An expected failure is not a failure, but it must not erase one already recorded:
+ * a test body that fails and a cleanup that then throws fl_expected_failure has to
+ * keep reporting the body's failure.
+ */
+static inline FL_MAYBE_UNUSED void fl_case_note_expected(FLCaseOutcome *out) {
+    if (out->status != FL_CASE_UNEXPECTED_FAILURE) {
+        out->status = FL_CASE_EXPECTED_FAILURE;
+    }
+}
+
+/**
+ * @brief Record a failure, copying details out of the caller's scratch buffer.
+ */
+static inline FL_MAYBE_UNUSED void fl_case_outcome_fail(FLCaseOutcome    *out,
+                                                        FLCaseStatus      status,
+                                                        FLFailureType     failure_type,
+                                                        FLExceptionReason reason,
+                                                        char const       *details,
+                                                        char const *file, int line) {
+    out->status       = status;
+    out->failure_type = failure_type;
+    out->reason       = reason;
+    out->file         = file;
+    out->line         = line;
+
+    if (details != NULL) {
+        snprintf(out->details, sizeof out->details, "%s", details);
+    } else {
+        out->details[0] = '\0';
+    }
+}
+
+/**
+ * @brief Run one test case and report what happened.
+ *
+ * @param index the test case to run, as an index into the suite's array.
+ * @param out where to write the result. Cleared before the case runs.
+ * @param out_size the caller's sizeof(FLCaseOutcome), so a suite built against a
+ * different revision of the struct refuses the call rather than writing past the end
+ * of it. Follows the same convention as fla_set_exception_service.
+ * @return false if out is NULL or too small, in which case nothing was written and no
+ * test case ran. True otherwise, including when the case failed -- a failing test is a
+ * result, not a rejected call.
+ *
+ * FL_GET_TEST_SUITE emits the definition, so a suite gains it with no edit.
+ *
+ * The prototype below is what makes that definition safe to find by name from a C++
+ * suite, for the same reason fla_get_abi needs one (fl_abi.h): linkage comes from the
+ * first declaration a translation unit sees, so without this one inside an extern "C"
+ * block, a C++ compile would give fl_run_case mangled linkage and
+ * GetProcAddress(FL_RUN_CASE_STR) would stop finding it.
+ */
+#define FL_RUN_CASE_FN(name) \
+    bool name(size_t index, FLCaseOutcome *out, size_t out_size)
+typedef FL_RUN_CASE_FN(fl_run_case_fn);
+extern FL_SPEC_EXPORT fl_run_case_fn fl_run_case;
+#define FL_RUN_CASE_STR FL_STR(fl_run_case)
+
+#if defined(__cplusplus)
+}
+#endif
+
+#endif // FL_CASE_OUTCOME_H_
