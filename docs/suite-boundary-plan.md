@@ -252,9 +252,10 @@ the driver.
   `flp_exception_service.c`. Once `fla_` is self-sufficient (item 3), a consumer that
   only loads suites needs the `fla_` side alone. Worth revisiting when the packages
   are regenerated, not before.
-- Both packages change content, so both need their `Version` raised in
-  `packages.psd1` and their manifests regenerated — `test_framework` for the new
-  header, `exception_service` for the rewritten `fla_exception_service.c`.
+- `test_framework` is at 0.3.0 and `exception_service` at 0.3.0, the latter covering
+  content that had drifted from its recorded version. Item 3 rewrites
+  `fla_exception_service.c`, so `exception_service` needs a further raise and a
+  regenerated manifest at that step.
 
 `worldbuilder` rebuilds after this step, not before. Its suites use
 `FL_GET_TEST_SUITE`, so they gain `fl_run_case` from the macro and the rebuild is a
