@@ -14,6 +14,11 @@
 #   verbose   - print each command before running it
 #   trace     - print all option variable values after parsing
 #   timed     - collect build timing metrics via ctime.exe
+#   cxx       - compile first-party translation units with the C++ dialect
+#               flags (COMMON_COMPILER_FLAGS_CXX) and the C++ exception
+#               backend (FL_EXC_BACKEND_CXX) instead of the C/setjmp default,
+#               driving clang++ instead of clang. Needed only while both
+#               backends exist in the tree. Mirrors options.cmd's cxx.
 
 # Initialize all flags to 0
 build=0
@@ -26,6 +31,7 @@ junit=0
 verbose=0
 trace=0
 timed=0
+cxx=0
 
 # Parse arguments
 for _opt in "$@"; do
@@ -40,6 +46,7 @@ for _opt in "$@"; do
         verbose)  verbose=1 ;;
         trace)    trace=1 ;;
         timed)    timed=1 ;;
+        cxx)      cxx=1 ;;
         *)
             echo "options.sh: unknown option '$_opt'" >&2
             ;;
@@ -59,4 +66,5 @@ if [[ $trace -eq 1 ]]; then
     echo "  verbose=$verbose"
     echo "  trace=$trace"
     echo "  timed=$timed"
+    echo "  cxx=$cxx"
 fi

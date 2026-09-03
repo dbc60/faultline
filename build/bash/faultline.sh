@@ -15,6 +15,17 @@ if [[ $timed -eq 1 ]]; then
 fi
 
 if [[ $build -eq 1 ]]; then
+    # The first-party sources below take whichever dialect cxx picked;
+    # sqlite3.o/cwalk.o stay C regardless, compiled separately above.
+    _compiler="$CLANG"
+    _compiler_flags="$COMMON_COMPILER_FLAGS"
+    _linker_flags="$COMMON_LINKER_FLAGS"
+    if [[ $cxx -eq 1 ]]; then
+        _compiler="$CLANGXX"
+        _compiler_flags="$COMMON_COMPILER_FLAGS_CXX"
+        _linker_flags="$COMMON_LINKER_FLAGS_CXX"
+    fi
+
     # --- sqlite3.o (shared by test DLL and exe; suppress all warnings) ---
     [[ $verbose -eq 1 ]] && echo "Compile sqlite3"
     "$CLANG" -target x86_64-w64-mingw32 -std=c17 -w \
@@ -36,31 +47,31 @@ if [[ $build -eq 1 ]]; then
     # suite registration (faultline_tests.c). The cases are now defined in those
     # separate files, so compiling faultline_tests.c alone leaves their symbols
     # undefined at link time.
-    "$CLANG" $COMMON_COMPILER_FLAGS -DDLL_BUILD \
+    "$_compiler" $_compiler_flags -DDLL_BUILD \
         -I "$DIR_INCLUDE" -I "$DIR_THIRD_PARTY" -I "$DIR_THIRD_PARTY/cwalk/include" \
         -c "$DIR_REPO/src/faultline_tests_unity.c" \
         -o "$DIR_OUT_OBJ/faultline_tests.o" \
         -MJ "$DIR_OUT_OBJ/faultline_tests.json"
 
-    "$CLANG" -target x86_64-w64-mingw32 -shared \
+    "$_compiler" -target x86_64-w64-mingw32 -shared \
         "$DIR_OUT_OBJ/faultline_tests.o" \
         "$DIR_OUT_OBJ/sqlite3.o" \
         "$DIR_OUT_OBJ/cwalk.o" \
-        $COMMON_LINKER_FLAGS \
+        $_linker_flags \
         -o "$DIR_OUT_BIN/faultline_tests.dll"
 
     # --- faultline_test_data.dll ---
     [[ $verbose -eq 1 ]] && echo "Build $PROJECT_NAME driver test-data DLL"
 
-    "$CLANG" $COMMON_COMPILER_FLAGS -DDLL_BUILD -DFL_PLATFORM_BUILD \
+    "$_compiler" $_compiler_flags -DDLL_BUILD -DFL_PLATFORM_BUILD \
         -I "$DIR_INCLUDE" -I "$DIR_THIRD_PARTY" \
         -c "$DIR_REPO/src/faultline_test_data.c" \
         -o "$DIR_OUT_OBJ/faultline_test_data.o" \
         -MJ "$DIR_OUT_OBJ/faultline_test_data.json"
 
-    "$CLANG" -target x86_64-w64-mingw32 -shared \
+    "$_compiler" -target x86_64-w64-mingw32 -shared \
         "$DIR_OUT_OBJ/faultline_test_data.o" \
-        $COMMON_LINKER_FLAGS \
+        $_linker_flags \
         -o "$DIR_OUT_BIN/faultline_test_data.dll"
 
     # --- faultline.exe ---
@@ -69,17 +80,17 @@ if [[ $build -eq 1 ]]; then
     # Unity TU: main_unity_windows.c pulls in the implementation sources and the
     # command handlers; main_windows.c is now just the CLI entry point and no
     # longer aggregates the implementation.
-    "$CLANG" $COMMON_COMPILER_FLAGS -DFL_PLATFORM_BUILD -DFL_EMBEDDED \
+    "$_compiler" $_compiler_flags -DFL_PLATFORM_BUILD -DFL_EMBEDDED \
         -I "$DIR_INCLUDE" -I "$DIR_THIRD_PARTY" -I "$DIR_THIRD_PARTY/cwalk/include" -I "$DIR_REPO/src" \
         -c "$DIR_REPO/app/faultline/main_unity_windows.c" \
         -o "$DIR_OUT_OBJ/faultline_main.o" \
         -MJ "$DIR_OUT_OBJ/faultline_main.json"
 
-    "$CLANG" -target x86_64-w64-mingw32 \
+    "$_compiler" -target x86_64-w64-mingw32 \
         "$DIR_OUT_OBJ/faultline_main.o" \
         "$DIR_OUT_OBJ/sqlite3.o" \
         "$DIR_OUT_OBJ/cwalk.o" \
-        $COMMON_LINKER_FLAGS \
+        $_linker_flags \
         -o "$DIR_OUT_BIN/faultline.exe"
 fi
 

@@ -19,27 +19,37 @@ fi
 if [[ $build -eq 1 ]]; then
     [[ $verbose -eq 1 ]] && echo "Build $PROJECT_NAME"
 
-    "$CLANG" $COMMON_COMPILER_FLAGS -DFL_PLATFORM_BUILD -DFL_ARENA_SYNCHRONIZED \
+    # The first-party source takes whichever dialect cxx picked.
+    _compiler="$CLANG"
+    _compiler_flags="$COMMON_COMPILER_FLAGS"
+    _linker_flags="$COMMON_LINKER_FLAGS"
+    if [[ $cxx -eq 1 ]]; then
+        _compiler="$CLANGXX"
+        _compiler_flags="$COMMON_COMPILER_FLAGS_CXX"
+        _linker_flags="$COMMON_LINKER_FLAGS_CXX"
+    fi
+
+    "$_compiler" $_compiler_flags -DFL_PLATFORM_BUILD -DFL_ARENA_SYNCHRONIZED \
         -I "$DIR_INCLUDE" -I "$DIR_THIRD_PARTY" -I "$DIR_REPO/src" \
         -c "$DIR_REPO/app/arena_bench/arena_bench_main.c" \
         -o "$DIR_OUT_OBJ/arena_bench_main.o" \
         -MJ "$DIR_OUT_OBJ/arena_bench_main.json"
 
-    "$CLANG" -target x86_64-w64-mingw32 \
+    "$_compiler" -target x86_64-w64-mingw32 \
         "$DIR_OUT_OBJ/arena_bench_main.o" \
-        $COMMON_LINKER_FLAGS \
+        $_linker_flags \
         -o "$DIR_OUT_BIN/arena_bench.exe"
 
     [[ $verbose -eq 1 ]] && echo "Build $PROJECT_NAME without synchronized-arena support"
 
-    "$CLANG" $COMMON_COMPILER_FLAGS -DFL_PLATFORM_BUILD \
+    "$_compiler" $_compiler_flags -DFL_PLATFORM_BUILD \
         -I "$DIR_INCLUDE" -I "$DIR_THIRD_PARTY" -I "$DIR_REPO/src" \
         -c "$DIR_REPO/app/arena_bench/arena_bench_main.c" \
         -o "$DIR_OUT_OBJ/arena_bench_main_nosync.o"
 
-    "$CLANG" -target x86_64-w64-mingw32 \
+    "$_compiler" -target x86_64-w64-mingw32 \
         "$DIR_OUT_OBJ/arena_bench_main_nosync.o" \
-        $COMMON_LINKER_FLAGS \
+        $_linker_flags \
         -o "$DIR_OUT_BIN/arena_bench_nosync.exe"
 
     # Keep a copy outside target/, which is what clean removes. A benchmark is

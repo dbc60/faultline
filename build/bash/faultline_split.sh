@@ -65,19 +65,31 @@ fi
 if [[ $build -eq 1 ]]; then
     [[ $verbose -eq 1 ]] && echo "Build $PROJECT_NAME platform layer (unity): win32_faultline.exe"
 
-    "$CLANG" $COMMON_COMPILER_FLAGS -DFL_PLATFORM_BUILD -DFL_EMBEDDED \
+    # The first-party unity TU and the final link take whichever dialect cxx
+    # picked; faultline_core.o above was built in the same dialect by the
+    # forwarded sub-build.
+    _compiler="$CLANG"
+    _compiler_flags="$COMMON_COMPILER_FLAGS"
+    _linker_flags="$COMMON_LINKER_FLAGS"
+    if [[ $cxx -eq 1 ]]; then
+        _compiler="$CLANGXX"
+        _compiler_flags="$COMMON_COMPILER_FLAGS_CXX"
+        _linker_flags="$COMMON_LINKER_FLAGS_CXX"
+    fi
+
+    "$_compiler" $_compiler_flags -DFL_PLATFORM_BUILD -DFL_EMBEDDED \
         -I "$DIR_INCLUDE" -I "$DIR_REPO/src" -I "$DIR_THIRD_PARTY" \
         -I "$DIR_THIRD_PARTY/cwalk/include" \
         -c "$DIR_REPO/app/faultline/win32_faultline_unity.c" \
         -o "$DIR_OUT_OBJ/win32_faultline.o" \
         -MJ "$DIR_OUT_OBJ/win32_faultline.json"
 
-    "$CLANG" -target x86_64-w64-mingw32 \
+    "$_compiler" -target x86_64-w64-mingw32 \
         "$DIR_OUT_OBJ/win32_faultline.o" \
         "$DIR_OUT_OBJ/faultline_core.o" \
         "$DIR_OUT_OBJ/sqlite3.o" \
         "$DIR_OUT_OBJ/cwalk.o" \
-        $COMMON_LINKER_FLAGS \
+        $_linker_flags \
         -o "$DIR_OUT_BIN/win32_faultline.exe"
 fi
 

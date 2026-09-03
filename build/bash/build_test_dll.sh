@@ -59,11 +59,22 @@ fi
 if [[ $build -eq 1 ]]; then
     [[ $verbose -eq 1 ]] && echo "Build ${_project_name} test suite"
 
+    # The source under test is always first-party, so it takes whichever
+    # dialect cxx picked, same as build_test_dll.cmd.
+    _compiler="$CLANG"
+    _compiler_flags="$COMMON_COMPILER_FLAGS"
+    _linker_flags="$COMMON_LINKER_FLAGS"
+    if [[ $cxx -eq 1 ]]; then
+        _compiler="$CLANGXX"
+        _compiler_flags="$COMMON_COMPILER_FLAGS_CXX"
+        _linker_flags="$COMMON_LINKER_FLAGS_CXX"
+    fi
+
     # Compile any extra sources first (e.g. fl_threads.c for log/memory service tests)
     _extra_objs=()
     for _esrc in "${_extra_srcs[@]+"${_extra_srcs[@]}"}"; do
         _estem="${_esrc%.c}"
-        "$CLANG" $COMMON_COMPILER_FLAGS -DDLL_BUILD \
+        "$_compiler" $_compiler_flags -DDLL_BUILD \
             -I "$DIR_INCLUDE" -I "$DIR_THIRD_PARTY" \
             -I "$DIR_THIRD_PARTY/fnv" \
             -c "$DIR_REPO/src/${_esrc}" \
@@ -74,7 +85,7 @@ if [[ $build -eq 1 ]]; then
 
     # Compile the main test source
     _src_stem="${_src_file%.c}"
-    "$CLANG" $COMMON_COMPILER_FLAGS -DDLL_BUILD \
+    "$_compiler" $_compiler_flags -DDLL_BUILD \
         -I "$DIR_INCLUDE" -I "$DIR_THIRD_PARTY" \
         -I "$DIR_THIRD_PARTY/fnv" \
         -c "$DIR_REPO/src/${_src_file}" \
@@ -82,10 +93,10 @@ if [[ $build -eq 1 ]]; then
         -MJ "$DIR_OUT_OBJ/${_src_stem}.json"
 
     # Link
-    "$CLANG" -target x86_64-w64-mingw32 -shared \
+    "$_compiler" -target x86_64-w64-mingw32 -shared \
         "$DIR_OUT_OBJ/${_src_stem}.o" \
         "${_extra_objs[@]+"${_extra_objs[@]}"}" \
-        $COMMON_LINKER_FLAGS \
+        $_linker_flags \
         -o "$DIR_OUT_BIN/${_dll_name}.dll"
 fi
 

@@ -15,32 +15,42 @@ if [[ $timed -eq 1 ]]; then
 fi
 
 if [[ $build -eq 1 ]]; then
+    # The first-party sources take whichever dialect cxx picked.
+    _compiler="$CLANG"
+    _compiler_flags="$COMMON_COMPILER_FLAGS"
+    _linker_flags="$COMMON_LINKER_FLAGS"
+    if [[ $cxx -eq 1 ]]; then
+        _compiler="$CLANGXX"
+        _compiler_flags="$COMMON_COMPILER_FLAGS_CXX"
+        _linker_flags="$COMMON_LINKER_FLAGS_CXX"
+    fi
+
     # --- index_generic_tests.dll ---
     [[ $verbose -eq 1 ]] && echo "Build Generic $PROJECT_NAME test suite"
 
-    "$CLANG" $COMMON_COMPILER_FLAGS -DDLL_BUILD \
+    "$_compiler" $_compiler_flags -DDLL_BUILD \
         -I "$DIR_INCLUDE" \
         -c "$DIR_REPO/src/index_generic_tests.c" \
         -o "$DIR_OUT_OBJ/index_generic_tests.o" \
         -MJ "$DIR_OUT_OBJ/index_generic_tests.json"
 
-    "$CLANG" -target x86_64-w64-mingw32 -shared \
+    "$_compiler" -target x86_64-w64-mingw32 -shared \
         "$DIR_OUT_OBJ/index_generic_tests.o" \
-        $COMMON_LINKER_FLAGS \
+        $_linker_flags \
         -o "$DIR_OUT_BIN/index_generic_tests.dll"
 
     # --- index_windows_tests.dll ---
     [[ $verbose -eq 1 ]] && echo "Build Windows $PROJECT_NAME test suite"
 
-    "$CLANG" $COMMON_COMPILER_FLAGS -DDLL_BUILD \
+    "$_compiler" $_compiler_flags -DDLL_BUILD \
         -I "$DIR_INCLUDE" \
         -c "$DIR_REPO/src/index_windows_tests.c" \
         -o "$DIR_OUT_OBJ/index_windows_tests.o" \
         -MJ "$DIR_OUT_OBJ/index_windows_tests.json"
 
-    "$CLANG" -target x86_64-w64-mingw32 -shared \
+    "$_compiler" -target x86_64-w64-mingw32 -shared \
         "$DIR_OUT_OBJ/index_windows_tests.o" \
-        $COMMON_LINKER_FLAGS \
+        $_linker_flags \
         -o "$DIR_OUT_BIN/index_windows_tests.dll"
 fi
 
