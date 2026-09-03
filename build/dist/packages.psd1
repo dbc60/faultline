@@ -24,7 +24,7 @@
 
         exception_service = @{
             Title   = 'Exception Service Distribution'
-            Version = '0.3.0'
+            Version = '0.4.0'
             Depends = ''
 
             Src = @(

@@ -163,13 +163,22 @@ Alongside `fl_get_test_suite` and `fla_get_abi`, emit `fl_run_case`. Body:
 
 `tc->setup != NULL` / `tc->cleanup != NULL` checks move here from the driver.
 
-### 3. Make the exception service module-local (`src/fla_exception_service.c:25-61`)
+### 3. Make the exception service module-local (`src/fla_exception_service.c`)
 
-Replace the abort stubs with a working implementation: a TLS environment stack plus
-`longjmp` under the setjmp backend, `throw FLException` under the C++ backend. This is
-what `flp_exception_service.c:38-78` already does; the two files converge.
+**Done at commit 2.** `fla_push`, `fla_pop` and `fla_throw` run over a thread-local
+environment stack private to the module, the shape `flp_exception_service.c:38-78`
+already has: `longjmp` under the setjmp backend, `throw FLException` under the C++ one.
+`fl_throw_assertion` still routes through `g_fla_exception_service`, which reaches that
+implementation whenever no host has injected another.
 
-`fl_throw_assertion` routes to the local implementation.
+Verified by driving the package self-test's suite through `fl_run_case` with the
+exception service deliberately left uninjected: the module's
+`FL_THROW(fl_expected_failure)` was thrown and caught inside the module and reported as
+`FL_CASE_EXPECTED_FAILURE`, and `elapsed_seconds` came back populated.
+
+One diagnostic is given up in exchange. The service no longer aborts when a host forgets
+to inject it, because a module that works on its own cannot tell the difference. Item 4
+removes the injection, so the condition stops existing.
 
 ### 4. Switch the drivers and stop injecting exceptions
 
@@ -274,12 +283,13 @@ and run both through the same unmodified `faultline.exe`. Verify:
 
 ## Commit sequence
 
-1. `fl_case_outcome.h` + `fl_run_case` emitted from `FL_GET_TEST_SUITE`. Nothing calls
-   it. Tree builds, tests pass unchanged. Includes the timer wiring the shim needs:
-   `fla_timer_service.c` linked into all 27 suite unity TUs, and the two hosts that
-   were not injecting a timer brought level with `faultline.exe` — see **Hosts** below.
-2. `fla_exception_service.c` becomes self-sufficient. Injection still overwrites it, so
-   behavior is unchanged.
+1. **Done.** `fl_case_outcome.h` + `fl_run_case` emitted from `FL_GET_TEST_SUITE`.
+   Nothing calls it. Tree builds, tests pass unchanged. Includes the timer wiring the
+   shim needs: `fla_timer_service.c` linked into all 27 suite unity TUs, and the two
+   hosts that were not injecting a timer brought level with `faultline.exe` — see
+   **Hosts** below.
+2. **Done.** `fla_exception_service.c` is self-sufficient. Injection still overwrites
+   it, so nothing in the tree changes behavior yet.
 3. All three hosts switch to `fl_run_case`; exception injection removed. Atomic — see
    item 4.
 4. ABI check narrowed.

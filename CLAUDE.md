@@ -182,7 +182,7 @@ fl_math.lib (no dependencies)
 - Unified macros: `include/faultline/fl_try.h` - the **single definition site** for `FL_TRY`/`FL_CATCH*`/`FL_THROW*`/`FL_END_TRY`; selects the platform provider or consumer accessor by `FL_PLATFORM_BUILD`, then defines the family once over the `FL_EXC_PUSH/POP/THROW` hooks
 - Assertions: `include/faultline/fl_exception_service_assert.h` - `FL_ASSERT_*` macros that throw exceptions (includes `fl_try.h`)
 - Platform provider: `include/flp_exception_service.h` (declares `flp_push`/`flp_pop`/`flp_throw`, `flp_init_exception_service`), `src/flp_exception_service.c` (owns TLS exception stack, implements push/pop/throw)
-- Consumer accessor: `include/faultline/fla_exception_service.h` (declares `g_fla_exception_service` and `fla_set_exception_service`), `src/fla_exception_service.c` (TLS service with default-abort stubs)
+- Consumer accessor: `include/faultline/fla_exception_service.h` (declares `g_fla_exception_service` and `fla_set_exception_service`), `src/fla_exception_service.c` (module-local push/pop/throw over a thread-local environment stack, replaced when a host injects its own)
 - Service injection: Driver calls `flp_init_exception_service()` to fill the struct, then after `LoadLibrary()` resolves `fla_set_exception_service` via `GetProcAddress` and calls it to inject the service into the DLL
 
 **Log Service**: Logging service following the same platform-provider/consumer pattern as exceptions.
