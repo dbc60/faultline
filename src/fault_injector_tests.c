@@ -130,12 +130,15 @@ FL_TYPE_TEST_SETUP_CLEANUP("Threshold Test", FaultTestCase, threshold, setup_con
     // setjmp-time value, making i indeterminate (UB) in the FL_CATCH block. The
     // optimizer then inserts unreachable after FL_HANDLED, eliminating the catch body
     // entirely.
+    //
+    // The loops below step i with i = i + 1 rather than i++ because C++20 deprecates
+    // increment of a volatile object, and this file is also built as C++ (cxx).
     int volatile i = 0;
 
     FL_TRY {
         fault_injector_enable(injector);
         fault_injector_set_threshold(injector, threshold);
-        for (i = 1; i < max_count; i++) {
+        for (i = 1; i < max_count; i = i + 1) {
             fault_injector_try_throw(injector);
         }
         FL_THROW(fl_test_exception);
@@ -167,7 +170,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Disable", FaultTestCase, disable_fault, setup_config
     FL_TRY {
         fault_injector_disable(injector);
         fault_injector_set_threshold(injector, threshold);
-        for (i = 1; i < max_count; i++) {
+        for (i = 1; i < max_count; i = i + 1) {
             fault_injector_try_throw(injector);
         }
     }
@@ -455,7 +458,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Advance Threshold", FaultTestCase, advance_threshold
 
     // First pass: must trigger at the original threshold
     FL_TRY {
-        for (i = 1; i < 10; i++) {
+        for (i = 1; i < 10; i = i + 1) {
             fault_injector_try_throw(injector);
         }
         FL_THROW(fl_test_exception);
@@ -486,7 +489,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Advance Threshold", FaultTestCase, advance_threshold
 
     // Second pass: must trigger one step later
     FL_TRY {
-        for (i = 1; i < 10; i++) {
+        for (i = 1; i < 10; i = i + 1) {
             fault_injector_try_throw(injector);
         }
         FL_THROW(fl_test_exception);
@@ -618,7 +621,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Try Throw With Site", FaultTestCase, try_throw_with_
     FL_TRY {
         fault_injector_enable(injector);
         fault_injector_set_threshold(injector, threshold);
-        for (i = 1; i < max_count; i++) {
+        for (i = 1; i < max_count; i = i + 1) {
             fault_injector_try_throw_with_site(injector, __FILE__, __LINE__);
         }
         FL_THROW(fl_test_exception);

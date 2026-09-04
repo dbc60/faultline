@@ -19,15 +19,10 @@ fi
 if [[ $build -eq 1 ]]; then
     [[ $verbose -eq 1 ]] && echo "Build $PROJECT_NAME"
 
-    # The first-party source takes whichever dialect cxx picked.
+    # Always C. cxx selects the dialect of a test suite, and this is not one.
     _compiler="$CLANG"
     _compiler_flags="$COMMON_COMPILER_FLAGS"
     _linker_flags="$COMMON_LINKER_FLAGS"
-    if [[ $cxx -eq 1 ]]; then
-        _compiler="$CLANGXX"
-        _compiler_flags="$COMMON_COMPILER_FLAGS_CXX"
-        _linker_flags="$COMMON_LINKER_FLAGS_CXX"
-    fi
 
     "$_compiler" $_compiler_flags -DFL_PLATFORM_BUILD -DFL_ARENA_SYNCHRONIZED \
         -I "$DIR_INCLUDE" -I "$DIR_THIRD_PARTY" -I "$DIR_REPO/src" \

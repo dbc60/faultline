@@ -235,6 +235,7 @@ Tests are organized as shared libraries (DLLs) loaded by test drivers:
 - **BUT tests**: Can be loaded by `but.exe` test driver
 - **FaultLine tests**: Loaded by `faultline.exe` with fault injection capabilities
 - Test files follow pattern `*_test.c` and `*_test.h`
+- `src/cxx_suite_tests.cpp` is the one suite written as C++ rather than C: it covers what only C++ expresses, a destructor running while an exception unwinds. `build/cmd/cxx_suite.cmd` forces `cxx` on, so it is C++ whatever the caller passed
 - Each component has its own test suite DLL
 - Test data structures defined in `*_test_data.h` files
 - **Test output**: Located in `test/` directory with compiled DLLs and executables

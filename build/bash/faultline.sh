@@ -15,16 +15,10 @@ if [[ $timed -eq 1 ]]; then
 fi
 
 if [[ $build -eq 1 ]]; then
-    # The first-party sources below take whichever dialect cxx picked;
-    # sqlite3.o/cwalk.o stay C regardless, compiled separately above.
+    # Always C. cxx selects the dialect of a test suite, and this is not one.
     _compiler="$CLANG"
     _compiler_flags="$COMMON_COMPILER_FLAGS"
     _linker_flags="$COMMON_LINKER_FLAGS"
-    if [[ $cxx -eq 1 ]]; then
-        _compiler="$CLANGXX"
-        _compiler_flags="$COMMON_COMPILER_FLAGS_CXX"
-        _linker_flags="$COMMON_LINKER_FLAGS_CXX"
-    fi
 
     # --- sqlite3.o (shared by test DLL and exe; suppress all warnings) ---
     [[ $verbose -eq 1 ]] && echo "Compile sqlite3"

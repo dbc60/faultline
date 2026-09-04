@@ -65,17 +65,10 @@ fi
 if [[ $build -eq 1 ]]; then
     [[ $verbose -eq 1 ]] && echo "Build $PROJECT_NAME platform layer (unity): win32_faultline.exe"
 
-    # The first-party unity TU and the final link take whichever dialect cxx
-    # picked; faultline_core.o above was built in the same dialect by the
-    # forwarded sub-build.
+    # Always C. cxx selects the dialect of a test suite, and this is not one.
     _compiler="$CLANG"
     _compiler_flags="$COMMON_COMPILER_FLAGS"
     _linker_flags="$COMMON_LINKER_FLAGS"
-    if [[ $cxx -eq 1 ]]; then
-        _compiler="$CLANGXX"
-        _compiler_flags="$COMMON_COMPILER_FLAGS_CXX"
-        _linker_flags="$COMMON_LINKER_FLAGS_CXX"
-    fi
 
     "$_compiler" $_compiler_flags -DFL_PLATFORM_BUILD -DFL_EMBEDDED \
         -I "$DIR_INCLUDE" -I "$DIR_REPO/src" -I "$DIR_THIRD_PARTY" \

@@ -58,6 +58,8 @@ bash "$SCRIPT_DIR/malloc_cleanup_config.sh" "${_forward_args[@]}"
 bash "$SCRIPT_DIR/memory_service.sh"        "${_forward_args[@]}"
 bash "$SCRIPT_DIR/file_service.sh"          "${_forward_args[@]}"
 bash "$SCRIPT_DIR/stream_service.sh"        "${_forward_args[@]}"
+# Always C++, whatever the caller passed. See cxx_suite.sh.
+bash "$SCRIPT_DIR/cxx_suite.sh"             "${_forward_args[@]}"
 
 # Copy build artifacts to test/ directory (mirrors new.cmd behavior)
 if [[ $build -eq 1 ]]; then
@@ -121,7 +123,8 @@ if [[ $_has_test -eq 1 ]]; then
         malloc_cleanup_config_tests.dll \
         flp_memory_service_tests.dll \
         flp_file_service_tests.dll \
-        flp_stream_service_tests.dll || _run_rc=$?
+        flp_stream_service_tests.dll \
+        cxx_suite_tests.dll || _run_rc=$?
     # The driver returns 0 for ordinary test failures, so a non-zero status means
     # it died or could not start. A crash takes down every suite listed after the
     # one that crashed, and those suites report nothing at all -- the results
@@ -131,7 +134,7 @@ if [[ $_has_test -eq 1 ]]; then
     # `_run_rc=$?`: under `set -e` a bare non-zero command exits the script on the
     # spot, so the checks at the end of this block would never be reached and the
     # split-host smoke below would be skipped along with them.
-    ./faultline.exe show results --limit 25
+    ./faultline.exe show results --limit 26
     # Split-architecture smoke: the same suites driven through the split host.
     ./win32_faultline.exe run \
         faultline_tests.dll \

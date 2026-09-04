@@ -18,13 +18,9 @@ fi
 if [[ $build -eq 1 ]]; then
     [[ $verbose -eq 1 ]] && echo "Build $PROJECT_NAME (unity, OS-free): faultline_core.o"
 
-    # The first-party unity TU takes whichever dialect cxx picked.
+    # Always C. cxx selects the dialect of a test suite, and this is not one.
     _compiler="$CLANG"
     _compiler_flags="$COMMON_COMPILER_FLAGS"
-    if [[ $cxx -eq 1 ]]; then
-        _compiler="$CLANGXX"
-        _compiler_flags="$COMMON_COMPILER_FLAGS_CXX"
-    fi
 
     # No -DFL_PLATFORM_BUILD: the core reaches OS capabilities only through the
     # services injected via the FLPlatformAPI. -DFL_EMBEDDED: the fla_ setters

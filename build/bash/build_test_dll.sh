@@ -8,7 +8,7 @@
 # Required options:
 #   --name NAME      Display name for progress messages (e.g. "Arena")
 #   --ctm  CTM       Stem for the ctime metrics file   (e.g. "arena" -> metrics/arena.ctm)
-#   --src  SRC       Source file under src/             (e.g. "arena_tests.c")
+#   --src  SRC       Source file under src/, .c or .cpp (e.g. "arena_tests.c")
 #   --dll  DLL       Output DLL stem, without extension (e.g. "arena_tests")
 #
 # Optional options:
@@ -84,7 +84,7 @@ if [[ $build -eq 1 ]]; then
     done
 
     # Compile the main test source
-    _src_stem="${_src_file%.c}"
+    _src_stem="${_src_file%.*}"
     "$_compiler" $_compiler_flags -DDLL_BUILD \
         -I "$DIR_INCLUDE" -I "$DIR_THIRD_PARTY" \
         -I "$DIR_THIRD_PARTY/fnv" \

@@ -14,11 +14,12 @@
 #   verbose   - print each command before running it
 #   trace     - print all option variable values after parsing
 #   timed     - collect build timing metrics via ctime.exe
-#   cxx       - compile first-party translation units with the C++ dialect
-#               flags (COMMON_COMPILER_FLAGS_CXX) and the C++ exception
-#               backend (FL_EXC_BACKEND_CXX) instead of the C/setjmp default,
-#               driving clang++ instead of clang. Needed only while both
-#               backends exist in the tree. Mirrors options.cmd's cxx.
+#   cxx       - build test suites as C++ (COMMON_COMPILER_FLAGS_CXX and the
+#               FL_EXC_BACKEND_CXX exception backend, driving clang++ instead
+#               of clang) instead of the C/setjmp default. Drivers, hosts,
+#               libraries and examples are always C: a suite contains its own
+#               exceptions behind fl_run_case, so one C driver runs suites of
+#               either dialect. Mirrors options.cmd's cxx.
 
 # Initialize all flags to 0
 build=0

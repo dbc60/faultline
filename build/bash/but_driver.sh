@@ -15,28 +15,33 @@ if [[ $timed -eq 1 ]]; then
 fi
 
 if [[ $build -eq 1 ]]; then
-    # The first-party sources take whichever dialect cxx picked.
+    # The driver and its test-data DLL are always C. cxx selects the dialect of the
+    # test suite alone, which is the half of this pair a driver reads either way.
     _compiler="$CLANG"
     _compiler_flags="$COMMON_COMPILER_FLAGS"
     _linker_flags="$COMMON_LINKER_FLAGS"
+
+    _suite_compiler="$CLANG"
+    _suite_compiler_flags="$COMMON_COMPILER_FLAGS"
+    _suite_linker_flags="$COMMON_LINKER_FLAGS"
     if [[ $cxx -eq 1 ]]; then
-        _compiler="$CLANGXX"
-        _compiler_flags="$COMMON_COMPILER_FLAGS_CXX"
-        _linker_flags="$COMMON_LINKER_FLAGS_CXX"
+        _suite_compiler="$CLANGXX"
+        _suite_compiler_flags="$COMMON_COMPILER_FLAGS_CXX"
+        _suite_linker_flags="$COMMON_LINKER_FLAGS_CXX"
     fi
 
     # --- but_tests.dll ---
     [[ $verbose -eq 1 ]] && echo "Build $PROJECT_NAME test suite"
 
-    "$_compiler" $_compiler_flags -DDLL_BUILD \
+    "$_suite_compiler" $_suite_compiler_flags -DDLL_BUILD \
         -I "$DIR_INCLUDE" -I "$DIR_THIRD_PARTY" \
         -c "$DIR_REPO/src/but_tests.c" \
         -o "$DIR_OUT_OBJ/but_tests.o" \
         -MJ "$DIR_OUT_OBJ/but_tests.json"
 
-    "$_compiler" -target x86_64-w64-mingw32 -shared \
+    "$_suite_compiler" -target x86_64-w64-mingw32 -shared \
         "$DIR_OUT_OBJ/but_tests.o" \
-        $_linker_flags \
+        $_suite_linker_flags \
         -o "$DIR_OUT_BIN/but_tests.dll"
 
     # --- but_test_data.dll ---

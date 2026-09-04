@@ -315,14 +315,49 @@ recompile against the regenerated packages, with no source changes.
 
 ### 8. Acceptance test
 
-Build one existing suite twice — once as C, once with `/TP` and `FL_EXC_BACKEND_CXX` —
-and run both through the same unmodified `faultline.exe`. Verify:
+**Met.** Two halves: an existing suite built both ways, and a suite that is C++ outright.
 
-- both report the same pass/fail counts
-- fault injection discovers the same site count in both
-- a deliberate leak in the C++ suite is reported with its allocation file and line
-- a C++ test body with a non-trivial destructor has that destructor run on the failure
-  path — the case the current design cannot express at all
+Same suite, both dialects, one unmodified `faultline.exe` (commit 4):
+
+- `arena_tests.dll` — 74 of 74 either way
+- `flp_file_service_tests.dll` — 9 of 9 either way, 6 fault sites discovered in both
+- `all.cmd cxx test` — all 25 suites of the day built as C++, every one at 100%
+
+`src/cxx_suite_tests.cpp` (commit 6), which is C++ rather than C that compiles as C++:
+
+- A destructor runs while an exception unwinds. `ScopedBlock` counts destructions with
+  `std::uncaught_exceptions() > 0` apart from ordinary ones, and `test_destructor_ran`
+  reads the first count. A count of every destruction would pass without a throw ever
+  happening, which is why they are separate.
+- The setjmp backend cannot compile this suite at all. Building the same source with
+  `/TP /std:c++20` and no `FL_EXC_BACKEND_CXX` stops at `fl_test.h`'s `FL_TRY` with
+  C4611, "interaction between '_setjmp' and C++ object destruction is non-portable",
+  promoted to an error by `/WX`. The compiler refuses the arrangement the C++ backend
+  replaces.
+- A leak is reported with its allocation file and line. Removing the `FL_FREE` from
+  `~ScopedBlock` and rerunning gives `Leak Detected ... cxx_suite_tests.cpp:48`, the
+  constructor's `FL_MALLOC`, and drops the suite to 3 of 4. Restoring it returns the
+  suite to 4 of 4 with zero leaks across all 4 fault sites — which is the release on the
+  failure path working: on the pass where the second allocation fails, the first is
+  freed while the assertion's throw unwinds.
+
+Both toolchains, not just MSVC. `build/bash` got the same treatment as `build/cmd`:
+`cxx` dropped from `faultline.sh`, `faultline_core.sh`, `faultline_split.sh` and
+`arena_bench.sh`, split in `but_driver.sh`, kept in `index.sh` and
+`build_test_dll.sh` — whose `_src_stem` now strips any extension so a `.cpp` source
+builds — and `cxx_suite.sh` added and registered in `all.sh`.
+
+`bash build/bash/all.sh cxx test` had never worked; two units failed under clang++ and
+neither had anything to do with this design:
+
+- `fault_injector_tests.c` stepped four `volatile` loop counters with `i++`, which C++20
+  deprecates and `-Werror` rejects. The counters are `volatile` for the setjmp path and
+  stay so; the loops step with `i = i + 1`.
+- `fl_assert_tests.c:1909` passed a bare `NULL` to `FL_ASSERT_NOT_NULL`, which prints
+  with `%p`. `NULL` is `(void *)0` in C and `0` in C++, so clang read an `int`. Cast.
+
+With those fixed, `all.sh cxx test` builds all 26 suites as C++ under clang++/MinGW and
+runs every one under the C driver at 100%.
 
 ## Commit sequence
 
@@ -343,7 +378,9 @@ and run both through the same unmodified `faultline.exe`. Verify:
    and as C++ and run by the same unmodified `faultline.exe`, with identical pass counts
    and identical fault-site counts in both dialects.
 5. Build scripts.
-6. C++ suite added and run under the C driver.
+6. **Done.** `cxx_suite_tests.cpp` added: a suite written as C++, built as C++
+   unconditionally, and run by the C driver in the routine `all.cmd test` pass.
+   See the acceptance test above.
 7. Distribution packages regenerated; `worldbuilder` rebuilt.
 
 ## Hosts

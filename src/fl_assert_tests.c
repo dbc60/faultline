@@ -1906,7 +1906,9 @@ FL_TEST("FL_ASSERT_NOT_NULL throws fl_invalid_value for NULL pointer",
         test_not_null_fail) {
     bool volatile caught = false;
     FL_TRY {
-        FL_ASSERT_NOT_NULL(NULL);
+        // Cast because NULL is (void *)0 in C but 0 in C++, and the assertion prints
+        // its argument with %p. This file is also built as C++ (cxx).
+        FL_ASSERT_NOT_NULL((void *)NULL);
     }
     FL_CATCH(fl_invalid_value) {
         caught = true;

@@ -171,6 +171,12 @@ if errorlevel 1 (
     GOTO :ERROR
 )
 
+:: Always C++, whatever the caller passed. See cxx_suite.cmd.
+call %DIR_CMD%\cxx_suite.cmd !args!
+if errorlevel 1 (
+    GOTO :ERROR
+)
+
 :: Code analysis is opt-in and runs after the build, so producing the binaries is
 :: never delayed by it. The pass links nothing, so it adds no artifact to copy into
 :: test\ below.
@@ -222,7 +228,8 @@ if %test% EQU 1 (
         malloc_cleanup_config_tests.dll ^
         flp_memory_service_tests.dll ^
         flp_file_service_tests.dll ^
-        flp_stream_service_tests.dll
+        flp_stream_service_tests.dll ^
+        cxx_suite_tests.dll
     REM The driver returns 0 for ordinary test failures, so a non-zero status
     REM means it died or could not start. A crash takes down every suite listed
     REM after the one that crashed, and those suites report nothing at all -- the
@@ -230,7 +237,7 @@ if %test% EQU 1 (
     REM listing. Fail the build rather than let a truncated run pass for a
     REM complete one.
     set "_run_rc=!errorlevel!"
-    .\faultline.exe show results --limit 25
+    .\faultline.exe show results --limit 26
     REM Split-architecture smoke: the same suites driven through the split host.
     REM Its log goes to faultline.log; the results table shows the runs.
     .\win32_faultline.exe run ^
