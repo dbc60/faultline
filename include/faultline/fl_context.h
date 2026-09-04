@@ -17,6 +17,7 @@
 #include <faultline/fl_exception_service_assert.h> // for FL_ASSERT_NOT_NULL
 #include <faultline/fl_exception_types.h>          // for FLExceptionReason
 #include <faultline/fl_test.h>                     // for FLTestSuite
+#include <faultline/fl_case_outcome.h>             // for fl_run_case_fn
 #include <stdbool.h>                               // for bool, true, false
 #include <string.h>                                // for size_t, memset
 #include <time.h>                                  // for time_t, time
@@ -38,19 +39,20 @@ typedef struct Arena Arena;
  * the current test case, results, and fault injector state.
  */
 typedef struct {
-    Arena       *arena;
-    FLTestSuite *ts;                      ///< the test suite under test
-    size_t       count;                   ///< the number of test cases in the suite
-    size_t       index;                   ///< index of the current test case
-    size_t       tests_run;               ///< number of tests run
-    size_t       tests_passed;            ///< number of tests that passed
-    size_t       tests_passed_with_leaks; ///< number of tests that passed with leaks
-    size_t       tests_failed;            ///< number of tests that ran and failed
-    size_t       setups_failed;           ///< number of tests that failed setup
-    size_t       cleanups_failed;         ///< tests that failed cleanup
-    time_t       run_start_time;          ///< UTC time when testing starts
-    FLTestSummaryBuffer results;          ///< a resizable buffer of test results
-    FaultInjector      *injector;         ///< the FaultInjector for the test suite
+    Arena          *arena;
+    FLTestSuite    *ts;                      ///< the test suite under test
+    fl_run_case_fn *run_case;                ///< The suite module's exported fl_run_case
+    size_t          count;                   ///< the number of test cases in the suite
+    size_t          index;                   ///< index of the current test case
+    size_t          tests_run;               ///< number of tests run
+    size_t          tests_passed;            ///< number of tests that passed
+    size_t          tests_passed_with_leaks; ///< number of tests that passed with leaks
+    size_t          tests_failed;            ///< number of tests that ran and failed
+    size_t          setups_failed;           ///< number of tests that failed setup
+    size_t          cleanups_failed;         ///< tests that failed cleanup
+    time_t          run_start_time;          ///< UTC time when testing starts
+    FLTestSummaryBuffer results;             ///< a resizable buffer of test results
+    FaultInjector      *injector;            ///< the FaultInjector for the test suite
     FaultSiteBuffer     fault_sites; ///< the FaultSites collected for each test case
     bool                initialized; ///< whether the context has been initialized
 } FLContext;

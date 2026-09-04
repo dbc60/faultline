@@ -9,11 +9,12 @@
  * @date 2026-08-15
  *
  * A host loads modules and hands them services through function pointers. Some of what
- * crosses that boundary is not described by any of those service contracts: the host's
- * throw hook calls longjmp on a jmp_buf the module's setjmp filled, and both sides must
- * agree on the types the C11 threads API uses. Those agreements are implicit in the
- * toolchain, so two images built by different toolchains can satisfy every service
- * contract exactly and still corrupt each other.
+ * crosses that boundary is not described by any of those service contracts: the host
+ * walks an FLTestSuite the module owns and reads back an FLCaseOutcome the module fills
+ * in, each side lays out the service structs themselves, and both must agree on the
+ * types the C11 threads API uses. Those agreements are implicit in the toolchain, so two
+ * images built by different toolchains can satisfy every service contract exactly and
+ * still corrupt each other.
  *
  * FLAbiInfo states those agreements outright. Each image fills in an FLAbiInfo
  * describing itself, the host compares the module's against its own, and a mismatch

@@ -45,10 +45,10 @@ extern "C" {
 /**
  * @brief Whether a test case passed, and if not, which kind of failure it was.
  *
- * A driver reports FL_CASE_EXPECTED_FAILURE as a pass. It is distinguished from
- * FL_CASE_PASS because the suite knows the difference and the information is free;
- * the matching happens inside the suite, where the reason pointer and
- * fl_expected_failure are the same object, so it needs no cross-module strcmp.
+ * A driver reports FL_CASE_EXPECTED_FAILURE as a pass. It is separate from
+ * FL_CASE_PASS because recording the distinction costs nothing: the match happens
+ * inside the suite, where the thrown reason pointer and fl_expected_failure are the
+ * same object, so no cross-module strcmp is needed.
  */
 typedef enum FLCaseStatus {
     FL_CASE_PASS,
@@ -59,10 +59,10 @@ typedef enum FLCaseStatus {
 /**
  * @brief Whether the call reached a test case at all.
  *
- * Separate from FLCaseStatus because they answer different questions: this one is
- * about the call, that one about the test. Folding them together would put a value in
- * FLCaseOutcome.status that can never appear there, and would report a driver asking
- * for a case that does not exist as a test case that failed.
+ * Separate from FLCaseStatus because the two describe different things: this one the
+ * arguments, that one the test. Folding them together would put a value in
+ * FLCaseOutcome.status that can never occur there, and would record an out-of-range
+ * index as a failed test case in the suite.
  *
  * Shaped after FLAbiVerdict (fl_abi.h), including the string function below, for the
  * same reason: a caller gets a message naming the difference rather than a bare code.
@@ -158,11 +158,11 @@ static inline FL_MAYBE_UNUSED void fl_case_outcome_fail(FLCaseOutcome    *out,
  *
  * @param index the test case to run, as an index into the suite's array.
  * @param out where to write the result. Cleared before the case runs.
- * @param out_size the caller's sizeof(FLCaseOutcome), so a suite built against a
- * different revision of the struct refuses the call rather than writing past the end
- * of it. Follows the same convention as fla_set_exception_service.
- * @return FL_RUN_CASE_OK when a case ran, a failing one included -- a failing test is
- * a result, not a rejected call. Otherwise the reason no case ran.
+ * @param out_size the caller's sizeof(FLCaseOutcome). A suite built against a larger
+ * revision of the struct returns FL_RUN_CASE_BAD_OUTCOME instead of writing past the
+ * end of it. Follows the same convention as fla_set_exception_service.
+ * @return FL_RUN_CASE_OK when a case ran, a failing one included: a failing test is a
+ * result, not an argument error. Otherwise the value naming which argument was invalid.
  *
  * FL_GET_TEST_SUITE emits the definition, so a suite gains it with no edit.
  *

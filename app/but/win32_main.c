@@ -147,8 +147,9 @@ static size_t display_test_results(BasicContext *bctx, FLTestSuite *ts) {
     return count_total_failures;
 }
 
-static size_t exercise_test_suite(BasicContext *bctx, FLTestSuite *ts) {
-    bd_begin(bctx, ts);
+static size_t exercise_test_suite(BasicContext *bctx, FLTestSuite *ts,
+                                  fl_run_case_fn *run_case) {
+    bd_begin(bctx, ts, run_case);
     while (bd_has_more(bctx)) {
         display_test_case(bctx);
         FL_TRY {
@@ -214,17 +215,6 @@ int main(int argc, char **argv) {
                 LOG_INFO(module, "Logging Connected");
             }
 
-            LOG_INFO(module, "Connecting exception services");
-            fla_set_exception_service_fn *set_exception_service
-                = (fla_set_exception_service_fn *)
-                    GetProcAddress(test_suite, FLA_SET_EXCEPTION_SERVICE_STR);
-            if (set_exception_service == NULL) {
-                LOG_ERROR(module, "Test Suite %s has no exception service", ts_path);
-                failures++;
-                continue;
-            }
-            flp_init_exception_service(set_exception_service);
-
             fla_set_memory_service_fn *fla_set_memory_service
                 = (fla_set_memory_service_fn *)
                     GetProcAddress(test_suite, FLA_SET_MEMORY_SERVICE_STR);
@@ -267,13 +257,24 @@ int main(int argc, char **argv) {
                 continue;
             }
 
+            // FL_GET_TEST_SUITE emits this alongside fl_get_test_suite. Without it
+            // there is no way into the suite's cases: this driver does not call them
+            // directly.
+            fl_run_case_fn *fl_run_case
+                = (fl_run_case_fn *)GetProcAddress(test_suite, FL_RUN_CASE_STR);
+            if (fl_run_case == NULL) {
+                LOG_ERROR(module, "Test suite %s doesn't export fl_run_case", ts_path);
+                failures++;
+                continue;
+            }
+
             FL_TRY {
                 ts = fl_get_test_suite();
                 printf("\n%s (%zu): test suite %d of %d\n", ts->name, ts->count, i,
                        argc - 1);
                 LOG_INFO(module, "%s (%zu): test suite %d of %d", ts->name, ts->count, i,
                          argc - 1);
-                failures += exercise_test_suite(&bctx, ts);
+                failures += exercise_test_suite(&bctx, ts, fl_run_case);
                 if (i < argc - 1) {
                     printf("*******************************************\n");
                 }

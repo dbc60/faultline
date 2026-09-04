@@ -61,6 +61,7 @@ BD_BEGIN(bd_begin) {
     memset(bctx, 0, sizeof *bctx);
     bctx->initialized     = true;
     bctx->ts              = bts;
+    bctx->run_case        = run_case;
     bctx->test_case_count = bts->count;
 }
 
@@ -105,66 +106,56 @@ BD_GET_INDEX(bd_get_index) {
 
 // Execute the current test case
 BD_DRIVER(bd_driver) {
-    BasicResultCode result = BUT_RC_PASSED;
-    FLTestCase     *tc     = bctx->ts->test_cases[bctx->index];
+    FLTestCase   *tc = bctx->ts->test_cases[bctx->index];
+    FLCaseOutcome out;
 
     bctx->run_count++;
 
     if (tc == NULL) {
-        result = BUT_RC_FAILED;
         new_result(bctx, BUT_RC_FAILED, invalid_test_case, __FILE__, __LINE__);
         bctx->test_failures++;
         FL_THROW_DETAILS(invalid_test_case, "test case %zu does not exist", bctx->index);
     }
 
-    FL_TRY {
-        if (tc->setup != NULL) {
-            tc->setup(tc);
-        }
-    }
-    FL_CATCH_ALL {
-        result = BUT_RC_FAILED_SETUP;
-        if (FL_UNEXPECTED_EXCEPTION(FL_REASON)) {
-            new_result(bctx, BUT_RC_FAILED_SETUP, FL_REASON, FL_FILE, FL_LINE);
-            bctx->setup_failures++;
-            FL_RETHROW;
-        }
-    }
-    FL_END_TRY;
-
-    if (result == BUT_RC_PASSED) {
-        FL_TRY {
-            tc->test(tc);
-        }
-        FL_CATCH_ALL {
-            if (FL_UNEXPECTED_EXCEPTION(FL_REASON)) {
-                // log the unexpected failure and continue
-                FLExceptionReason reason  = FL_REASON;
-                char const       *details = FL_DETAILS;
-                char const       *file    = FL_FILE;
-                int               line    = FL_LINE;
-                new_result(bctx, BUT_RC_FAILED, reason, file, line);
-                bctx->test_failures++;
-                bd_log_error(tc->name, reason, details, file, line);
-            }
-        }
-        FL_END_TRY;
+    FLRunCaseResult ran = bctx->run_case(bctx->index, &out, sizeof out);
+    if (ran != FL_RUN_CASE_OK) {
+        new_result(bctx, BUT_RC_FAILED, fl_run_case_result_str(ran), __FILE__, __LINE__);
+        bctx->test_failures++;
+        return;
     }
 
-    FL_TRY {
-        if (tc->cleanup != NULL) {
-            tc->cleanup(tc);
-        }
+    // An expected failure is not a failure, and the module reports it as its own
+    // status, so only an unexpected one is recorded here.
+    if (out.status != FL_CASE_UNEXPECTED_FAILURE) {
+        return;
     }
-    FL_CATCH_ALL {
-        if (FL_UNEXPECTED_EXCEPTION(FL_REASON)) {
-            new_result(bctx, BUT_RC_FAILED_CLEANUP, FL_REASON, FL_FILE, FL_LINE);
-            bctx->cleanup_failures++;
-            FL_RETHROW;
-        }
-        // Expected failure - don't rethrow, just continue
+
+    switch (out.failure_type) {
+    case FL_SETUP_FAILURE:
+        new_result(bctx, BUT_RC_FAILED_SETUP, out.reason, out.file, out.line);
+        bctx->setup_failures++;
+        break;
+    case FL_CLEANUP_FAILURE:
+        new_result(bctx, BUT_RC_FAILED_CLEANUP, out.reason, out.file, out.line);
+        bctx->cleanup_failures++;
+        break;
+    case FL_TEST_FAILURE:
+        new_result(bctx, BUT_RC_FAILED, out.reason, out.file, out.line);
+        bctx->test_failures++;
+        bd_log_error(tc->name, out.reason, out.details[0] != '\0' ? out.details : NULL,
+                     out.file, out.line);
+        break;
+    case FL_FAILURE_NONE:
+    case FL_LEAK_FAILURE:
+    case FL_INVALID_FREE_FAILURE:
+    default:
+        // fl_run_case reports failures for only the three phases above (setup, test, and
+        // cleanup), so any other value means the module and this driver disagree about
+        // FLFailureType.
+        new_result(bctx, BUT_RC_FAILED, out.reason, out.file, out.line);
+        bctx->test_failures++;
+        break;
     }
-    FL_END_TRY;
 }
 
 // Get the number of test cases executed

@@ -81,7 +81,8 @@ FL_INJECT_SERVICES_FN(flp_inject_services) {
     static char const module[] = FAULTLINE_MODULE_NAME;
 
     if (suite == NULL) {
-        return false;
+        LOG_ERROR(module, "no suite module to inject services into");
+        return;
     }
     HMODULE m = (HMODULE)suite;
 
@@ -91,16 +92,6 @@ FL_INJECT_SERVICES_FN(flp_inject_services) {
     if (fla_set_log != NULL) {
         flp_init_log_service(fla_set_log);
     }
-
-    // Exception service (required): every test suite runs under FL_TRY, so a suite that
-    // cannot receive the exception service cannot run at all.
-    fla_set_exception_service_fn *fla_set_exc
-        = (fla_set_exception_service_fn *)GetProcAddress(m,
-                                                         FLA_SET_EXCEPTION_SERVICE_STR);
-    if (fla_set_exc == NULL) {
-        return false;
-    }
-    flp_init_exception_service(fla_set_exc);
 
     // Memory service (optional): the FAULT-INJECTING binding, never the plain one.
     fla_set_memory_service_fn *fla_set_mem
@@ -136,6 +127,4 @@ FL_INJECT_SERVICES_FN(flp_inject_services) {
     if (fla_set_stream != NULL) {
         flp_init_stream_service(fla_set_stream);
     }
-
-    return true;
 }

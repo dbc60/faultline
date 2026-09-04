@@ -16,25 +16,24 @@
 #include <faultline/fl_abbreviated_types.h> // for i64, u32
 #include <faultline/fl_log.h>               // for LOG_DEBUG, LOG_VERBOSE
 #include <faultline/fl_test.h>              // for FLTestSuite, FLTestCase
-#include <faultline/fl_try.h>               // for FL_END_TRY, FL_TRY
 #include <stdbool.h>                        // for true, bool, false
 #include <stddef.h>                         // for NULL, size_t
 #include <faultline/fl_timer.h>             // for FL_TIMER_SERVICE
 #include <faultline/fl_stopwatch.h>         // for FLStopwatch, fl_stopwatch_*
 #include <faultline/fault_site.h>           // for fault_site_buffer_copy
 #include <faultline/fl_test_summary.h>      // for FLTestSummary
-#include <faultline/fl_exception_service.h> // for FL_REASON, FL_DETAILS
-#include <faultline/fl_exception_types.h>   // for FLExceptionReason
 #include "fault_injector_internal.h"        // for fault_injector_get_all...
 #include "faultline_test_result.h"          // for test_result_clear, Tes...
 
-static FLExceptionReason setup_failure = "setup failed";
-
 /**
- * @brief run a timed test
+ * @brief Run one test case in the suite module and record what it reported.
+ *
+ * The module contains the case's exceptions and reports an FLCaseOutcome, so there is
+ * no exception handling here. An expected failure is not a failure: the module reports
+ * it as FL_CASE_EXPECTED_FAILURE, which this reads as FL_PASS.
  *
  * @param fctx a context used to track the current test case and test results.
- * @param timer measure how long the test takes to run.
+ * @param out receives the module's report, including the time the test body took.
  * @param setup_cleanup_result records failures in the setup or cleanup functions.
  * @param test_result records failures of the test itself.
  * @param phase controls whether failures on this call will be counted against the test
@@ -42,72 +41,56 @@ static FLExceptionReason setup_failure = "setup failed";
  * injection phase exercises the test case against injected faults.
  * @return FLResultCode
  */
-static FLResultCode run_timed_test(FLContext *fctx, FLStopwatch *timer,
-                                   TestResult *setup_cleanup_result,
-                                   TestResult *test_result, FLTestPhase phase) {
-    FLTestCase  *tc = fctx->ts->test_cases[fctx->index];
-    FLResultCode rc = FL_PASS;
+static FLResultCode run_test_case(FLContext *fctx, FLCaseOutcome *out,
+                                  TestResult *setup_cleanup_result,
+                                  TestResult *test_result, FLTestPhase phase) {
+    FLRunCaseResult ran = fctx->run_case(fctx->index, out, sizeof *out);
 
-    if (tc->setup != NULL) {
-        FL_TRY {
-            tc->setup(tc);
-        }
-        FL_CATCH_ALL {
-            if (FL_UNEXPECTED_EXCEPTION(FL_REASON)) {
-                rc = FL_FAIL;
-                test_result_init(setup_cleanup_result, FL_REASON, FL_DETAILS, FL_FILE,
-                                 FL_LINE, rc, true, FL_SETUP_FAILURE);
-                if (phase == FL_DISCOVERY_PHASE) {
-                    fctx->setups_failed++;
-                }
-                FL_THROW(setup_failure);
-            }
-        }
-        FL_END_TRY;
+    // Both non-OK values report an invalid argument: an index at or past ts->count, or
+    // an out_size smaller than the module's sizeof(FLCaseOutcome). No case ran, so
+    // there is no test result to record.
+    if (ran != FL_RUN_CASE_OK) {
+        LOG_ERROR(fctx->ts->name, "%zu. fl_run_case returned an error: %s",
+                  fctx->index + 1, fl_run_case_result_str(ran));
+        return FL_FAIL;
     }
 
-    if (rc == FL_PASS) {
-        // exercise the test case
-        FL_TRY {
-            fl_stopwatch_start(timer);
-            tc->test(tc);
-        }
-        FL_CATCH_ALL {
-            if (FL_UNEXPECTED_EXCEPTION(FL_REASON)) {
-                rc = FL_FAIL;
-                test_result_init(test_result, FL_REASON, FL_DETAILS, FL_FILE, FL_LINE,
-                                 rc, true, FL_TEST_FAILURE);
-                if (phase == FL_DISCOVERY_PHASE) {
-                    fctx->tests_failed++;
-                }
-            }
-        }
-        FL_FINALLY {
-            fl_stopwatch_stop(timer);
-        }
-        FL_END_TRY;
+    if (out->status != FL_CASE_UNEXPECTED_FAILURE) {
+        return FL_PASS;
     }
 
-    if (tc->cleanup != NULL) {
-        FL_TRY {
-            tc->cleanup(tc);
+    // A setup or cleanup failure and a test-body failure are separate results.
+    TestResult *target
+        = (out->failure_type == FL_TEST_FAILURE) ? test_result : setup_cleanup_result;
+    test_result_init(target, out->reason, out->details, out->file, out->line, FL_FAIL,
+                     true, out->failure_type);
+
+    if (phase == FL_DISCOVERY_PHASE) {
+        switch (out->failure_type) {
+        case FL_SETUP_FAILURE:
+            fctx->setups_failed++;
+            break;
+        case FL_TEST_FAILURE:
+            fctx->tests_failed++;
+            break;
+        case FL_CLEANUP_FAILURE:
+            fctx->cleanups_failed++;
+            break;
+        case FL_FAILURE_NONE:
+        case FL_LEAK_FAILURE:
+        case FL_INVALID_FREE_FAILURE:
+        default:
+            // fl_run_case reports only the three phase failures (setup, cleanup, or
+            // test) above, so any other value means the module and this driver were
+            // built with different definitions of FLFailureType.
+            LOG_ERROR(fctx->ts->name,
+                      "%zu. unrecognized failure type %d from fl_run_case",
+                      fctx->index + 1, (int)out->failure_type);
+            break;
         }
-        FL_CATCH_ALL {
-            // Check that rc doesn't equal FL_FAILED so we don't overwrite a test
-            // failure with a cleanup failure
-            if (FL_UNEXPECTED_EXCEPTION(FL_REASON) && rc != FL_FAIL) {
-                rc = FL_FAIL;
-                test_result_init(setup_cleanup_result, FL_REASON, FL_DETAILS, FL_FILE,
-                                 FL_LINE, rc, true, FL_CLEANUP_FAILURE);
-                if (phase == FL_DISCOVERY_PHASE) {
-                    fctx->cleanups_failed++;
-                }
-            }
-        }
-        FL_END_TRY;
     }
 
-    return rc;
+    return FL_FAIL;
 }
 
 /**
@@ -118,10 +101,9 @@ static FLResultCode run_timed_test(FLContext *fctx, FLStopwatch *timer,
  *
  */
 FL_EXERCISE_TEST(faultline_run_test) {
-    FaultInjector *injector   = fctx->injector;
-    FLStopwatch    run_timer  = fl_stopwatch_make(FL_TIMER_SERVICE());
-    FLStopwatch    test_timer = fl_stopwatch_make(FL_TIMER_SERVICE());
-    bool           triggered  = false;
+    FaultInjector *injector  = fctx->injector;
+    FLStopwatch    run_timer = fl_stopwatch_make(FL_TIMER_SERVICE());
+    bool           triggered = false;
     FLTestSummary  summary;
     i64            total_fault_sites = 0;
     FLResultCode   rc                = FL_FAIL;
@@ -161,14 +143,9 @@ FL_EXERCISE_TEST(faultline_run_test) {
     test_result_clear(&discovery_result);
 
     // Run the test case once in discovery mode
-    FL_TRY {
-        rc = run_timed_test(fctx, &test_timer, &setup_cleanup_result, &discovery_result,
-                            FL_DISCOVERY_PHASE);
-    }
-    FL_CATCH(setup_failure) {
-        rc = FL_FAIL; // run_timed_test threw before returning, so rc was not assigned
-    }
-    FL_END_TRY;
+    FLCaseOutcome discovery_outcome = {0};
+    rc = run_test_case(fctx, &discovery_outcome, &setup_cleanup_result,
+                       &discovery_result, FL_DISCOVERY_PHASE);
 
     fctx->tests_run++;
     bool discovery_counted_test_failure = discovery_result.unexpected_exception;
@@ -240,7 +217,7 @@ FL_EXERCISE_TEST(faultline_run_test) {
                                      ? failed_discovery_result->failure_type
                                      : FL_FAILURE_NONE;
     faultline_update_summary_phase_info(&summary, FL_DISCOVERY_PHASE, failure_type,
-                                        fl_stopwatch_elapsed_seconds(&test_timer));
+                                        discovery_outcome.elapsed_seconds);
 
     // Record detailed failure information if there was a failure during discovery
     if (rc != FL_PASS && failed_discovery_result) {
@@ -258,7 +235,7 @@ FL_EXERCISE_TEST(faultline_run_test) {
             fctx->tests_passed++;
             break;
         default:
-            // fctx->tests_failed already incremented in run_timed_test.
+            // fctx->tests_failed already incremented in run_test_case.
             break;
         }
     }
@@ -306,19 +283,11 @@ FL_EXERCISE_TEST(faultline_run_test) {
         test_result_clear(&injection_setup_cleanup);
         test_result_clear(&injection_result);
 
-        // Clear the previous pass's sample so a setup failure in this pass reports
-        // zero elapsed time rather than the prior pass's.
-        test_timer = fl_stopwatch_make(FL_TIMER_SERVICE());
-
-        FL_TRY {
-            rc = run_timed_test(fctx, &test_timer, &injection_setup_cleanup,
-                                &injection_result, FL_INJECTION_PHASE);
-        }
-        FL_CATCH(setup_failure) {
-            rc = FL_FAIL; // run_timed_test threw before returning, so rc was not
-                          // assigned
-        }
-        FL_END_TRY;
+        // Zeroed per pass so a pass that reports no case leaves zero elapsed time
+        // rather than the prior pass's.
+        FLCaseOutcome injection_outcome = {0};
+        rc = run_test_case(fctx, &injection_outcome, &injection_setup_cleanup,
+                           &injection_result, FL_INJECTION_PHASE);
 
         triggered = fault_injector_triggered(injector);
         fault_injector_disable(injector);
@@ -332,7 +301,7 @@ FL_EXERCISE_TEST(faultline_run_test) {
          */
         if (triggered) {
             i64    fault_index    = fault_injector_get_threshold(injector);
-            double injection_time = fl_stopwatch_elapsed_seconds(&test_timer);
+            double injection_time = injection_outcome.elapsed_seconds;
 
             // Validate injection result for debugging
             faultline_validate_test_result(&injection_result);

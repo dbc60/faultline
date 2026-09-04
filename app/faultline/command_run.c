@@ -329,24 +329,15 @@ static SuiteHandle suite_load(ExecutionContext *ectx, char const *path) {
 }
 
 // Inject the driver's services through the fla_set_*_service symbols the test suite
-// exports. Returns false if the suite is missing a required service (exception
-// handling). The memory service injected here is the FAULT-INJECTING binding.
-static bool suite_inject(ExecutionContext *ectx, SuiteHandle suite) {
+// exports. Every service is optional: a suite that exports no fla_set_ for one keeps
+// its own. The memory service injected here is the FAULT-INJECTING binding.
+static void suite_inject(ExecutionContext *ectx, SuiteHandle suite) {
     // Log service (optional)
     fla_set_log_service_fn *fla_set_log
         = (fla_set_log_service_fn *)GetProcAddress(suite, FLA_SET_LOG_SERVICE_STR);
     if (fla_set_log != NULL) {
         flp_init_log_service(fla_set_log);
     }
-
-    // Exception service (required)
-    fla_set_exception_service_fn *fla_set_exc
-        = (fla_set_exception_service_fn *)GetProcAddress(suite,
-                                                         FLA_SET_EXCEPTION_SERVICE_STR);
-    if (fla_set_exc == NULL) {
-        return false;
-    }
-    flp_init_exception_service(fla_set_exc);
 
     // Memory service (optional)
     fla_set_memory_service_fn *fla_set_mem
@@ -375,8 +366,6 @@ static bool suite_inject(ExecutionContext *ectx, SuiteHandle suite) {
     if (fla_set_stream != NULL) {
         flp_init_stream_service(fla_set_stream);
     }
-
-    return true;
 }
 
 static void *suite_symbol(ExecutionContext *ectx, SuiteHandle suite,
@@ -404,8 +393,8 @@ static SuiteHandle suite_load(ExecutionContext *ectx, char const *path) {
     return ectx->platform->load_module(path);
 }
 
-static bool suite_inject(ExecutionContext *ectx, SuiteHandle suite) {
-    return ectx->platform->inject_services(suite);
+static void suite_inject(ExecutionContext *ectx, SuiteHandle suite) {
+    ectx->platform->inject_services(suite);
 }
 
 static void *suite_symbol(ExecutionContext *ectx, SuiteHandle suite,
@@ -504,32 +493,41 @@ COMMAND_HANDLER(run_cmd) {
                 continue;
             }
 
-            // Check build identity before injecting anything. Injection installs
-            // this driver's throw hook into the suite, and a suite whose setjmp
-            // comes from a different runtime would take that longjmp and corrupt
-            // the process. Skipping one suite keeps the rest of the run alive.
+            // Check build identity before running anything. Every struct that crosses
+            // this boundary -- the service structs installed below, the FLTestSuite
+            // read back, the FLCaseOutcome a case fills in -- has to be laid out the
+            // same way by both images, and two toolchains that disagree produce an
+            // access violation with no context. Skipping one suite keeps the rest of
+            // the run alive.
             if (!suite_abi_ok(ectx, test_suite, dll_path)) {
                 suite_unload(ectx, test_suite);
                 continue;
             }
 
-            if (!suite_inject(ectx, test_suite)) {
-                LOG_ERROR(module, "\"%s\" has no exception service - skipping",
-                          dll_path);
-                suite_unload(ectx, test_suite);
-                continue;
-            }
+            suite_inject(ectx, test_suite);
 
             // Run tests
             fl_get_test_suite_fn *fl_get_test_suite
                 = (fl_get_test_suite_fn *)(uintptr_t)suite_symbol(ectx, test_suite,
                                                                   FL_GET_TEST_SUITE_STR);
-            if (fl_get_test_suite != NULL) {
+            fl_run_case_fn *fl_run_case
+                = (fl_run_case_fn *)(uintptr_t)suite_symbol(ectx, test_suite,
+                                                            FL_RUN_CASE_STR);
+            if (fl_get_test_suite == NULL) {
+                LOG_ERROR(module, "\"%s\" does not export fl_get_test_suite", dll_path);
+            } else if (fl_run_case == NULL) {
+                // FL_GET_TEST_SUITE emits both exports together, so a suite with one
+                // and not the other was built against an older framework and cannot
+                // run its cases.
+                LOG_ERROR(module, "\"%s\" does not export fl_run_case - skipping",
+                          dll_path);
+            } else {
                 FL_TRY {
                     FLTestSuite *ts = fl_get_test_suite();
                     faultline_initialize(fctx, ts, ectx->arena);
-                    fctx->injector = suite_injector(
-                        ectx); // restore after memset in faultline_initialize
+                    // Restore what the memset in faultline_initialize cleared.
+                    fctx->injector = suite_injector(ectx);
+                    fctx->run_case = fl_run_case;
                     exercise_test_suite(fctx, ts, ectx->db, &junit);
                 }
                 FL_CATCH_ALL {
@@ -538,8 +536,6 @@ COMMAND_HANDLER(run_cmd) {
                 }
                 FL_END_TRY;
                 loaded++;
-            } else {
-                LOG_ERROR(module, "\"%s\" does not export fl_get_test_suite", dll_path);
             }
 
             suite_unload(ectx, test_suite);

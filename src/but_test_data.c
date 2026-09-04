@@ -67,7 +67,7 @@ FL_SPEC_EXPORT BD_IS_VALID(test_data_is_valid) {
 }
 
 FL_SPEC_EXPORT BD_BEGIN(test_data_begin) {
-    bd_begin(bctx, bts);
+    bd_begin(bctx, bts, run_case);
 }
 
 FL_SPEC_EXPORT BD_END(test_data_end) {

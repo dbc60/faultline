@@ -6,16 +6,18 @@
  *
  * Proves the imported test_framework package is sufficient to build both sides of
  * the boundary it describes. This binary is the host: it loads the suite module
- * built from test_framework_suite.c, reads the module's build identity, injects
- * the exception service, enumerates the suite, and runs its cases -- the sequence
- * a real driver performs, reduced to what the package itself ships.
+ * built from test_framework_suite.c, reads the module's build identity, injects the
+ * services the module needs, enumerates the suite, and runs its cases through the
+ * module's fl_run_case export -- the sequence a real driver performs, reduced to what
+ * the package itself ships.
  *
- * It is built /DFL_PLATFORM_BUILD, so fl_try.h selects the platform-side macros
- * over flp_exception_service.c's own TLS stack, and flp_init_exception_service
- * hands that same stack to the module through the module's fla_set_exception_service
- * export. The module's throw therefore unwinds to an FL_TRY frame in this file,
- * which is the arrangement the exception environment layout in FLAbiInfo exists to
- * protect.
+ * The value of this boundary is that no exception crosses back into this file and this
+ * host installs no throw hook of its own. Instead,  fl_run_case wraps each case in an
+ * FL_TRY compiled into the module, so a throw is caught there and reported as an
+ * FLCaseOutcome.
+ *
+ * It is built /DFL_PLATFORM_BUILD, so its own FL_ASSERT_* are compiled from the
+ * implementation in flp_exception_service.c.
  *
  * /DFL_EMBEDDED keeps FL_DECL_SPEC empty.
  *
@@ -28,12 +30,10 @@
 #include "fl_selftest.h"
 
 #include <faultline/fl_abi.h> // FLAbiInfo, fl_fill_abi_info, fl_abi_check, FLA_GET_ABI_STR
-#include <faultline/fl_exception_service.h> // fl_expected_failure, FLA_SET_EXCEPTION_SERVICE_STR
 #include <faultline/fl_test.h> // FLTestSuite, fl_get_test_suite_fn, FL_GET_TEST_SUITE_STR
-#include <faultline/fl_try.h> // FL_TRY/FL_CATCH_STR (platform side under FL_PLATFORM_BUILD)
+#include <faultline/fl_case_outcome.h> // FLCaseOutcome, fl_run_case_fn, FL_RUN_CASE_STR
 #include <faultline/fl_timer_service.h> // fla_set_timer_service_fn, FLA_SET_TIMER_SERVICE_STR
-#include <flp_exception_service.h> // flp_init_exception_service
-#include <flp_timer_service.h>     // flp_init_timer_service
+#include <flp_timer_service.h>          // flp_init_timer_service
 
 #include <stddef.h> // size_t
 #include <string.h> // strcmp
@@ -77,17 +77,9 @@ int main(int argc, char **argv) {
     }
 
     SECTION("service injection");
-    fla_set_exception_service_fn *fla_set_exc
-        = (fla_set_exception_service_fn *)GetProcAddress(suite,
-                                                         FLA_SET_EXCEPTION_SERVICE_STR);
-    CHECK(fla_set_exc != NULL);
-    if (fla_set_exc != NULL) {
-        flp_init_exception_service(fla_set_exc);
-    }
-
-    /* fl_run_case times the test body through the module's timer service, so a host
-     * that leaves it uninjected leaves the module holding fla_timer_service.c's abort
-     * stubs. */
+    /* fl_run_case uses the module's timer service to time the test body, so a host that
+     * doesn't inject a timer service leaves the module pointing to fla_timer_service.c's
+     * abort stubs. */
     fla_set_timer_service_fn *fla_set_timer
         = (fla_set_timer_service_fn *)GetProcAddress(suite, FLA_SET_TIMER_SERVICE_STR);
     CHECK(fla_set_timer != NULL);
@@ -100,35 +92,32 @@ int main(int argc, char **argv) {
         = (fl_get_test_suite_fn *)GetProcAddress(suite, FL_GET_TEST_SUITE_STR);
     CHECK(get_suite != NULL);
 
+    fl_run_case_fn *run_case = (fl_run_case_fn *)GetProcAddress(suite, FL_RUN_CASE_STR);
+    CHECK(run_case != NULL);
+
     FLTestSuite *ts = (get_suite != NULL) ? get_suite() : NULL;
     CHECK(ts != NULL);
-    if (ts != NULL && fla_set_exc != NULL) {
+    if (ts != NULL && run_case != NULL) {
         CHECK(strcmp(ts->name, "test_framework_selftest") == 0);
         CHECK(ts->count == 3);
 
         SECTION("running the cases");
         int expected_failures = 0;
         for (size_t i = 0; i < ts->count; ++i) {
-            FLTestCase *tc = ts->test_cases[i];
-            CHECK(tc != NULL);
-            if (tc == NULL) {
-                continue;
-            }
-            CHECK(tc->name != NULL);
-            CHECK(tc->setup != NULL && tc->test != NULL && tc->cleanup != NULL);
+            CHECK(ts->test_cases[i] != NULL && ts->test_cases[i]->name != NULL);
 
-            /* The module throws a reason constant it owns its own copy of, so match
-             * it by text rather than by address. */
-            FL_TRY {
-                tc->setup(tc);
-                tc->test(tc);
-                tc->cleanup(tc);
+            FLCaseOutcome   out;
+            FLRunCaseResult ran = run_case(i, &out, sizeof out);
+            CHECK(ran == FL_RUN_CASE_OK);
+            CHECK(out.status != FL_CASE_UNEXPECTED_FAILURE);
+            if (out.status == FL_CASE_UNEXPECTED_FAILURE) {
+                fprintf(stderr, "  %s: %s (%s:%d)\n", ts->test_cases[i]->name,
+                        out.reason ? out.reason : "?", out.file ? out.file : "?",
+                        out.line);
             }
-            FL_CATCH_STR(fl_expected_failure) {
+            if (out.status == FL_CASE_EXPECTED_FAILURE) {
                 expected_failures++;
-                tc->cleanup(tc);
             }
-            FL_END_TRY;
         }
         CHECK(expected_failures == 1);
 

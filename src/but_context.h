@@ -13,6 +13,7 @@
  */
 #include <faultline/fl_exception_types.h>   // BUTExceptionContext
 #include <faultline/fl_exception_service.h> // FLExceptionService
+#include <faultline/fl_case_outcome.h>      // fl_run_case_fn
 #include <faultline/fl_abbreviated_types.h> // u32
 
 #include <stdbool.h> // bool
@@ -39,6 +40,7 @@ typedef struct ResultContext ResultContext;
  */
 typedef struct BasicContext {
     struct FLTestSuite *ts;               ///< the test suite under test
+    fl_run_case_fn     *run_case;         ///< The suite module's fl_run_case
     size_t              test_case_count;  ///< the number of test cases in the suite
     size_t              index;            ///< index of the current test case
     size_t              run_count;        ///< number of tests run

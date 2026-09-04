@@ -47,14 +47,10 @@ typedef FL_MODULE_SYMBOL_FN(fl_module_symbol_fn);
 typedef FL_MODULE_UNLOAD_FN(fl_module_unload_fn);
 
 // -- Service injection into a loaded suite -------------------------------------
-// Encapsulates the GetProcAddress("fla_set_*") + flp_init_*_service() dance that
-// command_run.c does today. CRUCIALLY, this is where the FAULT-INJECTING memory service
-// is wired in. It is injected only into suites, never exposed on this struct, so the
-// framework can't fault-inject its own bookkeeping. The platform owns the flp_*
-// implementations and the fault-memory context, so injection stays entirely
-// platform-side. Returns false if the suite is missing a required service (e.g.,
-// exception handling).
-#define FL_INJECT_SERVICES_FN(name) bool name(FLModule *suite)
+// Encapsulates the process of acquiring each service's set function (e.g.,
+// fla_set_memory_service for the memory service) and initializing it (e.g., calling
+// flp_init_fault_memory_service(), again for the memory service).
+#define FL_INJECT_SERVICES_FN(name) void name(FLModule *suite)
 typedef FL_INJECT_SERVICES_FN(fl_inject_services_fn);
 
 // -- Logging configuration -----------------------------------------------------

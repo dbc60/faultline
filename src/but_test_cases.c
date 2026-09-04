@@ -62,6 +62,13 @@ FL_SUITE_END;
 
 FL_TEST_SUITE("Driver Data", driver_test_data);
 
+// The suite the driver is pointed at is compiled in here rather than loaded, so its
+// shim comes straight from fl_run_case_impl. FL_GET_TEST_SUITE cannot supply it: the
+// fl_run_case it emits belongs to this module's own test suite.
+static FL_RUN_CASE_FN(driver_test_data_run_case) {
+    return fl_run_case_impl(&driver_test_data_ts, index, out, out_size);
+}
+
 FL_TYPE_TEST("Load Driver", TestDriverData, load_driver) {
     FL_UNUSED_TYPE_ARG;
     HMODULE library = LoadLibrary(DRIVER_LIBRARY_WSTR);
@@ -142,7 +149,7 @@ static void set_up_context(FLTestCase *tc) {
     if (handler == NULL) {
         FL_THROW("failed to load test_data_handler");
     }
-    tdd->begin(&tdd->context, tdd->ts);
+    tdd->begin(&tdd->context, tdd->ts, driver_test_data_run_case);
 
     if (!tdd->is_valid(&tdd->context)) {
         cleanup_test_driver_data(tdd);
@@ -153,7 +160,7 @@ static void set_up_context(FLTestCase *tc) {
 static void set_up_test_context(FLTestCase *tc) {
     TestDriverData *tdd = FL_CONTAINER_OF(tc, TestDriverData, tc);
     set_up_test_driver_data(tdd);
-    tdd->begin(&tdd->context, tdd->ts);
+    tdd->begin(&tdd->context, tdd->ts, driver_test_data_run_case);
 
     if (!tdd->is_valid(&tdd->context)) {
         cleanup_test_driver_data(tdd);
@@ -242,25 +249,13 @@ FL_TYPE_TEST_SETUP_CLEANUP("Test the Driver", TestDriverData, test, set_up_test_
     FL_ASSERT_TRUE(t->is_valid(&t->context));
 
     /*
-     * bd_driver (running inside but_test_data.dll) always catches the failing test case
-     * itself and records it; it never rethrows. Under the setjmp backend the catch lives
-     * on a different exception stack than this frame's, so a throw from the failing case
-     * skips it and is caught here instead. This catch clause exists to do bd_driver's
-     * bookkeeping for that path. Under the C++ backend real stack unwinding ends in
-     * bd_driver's own catch first, so this clause is never entered and the counters
-     * below are already correct.
+     * The failing case throws inside this module, where fl_run_case catches it, so
+     * bd_driver (running inside but_test_data.dll) receives an outcome and records the
+     * failure itself. Nothing crosses the module boundary but the outcome.
      */
-    FL_TRY {
-        t->test(&t->context);
-        t->next(&t->context);
-        t->test(&t->context);
-    }
-    FL_CATCH(fl_test_exception) {
-        t->context.test_failures++;
-        t->context.results_count++;
-        t->context.run_count++;
-    }
-    FL_END_TRY;
+    t->test(&t->context);
+    t->next(&t->context);
+    t->test(&t->context);
 
     FL_ASSERT_EQ_SIZE_T(t->get_pass_count(&t->context), (size_t)1);
     FL_ASSERT_EQ_SIZE_T(t->get_fail_count(&t->context), (size_t)1);

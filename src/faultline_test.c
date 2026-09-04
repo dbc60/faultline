@@ -102,6 +102,13 @@ FL_SUITE_END;
 
 FL_TEST_SUITE("Driver", driver_suite);
 
+// The suite the driver points to lives in this module rather than one the driver loaded,
+// so its shim comes from fl_run_case_impl. FL_GET_TEST_SUITE cannot supply it: the
+// fl_run_case it emits belongs to this module's own test suite.
+static FL_RUN_CASE_FN(driver_suite_run_case) {
+    return fl_run_case_impl(&driver_suite_ts, index, out, out_size);
+}
+
 static void set_up_test_driver_data(TestDriverData *t) {
     t->h = LoadLibrary(DRIVER_LIBRARY_WSTR);
 
@@ -220,6 +227,7 @@ static void setup_context(FLTestCase *tc) {
     t->arena = new_arena(0, 0);
     t->initialize(&t->context, NULL, t->arena);
     t->begin(&t->context, t->ts);
+    t->context.run_case = driver_suite_run_case;
 
     if (!t->is_valid(&t->context)) {
         cleanup_test_driver_data(t);
@@ -232,6 +240,7 @@ static void setup_test_context(FLTestCase *tc) {
     t->arena = new_arena(0, 0);
     t->initialize(&t->context, NULL, t->arena);
     t->begin(&t->context, t->ts);
+    t->context.run_case = driver_suite_run_case;
 
     if (!t->is_valid(&t->context)) {
         cleanup_test_driver_data(t);

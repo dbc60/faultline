@@ -13,9 +13,9 @@
  * FaultLine extends the BUT (Basic Unit Test) framework with fault injection
  * capabilities, allowing systematic testing of error handling code paths.
  */
-#include <faultline/fl_macros.h> // FL_UNUSED, FL_SPEC_EXPORT
-#include <faultline/fl_try.h>    // FL_TRY, FL_CATCH, FL_CATCH_ALL, FL_THROW
-#include <faultline/fl_abi.h>    // FLA_GET_ABI_FN, fl_fill_abi_info
+#include <faultline/fl_macros.h>       // FL_UNUSED, FL_SPEC_EXPORT
+#include <faultline/fl_try.h>          // FL_TRY, FL_CATCH, FL_CATCH_ALL, FL_THROW
+#include <faultline/fl_abi.h>          // FLA_GET_ABI_FN, fl_fill_abi_info
 #include <faultline/fl_case_outcome.h> // FLCaseOutcome, FL_RUN_CASE_FN, fl_case_outcome_*
 #include <faultline/fl_exception_service.h> // fl_expected_failure
 #include <faultline/fl_timer.h>             // FL_NOW, FL_ELAPSED
@@ -103,16 +103,16 @@ typedef struct FLTestSuite FLTestSuite;
  * @param SETUP The setup function to run before the test.
  * @param CLEANUP The cleanup function to run after the test.
  */
-#define FL_TYPE_TEST_SETUP_CLEANUP(NAME, TYPE, TEST, SETUP, CLEANUP) \
-    static void TEST(TYPE *t);                                       \
-    static void TEST##_wrapper(FLTestCase *fltc) {                   \
-        TYPE *t = FL_CONTAINER_OF(fltc, TYPE, tc);                   \
-        TEST(t);                                                     \
-    }                                                                \
-    TYPE TEST##_case = {                                             \
+#define FL_TYPE_TEST_SETUP_CLEANUP(NAME, TYPE, TEST, SETUP, CLEANUP)                  \
+    static void TEST(TYPE *t);                                                        \
+    static void TEST##_wrapper(FLTestCase *fltc) {                                    \
+        TYPE *t = FL_CONTAINER_OF(fltc, TYPE, tc);                                    \
+        TEST(t);                                                                      \
+    }                                                                                 \
+    TYPE TEST##_case = {                                                              \
         .tc                                                                           \
         = {.name = NAME, .test = TEST##_wrapper, .setup = SETUP, .cleanup = CLEANUP}, \
-    };                                                               \
+    };                                                                                \
     static void TEST(TYPE *t)
 
 #define FL_TYPE_TEST(NAME, TYPE, TEST)             \
@@ -140,16 +140,16 @@ typedef struct FLTestSuite FLTestSuite;
  * @param SETUP The setup function to run before the test.
  * @param CLEANUP The cleanup function to run after the test.
  */
-#define FL_VOID_TEST_SETUP_CLEANUP(NAME, TYPE, TEST, SETUP, CLEANUP) \
-    static void TEST(void);                                          \
-    static void TEST##_wrapper(FLTestCase *fltc) {                   \
-        FL_UNUSED(fltc);                                             \
-        TEST();                                                      \
-    }                                                                \
-    TYPE TEST##_case = {                                             \
+#define FL_VOID_TEST_SETUP_CLEANUP(NAME, TYPE, TEST, SETUP, CLEANUP)                  \
+    static void TEST(void);                                                           \
+    static void TEST##_wrapper(FLTestCase *fltc) {                                    \
+        FL_UNUSED(fltc);                                                              \
+        TEST();                                                                       \
+    }                                                                                 \
+    TYPE TEST##_case = {                                                              \
         .tc                                                                           \
         = {.name = NAME, .test = TEST##_wrapper, .setup = SETUP, .cleanup = CLEANUP}, \
-    };                                                               \
+    };                                                                                \
     static void TEST(void)
 
 // helper macro for defining test suites
@@ -166,7 +166,8 @@ typedef struct FLTestSuite FLTestSuite;
 // Define suite with auto count.
 //
 // Also exports fla_get_abi, so every suite reports the toolchain with which it was built
-// so the driver can refuse an incompatible one by name instead of crashing.
+// so the driver can detect an incompatible by name and report an error instead of
+// crashing.
 //
 // And exports fl_run_case, which runs one case with its exceptions contained inside this
 // module. That export is what lets a driver built as C run this suite whether the suite
@@ -299,9 +300,9 @@ extern FL_SPEC_EXPORT FL_GET_TEST_SUITE_FN(fl_get_test_suite);
  * before, it survives the throw. The cost of the setjmp itself lands inside the
  * measurement, which is a fixed few nanoseconds.
  *
- * @return FL_RUN_CASE_OK when a case ran, a failing one included. Otherwise the reason
- * no case ran, which in both cases means the caller asked for something impossible
- * rather than that a test failed.
+ * @return FL_RUN_CASE_OK when a case ran, a failing one included. Otherwise the value
+ * naming which argument was invalid: index, or out and out_size. Neither reports a
+ * test failure.
  */
 static inline FL_MAYBE_UNUSED FLRunCaseResult fl_run_case_impl(FLTestSuite   *ts,
                                                                size_t         index,
@@ -350,8 +351,8 @@ static inline FL_MAYBE_UNUSED FLRunCaseResult fl_run_case_impl(FLTestSuite   *ts
         fl_case_note_expected(out);
     }
     FL_CATCH_ALL {
-        fl_case_outcome_fail(out, FL_CASE_UNEXPECTED_FAILURE, FL_TEST_FAILURE,
-                             FL_REASON, FL_DETAILS, FL_FILE, FL_LINE);
+        fl_case_outcome_fail(out, FL_CASE_UNEXPECTED_FAILURE, FL_TEST_FAILURE, FL_REASON,
+                             FL_DETAILS, FL_FILE, FL_LINE);
     }
     FL_END_TRY;
 
@@ -367,9 +368,8 @@ static inline FL_MAYBE_UNUSED FLRunCaseResult fl_run_case_impl(FLTestSuite   *ts
         FL_CATCH_ALL {
             // A cleanup failure does not overwrite one the body already reported.
             if (out->status != FL_CASE_UNEXPECTED_FAILURE) {
-                fl_case_outcome_fail(out, FL_CASE_UNEXPECTED_FAILURE,
-                                     FL_CLEANUP_FAILURE, FL_REASON, FL_DETAILS,
-                                     FL_FILE, FL_LINE);
+                fl_case_outcome_fail(out, FL_CASE_UNEXPECTED_FAILURE, FL_CLEANUP_FAILURE,
+                                     FL_REASON, FL_DETAILS, FL_FILE, FL_LINE);
             }
         }
         FL_END_TRY;

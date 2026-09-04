@@ -183,7 +183,7 @@ fl_math.lib (no dependencies)
 - Assertions: `include/faultline/fl_exception_service_assert.h` - `FL_ASSERT_*` macros that throw exceptions (includes `fl_try.h`)
 - Platform provider: `include/flp_exception_service.h` (declares `flp_push`/`flp_pop`/`flp_throw`, `flp_init_exception_service`), `src/flp_exception_service.c` (owns TLS exception stack, implements push/pop/throw)
 - Consumer accessor: `include/faultline/fla_exception_service.h` (declares `g_fla_exception_service` and `fla_set_exception_service`), `src/fla_exception_service.c` (module-local push/pop/throw over a thread-local environment stack, replaced when a host injects its own)
-- Service injection: Driver calls `flp_init_exception_service()` to fill the struct, then after `LoadLibrary()` resolves `fla_set_exception_service` via `GetProcAddress` and calls it to inject the service into the DLL
+- Service injection: **not injected into suite modules.** A suite contains each case's exceptions behind its `fl_run_case` export, so it uses the module-local implementation in `fla_exception_service.c` and no host installs a throw hook that would longjmp across the module boundary. `flp_init_exception_service` remains for a host that deliberately shares its own stack with a module
 
 **Log Service**: Logging service following the same platform-provider/consumer pattern as exceptions.
 - Shared API: `include/faultline/fl_log_service.h` - Service interface (`FLLogService` struct with write function pointer)

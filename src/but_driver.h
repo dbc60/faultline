@@ -53,8 +53,11 @@ BD_LOG_ERROR(bd_log_error);
  *
  * @param bctx a test context.
  * @param bts a test suite.
+ * @param run_case the fl_run_case belonging to the module that owns bts. A caller that
+ * loaded the suite resolves it by name; a caller whose suite is compiled in supplies a
+ * function over fl_run_case_impl.
  */
-#define BD_BEGIN(name) void name(BasicContext *bctx, struct FLTestSuite *bts)
+#define BD_BEGIN(name)     void name(BasicContext *bctx, struct FLTestSuite *bts, fl_run_case_fn *run_case)
 typedef BD_BEGIN(bd_begin_fn);
 BD_BEGIN(bd_begin);
 

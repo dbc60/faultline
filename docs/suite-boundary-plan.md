@@ -182,9 +182,18 @@ removes the injection, so the condition stops existing.
 
 ### 4. Switch the drivers and stop injecting exceptions
 
-**These land together.** Splitting them breaks the tree in one direction: if injection
-stops while the driver still holds the catch, the suite's throw longjmps to an empty
-suite-side stack and aborts.
+**Done at commit 3.** Within a host these land together: if injection stops while that
+host still holds the catch, the suite's throw longjmps to an empty suite-side stack and
+aborts. Across hosts they are independent — each loads the modules into its own process
+— so the three switched one at a time, each verified before the next.
+
+Two suites drive a driver rather than being driven by one, and neither was in the plan.
+`faultline_test.c` and `but_test_cases.c` hand a compiled-in `FLTestSuite` to a driver
+exported from another module, so no `fl_run_case` export exists for it. Each defines a
+local one over `fl_run_case_impl`, which is why that function is in the header rather
+than buried in the macro. `but_test_cases.c` also loses the `FL_CATCH(fl_test_exception)`
+clause that existed to do `bd_driver`'s bookkeeping when a throw skipped `bd_driver`'s
+stack; the throw no longer leaves the module that owns the suite.
 
 - `faultline_driver.c` — `run_timed_test` collapses to one `fl_run_case` call plus
   bookkeeping. No `FL_TRY`, no `setup_failure` reason (`:31`), no `FL_FINALLY` for the
@@ -290,8 +299,10 @@ and run both through the same unmodified `faultline.exe`. Verify:
    **Hosts** below.
 2. **Done.** `fla_exception_service.c` is self-sufficient. Injection still overwrites
    it, so nothing in the tree changes behavior yet.
-3. All three hosts switch to `fl_run_case`; exception injection removed. Atomic — see
-   item 4.
+3. **Done.** All three hosts switch to `fl_run_case` and stop injecting exceptions.
+   Atomic per host, not across them: each host owns the catch it is removing and the
+   injection that feeds it, and the three run as separate processes, so switching one
+   leaves the others working.
 4. ABI check narrowed.
 5. Build scripts.
 6. C++ suite added and run under the C driver.
