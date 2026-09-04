@@ -31,9 +31,8 @@ IF NOT "%release%"=="" (
     )
 )
 
-:: Build sources as C code by default. If cxx is 1, then build sources as C++.
+:: Always C. cxx selects the dialect of a test suite, and this is not one.
 SET "LOGEX_FLAGS=%CommonCompilerFlagsFinal%"
-IF %cxx% EQU 1 SET "LOGEX_FLAGS=%CommonCompilerFlagsFinalCXX%"
 
 :: Build the project
 IF %build% EQU 1 (

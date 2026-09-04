@@ -106,9 +106,8 @@ IF NOT EXIST "%BIN%"     MD "%BIN%"
 IF NOT EXIST "%OBJ_DLL%" MD "%OBJ_DLL%"
 IF NOT EXIST "%OBJ_EXE%" MD "%OBJ_EXE%"
 
-:: Build sources as C code by default. If cxx is 1, then build sources as C++.
+:: Always C. cxx selects the dialect of a test suite, and this is not one.
 SET "DEMO_FLAGS=%CommonCompilerFlagsFinal%"
-IF %cxx% EQU 1 SET "DEMO_FLAGS=%CommonCompilerFlagsFinalCXX%"
 
 :: -----------------------------------------------------------------------
 :: 3. Build the suite DLL (application side). DLL_BUILD makes FL_DECL_SPEC

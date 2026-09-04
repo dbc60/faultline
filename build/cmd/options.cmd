@@ -32,10 +32,11 @@ SETLOCAL ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 ::  analyze:    Run MSVC code analysis (/analyze) over the first-party translation
 ::              units. A separate pass after the build; findings are reported but
 ::              do not fail it. See faultline_analyze.cmd.
-::  cxx:        Compile first-party translation units with the C++ dialect flag
-::              set (CommonCompilerFlagsFinalCXX) and the C++ exception backend
-::              (FL_EXC_BACKEND_CXX) instead of the C/setjmp default. Needed only
-::              while both backends exist in the tree.
+::  cxx:        Build test suites as C++ (CommonCompilerFlagsFinalCXX, and the
+::              FL_EXC_BACKEND_CXX exception backend) instead of the C/setjmp
+::              default. Drivers, hosts, libraries and examples are always C: a
+::              suite contains its own exceptions behind fl_run_case, so one C
+::              driver runs suites of either dialect.
 
 :: Remember to export these in the ENDLOCAL section below
 SET "options=build: debug: release: cleanall: clean: cleanplat: x64: x86: win32: test: junit: vs2022: vs2026: verbose: trace: timed: analyze: cxx:"

@@ -260,17 +260,27 @@ what the package self-test already asserted.
 
 ### 6. Build scripts
 
-`cxx` narrows from a tree-wide switch to a per-suite one.
+**Done at commit 5.** `cxx` means "build the test suites as C++" and nothing else.
 
-- Drop it from the driver, host, library and example scripts: `faultline.cmd`,
-  `faultline_core.cmd`, `faultline_split.cmd`, `faultline_lib.cmd`,
-  `std_faultline.cmd`, `but_driver.cmd`, `index.cmd`, `arena_bench.cmd`,
-  `log_example.cmd`, `malloc_cleanup_config.cmd`, `service_demo.cmd`,
-  `faultline_analyze.cmd`, `faultline_fixtures.cmd`. These are always C now.
-- Keep it in `build_test_dll.cmd:79`, `options.cmd`, and the `CommonCompilerFlagsCXX`
-  bundle in `config.cmd` — that is where "build this suite as C++" is a real option.
-- `cpp_probe.cmd` keeps its purpose but narrows its unit list to the suite unity TUs.
-  Those are the only units that must compile under both dialects.
+The split follows what a script builds, not the file list this item first gave. Ten
+scripts lost it because they build a driver, host, library, example, analysis pass or
+driver-side fixture: `faultline.cmd`, `faultline_core.cmd`, `faultline_split.cmd`,
+`faultline_lib.cmd`, `std_faultline.cmd`, `arena_bench.cmd`, `log_example.cmd`,
+`service_demo.cmd`, `faultline_fixtures.cmd`, `faultline_analyze.cmd`.
+
+Four kept it because they build a suite: `build_test_dll.cmd`, `index.cmd` (the two
+index suites) and `malloc_cleanup_config.cmd` build suites directly, and
+`but_driver.cmd` builds `but_tests.dll` alongside a driver and a test-data DLL, so its
+one flag variable became two — `BUT_SUITE_FLAGS` takes the dialect, `BUT_FLAGS` stays C.
+`options.cmd` and the `CommonCompilerFlagsCXX` bundle in `config.cmd` are unchanged
+apart from the option's description.
+
+`cpp_probe.cmd` drops the six units that are always C — the three driver and host unity
+TUs, `app/but/win32_main.c`, `but_test_data.c` and `faultline_test_data.c` — leaving 25
+suite units, all of which compile as C++.
+
+`all.cmd cxx test` builds all 25 suites as C++ and runs every one under the C driver:
+25 of 25 at 100%. `but_driver.cmd cxx test` does the same for BUT, 8 of 8.
 
 The per-file C++ compatibility work already on the branch (commit `74dc123`, explicit
 casts) is not wasted: library sources are pulled into suite unity TUs, so they still

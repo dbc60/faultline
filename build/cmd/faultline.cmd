@@ -56,16 +56,11 @@ if %timed% EQU 1 (
     ctime.exe -begin metrics\vs\faultline.ctm
 )
 
-:: Build sources as C code by default. If cxx is 1, then build sources as C++.
+:: Always C. cxx selects the dialect of a test suite, and this is not one.
 SET "FL_FLAGS=%CommonCompilerFlagsFinal%"
-IF %cxx% EQU 1 SET "FL_FLAGS=%CommonCompilerFlagsFinalCXX%"
 
-:: /TP treats every file cl sees as a source file, .obj included -- it is not
-:: just a compiler-frontend default, it applies to the whole command line, so a
-:: prebuilt object listed ahead of /link gets fed through the C++ front end as
-:: text under cxx and fails with binary-garbage syntax errors. Passing them as
-:: /link arguments instead sidesteps that; it is also correct for the plain C
-:: build, so nothing here is conditioned on cxx.
+:: Prebuilt objects go after /link rather than on the compiler's own command
+:: line, which is where a linker input belongs.
 
 :: Build the project
 IF %build% EQU 1 (

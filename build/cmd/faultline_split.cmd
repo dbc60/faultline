@@ -73,9 +73,8 @@ if %timed% EQU 1 (
     ctime.exe -begin metrics\vs\faultline_split.ctm
 )
 
-:: Build sources as C code by default. If cxx is 1, then build sources as C++.
+:: Always C. cxx selects the dialect of a test suite, and this is not one.
 SET "SPLIT_FLAGS=%CommonCompilerFlagsFinal%"
-IF %cxx% EQU 1 SET "SPLIT_FLAGS=%CommonCompilerFlagsFinalCXX%"
 
 :: Build the platform layer and link the core lib + prebuilt objs.
 IF %build% EQU 1 (

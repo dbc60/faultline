@@ -3,17 +3,18 @@ SETLOCAL ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 
 :: See LICENSE.txt for copyright and licensing information about this file.
 ::
-:: Compile every first-party translation unit as C++ and report which ones succeed.
-:: This measures progress converting the tree to code that compiles under either
-:: dialect, which the C++ exception backend requires: a try block has to exist in a
-:: C++ translation unit, so every unit that uses FL_TRY must compile as C++.
+:: Compile every test-suite translation unit as C++ and report which ones succeed.
+:: A suite may be built either dialect, so each has to compile both ways; a suite that
+:: does not is one nobody can build with cxx. A driver, host, library or example is
+:: always C and is not measured here.
+::
+:: A suite unity unit pulls in the library sources it exercises, so between them these
+:: units cover most of the tree even though nothing driver-side is listed.
 ::
 :: Nothing links and no object is kept. A run answers one question -- how much is
 :: left -- and changes no build output, so it is safe to run at any point.
 ::
-:: The unit list matches faultline_analyze.cmd, for the same reason: between them the
-:: four unity units plus the standalone suites pull in the whole library, the driver
-:: and both hosts. Add a suite stem to SUITE_TUS when a new suite script is added.
+:: Add a suite stem to SUITE_TUS when a new suite script is added.
 ::
 :: Per-unit cl output lands in <obj>\cpp_probe\<stem>.txt so a failing unit can be
 :: read without rerunning. The first error in each file is the one worth reading:
@@ -67,19 +68,15 @@ SET "PROBE_FLAGS=%PROBE_FLAGS% /TP /std:c++20 /WX-"
 SET /A PROBE_PASS=0
 SET /A PROBE_FAIL=0
 
-:: The unity translation units: one per binary the repository ships.
+:: Test suites only. A suite is the one kind of binary built either dialect, so it is
+:: the one kind that has to compile both ways. Drivers, hosts, libraries and examples
+:: are always C and are not probed.
 CALL :PROBE src\faultline_tests_unity.c "/DDLL_BUILD"
-CALL :PROBE app\faultline\main_unity_windows.c "/DFL_PLATFORM_BUILD"
-CALL :PROBE app\faultline\faultline_core_unity.c "/DFL_EMBEDDED"
-CALL :PROBE app\faultline\win32_faultline_unity.c "/DFL_PLATFORM_BUILD /DFL_EMBEDDED"
 
-:: Translation units whose build scripts do not go through build_test_dll.cmd.
+:: Suites whose build scripts do not go through build_test_dll.cmd.
 CALL :PROBE src\but_tests.c "/DDLL_BUILD"
-CALL :PROBE src\but_test_data.c "/DDLL_BUILD /DFL_PLATFORM_BUILD"
-CALL :PROBE app\but\win32_main.c "/DFL_PLATFORM_BUILD /DFL_EMBEDDED"
 CALL :PROBE src\index_generic_tests.c "/DDLL_BUILD"
 CALL :PROBE src\index_windows_tests.c "/DDLL_BUILD"
-CALL :PROBE src\faultline_test_data.c "/DFL_PLATFORM_BUILD /DDLL_BUILD"
 CALL :PROBE src\malloc_cleanup_config_tests.c "/DDLL_BUILD"
 
 :: The per-component suites built by build_test_dll.cmd. Bare stems because they

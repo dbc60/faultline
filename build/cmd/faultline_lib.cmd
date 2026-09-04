@@ -51,9 +51,8 @@ IF %build% EQU 1 (
     if exist %DIR_OUT_OBJ%\sqlite3.obj            del %DIR_OUT_OBJ%\sqlite3.obj
     if exist %DIR_OUT_LIB%\faultline.lib          del %DIR_OUT_LIB%\faultline.lib
 
-    REM sqlite3.c is third-party and stays C regardless of cxx: it cannot share
-    REM a cl invocation with the first-party sources below once /TP applies to
-    REM the whole command line.
+    REM sqlite3.c is third-party and compiles on its own cl line, with the
+    REM warning suppressions its code needs and the first-party sources do not.
     cl /c %CommonCompilerFlagsFinal% /wd4200 /wd4115 /I%DIR_THIRD_PARTY% ^
         %DIR_THIRD_PARTY%\sqlite\sqlite3.c ^
         /Fo:%DIR_OUT_OBJ%\ /Fd:%DIR_OUT_LIB%\faultline.pdb > "%TEMP_OUT%"
@@ -65,9 +64,8 @@ IF %build% EQU 1 (
     )
     del "%TEMP_OUT%"
 
-    REM Build sources as C code by default. If cxx is 1, then build sources as C++.
+    REM Always C. cxx selects the dialect of a test suite, and this is not one.
     SET "LIB_FLAGS=%CommonCompilerFlagsFinal%"
-    IF %cxx% EQU 1 SET "LIB_FLAGS=%CommonCompilerFlagsFinalCXX%"
     cl /c !LIB_FLAGS! /wd4200 /wd4115 /DFL_EMBEDDED /I%DIR_INCLUDE% ^
         /I%DIR_REPO%\src /I%DIR_THIRD_PARTY% /I%DIR_THIRD_PARTY%\fnv ^
         %DIR_REPO%\src\arena.c ^

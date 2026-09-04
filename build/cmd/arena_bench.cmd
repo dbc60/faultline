@@ -23,9 +23,8 @@ CALL %DIR_CMD%\setup.cmd %*
 :: cl output capture, named per script inside this configuration's obj directory
 SET "TEMP_OUT=%DIR_OUT_OBJ%\%~n0_cl_out.tmp"
 
-:: Build sources as C code by default. If cxx is 1, then build sources as C++.
+:: Always C. cxx selects the dialect of a test suite, and this is not one.
 SET "BENCH_FLAGS=%CommonCompilerFlagsFinal%"
-IF %cxx% EQU 1 SET "BENCH_FLAGS=%CommonCompilerFlagsFinalCXX%"
 
 :: Build the project: one driver with synchronized-arena support compiled in,
 :: and one with the project default (FL_ARENA_SYNCHRONIZED undefined).

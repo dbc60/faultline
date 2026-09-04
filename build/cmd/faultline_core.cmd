@@ -31,9 +31,8 @@ if %timed% EQU 1 (
     ctime.exe -begin metrics\vs\faultline_core.ctm
 )
 
-:: Build sources as C code by default. If cxx is 1, then build sources as C++.
+:: Always C. cxx selects the dialect of a test suite, and this is not one.
 SET "CORE_FLAGS=%CommonCompilerFlagsFinal%"
-IF %cxx% EQU 1 SET "CORE_FLAGS=%CommonCompilerFlagsFinalCXX%"
 
 IF %build% EQU 1 (
     if %verbose% EQU 1 (

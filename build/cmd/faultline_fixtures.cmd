@@ -65,9 +65,8 @@ IF %build% EQU 1 (
         ECHO.
         ECHO Build the %PROJECT_NAME% driver test-data DLL
     )
-    REM Build sources as C code by default. If cxx is 1, then build sources as C++.
+    REM Always C. cxx selects the dialect of a test suite, and this is not one.
     SET "TESTDATA_FLAGS=%CommonCompilerFlagsFinal%"
-    IF %cxx% EQU 1 SET "TESTDATA_FLAGS=%CommonCompilerFlagsFinalCXX%"
     cl !TESTDATA_FLAGS! /I"%DIR_INCLUDE%" /I"%DIR_THIRD_PARTY%" /DFL_PLATFORM_BUILD /DDLL_BUILD ^
     %DIR_REPO%\src\faultline_test_data.c ^
     /Fo:%DIR_OUT_OBJ%\ /Fd:%DIR_OUT_BIN%\faultline_test_data.pdb ^

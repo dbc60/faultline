@@ -30,17 +30,18 @@ IF NOT "%release%"=="" (
     )
 )
 
-:: All three compiles below are first-party, so they take whichever dialect
-:: the caller picked with cxx.
+:: The driver and its test-data DLL are always C. cxx selects the dialect of the
+:: test suite alone, which is the half of this pair a driver reads either way.
 SET "BUT_FLAGS=%CommonCompilerFlagsFinal%"
-IF %cxx% EQU 1 SET "BUT_FLAGS=%CommonCompilerFlagsFinalCXX%"
+SET "BUT_SUITE_FLAGS=%CommonCompilerFlagsFinal%"
+IF %cxx% EQU 1 SET "BUT_SUITE_FLAGS=%CommonCompilerFlagsFinalCXX%"
 
 :: Build the project
 IF %build% EQU 1 (
     IF %verbose% EQU 1 (
         ECHO Build the %PROJECT_NAME% test suite
     )
-    cl %BUT_FLAGS% /wd4456 /I%DIR_INCLUDE% /I%DIR_THIRD_PARTY% ^
+    cl %BUT_SUITE_FLAGS% /wd4456 /I%DIR_INCLUDE% /I%DIR_THIRD_PARTY% ^
     /I%DIR_REPO%\src /DDLL_BUILD %DIR_REPO%\src\but_tests.c ^
     /Fo:%DIR_OUT_OBJ%\ /Fd:%DIR_OUT_LIB%\but_tests.pdb ^
     /LD /link %CommonLinkerFlagsFinal% ^

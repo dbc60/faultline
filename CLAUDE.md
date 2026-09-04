@@ -17,6 +17,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - `build\cmd\all.cmd clean` - Clean current build type
   - `build\cmd\all.cmd cleanall` - Clean all build artifacts
   - `build\cmd\all.cmd analyze` - Run MSVC code analysis after the build
+  - `build\cmd\all.cmd cxx` - Build every test suite as C++; drivers, hosts, libraries and examples stay C
 
 ### Running Tests
 - **All tests**: `build\cmd\all.cmd test` - Builds and runs all unit test suites
