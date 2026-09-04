@@ -29,11 +29,8 @@
  *
  * See LICENSE.txt for copyright and licensing information about this file.
  */
-#include <faultline/fl_macros.h>          // FL_STR
-#include <faultline/fl_threads.h>         // mtx_t, thrd_t, FL_THREADS_USE_SHIM
-#include <faultline/fl_exception_types.h> // FLExceptionEnvironment
-#include <setjmp.h>                       // jmp_buf
-#include <stdint.h>                       // uint16_t, uint32_t
+#include <faultline/fl_macros.h> // FL_STR
+#include <stdint.h>              // uint16_t, uint32_t
 
 #if defined(__cplusplus)
 extern "C" {
@@ -43,7 +40,7 @@ extern "C" {
  * non-breaking changes, like marketing new features or transitioning from development
  * (e.g., 0.MINOR.PATCH) to a stable release (e.g., 1.0.0). without tying compatibility
  * to the release. */
-#define FL_COMPATIBILITY_VERSION 2
+#define FL_COMPATIBILITY_VERSION 3
 
 /** Project version, reported by the version command and carried in FLAbiInfo. */
 #define FL_VERSION_MAJOR 0
@@ -55,11 +52,11 @@ extern "C" {
 #define FL_ABI_MAGIC 0x31414C46u
 
 // -- Toolchain identity ----------------------------------------------------------------
-// The C Runtime ID (crt_id) is used to decide compatibility between executables and the
-// modules they load. The C runtime owns setjmp/longjmp and the heap, so two images must
-// share the same one. compiler_id and compiler_version are report and logging only.
-// Interestingly, clang-cl on Windows and MSVC produce different compiler IDs yet share a
-// CRT, and are compatible.
+// crt_id is the one toolchain field compared. It stands for the compiler that produced
+// each image. Every service struct is a table of function pointers, and their calling
+// convention and packing come from that compiler rather than from these headers, so a
+// driver from different toolchain than a test suite can report the difference as an
+// incompatibility.
 
 #define FL_ABI_COMPILER_UNKNOWN 0u
 #define FL_ABI_COMPILER_MSVC    1u
@@ -71,11 +68,8 @@ extern "C" {
 #define FL_ABI_CRT_MINGW   2u
 #define FL_ABI_CRT_POSIX   3u
 
-// The exception backend (setjmp/longjmp vs. a real C++ throw, FL_EXC_BACKEND_CXX)
-// changes what FLExceptionEnvironment/FLExceptionFrame mean at the ABI level even when
-// their sizes happen to collide, so it is reported and checked alongside them rather
-// than folded into sizeof_exception_env.
-
+// Define the exception backend (setjmp/longjmp vs C++ throw/catch). These provide
+// additional context in error reports when a driver loads an incompatible test suite.
 #define FL_ABI_BACKEND_SETJMP 0u
 #define FL_ABI_BACKEND_CXX    1u
 
@@ -108,29 +102,23 @@ extern "C" {
 /**
  * @brief One image's build identity.
  *
- * struct_size lets this struct grow. It records how many bytes the image that filled the
- * struct knew about, so an image compiled against a longer FLAbiInfo can tell which of
- * its own trailing fields the writer never wrote. Append new fields at the end,
- * otherwise two different versions will disagree on the offset of the current fields
- * after a new inserted field.
+ * struct_size records how many bytes the image that filled the struct knew about.
+ * fl_abi_check compares it before reading anything past the fields it precedes, because
+ * two revisions of different sizes put the later fields at different offsets. Append new
+ * fields at the end and raise FL_COMPATIBILITY_VERSION; inserting or removing one moves
+ * every field after it.
  */
 typedef struct FLAbiInfo {
     uint32_t magic;                 ///< FL_ABI_MAGIC
     uint32_t struct_size;           ///< sizeof(FLAbiInfo) as the writer saw it
     uint32_t compiler_id;           ///< FL_ABI_COMPILER_*
     uint32_t compiler_version;      ///< scale differs per compiler; diagnostic only
-    uint32_t crt_id;                ///< FL_ABI_CRT_*; the CRT compatibility identifier
+    uint32_t crt_id;                ///< FL_ABI_CRT_*; the toolchain identity, compared
     uint16_t compatibility_version; ///< FL_COMPATIBILITY_VERSION
     uint16_t version_major;         ///< FL_VERSION_MAJOR
     uint16_t version_minor;         ///< FL_VERSION_MINOR
     uint16_t version_patch;         ///< FL_VERSION_PATCH
-    uint16_t threads_use_shim;      ///< FL_THREADS_USE_SHIM
-    uint16_t sizeof_mtx_t;          ///< differs with the threads selection
-    uint16_t sizeof_thrd_t;         ///< differs with the threads selection
-    uint16_t sizeof_jmp_buf;        ///< equal size does not imply interchangeable
-    uint16_t sizeof_exception_env;  ///< compare sizes between the executable and module
-    uint16_t backend;               ///< FL_ABI_BACKEND_*; zero on an image built before
-                                     ///< this field existed, which is FL_ABI_BACKEND_SETJMP
+    uint16_t backend;               ///< FL_ABI_BACKEND_*; diagnostic only
 } FLAbiInfo;
 
 /*
@@ -140,8 +128,6 @@ typedef enum FLAbiVerdict {
     FL_ABI_OK = 0,
     FL_ABI_BAD_MAGIC,
     FL_ABI_CRT_MISMATCH,
-    FL_ABI_THREADS_MISMATCH,
-    FL_ABI_LAYOUT_MISMATCH,
     FL_ABI_VERSION_MISMATCH,
 } FLAbiVerdict;
 
@@ -160,11 +146,6 @@ static inline void fl_fill_abi_info(FLAbiInfo *out) {
     out->version_major         = (uint16_t)FL_VERSION_MAJOR;
     out->version_minor         = (uint16_t)FL_VERSION_MINOR;
     out->version_patch         = (uint16_t)FL_VERSION_PATCH;
-    out->threads_use_shim      = (uint16_t)FL_THREADS_USE_SHIM;
-    out->sizeof_mtx_t          = (uint16_t)sizeof(mtx_t);
-    out->sizeof_thrd_t         = (uint16_t)sizeof(thrd_t);
-    out->sizeof_jmp_buf        = (uint16_t)sizeof(jmp_buf);
-    out->sizeof_exception_env  = (uint16_t)sizeof(FLExceptionEnvironment);
 #if defined(FL_EXC_BACKEND_CXX)
     out->backend = FL_ABI_BACKEND_CXX;
 #else
@@ -173,31 +154,28 @@ static inline void fl_fill_abi_info(FLAbiInfo *out) {
 }
 
 /**
- * @brief Decide whether a loaded module can be used by this host.
+ * @brief Report whether a loaded module and this host agree on what crosses between
+ * them.
  *
- * The tests run most-fundamental first, so that the verdict names the root difference
- * rather than one of its consequences. Two images built against different C runtimes
- * have usually also selected different C11 threads implementations, and both differences
- * would be reported; naming the runtime is the one that tells a caller which image to
- * rebuild.
+ * Two things have to agree:
+ * 1. FL_COMPATIBILITY_VERSION which stands for the layout of the structs the service
+ *    contracts are built from.
+ * 2. crt_id which stands for the toolchain that laid them out.
+ *
+ * magic and struct_size come first and in that order. Both sit at fixed offsets, so
+ * they read correctly regardless of which compiler toolchain wrote the struct. Every
+ * later field is at an offset controlled by that toolchain.
  */
 static inline FLAbiVerdict fl_abi_check(FLAbiInfo const *host, FLAbiInfo const *mod) {
     FLAbiVerdict verdict = FL_ABI_OK;
 
     if (mod->magic != FL_ABI_MAGIC) {
         verdict = FL_ABI_BAD_MAGIC;
+    } else if (mod->struct_size != host->struct_size
+               || mod->compatibility_version != host->compatibility_version) {
+        verdict = FL_ABI_VERSION_MISMATCH;
     } else if (mod->crt_id != host->crt_id) {
         verdict = FL_ABI_CRT_MISMATCH;
-    } else if (mod->threads_use_shim != host->threads_use_shim
-               || mod->sizeof_mtx_t != host->sizeof_mtx_t
-               || mod->sizeof_thrd_t != host->sizeof_thrd_t) {
-        verdict = FL_ABI_THREADS_MISMATCH;
-    } else if (mod->sizeof_jmp_buf != host->sizeof_jmp_buf
-               || mod->sizeof_exception_env != host->sizeof_exception_env
-               || mod->backend != host->backend) {
-        verdict = FL_ABI_LAYOUT_MISMATCH;
-    } else if (mod->compatibility_version != host->compatibility_version) {
-        verdict = FL_ABI_VERSION_MISMATCH;
     }
     return verdict;
 }
@@ -212,13 +190,7 @@ static inline char const *fl_abi_verdict_str(FLAbiVerdict verdict) {
         text = "not a FaultLine module descriptor";
         break;
     case FL_ABI_CRT_MISMATCH:
-        text = "built against a different C runtime";
-        break;
-    case FL_ABI_THREADS_MISMATCH:
-        text = "built against a different C11 threads implementation";
-        break;
-    case FL_ABI_LAYOUT_MISMATCH:
-        text = "exception environment layout differs";
+        text = "built by a different toolchain";
         break;
     case FL_ABI_VERSION_MISMATCH:
         text = "built against an incompatible version";

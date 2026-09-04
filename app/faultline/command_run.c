@@ -443,20 +443,18 @@ static bool suite_abi_ok(ExecutionContext *ectx, SuiteHandle suite,
               fl_abi_verdict_str(verdict));
     LOG_ERROR(
         module,
-        "  suite:  %s %u, %s, %s (mtx_t %u, thrd_t %u), compatibility v%u, v%u.%u.%u",
+        "  suite:  %s %u, %s, backend %s, compatibility v%u, v%u.%u.%u",
         fl_abi_compiler_str(mod.compiler_id), mod.compiler_version,
-        fl_abi_crt_str(mod.crt_id),
-        mod.threads_use_shim ? "fl_threads shim" : "toolchain <threads.h>",
-        mod.sizeof_mtx_t, mod.sizeof_thrd_t, mod.compatibility_version,
-        mod.version_major, mod.version_minor, mod.version_patch);
+        fl_abi_crt_str(mod.crt_id), fl_abi_backend_str(mod.backend),
+        mod.compatibility_version, mod.version_major, mod.version_minor,
+        mod.version_patch);
     LOG_ERROR(
         module,
-        "  driver: %s %u, %s, %s (mtx_t %u, thrd_t %u), compatibility v%u, v%u.%u.%u",
+        "  driver: %s %u, %s, backend %s, compatibility v%u, v%u.%u.%u",
         fl_abi_compiler_str(host.compiler_id), host.compiler_version,
-        fl_abi_crt_str(host.crt_id),
-        host.threads_use_shim ? "fl_threads shim" : "toolchain <threads.h>",
-        host.sizeof_mtx_t, host.sizeof_thrd_t, host.compatibility_version,
-        host.version_major, host.version_minor, host.version_patch);
+        fl_abi_crt_str(host.crt_id), fl_abi_backend_str(host.backend),
+        host.compatibility_version, host.version_major, host.version_minor,
+        host.version_patch);
     LOG_ERROR(module, "  rebuild the suite with the toolchain that built the driver");
     return false;
 }

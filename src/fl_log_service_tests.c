@@ -22,6 +22,7 @@
 // Order matters: exception service first, then code under test
 #include <faultline/fl_exception_service_assert.h> // FL_ASSERT_* macros
 #include <faultline/fl_macros.h>                   // FL_ANALYSIS_SUPPRESS
+#include <faultline/fl_threads.h>                  // thrd_t, thrd_create, thrd_join
 #include <faultline/fl_test.h> // FL_TEST, FL_SUITE_*, FL_GET_TEST_SUITE
 #include <faultline/fl_try.h> // FL_TRY, FL_CATCH, FL_THROW (resolves to FLA_* in DLL builds)
 

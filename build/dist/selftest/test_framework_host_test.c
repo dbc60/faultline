@@ -71,8 +71,6 @@ int main(int argc, char **argv) {
         get_abi(&mod);
         CHECK(mod.magic == FL_ABI_MAGIC);
         CHECK(mod.struct_size == host.struct_size);
-        CHECK(mod.crt_id == host.crt_id);
-        CHECK(mod.sizeof_exception_env == host.sizeof_exception_env);
         CHECK(fl_abi_check(&host, &mod) == FL_ABI_OK);
     }
 

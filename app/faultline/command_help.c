@@ -121,19 +121,14 @@ COMMAND_HANDLER(version_cmd) {
     printf("Fault Injection Testing Framework\n");
     printf("Copyright (c) 2025 Douglas Cuthbertson\n");
 
-    // A suite must be built against the same runtime as this driver. Printing the
-    // identity used for that comparison is what makes a refusal diagnosable: run
-    // this, compare with what the refused suite reported, rebuild the odd one out.
+    // A suite and this driver must agree on what crosses between them. Printing the
+    // identity used for that comparison is what makes a reported mismatch diagnosable:
+    // run this, compare it with what the suite reported, rebuild the odd one out.
     FLAbiInfo abi;
     fl_fill_abi_info(&abi);
     printf("\nBuild identity\n");
     printf("  compiler       %s %u\n", fl_abi_compiler_str(abi.compiler_id),
            abi.compiler_version);
     printf("  c runtime      %s\n", fl_abi_crt_str(abi.crt_id));
-    printf("  c11 threads    %s (mtx_t %u, thrd_t %u)\n",
-           abi.threads_use_shim ? "fl_threads shim" : "toolchain <threads.h>",
-           abi.sizeof_mtx_t, abi.sizeof_thrd_t);
-    printf("  exception env  %u bytes (jmp_buf %u), backend %s\n",
-           abi.sizeof_exception_env, abi.sizeof_jmp_buf,
-           fl_abi_backend_str(abi.backend));
+    printf("  compatibility  v%u\n", abi.compatibility_version);
 }

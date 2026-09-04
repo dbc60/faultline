@@ -220,19 +220,43 @@ the log lines. Data across the boundary, no code pointers.
 
 ### 5. Narrow the ABI check (`include/faultline/fl_abi.h`)
 
-`backend`, `sizeof_jmp_buf` and `sizeof_exception_env` stop being compared at `:194-197`
-— none of them cross the boundary any more. Keep the fields (the struct only grows,
-and they stay useful in the diagnostic line); drop `FL_ABI_LAYOUT_MISMATCH` or narrow
-it to whatever remains.
+**Done at commit 4.** `backend`, `sizeof_jmp_buf` and `sizeof_exception_env` are no
+longer compared — none of them crosses the boundary. The fields stay and feed the
+diagnostic line, where `backend` now occupies the slot the C runtime held.
+`FL_ABI_LAYOUT_MISMATCH` is gone; nothing was left in that category.
 
-What still has to match: CRT, C11 threads types, compatibility version.
+`sizeof_exception_env` is **removed**, along with `threads_use_shim`, `sizeof_mtx_t` and
+`sizeof_thrd_t`. `crt_id` stays, under a corrected justification.
 
-**No `FL_COMPATIBILITY_VERSION` bump.** Every suite in this repo is rebuilt with the
-driver, and the one external consumer (`worldbuilder`) is rebuilt from regenerated
-distribution packages. A stale DLL is detected by its missing `fl_run_case` export,
-which names the actual problem; a version number would be a second, vaguer signal for
-the same condition. The `out_size` parameter covers the layout case the export check
-cannot see.
+The old one — that the C runtime owns setjmp/longjmp and the heap — no longer holds. No
+unwind crosses the boundary, and the heap never did: every allocation-shaped call in
+every service contract has its matching release on the same side, `FL_MALLOC_FN`/
+`FL_FREE_FN`, `FL_FILE_OPEN_FN`/`FL_FILE_CLOSE_FN`, `FL_STREAM_OPEN_FN`/
+`FL_STREAM_CLOSE_FN`, so no block is allocated by one image and released by the other.
+
+What `crt_id` is for now: every service struct is a table of function pointers whose
+calling convention and packing come from the compiler, not from these headers, and
+`crt_id` is the field that names the compiler. The threads triple was serving the same
+purpose indirectly — nothing embedding an `mtx_t` or a `thrd_t` crosses this boundary,
+so it was reporting a difference that had no consequence here. One field that names the
+toolchain replaces three that describe a side effect of it, and the version command
+prints one line instead of a compound one.
+
+The one lock-bearing object that does cross a module boundary is `Arena`
+(`arena_internal.h:366` embeds an `FLLock`), which `faultline_test.c:227` creates in
+`faultline_tests.dll` and hands to `faultline_test_data.dll`. `fl_abi_check` never sees
+that pairing: it runs between a host and a suite the host loaded.
+
+What still has to match: `FL_COMPATIBILITY_VERSION` standing for the layout of every
+struct the service contracts are built from, and `crt_id` for the toolchain that laid
+them out.
+
+**`FL_COMPATIBILITY_VERSION` 2 → 3.** Removing a field moves every field after it, which
+is exactly what that number gates. `fl_abi_check` compares `magic` then `struct_size`
+before reading anything that can move: both sit at fixed offsets whatever revision wrote
+the struct, so a descriptor of a different shape is reported rather than misread. That is
+stricter than the "the struct only grows" note the header used to carry, and it matches
+what the package self-test already asserted.
 
 ### 6. Build scripts
 
@@ -303,7 +327,11 @@ and run both through the same unmodified `faultline.exe`. Verify:
    Atomic per host, not across them: each host owns the catch it is removing and the
    injection that feeds it, and the three run as separate processes, so switching one
    leaves the others working.
-4. ABI check narrowed.
+4. **Done.** ABI check narrowed: the exception fields stop being compared and `crt_id`
+   is removed. Acceptance test met for its first two criteria — `arena_tests.dll`
+   (74 cases) and `flp_file_service_tests.dll` (9 cases, 6 fault sites) each built as C
+   and as C++ and run by the same unmodified `faultline.exe`, with identical pass counts
+   and identical fault-site counts in both dialects.
 5. Build scripts.
 6. C++ suite added and run under the C driver.
 7. Distribution packages regenerated; `worldbuilder` rebuilt.

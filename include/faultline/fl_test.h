@@ -166,7 +166,7 @@ typedef struct FLTestSuite FLTestSuite;
 // Define suite with auto count.
 //
 // Also exports fla_get_abi, so every suite reports the toolchain with which it was built
-// so the driver can detect an incompatible by name and report an error instead of
+// so the driver can detect an incompatible one by name and report an error instead of
 // crashing.
 //
 // And exports fl_run_case, which runs one case with its exceptions contained inside this
