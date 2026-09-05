@@ -3,7 +3,7 @@
 name memory_service
 version 0.4.0
 depends 
-generated 2026-09-05T14:04:52Z
+generated 2026-09-05T14:52:39Z
 f include/faultline/arena.h 35cb607c0992e53c3fc91d8ab2795e06cbdd9a8d1470fe3bef6a5ac4ab57676a
 f include/faultline/arena_malloc.h 2d75070c70adaebf533aebfa25e7b4ce3f9c4c2bbbb42820719242d7e44a370f
 f include/faultline/arena_pool.h 29ef4aaa8bfc5ea80c5e68390aa57600c3e5926b185de7f9041de4ba812b0796
@@ -55,7 +55,7 @@ f src/index_windows.h dacfb338d2216c6ca4eb584056c8c6018f5b1da82a06dc1d2629615f48
 f src/lock_os.c 7384a49d849a7105b74148494b6da46f5efe5741241b9717158e81af45f7b126
 f src/region.c 392edc8d9d33f7ec2bda2cfd35d1533e12e16958d5cdb33cd3c568dafcc14275
 f src/region.h 03701d895a26c633006dc7734691e9bc742f8fb5e6bff0a1388b399c2063d94a
-f src/region_node.c a1bff5e9590896219ecdc16356845230e2ac9066c5a2548122418fea30ff7257
+f src/region_node.c f9befe5604ae1aa7dd9cba4d51d3ea87857b85dafe96aa3605ac1f3ef4f2ef2c
 f src/region_node.h 1df2cdb4730ea928269935e3efb54bdee13ce0130ce8377e817a854bbbdc2bb0
 f src/region_os.c d80cc016dcf81b6592732f50d8a043dd26dd5c23a372f5aec6e7c4cfda348316
 f src/region_os.h 6993061c454984f6f8f4db14a463a8833aada047704c2dfd33bf799b67776f81
