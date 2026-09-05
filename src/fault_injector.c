@@ -12,7 +12,7 @@
 #include <faultline/fault_injector.h>       // for fault_injector_init
 #include <faultline/fault_site.h>           // for fault_site_buffer_clear
 #include <faultline/fl_result_codes.h>      // for FLResultCode
-#include <faultline/fl_exception_service.h> // for fl_internal_error, fl_...
+#include <faultline/fl_exception.h>         // for fl_internal_error, fl_...
 #include <faultline/fl_exception_types.h>   // for FLExceptionReason
 #include <faultline/fl_log.h>               // for LOG_VERBOSE, LOG_DEBUG
 #include <faultline/arena.h>                // for Arena
@@ -33,7 +33,6 @@ FLExceptionReason fault_injector_exception = "fault injected";
 #if defined(__cplusplus)
 }
 #endif
-
 
 FaultInjector *fault_injector_create(Arena *arena) {
     FaultInjector *injector

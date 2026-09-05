@@ -21,7 +21,7 @@
  *                                           address reason; FL_CATCH_STR catches it
  */
 #include <faultline/fl_test.h>
-#include <faultline/fl_exception_service_assert.h>
+#include <faultline/fl_exception_assert.h>
 #include <faultline/fl_macros.h>
 
 // Private reason used exclusively by this test file.

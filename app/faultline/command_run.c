@@ -24,18 +24,17 @@
 #if defined(FL_PLATFORM_BUILD)
 // Monolithic driver: the platform's service implementations live in this binary, so
 // test-suite loading and injection are direct Win32 + flp_init_* calls.
-#include <faultline/fl_exception_service.h> // fla_set_exception_service_fn, FLA_SET_EXCEPTION_SERVICE_STR
+#include <faultline/fl_exception.h>   // FL_REASON, FL_FILE, FL_LINE
 #include <faultline/fl_log_service.h> // fla_set_log_service_fn, FLA_SET_LOG_SERVICE_STR
 #include <faultline/fl_memory_service.h> // fla_set_memory_service_fn, FLA_SET_MEMORY_SERVICE_STR
 #include <faultline/fl_timer_service.h> // fla_set_timer_service_fn, FLA_SET_TIMER_SERVICE_STR
 #include <faultline/fl_file_service.h> // fla_set_file_service_fn, FLA_SET_FILE_SERVICE_STR
 #include <faultline/fl_stream_service.h> // fla_set_stream_service_fn, FLA_SET_STREAM_SERVICE_STR
-#include <flp_exception_service.h> // flp_init_exception_service
-#include <flp_log_service.h>       // flp_init_log_service
-#include <flp_memory_service.h>    // flp_init_fault_memory_service
-#include <flp_timer_service.h>     // flp_init_timer_service
-#include <flp_file_service.h>      // flp_init_file_service
-#include <flp_stream_service.h>    // flp_init_stream_service
+#include <flp_log_service.h>             // flp_init_log_service
+#include <flp_memory_service.h>          // flp_init_fault_memory_service
+#include <flp_timer_service.h>           // flp_init_timer_service
+#include <flp_file_service.h>            // flp_init_file_service
+#include <flp_stream_service.h>          // flp_init_stream_service
 
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
@@ -441,20 +440,16 @@ static bool suite_abi_ok(ExecutionContext *ectx, SuiteHandle suite,
 
     LOG_ERROR(module, "\"%s\" is incompatible with this driver: %s - skipping", dll_path,
               fl_abi_verdict_str(verdict));
-    LOG_ERROR(
-        module,
-        "  suite:  %s %u, %s, backend %s, compatibility v%u, v%u.%u.%u",
-        fl_abi_compiler_str(mod.compiler_id), mod.compiler_version,
-        fl_abi_crt_str(mod.crt_id), fl_abi_backend_str(mod.backend),
-        mod.compatibility_version, mod.version_major, mod.version_minor,
-        mod.version_patch);
-    LOG_ERROR(
-        module,
-        "  driver: %s %u, %s, backend %s, compatibility v%u, v%u.%u.%u",
-        fl_abi_compiler_str(host.compiler_id), host.compiler_version,
-        fl_abi_crt_str(host.crt_id), fl_abi_backend_str(host.backend),
-        host.compatibility_version, host.version_major, host.version_minor,
-        host.version_patch);
+    LOG_ERROR(module, "  suite:  %s %u, %s, backend %s, compatibility v%u, v%u.%u.%u",
+              fl_abi_compiler_str(mod.compiler_id), mod.compiler_version,
+              fl_abi_crt_str(mod.crt_id), fl_abi_backend_str(mod.backend),
+              mod.compatibility_version, mod.version_major, mod.version_minor,
+              mod.version_patch);
+    LOG_ERROR(module, "  driver: %s %u, %s, backend %s, compatibility v%u, v%u.%u.%u",
+              fl_abi_compiler_str(host.compiler_id), host.compiler_version,
+              fl_abi_crt_str(host.crt_id), fl_abi_backend_str(host.backend),
+              host.compatibility_version, host.version_major, host.version_minor,
+              host.version_patch);
     LOG_ERROR(module, "  rebuild the suite with the toolchain that built the driver");
     return false;
 }

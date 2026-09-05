@@ -16,16 +16,14 @@
  */
 #include <flp_module_service.h> // FLP_MODULE_SERVICE_INIT_FN, FL_MODULE_*_FN
 
-#include <faultline/fl_exception_service.h> // fla_set_exception_service_fn
-#include <faultline/fl_file_service.h>      // fla_set_file_service_fn
-#include <faultline/fl_log.h>               // LOG_ERROR (flp backend: FL_PLATFORM_BUILD)
-#include <faultline/fl_log_service.h>       // fla_set_log_service_fn
-#include <faultline/fl_memory_service.h>    // fla_set_memory_service_fn
-#include <faultline/fl_stream_service.h>    // fla_set_stream_service_fn
-#include <faultline/fl_timer_service.h>     // fla_set_timer_service_fn
-#include <flp_exception_service.h>          // flp_init_exception_service
-#include <flp_file_service.h>               // flp_init_file_service
-#include <flp_log_service.h>                // flp_init_log_service
+#include <faultline/fl_file_service.h>   // fla_set_file_service_fn
+#include <faultline/fl_log.h>            // LOG_ERROR (flp backend: FL_PLATFORM_BUILD)
+#include <faultline/fl_log_service.h>    // fla_set_log_service_fn
+#include <faultline/fl_memory_service.h> // fla_set_memory_service_fn
+#include <faultline/fl_stream_service.h> // fla_set_stream_service_fn
+#include <faultline/fl_timer_service.h>  // fla_set_timer_service_fn
+#include <flp_file_service.h>            // flp_init_file_service
+#include <flp_log_service.h>             // flp_init_log_service
 #include <flp_memory_service.h> // flp_init_fault_memory_service, FLFaultMemoryContext
 #include <flp_stream_service.h> // flp_init_stream_service
 #include <flp_timer_service.h>  // flp_init_timer_service

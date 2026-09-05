@@ -7,8 +7,7 @@
  *
  * See LICENSE.txt for copyright and licensing information about this file.
  */
-#include "fl_exception_service.c"
-#include "fla_exception_service.c"
+#include "fl_exception.c"
 #include "fla_timer_service.c" // g_fla_timer_service, fla_set_timer_service
 
 #include "bits.h"                           // macros under test

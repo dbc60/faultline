@@ -37,29 +37,26 @@
 #include <faultline/fl_context.h>     // (FaultInjector forward use)
 
 // Platform service interfaces + implementations (defined earlier in the unity TU)
-#include <faultline/fl_exception_service.h> // FLExceptionService
-#include <faultline/fl_file_service.h>      // FLFileService
-#include <faultline/fl_log_service.h>       // FLLogService, FLLogLevel
-#include <faultline/fl_stream_service.h>    // FLStreamService
+#include <faultline/fl_file_service.h>   // FLFileService
+#include <faultline/fl_log_service.h>    // FLLogService, FLLogLevel
+#include <faultline/fl_stream_service.h> // FLStreamService
 
 // The core lib's embedded consumer accessors (built with FL_EMBEDDED, so plain
 // functions): the host installs log + exception into them before the first core
 // call. This TU must also compile with /DFL_EMBEDDED so these declarations match.
-#include <faultline/fla_exception_service.h>    // fla_set_exception_service
 #include <faultline/fla_log_service.h>          // fla_set_log_service
 #include <faultline/fl_macros.h>                // FL_UNUSED
 #include <faultline/fl_memory_service.h>        // FLMemoryService
 #include <faultline/fl_timer_service.h>         // FLTimerService
 #include <faultline/flp_fault_memory_context.h> // FLFaultMemoryContext
 #include <faultline/flp_memory_context.h>       // FLMemoryContext
-#include <flp_exception_service.h>              // flp_push/pop/throw declarations
 #include <flp_log_service.h>    // flp_log_init_custom, flp_write_log, flp_log_set_*
 #include <flp_memory_service.h> // flp_init_memory_service, flp_malloc, ...
 #include <flp_timer_service.h>  // flp_timer_now, flp_timer_elapsed_seconds
 #include <flp_file_service.h>   // flp_file_open, flp_file_read, flp_file_write, ...
 #include <flp_stream_service.h> // flp_stream_open, flp_stream_write, flp_stream_close, ...
 #include <flp_module_service.h> // flp_load_module, flp_inject_services, ...
-#include <faultline/fl_try.h>   // FL_TRY/FL_CATCH_ALL (selects flp_ backstop)
+#include <faultline/fl_try.h>   // FL_TRY/FL_CATCH_ALL backstop
 #include <faultline/fl_log.h>   // LOG_* (selects flp_ backend via FL_PLATFORM_BUILD)
 
 #include <stdio.h> // NULL
@@ -84,15 +81,11 @@ static void flp_configure_log(FLLogLevel level, char const *path) {
 }
 
 int main(int argc, char **argv) {
-    // The arena/region stack and the fault injector are core-lib code: they log and
-    // throw through the core's embedded g_fla_* services. Install the platform's log
-    // and exception services before the first core call (new_arena below), or those
-    // calls hit the default-abort stubs. faultline_app_main() later installs the full
-    // service set from the FLPlatformAPI; these two installs are the bootstrap that
-    // makes the code between here and there safe.
+    // new_arena below is core code, and core code logs through the core's own
+    // g_fla_log_service. Install one before that call; faultline_app_main installs the
+    // rest of the services.
     flp_log_init_custom(LOG_LEVEL_INFO, "faultline.log");
     flp_init_log_service(fla_set_log_service);
-    flp_init_exception_service(fla_set_exception_service);
 
     Arena *arena = new_arena(0, 0);
 
@@ -117,11 +110,6 @@ int main(int argc, char **argv) {
         .fl_malloc        = flp_malloc,
         .fl_realloc       = flp_realloc,
     };
-    FLExceptionService exception = {
-        .push_env  = flp_push,
-        .pop_env   = flp_pop,
-        .throw_exc = flp_throw,
-    };
     FLLogService   log   = {.write = flp_write_log};
     FLTimerService timer = {
         .now             = flp_timer_now,
@@ -141,14 +129,13 @@ int main(int argc, char **argv) {
     };
 
     FLPlatformAPI platform = {
-        .memory    = &plain_memory,
-        .log       = &log,
-        .exception = &exception,
-        .timer     = &timer,
-        .file      = &file,
-        .stream    = &stream,
-        .arena     = arena,
-        .injector  = injector,
+        .memory   = &plain_memory,
+        .log      = &log,
+        .timer    = &timer,
+        .file     = &file,
+        .stream   = &stream,
+        .arena    = arena,
+        .injector = injector,
 
         .load_module     = flp_load_module,
         .resolve_symbol  = flp_resolve_symbol,
@@ -160,10 +147,7 @@ int main(int argc, char **argv) {
     };
 
     // -- Top-level backstop ----------------------------------------------------
-    // flp_throw requires a top-level environment to pop (see flp_exception_
-    // service.h). This flp_ FL_TRY establishes it; the core's fla_ FL_TRY nests
-    // on the same platform stack (after install, g_fla_*.push_env == flp_push),
-    // so an uncaught throw from the core or a suite rethrows up to here.
+    // This try catch block will handle any throw from the flp_ services.
     int volatile exit_code = 0;
     FL_TRY {
         exit_code = faultline_app_main(&platform, argc, argv);

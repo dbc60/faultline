@@ -19,7 +19,7 @@
  */
 // Test framework
 #include <faultline/fl_test.h>
-#include <faultline/fl_exception_service_assert.h>
+#include <faultline/fl_exception_assert.h>
 #include <faultline/fl_macros.h>
 
 #include <stdint.h> // uintptr_t

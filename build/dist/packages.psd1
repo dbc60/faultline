@@ -22,35 +22,28 @@
 @{
     Packages = @{
 
-        exception_service = @{
-            Title   = 'Exception Service Distribution'
-            Version = '0.4.0'
+        exceptions = @{
+            Title   = 'Exception Module Distribution'
+            Version = '0.5.0'
             Depends = ''
 
             Src = @(
-                'fl_exception_service.c'
-                'fla_exception_service.c'
-                'flp_exception_service.c'
+                'fl_exception.c'
             )
 
             Inc = @(
                 'fl_abbreviated_types.h'
-                'fla_exception_service.h'
-                'fl_exception_service.h'
-                'fl_exception_service_assert.h'
+                'fl_exception.h'
+                'fl_exception_assert.h'
                 'fl_exception_types.h'
                 'fl_macros.h'
                 'fl_try.h'
-            )
-
-            Top = @(
-                'flp_exception_service.h'
             )
         }
 
         fault_memory_service = @{
             Title   = 'Standalone Fault-Injecting Memory Service Distribution'
-            Version = '0.3.0'
+            Version = '0.4.0'
             Depends = ''
 
             Src = @(
@@ -60,9 +53,8 @@
                 'arena_pool.c'
                 'buffer.c'
                 'digital_search_tree.c'
-                'fl_exception_service.c'
+                'fl_exception.c'
                 'fl_threads.c'
-                'flp_exception_service.c'
                 'flp_stream_service.c'
                 'flp_log_service.c'
                 'region.c'
@@ -107,8 +99,8 @@
                 'bitscan_windows.h'
                 'dlist.h'
                 'fl_abbreviated_types.h'
-                'fl_exception_service.h'
-                'fl_exception_service_assert.h'
+                'fl_exception.h'
+                'fl_exception_assert.h'
                 'fl_exception_types.h'
                 'fl_stream_service.h'
                 'fl_file_types.h'
@@ -133,7 +125,6 @@
 
             Top = @(
                 'flp_memory_service.h'
-                'flp_exception_service.h'
                 'flp_stream_service.h'
                 'flp_log_service.h'
             )
@@ -172,7 +163,7 @@
 
         log_service = @{
             Title   = 'Log Service Distribution'
-            Version = '0.4.0'
+            Version = '0.5.0'
             Depends = 'stream_service'
 
             Src = @(
@@ -192,7 +183,7 @@
                 'fl_macros.h'
                 'fl_threads.h'
                 'fl_try.h'
-                'fl_exception_service_assert.h'
+                'fl_exception_assert.h'
             )
 
             Top = @(
@@ -202,7 +193,7 @@
 
         memory_service = @{
             Title   = 'Standalone Memory Service Distribution (no fault injection)'
-            Version = '0.3.0'
+            Version = '0.4.0'
             Depends = ''
 
             Src = @(
@@ -218,8 +209,7 @@
                 'lock_os.c'
                 'win32_lock.c'
                 'generic_lock.c'
-                'fl_exception_service.c'
-                'flp_exception_service.c'
+                'fl_exception.c'
                 'flp_stream_service.c'
                 'flp_log_service.c'
                 'fl_threads.c'
@@ -252,8 +242,8 @@
                 'bitscan_windows.h'
                 'dlist.h'
                 'fl_abbreviated_types.h'
-                'fl_exception_service.h'
-                'fl_exception_service_assert.h'
+                'fl_exception.h'
+                'fl_exception_assert.h'
                 'fl_exception_types.h'
                 'fl_stream_service.h'
                 'fl_file_types.h'
@@ -270,7 +260,6 @@
 
             Top = @(
                 'flp_memory_service.h'
-                'flp_exception_service.h'
                 'flp_stream_service.h'
                 'flp_log_service.h'
             )
@@ -300,8 +289,8 @@
 
         test_framework = @{
             Title   = 'Test Framework Distribution'
-            Version = '0.3.0'
-            Depends = 'exception_service timer_service'
+            Version = '0.4.0'
+            Depends = 'exceptions timer_service'
 
             Inc = @(
                 'fl_test.h'
@@ -314,8 +303,8 @@
 
         timer_service = @{
             Title   = 'Timer Service Distribution'
-            Version = '0.1.0'
-            Depends = 'exception_service'
+            Version = '0.2.0'
+            Depends = 'exceptions'
 
             Src = @(
                 'flp_timer_service.c'

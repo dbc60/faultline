@@ -11,9 +11,9 @@ SETLOCAL
 :: fl_get_test_suite export. The same macro emits the build-identity export a
 :: host reads before it trusts a module, so the package also ships fl_abi.h and
 :: the fl_threads.h it takes its C11 threads types from. It is header-only and
-:: declares a dependency on exception_service, which supplies the fl_try.h /
+:: declares a dependency on exceptions, which supplies the fl_try.h /
 :: fl_macros.h closure the headers include and the exception sources a suite
-:: links against. Import exception_service first; fl_import enforces the order.
+:: links against. Import exceptions first; fl_import enforces the order.
 ::
 :: What this package contains lives in build\dist\packages.psd1.
 ::

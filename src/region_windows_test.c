@@ -12,7 +12,7 @@
 #include "win32_platform.h" // get_memory_info()
 
 #include <faultline/fl_test.h>              // FLTestCase
-#include <faultline/fl_exception_service.h> // fl_internal_error
+#include <faultline/fl_exception.h>         // fl_internal_error
 #include <faultline/fl_exception_types.h>   // FLExceptionReason
 #include <faultline/fl_abbreviated_types.h> // u32
 

@@ -3,7 +3,7 @@
 name file_service
 version 0.1.1
 depends memory_service
-generated 2026-09-03T11:08:52Z
+generated 2026-09-05T14:04:51Z
 f include/faultline/fl_async_file_service.h 9150195dfac63303a54361075463bb0dcbd0ab074a120e06d0ab1ca31bd9c560
 f include/faultline/fl_file.h 1fe471564fa17d9a054a8d9ee6b0651fdd808e4e2ba1cee4452b9dfc99c8095e
 f include/faultline/fl_file_service.h 21f18a653b07bf198fe15b4cc48758c1d3d2209dbe4606acd8c56d99c29d92ea
@@ -11,4 +11,4 @@ f include/faultline/fl_file_types.h 279a97510eb4b0a36e5ab0fb081336b027db90c5ccb5
 f include/faultline/fla_file_service.h 547a00258c2b5a6d04eb0269688c0ffbc94aad448f2f12b18d07b5d644c6595c
 f include/flp_file_service.h 8d86cab4c62de3882385511b852c04247da7b91a2b39ef3ced4f5c3f8e6d452c
 f src/fla_file_service.c ef23c61d0fd56de4ebd15bcbe2c945e8c33ad80ed0cf523026f82c57b8a6f682
-f src/flp_file_service.c ed6177fd552396f124656fd7de253fcf77dabff9f67cf3280a582d3959ab94cf
+f src/flp_file_service.c 2ccb5784a9e5d2c55246ae77cd5e8d0d8e98e072ad05c394c59660ada30e6fe3

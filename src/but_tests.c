@@ -10,8 +10,7 @@
 #include "but_driver.c"
 #include "but_result_context.c"
 #include "but_test_cases.c"
-#include "fl_exception_service.c"
-#include "fla_exception_service.c"
+#include "fl_exception.c"
 #include "fla_log_service.c"
 #include "fla_timer_service.c" // g_fla_timer_service, fla_set_timer_service
 

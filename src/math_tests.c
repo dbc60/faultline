@@ -7,13 +7,12 @@
  *
  * See LICENSE.txt for copyright and licensing information about this file.
  */
-#include "math.c"                  // unity build
-#include <faultline/fl_macros.h>   // FL_SPEC_EXPORT
-#include <faultline/fl_test.h>     // FLTestCase
-#include "fl_exception_service.c"  // fl_expected_failure
-#include "fla_exception_service.c" // fl_throw_assertion, g_fla_exception_service
-#include "fla_timer_service.c"     // g_fla_timer_service, fla_set_timer_service
-#include <faultline/fl_math.h>     // function prototypes
+#include "math.c"                           // unity build
+#include <faultline/fl_macros.h>            // FL_SPEC_EXPORT
+#include <faultline/fl_test.h>              // FLTestCase
+#include "fl_exception.c"                   // exception reasons, push/pop/throw
+#include "fla_timer_service.c"              // g_fla_timer_service, fla_set_timer_service
+#include <faultline/fl_math.h>              // function prototypes
 #include <faultline/fl_abbreviated_types.h> // u16, u32, u64
 
 #include <stddef.h> // size_t, NULL

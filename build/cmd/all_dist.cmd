@@ -37,7 +37,7 @@ SET DIR_DIST=%DIR_REPO%\dist
 :: The packages to build. Each name maps to build\cmd\<name>_dist.cmd. Order is
 :: not significant: every script reads from the repository, never from another
 :: package's output. Add a package by adding its name here.
-SET "DIST_PACKAGES=exception_service fault_memory_service file_service log_service memory_service stream_service test_framework timer_service"
+SET "DIST_PACKAGES=exceptions fault_memory_service file_service log_service memory_service stream_service test_framework timer_service"
 
 :: Handle clean. The per-package scripts each remove only their own dist\<name>\;
 :: removing dist\ outright also sweeps up packages that no longer have a script.

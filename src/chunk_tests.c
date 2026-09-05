@@ -8,18 +8,17 @@
  * See LICENSE.txt for copyright and licensing information about this file.
  *
  */
-#include "fl_exception_service.c"  // fl_expected_failure
-#include "fla_exception_service.c" // fl_throw_assertion, g_fla_exception_service
-#include "fla_timer_service.c"     // g_fla_timer_service, fla_set_timer_service
+#include "fl_exception.c"      // exception reasons, push/pop/throw
+#include "fla_timer_service.c" // g_fla_timer_service, fla_set_timer_service
 #include "region.c"
 #include "region_os.c"
 #include "lock_os.c"
 
 #include "chunk.h"
-#include <faultline/fl_exception_service_assert.h> // FL_ASSERT_* macros
-#include <faultline/fl_macros.h>                   // FL_CONTAINER_OF
-#include <faultline/fl_test.h>                     // FLTestCase
-#include <faultline/size.h>                        // MAX_SIZE_T
+#include <faultline/fl_exception_assert.h> // FL_ASSERT_* macros
+#include <faultline/fl_macros.h>           // FL_CONTAINER_OF
+#include <faultline/fl_test.h>             // FLTestCase
+#include <faultline/size.h>                // MAX_SIZE_T
 
 #include <stdbool.h> // bool
 #include <stddef.h>  // size_t, NULL

@@ -1,8 +1,8 @@
-#ifndef FL_EXCEPTION_SERVICE_ASSERT_H_
-#define FL_EXCEPTION_SERVICE_ASSERT_H_
+#ifndef FL_EXCEPTION_ASSERT_H_
+#define FL_EXCEPTION_ASSERT_H_
 
 /**
- * @file fl_exception_service_assert.h
+ * @file fl_exception_assert.h
  * @author Douglas Cuthbertson
  * @brief
  * @version 0.1
@@ -12,9 +12,9 @@
  *
  */
 #include <faultline/fl_try.h> // FL_ASSERT_IMPL, FL_ASSERT_REASON_IMPL, FL_THROW_DETAILS_FILE_LINE
-#include <faultline/fl_exception_service.h> // FL_THROW_EXCEPTION_SERVICE_FN
-#include <faultline/fl_exception_types.h>   // FLExceptionReason, fl_exception_handler_fn
-#include <faultline/fl_macros.h>            // FL_THREAD_LOCAL, FL_UNUSED
+#include <faultline/fl_exception.h>       // FL_THROW_EXCEPTION_FN
+#include <faultline/fl_exception_types.h> // FLExceptionReason, fl_exception_handler_fn
+#include <faultline/fl_macros.h>          // FL_THREAD_LOCAL, FL_UNUSED
 
 #include <inttypes.h> // "%u", "%lld", etc.
 #include <math.h>     // fabs
@@ -40,7 +40,7 @@ extern FLExceptionReason fl_unexpected_failure;
  * @param file_name the full path to the file in which the assertion failed.
  * @param line the line number of the failed assertion.
  */
-FL_THROW_EXCEPTION_SERVICE_FN(fl_throw_assertion);
+FL_THROW_EXCEPTION_FN(fl_throw_assertion);
 
 /**
  * @brief test an assertion; if it fails throw an exception where the reason is
@@ -523,4 +523,4 @@ FL_THROW_EXCEPTION_SERVICE_FN(fl_throw_assertion);
 }
 #endif
 
-#endif // FL_EXCEPTION_SERVICE_ASSERT_H_
+#endif // FL_EXCEPTION_ASSERT_H_

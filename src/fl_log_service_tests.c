@@ -14,26 +14,25 @@
  * pulls in its memory-service backing (FL_MALLOC/FL_FREE), mirroring the same
  * unity include pattern flp_stream_service_tests.c uses.
  *
- * The driver injects an FLExceptionService via fla_set_exception_service().
+ * Exceptions are this module's own: it compiles fl_exception.c.
  * FL_ASSERT macros throw exceptions caught by but_driver.exe.
  */
 
 // Unity build: include implementation files directly
 // Order matters: exception service first, then code under test
-#include <faultline/fl_exception_service_assert.h> // FL_ASSERT_* macros
-#include <faultline/fl_macros.h>                   // FL_ANALYSIS_SUPPRESS
-#include <faultline/fl_threads.h>                  // thrd_t, thrd_create, thrd_join
-#include <faultline/fl_test.h> // FL_TEST, FL_SUITE_*, FL_GET_TEST_SUITE
+#include <faultline/fl_exception_assert.h> // FL_ASSERT_* macros
+#include <faultline/fl_macros.h>           // FL_ANALYSIS_SUPPRESS
+#include <faultline/fl_threads.h>          // thrd_t, thrd_create, thrd_join
+#include <faultline/fl_test.h>             // FL_TEST, FL_SUITE_*, FL_GET_TEST_SUITE
 #include <faultline/fl_try.h> // FL_TRY, FL_CATCH, FL_THROW (resolves to FLA_* in DLL builds)
 
-#include "fl_exception_service.c"  // exception reason constants
-#include "fla_exception_service.c" // TLS exception service (app-side)
-#include "fla_memory_service.c"    // g_fla_memory_service (FL_MALLOC backing)
-#include "flp_stream_service.c"    // flp_log_service.c's append/console output path
-#include "lock_os.c"               // FLLock backend for flp_log_service.c
-#include "flp_log_service.c"       // code under test (platform log service)
-#include "fla_log_service.c"       // code under test (application log service)
-#include "fla_timer_service.c"     // g_fla_timer_service, fla_set_timer_service
+#include "fl_exception.c"       // exception reasons, push/pop/throw
+#include "fla_memory_service.c" // g_fla_memory_service (FL_MALLOC backing)
+#include "flp_stream_service.c" // flp_log_service.c's append/console output path
+#include "lock_os.c"            // FLLock backend for flp_log_service.c
+#include "flp_log_service.c"    // code under test (platform log service)
+#include "fla_log_service.c"    // code under test (application log service)
+#include "fla_timer_service.c"  // g_fla_timer_service, fla_set_timer_service
 
 #include <io.h> // _dup, _dup2, _close, _fileno (stderr suppression)
 

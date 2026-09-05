@@ -1,7 +1,6 @@
-#include <faultline/fl_test.h>                     // FL_TYPE_TEST
-#include <faultline/fl_exception_service_assert.h> // FL_ASSERT macros
-#include "fl_exception_service.c"
-#include "fla_exception_service.c"
+#include <faultline/fl_test.h>             // FL_TYPE_TEST
+#include <faultline/fl_exception_assert.h> // FL_ASSERT macros
+#include "fl_exception.c"
 #include "fla_memory_service.c"
 #include "fla_timer_service.c" // g_fla_timer_service, fla_set_timer_service
 // this must follow fla_memory_service.c so the macros in fla_memory_service.h are

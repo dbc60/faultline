@@ -17,7 +17,6 @@
  * See LICENSE.txt for copyright and licensing information about this file.
  */
 #include <faultline/fl_memory_service.h>    // FLMemoryService
-#include <faultline/fl_exception_service.h> // FLExceptionService
 #include <faultline/fl_log_service.h>       // FLLogService, FLLogLevel
 #include <faultline/fl_timer_service.h>     // FLTimerService
 #include <faultline/fl_file_service.h>      // FLFileService, FLFile (opaque)
@@ -66,12 +65,11 @@ typedef struct FLPlatformAPI {
     // entry. `memory` is the PLAIN, non-fault-injecting arena service: the
     // framework's own allocations must never be injected. (The fault-injecting
     // counterpart is reachable only via inject_services, above.)
-    FLMemoryService    *memory;
-    FLLogService       *log;
-    FLExceptionService *exception;
-    FLTimerService     *timer;
-    FLFileService      *file;
-    FLStreamService    *stream;
+    FLMemoryService *memory;
+    FLLogService    *log;
+    FLTimerService  *timer;
+    FLFileService   *file;
+    FLStreamService *stream;
 
     // Shared infrastructure the driver uses directly (both are core-layer):
     //   arena:    OS-backed application arena, owned by the platform.

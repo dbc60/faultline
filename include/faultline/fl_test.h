@@ -17,7 +17,7 @@
 #include <faultline/fl_try.h>          // FL_TRY, FL_CATCH, FL_CATCH_ALL, FL_THROW
 #include <faultline/fl_abi.h>          // FLA_GET_ABI_FN, fl_fill_abi_info
 #include <faultline/fl_case_outcome.h> // FLCaseOutcome, FL_RUN_CASE_FN, fl_case_outcome_*
-#include <faultline/fl_exception_service.h> // fl_expected_failure
+#include <faultline/fl_exception.h> // fl_expected_failure
 #include <faultline/fl_timer.h>             // FL_NOW, FL_ELAPSED
 
 #include <string.h> // strcmp

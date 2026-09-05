@@ -71,7 +71,7 @@ a pointer to a `FLTestSuite` describing your tests.
 ```c
 /* my_tests.c */
 #include <faultline/fl_test.h>
-#include <faultline/fl_exception_service_assert.h>
+#include <faultline/fl_exception_assert.h>
 
 /* FL_TEST defines a test function and a corresponding FLTestCase named <fn>_case. */
 FL_TEST("one plus one equals two", test_addition) {

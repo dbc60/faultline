@@ -13,20 +13,19 @@
  *
  * The driver injects an FLFileService via fla_set_file_service() when it loads this DLL,
  * so the cross-boundary test observes the host's install while the round-trip tests
- * exercise the provider directly. The driver also injects an FLExceptionService, so
- * FL_ASSERT macros throw exceptions caught by the driver.
+ * exercise the provider directly. FL_ASSERT macros throw through this module's own
+ * exception implementation, and fl_run_case catches them here.
  */
 
-#include <faultline/fl_exception_service_assert.h> // FL_ASSERT_* macros
-#include <faultline/fl_test.h> // FL_TEST, FL_SUITE_*, FL_GET_TEST_SUITE
-#include <faultline/fl_try.h>  // FL_THROW (resolves to FLA_* in DLL builds)
+#include <faultline/fl_exception_assert.h> // FL_ASSERT_* macros
+#include <faultline/fl_test.h>             // FL_TEST, FL_SUITE_*, FL_GET_TEST_SUITE
+#include <faultline/fl_try.h>              // FL_THROW (resolves to FLA_* in DLL builds)
 
-#include "fl_exception_service.c"  // exception reason constants
-#include "fla_exception_service.c" // TLS exception service (consumer side)
-#include "fla_memory_service.c"    // g_fla_memory_service (FL_MALLOC backing)
-#include "flp_file_service.c"      // code under test (platform file service)
-#include "fla_file_service.c"      // consumer accessor + default stubs
-#include "fla_timer_service.c"     // g_fla_timer_service, fla_set_timer_service
+#include "fl_exception.c"       // exception reasons, push/pop/throw
+#include "fla_memory_service.c" // g_fla_memory_service (FL_MALLOC backing)
+#include "flp_file_service.c"   // code under test (platform file service)
+#include "fla_file_service.c"   // consumer accessor + default stubs
+#include "fla_timer_service.c"  // g_fla_timer_service, fla_set_timer_service
 
 #include <string.h> // memcmp, strlen
 #include <wchar.h>  // swprintf, wcsrchr

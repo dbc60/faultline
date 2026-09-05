@@ -1,4 +1,7 @@
 @ECHO OFF
 :: See LICENSE.txt for copyright and licensing information about this file.
-CALL "%~dp0build_test_dll.cmd" "Fault Injector" "fault_injector" "fault_injector_tests.c" "fault_injector_tests" "/wd4456" %*
+:: /wd4702: cases here throw unconditionally inside FL_TRY, so the fall-through
+:: epilogue FL_CATCH and FL_END_TRY emit is unreachable. The back end reports it
+:: during LTCG code generation, past the point a warning pragma can reach.
+CALL "%~dp0build_test_dll.cmd" "Fault Injector" "fault_injector" "fault_injector_tests.c" "fault_injector_tests" "/wd4456 /wd4702" %*
 EXIT /B %ERRORLEVEL%

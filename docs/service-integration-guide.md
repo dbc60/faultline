@@ -26,76 +26,49 @@ The injection sequence at runtime is always the same:
 
 1. Platform calls its `flp_*_init()` lifecycle functions to set up the service.
 2. Platform loads the application DLL (`LoadLibrary`).
-3. Platform resolves the DLL's setter with `GetProcAddress` using the well-known symbol name (e.g., `FLA_SET_EXCEPTION_SERVICE_STR`).
+3. Platform resolves the DLL's setter with `GetProcAddress` using the well-known symbol name (e.g., `FLA_SET_LOG_SERVICE_STR`).
 4. Platform calls `flp_init_*_service(fla_set)`, which fills `g_fla_*_service` inside the DLL.
 5. Application code now calls through `g_fla_*_service` function pointers transparently.
 
-## 1. Exception Handling Service
+## 1. Exception Handling
 
-The exception service is **optional** in general. A platform that does not use `FL_TRY`/`FL_CATCH` and does not inject the memory service has no need to require it from an application DLL. The packaged injector (`flp_inject_services()`, see [Packaged Injection](#packaged-injection-flp_inject_services)) and the `but` driver treat it as required and refuse to run a DLL that does not export `fla_set_exception_service`, but that is a policy choice made by those hosts, not a constraint of the service design.
-
-### Platform side
-
-**Headers to include:**
-
-```c
-#include <flp_exception_service.h>           // FL_TRY / FL_CATCH macros, flp_push/pop/throw,
-                                             //   flp_init_exception_service
-// Pulled in automatically by the above:
-//   <faultline/fl_exception_service.h>      // FLExceptionService, fla_set_exception_service_fn,
-//                                           //   fl_expected_failure, fl_invalid_value, ...
-//   <faultline/fl_exception_types.h>        // FLExceptionEnvironment, FLExceptionState, ...
-```
-
-**Source files to compile and link:**
-
-```
-src/flp_exception_service.c   — platform TLS stack + push/pop/throw + flp_init_exception_service
-src/fl_exception_service.c    — shared reason-string constants (fl_expected_failure, etc.)
-```
-
-**Compile flag:** none required, but build the platform target with `/DFL_PLATFORM_BUILD` (a compiler flag, not an in-source `#define`) if you also use the unified selector headers (`fl_try.h`, `fl_log.h`, `fl_memory.h`, `fl_timer.h`, `fl_file.h`) — they pick the platform side when the flag is defined and the consumer side otherwise.
-
-**Initialization (no explicit init call needed):** The platform TLS stack initializes lazily; just ensure the platform wraps its top-level execution in `FL_TRY` / `FL_END_TRY` so there is always a frame on the stack when a test throws.
-
-**Injection call (after `LoadLibrary`):**
-
-```c
-#include <faultline/fl_exception_service.h>  // fla_set_exception_service_fn,
-                                             //   FLA_SET_EXCEPTION_SERVICE_STR
-
-fla_set_exception_service_fn *fla_set_exc =
-    (fla_set_exception_service_fn *)GetProcAddress(dll, FLA_SET_EXCEPTION_SERVICE_STR);
-// fla_set_exc must not be NULL — validate and skip the DLL if it is
-flp_init_exception_service(fla_set_exc);
-```
-
-### Application side
+Exceptions are **not a service**: there is no vtable, no setter and nothing to inject.
+Every binary compiles `fl_exception.c` exactly once and calls `fl_push`/`fl_pop`/
+`fl_throw` directly through the `FL_TRY` family. A platform binary and a DLL it loads
+each get their own `static FL_THREAD_LOCAL` environment stack, so a throw is caught in
+the image that raised it and nothing unwinds across the module boundary.
 
 **Headers to include:**
 
 ```c
-#include <faultline/fla_exception_service.h> // FL_TRY / FL_CATCH macros, fla_set_exception_service,
-                                             //   g_fla_exception_service
+#include <faultline/fl_try.h>               // FL_TRY / FL_CATCH* / FL_THROW* / FL_END_TRY
 // Pulled in automatically by the above:
-//   <faultline/fl_exception_service.h>
-//   <faultline/fl_exception_types.h>
+//   <faultline/fl_exception.h>             // fl_push/fl_pop/fl_throw, fl_expected_failure,
+//                                          //   fl_invalid_value, ...
+//   <faultline/fl_exception_types.h>       // FLExceptionEnvironment, FLExceptionState, ...
 ```
 
 For assertion macros (`FL_ASSERT_TRUE`, `FL_ASSERT_NOT_NULL`, etc.):
 
 ```c
-#include <faultline/fl_exception_service_assert.h>
+#include <faultline/fl_exception_assert.h>
 ```
 
 **Source files to compile and link:**
 
 ```
-src/fla_exception_service.c   — g_fla_exception_service global + fla_set_exception_service export
-src/fl_exception_service.c    — shared reason-string constants (each DLL needs its own copy)
+src/fl_exception.c            — reason constants, fl_push/fl_pop/fl_throw, fl_throw_assertion
 ```
 
-**Export requirement:** The linker must export `fla_set_exception_service`. Compile with `/DDLL_BUILD` (which triggers `FL_DECL_SPEC` → `__declspec(dllexport)`).
+**Compile flag:** none. `FL_PLATFORM_BUILD` does not select an exception implementation;
+it only selects the sides of the real services through the unified selector headers
+(`fl_log.h`, `fl_memory.h`, `fl_timer.h`, `fl_file.h`, `fl_stream.h`).
+
+**Initialization:** none. The environment stack initializes lazily. Ensure any code that
+can throw runs under an `FL_TRY` in its own image: a throw with no enclosing `FL_TRY`
+on the thread reports the throw site to stderr and aborts.
+
+**Export requirement:** none. A suite DLL exports its cases, not a throw hook.
 
 ## 2. Logging Service
 
@@ -332,8 +305,7 @@ src/flp_timer_service.c      — QueryPerformanceCounter backend + flp_init_time
 
 **Dependencies:** the provider throws `FL_THROW_DETAILS` if querying the
 performance-counter frequency fails, and `flp_init_timer_service` uses
-`FL_ASSERT_NOT_NULL`, so the platform exception service sources must also be compiled
-in.
+`FL_ASSERT_NOT_NULL`, so `fl_exception.c` must also be compiled in.
 
 **Initialization:** none required. The seconds-per-tick factor is queried lazily on
 first use.
@@ -404,7 +376,7 @@ src/flp_file_service.c       — CreateFileW/ReadFile/WriteFile backend + flp_in
 **Dependencies:** the provider allocates through `FL_MALLOC`/`FL_FREE` when converting
 extended-length (`\\?\`) paths, so the platform memory service must be initialized
 before the provider opens paths longer than `MAX_PATH`; it also uses
-`FL_ASSERT_NOT_NULL`, so the platform exception service sources must be compiled in.
+`FL_ASSERT_NOT_NULL`, so `fl_exception.c` must be compiled in.
 
 **Initialization:** none required beyond the memory-service setup above.
 
@@ -485,8 +457,8 @@ src/flp_stream_service.c     — CreateFileW/WriteFile (append) + GetStdHandle b
 **Dependencies:** the provider allocates through `FL_MALLOC`/`FL_FREE` only when
 converting extended-length (`\\?\`) paths (the common short-path case allocates
 nothing), so the platform memory service must be initialized before the provider
-opens paths longer than `MAX_PATH`; it also uses `FL_ASSERT_NOT_NULL`, so the
-platform exception service sources must be compiled in.
+opens paths longer than `MAX_PATH`; it also uses `FL_ASSERT_NOT_NULL`, so
+`fl_exception.c` must be compiled in.
 
 **Initialization:** none required beyond the memory-service setup above.
 
@@ -529,7 +501,7 @@ src/fla_stream_service.c     — g_fla_stream_service global + abort stubs + fla
 
 | Service   | Headers                   | Source files                                        | Required?   |
 | --------- | ------------------------- | --------------------------------------------------- | ----------- |
-| Exception | `flp_exception_service.h` | `flp_exception_service.c`, `fl_exception_service.c` | Optional    |
+| Exception | `faultline/fl_try.h`      | `fl_exception.c`                                    | Optional    |
 | Log       | `flp_log_service.h`       | `flp_log_service.c`, `fl_threads.c`                 | Recommended |
 | Memory    | `flp_memory_service.h` + a `faultline/` context header | `flp_memory_service.c`, `flp_fault_memory_service.c` (+ arena + fault injector)   | Optional    |
 | Timer     | `flp_timer_service.h`     | `flp_timer_service.c`                               | Optional    |
@@ -540,7 +512,7 @@ src/fla_stream_service.c     — g_fla_stream_service global + abort stubs + fla
 
 | Service   | Headers                             | Source files                                        | Exports                     |
 | --------- | ----------------------------------- | --------------------------------------------------- | --------------------------- |
-| Exception | `faultline/fla_exception_service.h` | `fla_exception_service.c`, `fl_exception_service.c` | `fla_set_exception_service` |
+| Exception | `faultline/fl_try.h`                | `fl_exception.c`                                    | none                        |
 | Log       | `faultline/fla_log_service.h`       | `fla_log_service.c`                                 | `fla_set_log_service`       |
 | Memory    | `faultline/fla_memory_service.h`    | `fla_memory_service.c`                              | `fla_set_memory_service`    |
 | Timer     | `faultline/fla_timer_service.h`     | `fla_timer_service.c`                               | `fla_set_timer_service`     |
@@ -572,14 +544,12 @@ if (suite == NULL || !flp_inject_services(suite)) {
 ```
 
 `flp_inject_services()` resolves every `fla_set_*_service` symbol the suite exports and
-injects the matching platform service, in the order log → exception → memory → timer →
-file → stream. It embodies two policy choices a hand-rolled host is free to make
-differently:
+injects the matching platform service, in the order log → memory → timer → file →
+stream. Exceptions are not in that list: they are not a service, and the suite
+compiles its own `fl_exception.c`. It embodies one policy choice a hand-rolled host is
+free to make differently:
 
-- **The exception service is required.** Every test suite runs under `FL_TRY`, so a
-  suite that does not export `fla_set_exception_service` cannot run at all;
-  `flp_inject_services()` returns `false`. Every other service is optional — a missing
-  setter is simply skipped.
+- **Every service is optional** — a missing setter is simply skipped.
 - **The memory binding is always the fault-injecting variant**
   (`flp_init_fault_memory_service` with the context bound by
   `flp_module_service_init()`). The plain arena-only service is what the host installs
@@ -594,10 +564,10 @@ hand-roll injection instead.
 The services are not fully independent. On the platform side, `flp_memory_service.c`
 uses `FL_TRY`/`FL_CATCH` blocks and `FL_ASSERT_*` macros throughout its allocator
 implementations, and calls `LOG_DEBUG` inside `flp_free` and `flp_free_pointer`. This means
-the platform memory service has hard dependencies on both the exception service and the log
-service at runtime. If the memory service is injected before either of those is set up, any
-allocation or free call that hits a fault or an assertion will invoke an uninitialized function
-pointer.
+the platform memory service has a hard dependency on the log service at runtime. If the
+memory service is injected before the log service is set up, any allocation or free call
+that logs will invoke an uninitialized function pointer. Its use of `FL_TRY`/`FL_ASSERT_*`
+needs nothing injected: `fl_exception.c` is linked in, not wired up.
 
 The exception and log services have no dependencies on each other or on the memory service —
 they can be initialized in either relative order. The timer, file, and stream services have
@@ -627,13 +597,6 @@ fla_set_log_service_fn *fla_set_log =
     (fla_set_log_service_fn *)GetProcAddress(dll, FLA_SET_LOG_SERVICE_STR);
 if (fla_set_log != NULL) {
     flp_init_log_service(fla_set_log);
-}
-
-// Exception (optional; required when also injecting the memory service)
-fla_set_exception_service_fn *fla_set_exc =
-    (fla_set_exception_service_fn *)GetProcAddress(dll, FLA_SET_EXCEPTION_SERVICE_STR);
-if (fla_set_exc != NULL) {
-    flp_init_exception_service(fla_set_exc);
 }
 
 // Memory (optional) — arena-only shown; fault programs instead call

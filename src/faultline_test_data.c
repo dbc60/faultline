@@ -13,8 +13,7 @@
 #include "arena_malloc.c"
 #include "buffer.c"
 #include "digital_search_tree.c"
-#include "fl_exception_service.c"
-#include "flp_exception_service.c"
+#include "fl_exception.c"
 #include "fault_injector.c"
 #include "fla_memory_service.c"
 #include "faultline_context.c"
@@ -40,12 +39,6 @@
 #if defined(__cplusplus)
 extern "C" {
 #endif
-
-// Dummy fla_set_exception_service so the driver can load it via GetProcAddress.
-FL_DECL_SPEC FLA_SET_EXCEPTION_SERVICE_FN(fla_set_exception_service) {
-    FL_UNUSED(svc);
-    FL_UNUSED(size);
-}
 
 FL_SPEC_EXPORT FL_EXCEPTION_HANDLER_FN(test_data_handler) {
     FL_UNUSED(ctx);

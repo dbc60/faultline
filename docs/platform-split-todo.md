@@ -13,7 +13,7 @@ packages, async file service, seek/tell/flush contract rev).
 
 Header location convention: `fl_*_service.h` / `fla_*_service.h` live in
 `include/faultline/`; the `flp_*_service.h` provider headers live in `include/`
-(root), matching `flp_log_service.h` and `flp_exception_service.h`.
+(root), matching `flp_log_service.h` and `flp_memory_service.h`.
 
 ---
 
@@ -81,8 +81,8 @@ keep because `g_fla_timer_service` now has a reader.
   suites each have a test that does *not* self-inject and asserts the driver
   replaced the default abort stubs — proving the `fla_set_*_service` symbol is
   exported and the service crossed the DLL boundary (not just that the setter
-  composes in-process). The exception service needs no such test: it is required of
-  every suite, so the whole run depends on its cross-boundary injection already.
+  composes in-process). Exceptions need no such test: they are not injected, and
+  each module compiles `fl_exception.c` for a stack of its own.
 
 ---
 
@@ -145,9 +145,10 @@ monolith `all.cmd test` green (23 suites, 100%).
 - ✅ Core unity gained `fla_timer_service.c` / `fla_file_service.c`;
   `faultline_core.cmd` compiles with `/DFL_EMBEDDED` (fla setters are embedded,
   not dllimport).
-- ✅ One-definition fix: `flp_exception_service.c` guards `fl_throw_assertion`
-  behind `!defined(FLP_OMIT_FL_THROW_ASSERTION)`; the split host defines it so the
-  consumer-side copy (via injected service) is the one linked.
+- ✅ One-definition fix: superseded. The `flp_`/`fla_` exception split was merged
+  into `fl_exception.c`, which every image compiles exactly once, so there is no
+  second `fl_throw_assertion` to guard against and both halves of the split host
+  share one environment stack.
 - ✅ Verified: `faultline_split.cmd` builds; split driver ran timer / assert /
   file-service suites (100%, faults injected); full monolith `all.cmd test` green
   (23 suites, 100%).

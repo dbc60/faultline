@@ -130,9 +130,9 @@ static ShardRecord *arena_pool_thread_shard(ArenaPool *pool, char const *file,
             fl_lock_release(&pool->lock);
             FL_THROW_FILE_LINE(arena_pool_exhausted, file, line);
         }
-        // 6011: rec is non-NULL here. The branch above throws when no shard is
-        // free, and a throw does not return, but the service call it goes through
-        // is deliberately not marked noreturn (see FLExceptionService.throw_exc).
+        // 6011: rec is non-NULL here. The branch above throws when no shard is free,
+        // and a throw does not return, but the throw function is not declared noreturn,
+        // so the analyzer cannot see that.
         FL_TRY {
             FL_ANALYSIS_SUPPRESS(6011)
             rec->arena = new_arena(pool->shard_commit, pool->shard_reserve);

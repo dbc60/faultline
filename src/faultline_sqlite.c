@@ -21,7 +21,7 @@
 #include <string.h>                         // for strcpy_s, strrchr, strlen
 #include <time.h>                           // for time_t
 #include <faultline/fl_abbreviated_types.h> // for u32, i64
-#include <faultline/fl_exception_service.h> // for FL_REASON
+#include <faultline/fl_exception.h>         // for FL_REASON
 #include <faultline/fl_macros.h>            // for FL_UNUSED
 #include <faultline/fl_test.h>              // for FLTestSuite
 #include "flp_time.h"                       // for fl_gmtime

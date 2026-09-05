@@ -8,12 +8,12 @@
  * See LICENSE.txt for copyright and licensing information about this file.
  *
  */
-#include <faultline/fl_exception_service_assert.h> // for assert, FL_ASSERT_DETAILS
-#include <faultline/arena.h>                       // for ARENA_FREE_THROW, ARENA_MAL...
-#include <faultline/buffer.h>                      // for Buffer, buffer_initialize
-#include <stdbool.h>                               // for true
-#include <stdint.h>                                // for SIZE_MAX
-#include <string.h>                                // for NULL, size_t, memcpy
+#include <faultline/fl_exception_assert.h> // for assert, FL_ASSERT_DETAILS
+#include <faultline/arena.h>               // for ARENA_FREE_THROW, ARENA_MAL...
+#include <faultline/buffer.h>              // for Buffer, buffer_initialize
+#include <stdbool.h>                       // for true
+#include <stdint.h>                        // for SIZE_MAX
+#include <string.h>                        // for NULL, size_t, memcpy
 
 // Minimum capacity after any growth: a small buffer jumps straight here so its
 // first several puts share one allocation.

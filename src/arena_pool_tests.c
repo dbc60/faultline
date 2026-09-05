@@ -15,9 +15,8 @@
 #include "region_node.c"
 #include "region_os.c"
 #include "lock_os.c"
-#include "fl_exception_service.c"
+#include "fl_exception.c"
 #include "fl_threads.c"
-#include "fla_exception_service.c"
 #include "fla_log_service.c"
 #include "fla_timer_service.c" // g_fla_timer_service, fla_set_timer_service
 

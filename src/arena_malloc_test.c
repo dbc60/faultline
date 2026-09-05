@@ -16,7 +16,7 @@
 
 #include <faultline/fl_test.h> // FLTestCase
 #include <faultline/fl_exception_types.h>
-#include <faultline/fl_exception_service_assert.h>
+#include <faultline/fl_exception_assert.h>
 #include <faultline/fl_abbreviated_types.h> // u32
 #include <faultline/arena_malloc.h>         // Arena Malloc API
 #include <faultline/size.h>                 // GIBI

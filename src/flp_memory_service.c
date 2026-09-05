@@ -11,13 +11,13 @@
 #include <faultline/fl_memory_service.h> // FLMemoryService, FL_*_FN macros
 #include <faultline/arena.h>             // arena_free_throw
 #include <faultline/arena_malloc.h> // arena_malloc, arena_calloc, arena_aligned_alloc, arena_realloc
-#include <faultline/fl_log.h>       // LOG_WARN
-#include <flp_memory_service.h>     // FLP_INIT_MEMORY_SERVICE_FN
-#include <stddef.h>                 // NULL
-#include <faultline/fl_exception_service.h>        // fl_invalid_address
-#include <faultline/fl_exception_service_assert.h> // FL_ASSERT_NOT_NULL
-#include <faultline/fl_try.h>                      // FL_TRY, FL_CATCH, FL_END_TRY
-#include <faultline/flp_memory_context.h> // FLMemoryContext, FLP_INIT_MEMORY_CONTEXT_FN
+#include <faultline/fl_log.h>              // LOG_WARN
+#include <flp_memory_service.h>            // FLP_INIT_MEMORY_SERVICE_FN
+#include <stddef.h>                        // NULL
+#include <faultline/fl_exception.h>        // fl_invalid_address
+#include <faultline/fl_exception_assert.h> // FL_ASSERT_NOT_NULL
+#include <faultline/fl_try.h>              // FL_TRY, FL_CATCH, FL_END_TRY
+#include <faultline/flp_memory_context.h>  // FLMemoryContext, FLP_INIT_MEMORY_CONTEXT_FN
 
 static FLMemoryService g_memory_service = {
     .ctx              = NULL,

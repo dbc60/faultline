@@ -21,8 +21,7 @@
 #include "faultline_sqlite.c"
 #include "faultline_sqlite_test.c"
 #include "faultline_test.c"
-#include "fl_exception_service.c"
-#include "fla_exception_service.c"
+#include "fl_exception.c"
 #include "fla_log_service.c"
 #include "fla_timer_service.c" // g_fla_timer_service for the driver's injected timing
 #include "fnv/FNV64.c"

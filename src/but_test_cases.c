@@ -10,11 +10,11 @@
 #include "but_test_cases.h" // TestDriverData
 
 #include <faultline/fl_exception_types.h> // fl_exception_handler_fn, FLExceptionReason
-#include <faultline/fl_exception_service.h>
-#include <faultline/fl_exception_service_assert.h> // assert macros and fl_unexpected_failure declaration
-#include <faultline/fl_macros.h>                   // FL_CONTAINER_OF
-#include <faultline/fl_try.h>                      // FLA_TRY, FLA_CATCH, etc.
-#include <faultline/fl_log.h>                      // LOG_* macros
+#include <faultline/fl_exception.h>
+#include <faultline/fl_exception_assert.h> // assert macros and fl_unexpected_failure declaration
+#include <faultline/fl_macros.h>           // FL_CONTAINER_OF
+#include <faultline/fl_try.h>              // FLA_TRY, FLA_CATCH, etc.
+#include <faultline/fl_log.h>              // LOG_* macros
 
 // We have to import the API defined in but_test_data.h
 #undef FL_DLL_BUILD
@@ -80,11 +80,6 @@ FL_TYPE_TEST("Load Driver", TestDriverData, load_driver) {
 static void set_up_test_driver_data(TestDriverData *tdd) {
     tdd->h = LoadLibrary(DRIVER_LIBRARY_WSTR);
     FL_ASSERT_NOT_NULL(tdd->h);
-
-    tdd->set_service
-        = (fla_set_exception_service_fn *)GetProcAddress(tdd->h,
-                                                         FLA_SET_EXCEPTION_SERVICE_STR);
-    FL_ASSERT_NOT_NULL(tdd->set_service);
 
     tdd->is_valid = (bd_is_valid_fn *)GetProcAddress(tdd->h, IS_VALID_CTX_STR);
     FL_ASSERT_NOT_NULL(tdd->is_valid);
@@ -164,11 +159,6 @@ static void set_up_test_context(FLTestCase *tc) {
 
     if (!tdd->is_valid(&tdd->context)) {
         cleanup_test_driver_data(tdd);
-    }
-
-    // Inject exception service for FL_TRY in test data DLL
-    if (tdd->set_service) {
-        tdd->set_service(&tdd->exception_service, sizeof tdd->exception_service);
     }
 }
 

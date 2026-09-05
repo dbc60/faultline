@@ -7,18 +7,17 @@
  *
  * See LICENSE.txt for copyright and licensing information about this file.
  */
-#include "fl_exception_service.c"  // fl_expected_failure
-#include "fla_exception_service.c" // fl_throw_assertion, g_fla_exception_service
-#include "fla_timer_service.c"     // g_fla_timer_service, fla_set_timer_service
+#include "fl_exception.c"      // exception reasons, push/pop/throw
+#include "fla_timer_service.c" // g_fla_timer_service, fla_set_timer_service
 #include "region.c"
 #include "region_os.c"
 #include "lock_os.c"
 #include "region_windows_test.c"
 
-#include "region_test.h"                           // RegionAllocationTestCase typedef
-#include <faultline/fl_exception_service_assert.h> // assert macro
-#include <faultline/fl_macros.h>                   // FL_SPEC_EXPORT
-#include <faultline/fl_test.h>                     // FL_SUITE_*, FL_GET_TEST_SUITE
+#include "region_test.h"                   // RegionAllocationTestCase typedef
+#include <faultline/fl_exception_assert.h> // assert macro
+#include <faultline/fl_macros.h>           // FL_SPEC_EXPORT
+#include <faultline/fl_test.h>             // FL_SUITE_*, FL_GET_TEST_SUITE
 #include <faultline/fl_try.h> // FL_TRY, FL_CATCH, FL_THROW_DETAILS_FILE_LINE
 #include <stddef.h>           // size_t
 

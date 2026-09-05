@@ -12,11 +12,10 @@
 #include "arena_malloc.c"
 #include "buffer.c"
 #include "digital_search_tree.c"
-#include "fl_exception_service.c"  // fl_test_exception and other exception reasons
-#include "fla_exception_service.c" // app-side TLS exception service
-#include "fla_log_service.c"       // app-side TLS log service
+#include "fl_exception.c"    // exception reasons, push/pop/throw
+#include "fla_log_service.c" // app-side TLS log service
 #include "fla_memory_service.c"
-#include "fla_timer_service.c"     // g_fla_timer_service, fla_set_timer_service
+#include "fla_timer_service.c" // g_fla_timer_service, fla_set_timer_service
 #include "fnv/FNV64.c"
 #include "region.c"
 #include "region_node.c"

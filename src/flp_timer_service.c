@@ -10,9 +10,9 @@
  */
 #include <faultline/fl_timer_service.h> // FLTimerService
 #include <faultline/fl_try.h> // FL_ASSERT_REASON_IMPL used by FL_ASSERT_NOT_NULL
-#include <faultline/fl_exception_service_assert.h> // FL_ASSERT_NOT_NULL
-#include <faultline/fl_exception_types.h>          // FLExceptionReason
-#include <flp_timer_service.h>                     // FLP_INIT_TIMER_SERVICE_FN, flp_init_timer_service
+#include <faultline/fl_exception_assert.h> // FL_ASSERT_NOT_NULL
+#include <faultline/fl_exception_types.h>  // FLExceptionReason
+#include <flp_timer_service.h> // FLP_INIT_TIMER_SERVICE_FN, flp_init_timer_service
 
 #include <errhandlingapi.h> // GetLastError
 #include <minwindef.h>      // DWORD

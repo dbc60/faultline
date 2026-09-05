@@ -9,16 +9,16 @@
  * FL_PLATFORM_BUILD, so:
  *   - fl_log.h selects the application-side LOG_* macros (route through the
  *     injected g_fla_log_service),
- *   - fl_try.h selects the application-side FL_TRY/FL_CATCH/FL_THROW macros
- *     (route through the injected g_fla_exception_service),
+ *   - fl_try.h's FL_TRY/FL_CATCH/FL_THROW run on this DLL's own exception
+ *     stack (it compiles fl_exception.c; nothing is injected),
  *   - fla_memory_service.h redefines malloc/free/etc. to call the injected
  *     g_fla_memory_service.
  *
- * The driver injects all three services after LoadLibrary() via the exported
+ * The driver injects the log and memory services after LoadLibrary() via the exported
  * fla_set_* entry points (declared FL_DECL_SPEC -> dllexport under DLL_BUILD),
- * then calls the demo_* workers below. None of the allocator, logger, or
- * exception machinery is compiled into this DLL. It is all borrowed from the
- * driver at run time. That is the whole point of the demo.
+ * then calls the demo_* workers below. Neither the allocator nor the logger is
+ * compiled into this DLL. Both are borrowed from the driver at run time. That is
+ * the whole point of the demo.
  */
 
 /* CRT headers MUST precede fla_memory_service.h: that header redefines malloc,
@@ -28,11 +28,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <faultline/fl_macros.h>            // FL_SPEC_EXPORT
-#include <faultline/fl_exception_service.h> // fl_invalid_value (shared reason)
-#include <faultline/fl_try.h>               // FL_TRY/FL_CATCH/FL_THROW (fla_ side)
-#include <faultline/fl_log.h>               // LOG_INFO/LOG_WARN/LOG_ERROR (fla_ side)
-#include <faultline/fla_memory_service.h>   // malloc/free -> injected memory service
+#include <faultline/fl_macros.h>          // FL_SPEC_EXPORT
+#include <faultline/fl_exception.h>       // fl_invalid_value (shared reason)
+#include <faultline/fl_try.h>             // FL_TRY/FL_CATCH/FL_THROW
+#include <faultline/fl_log.h>             // LOG_INFO/LOG_WARN/LOG_ERROR
+#include <faultline/fla_memory_service.h> // malloc/free -> injected memory service
 
 static char const *module = "demo-suite";
 
@@ -40,7 +40,7 @@ static char const *module = "demo-suite";
 // same translation unit, FL_CATCH (pointer identity) matches it.
 static FLExceptionReason demo_reason = "demo: simulated recoverable error";
 
-// demo_run and demo_throw_uncaught have no other declaration anywhere -- the
+// demo_run and demo_throw_at_boundary have no other declaration anywhere -- the
 // driver finds each by GetProcAddress's plain string name, not through a
 // shared header -- so without extern "C" a C++ compile mangles their linkage
 // and GetProcAddress silently returns NULL instead of failing loudly.
@@ -85,13 +85,28 @@ FL_SPEC_EXPORT int demo_run(void) {
 }
 
 /**
- * @brief Throws a shared reason and does NOT catch it, so the exception
- * propagates across the DLL boundary into the driver's top-level handler
- * (longjmp into the driver's setjmp frame).
+ * @brief Throws a shared reason and catches it at this export, the boundary the
+ * driver calls through.
+ *
+ * Nothing unwinds out of a module: the DLL's environment stack is its own, so an
+ * escaping throw would abort here rather than reach the driver. An export that can
+ * throw contains it and reports the outcome in its return value instead. Returns 0
+ * when the throw was caught, 1 when it never happened.
  */
-FL_SPEC_EXPORT void demo_throw_uncaught(void) {
-    LOG_INFO(module, "demo_throw_uncaught: throwing fl_invalid_value, NOT catching it");
-    FL_THROW(fl_invalid_value);
+FL_SPEC_EXPORT int demo_throw_at_boundary(void) {
+    int volatile caught = 1;
+
+    FL_TRY {
+        LOG_INFO(module, "demo_throw_at_boundary: throwing fl_invalid_value");
+        FL_THROW(fl_invalid_value);
+    }
+    FL_CATCH(fl_invalid_value) {
+        LOG_WARN(module, "demo_throw_at_boundary: caught at the export: %s", FL_REASON);
+        caught = 0;
+    }
+    FL_END_TRY;
+
+    return caught;
 }
 
 #if defined(__cplusplus)

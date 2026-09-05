@@ -14,7 +14,7 @@
  *  D. footprint_limit_clear_restores_growth - clearing limit allows growth again
  */
 #include <faultline/fl_test.h>
-#include <faultline/fl_exception_service_assert.h>
+#include <faultline/fl_exception_assert.h>
 #include <faultline/fl_macros.h>
 #include <faultline/arena_malloc.h> // arena_out_of_memory
 #include <faultline/size.h>         // MEBI

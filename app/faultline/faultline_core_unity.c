@@ -41,7 +41,7 @@
 #include "command.c"
 
 /* -- Shared exception reason tokens (one definition for the whole binary) ---- */
-#include "fl_exception_service.c"
+#include "fl_exception.c"
 
 /* -- Application-side service accessors ------------------------------------------------
  * These give the core its OWN g_fla_* service globals + fla_set_* setters, exactly like
@@ -50,7 +50,6 @@
  * these fla_ accessors rather than flp_ direct calls -- that is seam #3, achieved by the
  * build flag alone.
  */
-#include "fla_exception_service.c"
 #include "fla_memory_service.c"
 #include "fla_log_service.c"
 #include "fla_timer_service.c"

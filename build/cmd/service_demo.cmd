@@ -6,20 +6,19 @@ SETLOCAL ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 :: Build and run the platform/application service-split demo.
 ::
 :: This is an end-to-end demonstration that the simplified package set composes:
-::   1. produce the memory_service, stream_service, log_service, and exception_service
+::   1. produce the memory_service, stream_service, log_service, and exceptions
 ::      packages (log_service depends on stream_service for append/console output)
 ::   2. import all four into one unified tree (fl_import refcounts shared files)
 ::   3. build demo_suite.dll  (application side; the fla_ service shims)
 ::   4. build demo_driver.exe (platform side; the flp_ service implementations)
-::   5. run the driver, which loads the DLL and injects the three application-facing
-::      services (memory, log, exception); the demo never opens a log file by path,
+::   5. run the driver, which loads the DLL and injects the two application-facing
+::      services (memory and log); the demo never opens a log file by path,
 ::      so stream_service is only needed to satisfy flp_log_service.c's link-time
 ::      dependency, and the driver does not inject it into the DLL
 ::
-:: The fla_ and flp_ exception sources cannot live in one binary (both define
-:: fl_throw_assertion), so each executable compiles only its own side from the
-:: shared tree. region_windows.c is unity-#included by region_os.c and is never
-:: compiled as its own TU.
+:: Each executable compiles fl_exception.c: exceptions are not injected, so both
+:: sides carry their own environment stack. region_windows.c is unity-#included by
+:: region_os.c and is never compiled as its own TU.
 ::
 :: Usage:
 ::   build\cmd\service_demo.cmd [build options...]
@@ -84,8 +83,8 @@ CALL "%DIR_CMD%\stream_service_dist.cmd" > NUL
 IF ERRORLEVEL 1 ( ECHO   [dist] stream_service FAILED & GOTO :FAIL )
 CALL "%DIR_CMD%\log_service_dist.cmd" > NUL
 IF ERRORLEVEL 1 ( ECHO   [dist] log_service FAILED & GOTO :FAIL )
-CALL "%DIR_CMD%\exception_service_dist.cmd" > NUL
-IF ERRORLEVEL 1 ( ECHO   [dist] exception_service FAILED & GOTO :FAIL )
+CALL "%DIR_CMD%\exceptions_dist.cmd" > NUL
+IF ERRORLEVEL 1 ( ECHO   [dist] exceptions FAILED & GOTO :FAIL )
 
 :: -----------------------------------------------------------------------
 :: 2. Import all four into one unified tree.
@@ -99,8 +98,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%FL_IMPORT%" -From "%DIR_RE
 IF ERRORLEVEL 1 ( ECHO   [import] stream_service FAILED & GOTO :FAIL )
 powershell -NoProfile -ExecutionPolicy Bypass -File "%FL_IMPORT%" -From "%DIR_REPO%\dist\log_service" -Into "%TREE%"
 IF ERRORLEVEL 1 ( ECHO   [import] log_service FAILED & GOTO :FAIL )
-powershell -NoProfile -ExecutionPolicy Bypass -File "%FL_IMPORT%" -From "%DIR_REPO%\dist\exception_service" -Into "%TREE%"
-IF ERRORLEVEL 1 ( ECHO   [import] exception_service FAILED & GOTO :FAIL )
+powershell -NoProfile -ExecutionPolicy Bypass -File "%FL_IMPORT%" -From "%DIR_REPO%\dist\exceptions" -Into "%TREE%"
+IF ERRORLEVEL 1 ( ECHO   [import] exceptions FAILED & GOTO :FAIL )
 
 IF NOT EXIST "%BIN%"     MD "%BIN%"
 IF NOT EXIST "%OBJ_DLL%" MD "%OBJ_DLL%"
@@ -112,15 +111,17 @@ SET "DEMO_FLAGS=%CommonCompilerFlagsFinal%"
 :: -----------------------------------------------------------------------
 :: 3. Build the suite DLL (application side). DLL_BUILD makes FL_DECL_SPEC
 ::    dllexport so fla_set_* are exported; no FL_PLATFORM_BUILD, so the unified
-::    headers select the fla_ shims. The DLL borrows the allocator/logger/
-::    exception implementations from the driver at run time, so none are
-::    compiled here.
+::    headers select the fla_ shims. The DLL borrows the allocator and logger
+::    from the driver at run time, so neither is compiled here; it compiles
+::    fl_exception.c, because exceptions are not injected.
 :: -----------------------------------------------------------------------
 ECHO Building demo_suite.dll ...
-cl %DEMO_FLAGS% /DDLL_BUILD /wd4456 ^
+:: /wd4702: demo_run and demo_throw_at_boundary throw unconditionally inside FL_TRY,
+:: so the fall-through epilogue FL_CATCH and FL_END_TRY emit is unreachable. The back
+:: end reports it during LTCG code generation, past the point a warning pragma can reach.
+cl %DEMO_FLAGS% /DDLL_BUILD /wd4456 /wd4702 ^
     /I"%TREE%\include" /I"%TREE%\src" ^
-    "%TREE%\src\fl_exception_service.c" ^
-    "%TREE%\src\fla_exception_service.c" ^
+    "%TREE%\src\fl_exception.c" ^
     "%TREE%\src\fla_log_service.c" ^
     "%TREE%\src\fla_memory_service.c" ^
     "%HERE%\demo_suite.c" ^
@@ -137,8 +138,7 @@ IF ERRORLEVEL 1 ( ECHO   [compile] demo_suite.dll FAILED & TYPE "%CL_LOG%" & GOT
 ECHO Building demo_driver.exe ...
 cl %DEMO_FLAGS% /DFL_PLATFORM_BUILD /DFL_EMBEDDED /wd4456 ^
     /I"%TREE%\include" /I"%TREE%\src" ^
-    "%TREE%\src\fl_exception_service.c" ^
-    "%TREE%\src\flp_exception_service.c" ^
+    "%TREE%\src\fl_exception.c" ^
     "%TREE%\src\flp_log_service.c" ^
     "%TREE%\src\fl_threads.c" ^
     "%TREE%\src\arena.c" ^
@@ -162,7 +162,7 @@ IF EXIST "%CL_LOG%" DEL "%CL_LOG%" 2> NUL
 :: 5. Run the demo. The driver loads the DLL next to it and injects services.
 :: -----------------------------------------------------------------------
 ECHO.
-ECHO Running demo (driver loads demo_suite.dll and injects all three services):
+ECHO Running demo (driver loads demo_suite.dll and injects the log and memory services):
 ECHO ------------------------------------------------------------
 "%BIN%\demo_driver.exe" "%BIN%\demo_suite.dll"
 SET RC=%ERRORLEVEL%

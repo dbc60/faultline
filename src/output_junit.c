@@ -1,12 +1,12 @@
-#include <string.h>                                // strlen, memcpy
-#include <time.h>                                  // time_t, struct tm, time, strftime
-#include <faultline/arena.h>                       // Arena
-#include <faultline/fl_context.h>                  // FLContext
-#include <faultline/fl_exception_service_assert.h> // for FL_ASSERT_NOT_NULL, FL_ASSE...
-#include <faultline/fl_log.h>                      // LOG_ERROR, LOG_WARN, LOG_INFO
-#include <faultline/fl_macros.h>                   // FL_UNUSED, FL_PRINTF_FORMAT
-#include <faultline/fl_result_codes.h>             // FL_PASS
-#include <faultline/fl_test.h>                     // FLTestSuite, FLTestCase
+#include <string.h>                        // strlen, memcpy
+#include <time.h>                          // time_t, struct tm, time, strftime
+#include <faultline/arena.h>               // Arena
+#include <faultline/fl_context.h>          // FLContext
+#include <faultline/fl_exception_assert.h> // for FL_ASSERT_NOT_NULL, FL_ASSE...
+#include <faultline/fl_log.h>              // LOG_ERROR, LOG_WARN, LOG_INFO
+#include <faultline/fl_macros.h>           // FL_UNUSED, FL_PRINTF_FORMAT
+#include <faultline/fl_result_codes.h>     // FL_PASS
+#include <faultline/fl_test.h>             // FLTestSuite, FLTestCase
 #include <faultline/fl_test_summary.h> // FLTestSummary, faultline_test_summary_buffer_get
 #include <faultline/fl_try.h>          // FL_THROW (selects flp_ backstop)
 #include <faultline/fl_file.h>         // FL_FILE_OPEN/WRITE/CLOSE (selects backend)
@@ -33,7 +33,6 @@ FLExceptionReason junit_open_failure = "failed to open junit file";
 #if defined(__cplusplus)
 }
 #endif
-
 
 // -- Buffered writer over the file / stream services -----------------------------------
 // Neither service has a formatted-output primitive and each of their writes is a whole

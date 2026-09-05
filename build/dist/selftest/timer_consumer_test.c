@@ -2,7 +2,7 @@
  * @file timer_consumer_test.c
  * @author Douglas Cuthbertson
  * @brief Consumer-side test for the timer service, compiled against an *imported*
- *        timer package layered over its exception_service dependency (not the
+ *        timer package layered over its exceptions dependency (not the
  *        repo's src/ tree).
  *
  * Compiled WITHOUT FL_PLATFORM_BUILD, so fl_timer.h resolves FL_NOW / FL_ELAPSED /

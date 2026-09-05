@@ -41,7 +41,10 @@ IF %build% EQU 1 (
     IF %verbose% EQU 1 (
         ECHO Build the %PROJECT_NAME% test suite
     )
-    cl %BUT_SUITE_FLAGS% /wd4456 /I%DIR_INCLUDE% /I%DIR_THIRD_PARTY% ^
+    REM /wd4702: cases here throw unconditionally inside FL_TRY, so the fall-through
+    REM epilogue FL_CATCH and FL_END_TRY emit is unreachable. The back end reports it
+    REM during LTCG code generation, past the point a warning pragma can reach.
+    cl %BUT_SUITE_FLAGS% /wd4456 /wd4702 /I%DIR_INCLUDE% /I%DIR_THIRD_PARTY% ^
     /I%DIR_REPO%\src /DDLL_BUILD %DIR_REPO%\src\but_tests.c ^
     /Fo:%DIR_OUT_OBJ%\ /Fd:%DIR_OUT_LIB%\but_tests.pdb ^
     /LD /link %CommonLinkerFlagsFinal% ^

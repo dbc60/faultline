@@ -16,8 +16,7 @@
  * FL_TRY compiled into the module, so a throw is caught there and reported as an
  * FLCaseOutcome.
  *
- * It is built /DFL_PLATFORM_BUILD, so its own FL_ASSERT_* are compiled from the
- * implementation in flp_exception_service.c.
+ * Its own FL_ASSERT_* are compiled from the implementation in fl_exception.c.
  *
  * /DFL_EMBEDDED keeps FL_DECL_SPEC empty.
  *

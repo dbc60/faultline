@@ -359,6 +359,37 @@ neither had anything to do with this design:
 With those fixed, `all.sh cxx test` builds all 26 suites as C++ under clang++/MinGW and
 runs every one under the C driver at 100%.
 
+## Exceptions stopped being a service
+
+Not in the original plan; it follows from item 4. Once no host injects a throw hook into
+a module, `FLExceptionService` is a table nobody installs, and `fl_try.h` pays a pointer
+load per `FL_TRY` for an indirection nobody redirects.
+
+Removed outright: the `FLExceptionService` struct, `fla_set_exception_service`,
+`flp_init_exception_service`, `FLA_SET_EXCEPTION_SERVICE_FN`/`_STR`,
+`FLP_INIT_EXCEPTION_SERVICE_FN`, `g_fla_exception_service`, and `FLPlatformAPI`'s
+`exception` member. `fl_try.h` now calls `flp_push`/`flp_pop`/`flp_throw` or
+`fla_push`/`fla_pop`/`fla_throw` directly, chosen the same way as before by
+`FL_PLATFORM_BUILD`. The `volatile` on the old `throw_exc` pointer went with it: it
+existed to stop LLVM devirtualizing to an abort stub, and the abort stubs went at
+commit 2.
+
+Two dummy `fla_set_exception_service` definitions went too, in `but_test_data.c` and
+`faultline_test_data.c`. Their comments said they existed so a driver's `GetProcAddress`
+had something to find. `but_test_cases.c` was also injecting a zero-initialized service
+into the test-data DLL, which would have installed null function pointers.
+
+`win32_faultline.exe` keeps its top-level `FL_TRY`, for a reason its comment did not
+give. It does not catch the core's throws — the core has its own stack and its own
+`FL_CATCH_ALL`. It catches throws from the `flp_*` service implementations, which run on
+the host's stack whenever anything calls into them, and there are 26 such sites across
+six files. Without it, `flp_throw` would report the throw site and abort.
+
+The package is renamed `exception_service` -> `exceptions`, at 0.5.0. Packages shipping
+`fl_try.h` or `fl_exception_service.h` are raised with it: `memory_service` and
+`fault_memory_service` to 0.4.0, `log_service` to 0.5.0, and `test_framework` to 0.4.0
+and `timer_service` to 0.2.0 for the renamed dependency.
+
 ## Commit sequence
 
 1. **Done.** `fl_case_outcome.h` + `fl_run_case` emitted from `FL_GET_TEST_SUITE`.

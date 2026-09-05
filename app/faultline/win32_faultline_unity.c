@@ -30,10 +30,8 @@
 #include "win_timer.c"
 
 /* -- Platform service implementations --------------------------------------- */
-/* faultline_core.lib links fla_exception_service.c, whose fl_throw_assertion routes
- * asserts through the injected service; omit this side's copy. */
-#define FLP_OMIT_FL_THROW_ASSERTION
-#include "flp_exception_service.c"
+/* Exceptions are not among them: faultline_core.lib compiles fl_exception.c, and this
+ * TU links against it, so both halves of the executable share one environment stack. */
 #include "flp_log_service.c"
 #include "flp_memory_service.c"
 #include "flp_fault_memory_service.c"

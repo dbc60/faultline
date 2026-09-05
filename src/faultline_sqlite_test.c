@@ -12,8 +12,8 @@
 #include "faultline_sqlite_test.h" // TestSchema
 #include <faultline/fl_test.h>
 #include <faultline/fl_try.h>
-#include <faultline/fl_exception_service_assert.h> // assert macros and fl_unexpected_failure declaration
-#include <faultline/arena.h>                       // new_arena, release_arena
+#include <faultline/fl_exception_assert.h> // assert macros and fl_unexpected_failure declaration
+#include <faultline/arena.h>               // new_arena, release_arena
 #include <faultline/fl_test_summary.h> // FLTestSummary, init_faultline_test_summary
 #include <faultline/fl_result_codes.h> // FL_PASS
 #include <sqlite/sqlite3.h>

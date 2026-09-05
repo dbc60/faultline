@@ -15,9 +15,9 @@
 #include <faultline/dlist.h>     // DList
 #include <faultline/fl_macros.h> // FL_CONTAINER_OF
 
-#include <faultline/fl_try.h>                      // FL_THROW
-#include <faultline/fl_exception_service_assert.h> // FL_ASSERT* and fl_unexpected_failure declaration
-#include <faultline/size.h>                        // SIZE_T_SIZE, MAX_SIZE_T
+#include <faultline/fl_try.h>              // FL_THROW
+#include <faultline/fl_exception_assert.h> // FL_ASSERT* and fl_unexpected_failure declaration
+#include <faultline/size.h>                // SIZE_T_SIZE, MAX_SIZE_T
 
 #include <stdbool.h> // bool
 #include <stddef.h>  // size_t

@@ -17,7 +17,7 @@
 #include "but_context.h"                    // for BasicResultCode
 #include "but_result_context.h"             // for new_result, ResultContext
 #include <faultline/fl_abbreviated_types.h> // for u32
-#include <faultline/fl_exception_service.h> // for FL_REASON, FL_FILE, FL_LINE, FL_D...
+#include <faultline/fl_exception.h>         // for FL_REASON, FL_FILE, FL_LINE, FL_D...
 #include <faultline/fl_log.h>               // for LOG_ERROR
 #include "intrinsics_win32.h"               // for memset
 

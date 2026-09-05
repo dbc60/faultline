@@ -10,13 +10,13 @@
  *
  */
 #include "digital_search_tree.h"
-#include <faultline/dlist.h>                       // for DLIST_INSERT_NEXT
-#include <stddef.h>                                // for size_t
-#include "bits.h"                                  // for BITS_RIGHT_MSB_LEAST
-#include "chunk.h"                                 // for CHUNK_SIZE
-#include <faultline/fl_abbreviated_types.h>        // for flag64
-#include <faultline/fl_macros.h>                   // for FL_RESTRICT
-#include <faultline/fl_exception_service_assert.h> // for assert, FL_ASSERT_DETAILS
+#include <faultline/dlist.h>                // for DLIST_INSERT_NEXT
+#include <stddef.h>                         // for size_t
+#include "bits.h"                           // for BITS_RIGHT_MSB_LEAST
+#include "chunk.h"                          // for CHUNK_SIZE
+#include <faultline/fl_abbreviated_types.h> // for flag64
+#include <faultline/fl_macros.h>            // for FL_RESTRICT
+#include <faultline/fl_exception_assert.h>  // for assert, FL_ASSERT_DETAILS
 
 DigitalSearchTree *dst_leftmost_leaf(DigitalSearchTree *dst) {
     DigitalSearchTree *child = dst_leftmost_child(dst);

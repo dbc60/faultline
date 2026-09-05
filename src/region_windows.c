@@ -8,15 +8,15 @@
  *
  * See LICENSE.txt for copyright and licensing information about this file.
  */
-#include <faultline/fl_abbreviated_types.h>        // for u32, u64
-#include <faultline/fl_macros.h>                   // for FL_ANALYSIS_SUPPRESS
-#include <faultline/fl_exception_service_assert.h> // for FL_ASSERT*
-#include <faultline/fl_try.h>                      // for FL_THROW_DETAILS, FL_THROW
+#include <faultline/fl_abbreviated_types.h> // for u32, u64
+#include <faultline/fl_macros.h>            // for FL_ANALYSIS_SUPPRESS
+#include <faultline/fl_exception_assert.h>  // for FL_ASSERT*
+#include <faultline/fl_try.h>               // for FL_THROW_DETAILS, FL_THROW
 #include "atomic.h"                         // FL_ATOMIC and the C11 atomic_* calls
 #include <stddef.h>                         // for size_t, NULL, ptrdiff_t
 #include <stdint.h>                         // for UINT32_MAX
 #include "bits.h"                           // for ALIGN_UP, ALIGN_DOWN
-#include <faultline/fl_exception_service.h> // for fl_internal_error
+#include <faultline/fl_exception.h>         // for fl_internal_error
 #include "region.h"                         // for Region, region_initializati...
 #include "fl_lock.h"                        // for fl_lock_init, fl_lock_destroy
 #include "win32_platform.h"                 // for get_memory_info

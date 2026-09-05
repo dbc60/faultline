@@ -1,19 +1,17 @@
 /**
  * @file exception_smoke_test.c
  * @author Douglas Cuthbertson
- * @brief Smoke test that the imported `exception` package compiles and runs as a
+ * @brief Smoke test that the imported `exceptions` package compiles and runs as a
  *        single FL_EMBEDDED binary.
  *
- * The in-driver suites already cover the exception service's functional surface;
- * this test deliberately stays minimal. Its purpose is to prove the
- * exception_service package is self-sufficient as a single binary: that
+ * The in-driver suites already cover the exception implementation's functional
+ * surface; this test deliberately stays minimal. Its purpose is to prove the
+ * exceptions package is self-sufficient as a single binary: that
  * FL_TRY / FL_THROW / FL_CATCH / FL_RETHROW link and behave correctly with no
- * driver and no service injection.
+ * driver and nothing injected.
  *
- * It is built /DFL_PLATFORM_BUILD, so fl_try.h selects the platform-side macros
- * (flp_push/pop/throw over flp_exception_service.c's own TLS stack), which are
- * self-contained. The application-side (fla_*) service is the opposite case: it
- * is a set of abort stubs awaiting injection and is not runnable standalone.
+ * fl_exception.c carries the whole implementation, so the binary needs no other
+ * source: fl_push/fl_pop/fl_throw run over its own thread-local stack.
  *
  * /DFL_EMBEDDED keeps FL_DECL_SPEC empty. Exit code: 0 = pass, 1 = failure.
  *
@@ -22,8 +20,8 @@
 
 #include "fl_selftest.h"
 
-#include <faultline/fl_try.h> // FL_TRY/CATCH/THROW/RETHROW (platform side under FL_PLATFORM_BUILD)
-#include <faultline/fl_exception_service.h>
+#include <faultline/fl_try.h> // FL_TRY/CATCH/THROW/RETHROW
+#include <faultline/fl_exception.h>
 #include <faultline/fl_exception_types.h> // FLExceptionReason
 
 #include <stdbool.h>

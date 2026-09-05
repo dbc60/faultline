@@ -79,10 +79,10 @@ Faultline-role words (**driver**, **suite**, **test**) into them. Everything tha
 assembles services into Faultline is allowed to use those role words freely
 (`faultline_driver.c`'s driver, the suites it loads, etc.).
 
-Exception: where a contract header genuinely encodes domain semantics — e.g.
-`fl_exception_service.h`, whose `fl_expected_failure` is defined in terms of test
-cases and the test driver — keep the test vocabulary honest rather than launder it.
-That service is the least drop-in by nature, and that's fine.
+Exception: where a shared header genuinely encodes domain semantics — e.g.
+`fl_exception.h`, whose `fl_expected_failure` is defined in terms of test cases and
+the test driver — keep the test vocabulary honest rather than launder it. Exceptions
+are the least drop-in module by nature, and that's fine.
 
 ### Modular Library Architecture (v0.2.0)
 
@@ -177,14 +177,14 @@ fl_math.lib (no dependencies)
 - Headers: `include/but/but.h`, `include/but/but_macros.h`, `include/but/but_assert.h`
 - Provides test case/suite structures and test execution
 
-**Exception Handling Service**: Custom C exception handling using setjmp/longjmp with service-based architecture.
-- Shared API: `include/faultline/fl_exception_service.h` - Service interface (`FLExceptionService` struct with push/pop/throw function pointers)
+**Exception Handling**: Custom C exception handling using setjmp/longjmp. **Not a service** — there is no vtable, no setter and no injection. Each image compiles one implementation and calls it directly.
+- API: `include/faultline/fl_exception.h` - the reason constants, the three signatures (`FL_PUSH/POP/THROW_EXCEPTION_FN`), and the declarations of `fl_push`/`fl_pop`/`fl_throw`
 - Types: `include/faultline/fl_exception_types.h` - `FLExceptionEnvironment`, `FLExceptionReason`, `FLExceptionState`
-- Unified macros: `include/faultline/fl_try.h` - the **single definition site** for `FL_TRY`/`FL_CATCH*`/`FL_THROW*`/`FL_END_TRY`; selects the platform provider or consumer accessor by `FL_PLATFORM_BUILD`, then defines the family once over the `FL_EXC_PUSH/POP/THROW` hooks
-- Assertions: `include/faultline/fl_exception_service_assert.h` - `FL_ASSERT_*` macros that throw exceptions (includes `fl_try.h`)
-- Platform provider: `include/flp_exception_service.h` (declares `flp_push`/`flp_pop`/`flp_throw`, `flp_init_exception_service`), `src/flp_exception_service.c` (owns TLS exception stack, implements push/pop/throw)
-- Consumer accessor: `include/faultline/fla_exception_service.h` (declares `g_fla_exception_service` and `fla_set_exception_service`), `src/fla_exception_service.c` (module-local push/pop/throw over a thread-local environment stack, replaced when a host injects its own)
-- Service injection: **not injected into suite modules.** A suite contains each case's exceptions behind its `fl_run_case` export, so it uses the module-local implementation in `fla_exception_service.c` and no host installs a throw hook that would longjmp across the module boundary. `flp_init_exception_service` remains for a host that deliberately shares its own stack with a module
+- Unified macros: `include/faultline/fl_try.h` - the **single definition site** for `FL_TRY`/`FL_CATCH*`/`FL_THROW*`/`FL_END_TRY`, defined once over the `FL_EXC_PUSH/POP/THROW` hooks. `FL_PLATFORM_BUILD` does not enter into it; `FL_EXC_BACKEND_CXX` selects setjmp or a real C++ throw
+- Assertions: `include/faultline/fl_exception_assert.h` - `FL_ASSERT_*` macros that throw exceptions (includes `fl_try.h`)
+- Implementation: `src/fl_exception.c` - the reason constants plus `fl_push`/`fl_pop`/`fl_throw` and `fl_throw_assertion` over a `static FL_THREAD_LOCAL` environment stack. There is no `flp_`/`fla_` split: every image compiles this one file exactly once, so both halves of a split executable share one stack, and each loaded DLL gets a stack of its own
+- Why no injection: a suite contains each case's exceptions behind its `fl_run_case` export, so nothing unwinds across a module boundary and no host has any reason to install a throw hook in a module. A throw is caught in the image that raised it
+- Distribution package: `exceptions` (was `exception_service` while it was one)
 
 **Log Service**: Logging service following the same platform-provider/consumer pattern as exceptions.
 - Shared API: `include/faultline/fl_log_service.h` - Service interface (`FLLogService` struct with write function pointer)
@@ -318,21 +318,21 @@ above (which also covers the separate **core/platform** portability axis):
 
 | Prefix | Meaning | Examples |
 |--------|---------|----------|
-| `fl_` | Shared contract / portable core (used by both sides) | `fl_macros.h`, `fl_log_service.h`, `fl_try.h` |
-| `flp_` | Platform provider — concrete service implementations | `flp_log_service.c`, `flp_exception_service.c` |
+| `fl_` | Shared contract / portable core (used by both sides) | `fl_macros.h`, `fl_log_service.h`, `fl_try.h`, `fl_exception.c` |
+| `flp_` | Platform provider — concrete service implementations | `flp_log_service.c`, `flp_memory_service.c` |
 | `flp_win32_` | Platform provider (Windows-specific) | `flp_win32_thread.c` |
 | `flp_linux_` | Platform provider (Linux-specific) | `flp_linux_thread.c` |
-| `fla_` | Consumer accessor — receives injected services via `g_fla_*` | `fla_log_service.h`, `fla_exception_service.c` |
+| `fla_` | Consumer accessor — receives injected services via `g_fla_*` | `fla_log_service.h`, `fla_memory_service.c` |
 
 - **platform** (`flp_`) = OS-specific provider of concrete service implementations
 - **consumer** (`fla_`) = receives services injected into its `g_fla_*` globals (the core itself, or a loaded suite DLL)
-- A translation unit selects which side it compiles against via `FL_PLATFORM_BUILD` (defined → platform provider; undefined → consumer); the unified selector headers (`fl_try.h`, `fl_log.h`, `fl_memory.h`) act on it
+- A translation unit selects which side it compiles against via `FL_PLATFORM_BUILD` (defined → platform provider; undefined → consumer); the unified selector headers (`fl_log.h`, `fl_memory.h`, `fl_timer.h`, `fl_file.h`, `fl_stream.h`) act on it. `fl_try.h` does not: exceptions are not a service, so it resolves to `fl_push`/`fl_pop`/`fl_throw` either way
 - The third character (`p` or `a`) immediately identifies which side a file belongs to
 - OS-specific prefixes group related files together in directory listings
 
 **Macro prefixes** follow the same convention:
 - `FL_*` - Shared macros (e.g., `FL_ARRAY_COUNT`, `FL_TRY`, `LOG_*`)
-- `FLP_*` - Platform-provider macros (e.g., `FLP_INIT_EXCEPTION_SERVICE_FN`)
+- `FLP_*` - Platform-provider macros (e.g., `FLP_INIT_LOG_SERVICE_FN`)
 - `FLA_*` - Consumer-accessor macros (e.g., `FLA_SET_LOG_SERVICE_FN`)
 
 ## Additional Project Structure

@@ -52,30 +52,29 @@ MD "%DIR_SELF%"
 SET FAILS=0
 
 :: =======================================================================
-::  exception_service: single-binary platform exception service (FL_PLATFORM_BUILD)
+::  exceptions: single-binary exception implementation
 ::
-::  The exception_service package ships fl_ + fla_ + flp_. A standalone binary
-::  acts as the platform: build /DFL_PLATFORM_BUILD (so fl_try.h selects the
-::  self-contained flp_ macros) and compile fl_ + flp_ ONLY. The fla_ stub must
-::  be excluded -- it would both abort at runtime and clash with flp_ on the
-::  shared exception entry points -- so this block lists sources explicitly
-::  rather than globbing src\*.c.
+::  The exceptions package ships one implementation, fl_exception.c, which a
+::  binary compiles exactly once. This block lists sources explicitly rather
+::  than globbing src\*.c.
 :: =======================================================================
 ECHO.
 ECHO ============================================================
-ECHO  exception_service
+ECHO  exceptions
 ECHO ============================================================
-CALL "%DIR_CMDS%\exception_service_dist.cmd" > NUL
+CALL "%DIR_CMDS%\exceptions_dist.cmd" > NUL
 IF ERRORLEVEL 1 ( ECHO   [dist]    FAILED & SET /A FAILS+=1 & GOTO :after_exc )
-SET INTO=%DIR_SELF%\exception_service
-CALL :IMPORT "%DIR_REPO%\dist\exception_service" "%INTO%"
+SET INTO=%DIR_SELF%\exceptions
+CALL :IMPORT "%DIR_REPO%\dist\exceptions" "%INTO%"
 IF ERRORLEVEL 1 ( ECHO   [import]  FAILED & SET /A FAILS+=1 & GOTO :after_exc )
 SET OBJ=%INTO%\_obj
 IF NOT EXIST "%OBJ%" MD "%OBJ%"
-cl %CommonCompilerFlagsFinal% /DFL_PLATFORM_BUILD /DFL_EMBEDDED /wd4456 ^
+:: /wd4702: the smoke test throws unconditionally inside FL_TRY, so the fall-through
+:: epilogue FL_CATCH and FL_END_TRY emit is unreachable. The back end reports it during
+:: LTCG code generation, past the point a warning pragma can reach.
+cl %CommonCompilerFlagsFinal% /DFL_PLATFORM_BUILD /DFL_EMBEDDED /wd4456 /wd4702 ^
     /I"%INTO%\include" ^
-    "%INTO%\src\fl_exception_service.c" ^
-    "%INTO%\src\flp_exception_service.c" ^
+    "%INTO%\src\fl_exception.c" ^
     "%HERE%\exception_smoke_test.c" ^
     /Fo:"%OBJ%\\" /Fd:"%INTO%\exception_smoke.pdb" /Fe:"%INTO%\exception_smoke.exe" ^
     /link %CommonLinkerFlagsFinal% /ENTRY:mainCRTStartup > "%CL_LOG%" 2>&1
@@ -154,32 +153,29 @@ ECHO   [ok]
 :after_mem
 
 :: =======================================================================
-::  timer_service: consumer-side injection over its exception_service dependency
+::  timer_service: consumer-side injection over its exceptions dependency
 :: =======================================================================
 ECHO.
 ECHO ============================================================
 ECHO  timer_service
 ECHO ============================================================
-CALL "%DIR_CMDS%\exception_service_dist.cmd" > NUL
+CALL "%DIR_CMDS%\exceptions_dist.cmd" > NUL
 IF ERRORLEVEL 1 ( ECHO   [dist]    FAILED & SET /A FAILS+=1 & GOTO :after_timer )
 CALL "%DIR_CMDS%\timer_service_dist.cmd" > NUL
 IF ERRORLEVEL 1 ( ECHO   [dist]    FAILED & SET /A FAILS+=1 & GOTO :after_timer )
 SET INTO=%DIR_SELF%\timer
-:: timer_service declares SVC_DEPENDS=exception_service: import the dependency
+:: timer_service declares SVC_DEPENDS=exceptions: import the dependency
 :: first, then layer the package into the same tree (fl_import checks the dep).
-CALL :IMPORT "%DIR_REPO%\dist\exception_service" "%INTO%"
+CALL :IMPORT "%DIR_REPO%\dist\exceptions" "%INTO%"
 IF ERRORLEVEL 1 ( ECHO   [import]  FAILED & SET /A FAILS+=1 & GOTO :after_timer )
 CALL :IMPORT_ADD "%DIR_REPO%\dist\timer_service" "%INTO%"
 IF ERRORLEVEL 1 ( ECHO   [import]  FAILED & SET /A FAILS+=1 & GOTO :after_timer )
 SET OBJ=%INTO%\_obj
 IF NOT EXIST "%OBJ%" MD "%OBJ%"
 :: Consumer mode (no FL_PLATFORM_BUILD): fl_timer.h reads g_fla_timer_service.
-:: fla_exception_service.c supplies fl_throw_assertion; flp_exception_service.c
-:: is deliberately NOT compiled (one definition per binary).
 cl %CommonCompilerFlagsFinal% /DFL_EMBEDDED /wd4456 ^
     /I"%INTO%\include" ^
-    "%INTO%\src\fl_exception_service.c" ^
-    "%INTO%\src\fla_exception_service.c" ^
+    "%INTO%\src\fl_exception.c" ^
     "%INTO%\src\flp_timer_service.c" ^
     "%INTO%\src\fla_timer_service.c" ^
     "%HERE%\timer_consumer_test.c" ^
@@ -263,26 +259,26 @@ ECHO   [ok]
 ::  The package is header-only and describes a host/module boundary, so this
 ::  block builds both halves over one imported tree instead of a single
 ::  consumer binary: the suite as a DLL (/DDLL_BUILD, no FL_PLATFORM_BUILD, so
-::  the headers select the fla_ exception service it waits to have injected)
+::  the headers select the consumer-side services it waits to have injected)
 ::  and the host as a platform binary (/DFL_PLATFORM_BUILD, owning the flp_
-::  service it injects). Each half compiles fl_exception_service.c under
+::  services it injects). Each half compiles fl_exception.c under
 ::  different defines, so they need separate object directories.
 :: =======================================================================
 ECHO.
 ECHO ============================================================
 ECHO  test_framework
 ECHO ============================================================
-CALL "%DIR_CMDS%\exception_service_dist.cmd" > NUL
+CALL "%DIR_CMDS%\exceptions_dist.cmd" > NUL
 IF ERRORLEVEL 1 ( ECHO   [dist]    FAILED & SET /A FAILS+=1 & GOTO :after_tf )
 CALL "%DIR_CMDS%\timer_service_dist.cmd" > NUL
 IF ERRORLEVEL 1 ( ECHO   [dist]    FAILED & SET /A FAILS+=1 & GOTO :after_tf )
 CALL "%DIR_CMDS%\test_framework_dist.cmd" > NUL
 IF ERRORLEVEL 1 ( ECHO   [dist]    FAILED & SET /A FAILS+=1 & GOTO :after_tf )
 SET INTO=%DIR_SELF%\test_framework
-:: test_framework declares SVC_DEPENDS=exception_service timer_service: import both
+:: test_framework declares SVC_DEPENDS=exceptions timer_service: import both
 :: dependencies first, then layer the package into the same tree (fl_import checks
 :: them). fl_run_case times the test body, so the suite needs the timer service too.
-CALL :IMPORT "%DIR_REPO%\dist\exception_service" "%INTO%"
+CALL :IMPORT "%DIR_REPO%\dist\exceptions" "%INTO%"
 IF ERRORLEVEL 1 ( ECHO   [import]  FAILED & SET /A FAILS+=1 & GOTO :after_tf )
 CALL :IMPORT_ADD "%DIR_REPO%\dist\timer_service" "%INTO%"
 IF ERRORLEVEL 1 ( ECHO   [import]  FAILED & SET /A FAILS+=1 & GOTO :after_tf )
@@ -294,8 +290,7 @@ IF NOT EXIST "%OBJ_DLL%" MD "%OBJ_DLL%"
 IF NOT EXIST "%OBJ_EXE%" MD "%OBJ_EXE%"
 cl %CommonCompilerFlagsFinal% /DDLL_BUILD /wd4456 ^
     /I"%INTO%\include" ^
-    "%INTO%\src\fl_exception_service.c" ^
-    "%INTO%\src\fla_exception_service.c" ^
+    "%INTO%\src\fl_exception.c" ^
     "%INTO%\src\fla_timer_service.c" ^
     "%HERE%\test_framework_suite.c" ^
     /Fo:"%OBJ_DLL%\\" /Fd:"%OBJ_DLL%\tf_suite.pdb" /LD /Fe:"%INTO%\tf_suite.dll" ^
@@ -303,8 +298,7 @@ cl %CommonCompilerFlagsFinal% /DDLL_BUILD /wd4456 ^
 IF ERRORLEVEL 1 ( ECHO   [compile] suite FAILED & TYPE "%CL_LOG%" & SET /A FAILS+=1 & GOTO :after_tf )
 cl %CommonCompilerFlagsFinal% /DFL_PLATFORM_BUILD /DFL_EMBEDDED /wd4456 ^
     /I"%INTO%\include" ^
-    "%INTO%\src\fl_exception_service.c" ^
-    "%INTO%\src\flp_exception_service.c" ^
+    "%INTO%\src\fl_exception.c" ^
     "%INTO%\src\flp_timer_service.c" ^
     "%HERE%\test_framework_host_test.c" ^
     /Fo:"%OBJ_EXE%\\" /Fd:"%INTO%\tf_host.pdb" /Fe:"%INTO%\tf_host.exe" ^

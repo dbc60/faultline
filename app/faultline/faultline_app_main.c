@@ -20,13 +20,12 @@
 
 // Application-side service accessors: installing into these globals is what makes
 // FL_TRY / FL_MALLOC / LOG_* in the core route through the platform.
-#include <faultline/fla_exception_service.h> // fla_set_exception_service
-#include <faultline/fla_memory_service.h>    // fla_set_memory_service
-#include <faultline/fla_log_service.h>       // fla_set_log_service
-#include <faultline/fla_timer_service.h>     // fla_set_timer_service
-#include <faultline/fla_file_service.h>      // fla_set_file_service
-#include <faultline/fla_stream_service.h>    // fla_set_stream_service
-#include <faultline/fl_try.h>                // FL_TRY/FL_CATCH (selects fla_ backend)
+#include <faultline/fla_memory_service.h> // fla_set_memory_service
+#include <faultline/fla_log_service.h>    // fla_set_log_service
+#include <faultline/fla_timer_service.h>  // fla_set_timer_service
+#include <faultline/fla_file_service.h>   // fla_set_file_service
+#include <faultline/fla_stream_service.h> // fla_set_stream_service
+#include <faultline/fl_try.h>             // FL_TRY/FL_CATCH (selects fla_ backend)
 
 #include <faultline/fl_context.h>     // FLContext, faultline_initialize
 #include <faultline/fl_log.h>         // LOG_ERROR
@@ -39,12 +38,11 @@ static char const *module_name = "Faultline";
 
 FL_APP_MAIN(faultline_app_main) {
     // Install the platform's services into this module's fla_ globals. Order matters:
-    // exception first (FL_TRY depends on it), then memory (FL_MALLOC), then logging. The
-    // PLAIN, non-fault-injecting memory service goes here. The framework's own
-    // allocations must never be fault-injected. The fault-injecting service is pushed
-    // into  test-suite DLLs by platform->inject_services(), and is never installed into
-    // the core.
-    fla_set_exception_service(platform->exception, sizeof *platform->exception);
+    // memory first (FL_MALLOC), then logging. The non-fault-injecting memory service
+    // goes here. The framework's own allocations must never be fault-injected. The
+    // fault-injecting service is pushed into test-suite DLLs by
+    // platform->inject_services(). There is no exception service to install: each
+    // image compiles its own.
     fla_set_memory_service(platform->memory, sizeof *platform->memory);
     fla_set_log_service(platform->log, sizeof *platform->log);
     fla_set_timer_service(platform->timer, sizeof *platform->timer);

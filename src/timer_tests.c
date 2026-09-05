@@ -7,11 +7,10 @@
  *
  * See LICENSE.txt for copyright and licensing information about this file.
  */
-#include "fl_exception_service.c"  // fl_test_exception and other exception reasons
-#include "fl_threads.c"            // thrd_sleep
-#include "fla_exception_service.c" // app-side TLS exception service
-#include "tick_timer.c"            // start_ticks, stop_ticks, elapsed_ticks
-#include "time_timer.c"            // start, stop, elapsed_time
+#include "fl_exception.c" // exception reasons, push/pop/throw
+#include "fl_threads.c"   // thrd_sleep
+#include "tick_timer.c"   // start_ticks, stop_ticks, elapsed_ticks
+#include "time_timer.c"   // start, stop, elapsed_time
 #include "win_timer.c" // get_100ns_intervals_between_epochs (check_epoch); QueryPerformanceCounter
 #include "flp_timer_service.c" // flp_timer_now, flp_timer_elapsed_seconds, flp_init_timer_service
 #include "fla_timer_service.c" // g_fla_timer_service, fla_set_timer_service

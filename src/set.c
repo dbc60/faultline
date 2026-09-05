@@ -12,7 +12,7 @@
 #include <faultline/dlist.h>                // for DLIST_INIT, DLIST_REMOVE_SIMPLE
 #include <faultline/set.h>                  // for Set, SetEntry, SET_ENTRY_GET_NEXT
 #include <faultline/fl_abbreviated_types.h> // for u64
-#include <faultline/fl_exception_service.h> // for fl_invalid_value, fl_internal_error
+#include <faultline/fl_exception.h>         // for fl_invalid_value, fl_internal_error
 #include <faultline/fl_try.h>               // for FL_THROW
 #include <fnv/FNV64.h>                      // for FNV64block
 #include <fnv/FNVErrorCodes.h>              // for fnvSuccess
@@ -27,12 +27,11 @@ extern "C" {
 #endif
 
 FLExceptionReason set_release_bucket_not_allowed
-= "cannot release bucket memory for an allocated set, call set_clear() instead";
+    = "cannot release bucket memory for an allocated set, call set_clear() instead";
 
 #if defined(__cplusplus)
 }
 #endif
-
 
 u64 set_do_hash(Set const *set, void const *value) {
     u64 hash   = 0;

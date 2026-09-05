@@ -13,7 +13,7 @@
 
 #include <faultline/fl_test.h>
 #include <faultline/fl_exception_types.h>
-#include <faultline/fl_exception_service_assert.h>
+#include <faultline/fl_exception_assert.h>
 #include <faultline/arena_malloc.h>
 
 #include <stddef.h>  // size_t, NULL

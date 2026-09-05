@@ -9,7 +9,7 @@
  */
 #include "region_node.h"
 #include <faultline/dlist.h>                // for DLIST_INIT
-#include <faultline/fl_exception_service.h> // for fl_internal_error, fl_in...
+#include <faultline/fl_exception.h>         // for fl_internal_error, fl_in...
 #include <faultline/fl_exception_types.h>   // for FLExceptionReason
 #include <faultline/fl_log.h>               // for LOG_ERROR
 #include <faultline/fl_try.h>               // for FL_THROW_DETAILS_FILE_LINE

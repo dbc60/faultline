@@ -15,7 +15,7 @@
 #include <faultline/fl_test_summary.h>      // for faultline_test_summary_buffer_get
 #include <faultline/fl_types.h>             // for FLFailureType, FaultlineT...
 #include <faultline/fl_abbreviated_types.h> // for i64
-#include <faultline/fl_exception_service.h> // for fl_internal_error
+#include <faultline/fl_exception.h>         // for fl_internal_error
 #include <faultline/fl_test.h>              // for FLTestSuite, FLTestCase
 #include <faultline/fl_try.h>               // for FL_THROW
 #include <stdbool.h>                        // for bool, false, true

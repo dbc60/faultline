@@ -5,7 +5,7 @@ model, using three distribution packages together:
 
 - **`memory_service`** — arena-backed memory service (no fault injection)
 - **`log`** — logging service
-- **`exception_service`** — exception service for the driver/DLL split
+- **`exceptions`** — both sides compile the exception implementation
 
 It is also a working check that the simplified package set actually composes.
 
@@ -20,36 +20,32 @@ demo_driver.exe  (platform side)              demo_suite.dll  (application side)
   flp_log_init()                                  via the injected fla_ shims
   new_arena() + flp_init_memory_context()
   LoadLibrary("demo_suite.dll")  ----------->   exports fla_set_log_service
-  GetProcAddress("fla_set_log_service")          exports fla_set_exception_service
-  GetProcAddress("fla_set_exception_service")    exports fla_set_memory_service
-  GetProcAddress("fla_set_memory_service")       exports demo_run / demo_throw_uncaught
-  flp_init_log_service(...)       --inject-->
-  flp_init_exception_service(...) --inject-->
-  flp_init_memory_service(...)    --inject-->
-  FL_TRY { demo_run(); demo_throw_uncaught(); }
-  FL_CATCH_STR(fl_invalid_value) { ... }
+  GetProcAddress("fla_set_log_service")          exports fla_set_memory_service
+  GetProcAddress("fla_set_memory_service")       exports demo_run
+  flp_init_log_service(...)    --inject-->       exports demo_throw_at_boundary
+  flp_init_memory_service(...) --inject-->
+  demo_run(); demo_throw_at_boundary();
 ```
 
-`demo_suite.dll` contains **none** of the allocator, logger, or exception
-services. Its `malloc`/`free`, `LOG_*`, and `FL_TRY`/`FL_THROW` all call function
-pointers that the driver fills in at run time. Two behaviours are demonstrated:
+`demo_suite.dll` contains **neither** the allocator nor the logger: its
+`malloc`/`free` and `LOG_*` call function pointers the driver fills in at run
+time. Exceptions are different — they are not a service, so the DLL compiles
+`fl_exception.c` and gets its own environment stack. Two behaviours are
+demonstrated:
 
 1. **`demo_run`** allocates a buffer from the driver's arena, logs through the
    driver's logger, and throws/catches an exception **within the DLL** (handled
    locally — `FL_CATCH` matches by pointer identity in the same module).
-2. **`demo_throw_uncaught`** throws `fl_invalid_value` and does *not* catch it,
-   so it propagates **across the DLL boundary** into the driver's top-level
-   handler. The driver matches it with `FL_CATCH_STR` (not `FL_CATCH`) because
-   each module links its own copy of the shared reason constants at distinct
-   addresses — string comparison is required across the boundary.
+2. **`demo_throw_at_boundary`** throws `fl_invalid_value` and catches it at the
+   export the driver calls through, returning the outcome. Nothing unwinds out
+   of a module: an escaping throw would abort in the DLL rather than reach the
+   driver's `FL_TRY`, because each module unwinds on its own stack.
 
 ## Why two binaries
 
-The `flp_` (platform) and `fla_` (application) exception sources both define
-`fl_throw_assertion` and cannot be linked into the same binary. The driver
-compiles the `flp_` sources; the DLL compiles the `fla_` sources. This split is
-exactly what the service model exists to support, which is why a faithful demo
-is a driver plus a DLL rather than a single executable.
+The demo needs two modules to show services being injected across a real
+`LoadLibrary` boundary, and to show that a DLL's exceptions stay inside the DLL.
+Neither is observable in a single executable.
 
 ## Build and run
 

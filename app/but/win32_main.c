@@ -24,9 +24,8 @@
 #include "buffer.c"
 #include "digital_search_tree.c"
 #include "fault_injector.c"
-#include "fl_exception_service.c"
+#include "fl_exception.c"
 #include "fl_threads.c"
-#include "flp_exception_service.c"
 #include "flp_log_service.c"
 #include "flp_memory_service.c"
 #include "flp_fault_memory_service.c"
@@ -181,7 +180,7 @@ int main(int argc, char **argv) {
     // volatile because FL_TRY's setjmp and a throw's longjmp bracket the writes to this
     // counter: a non-volatile local written in between has an indeterminate value after
     // the jump. bd_begin clears the context per suite, so the per-suite counts sum.
-    volatile size_t failures = 0;
+    size_t volatile failures = 0;
 
     if (argc > 1) {
         FaultInjector        fi;
@@ -240,8 +239,8 @@ int main(int argc, char **argv) {
             }
 
             fla_set_timer_service_fn *fla_set_timer_service
-                = (fla_set_timer_service_fn *)
-                    GetProcAddress(test_suite, FLA_SET_TIMER_SERVICE_STR);
+                = (fla_set_timer_service_fn *)GetProcAddress(test_suite,
+                                                             FLA_SET_TIMER_SERVICE_STR);
             // the timer service is optional
             if (fla_set_timer_service != NULL) {
                 flp_init_timer_service(fla_set_timer_service);

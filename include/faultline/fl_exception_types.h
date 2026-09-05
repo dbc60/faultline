@@ -43,7 +43,7 @@ typedef struct FLExceptionEnvironment {
     struct FLExceptionEnvironment
         *next; ///< a pointer to a parent context from an enclosing FL_TRY block.
 
-    // reason, details, file, and line are written by flp_throw() after setjmp() saves
+    // reason, details, file, and line are written by fl_throw() after setjmp() saves
     // state and before longjmp() fires. Per C11 §7.13.2.1 ¶3, automatic-duration objects
     // modified between setjmp and longjmp have indeterminate value after longjmp unless
     // they are volatile-qualified. Without volatile, an optimizing compiler may hold
@@ -83,7 +83,7 @@ typedef FL_EXCEPTION_HANDLER_FN(fl_exception_handler_fn);
 /**
  * @brief The object thrown by the C++ exception backend (FL_EXC_BACKEND_CXX).
  *
- * Mirrors the four arguments flp_throw() would otherwise hand to longjmp(): reason,
+ * Mirrors the four arguments fl_throw() would otherwise hand to longjmp(): reason,
  * details, file and line. details is deliberately not owned here -- it borrows the
  * same per-thread scratch buffer as the setjmp backend (fl_details_buf(), fl_try.h),
  * so it is valid only until the next detail-formatting throw or foreign-exception
@@ -117,7 +117,7 @@ class FLException {
  * @brief Per-FL_TRY bookkeeping for the C++ backend; the C++ analogue of
  * FLExceptionEnvironment.
  *
- * FL_REASON/FL_DETAILS/FL_FILE/FL_LINE (fl_exception_service.h) read fl_env_.reason,
+ * FL_REASON/FL_DETAILS/FL_FILE/FL_LINE (fl_exception.h) read fl_env_.reason,
  * .details, .file and .line unconditionally, so this type carries them as flat fields
  * rather than nesting them inside an FLException member -- keeping those accessor
  * macros identical across both backends. There is no jmp_buf and no push/pop stack:

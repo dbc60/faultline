@@ -24,8 +24,7 @@
 #include <timezoneapi.h>                  // for SystemTimeToFileTime
 #include <winbase.h>                      // for INFINITE
 #include <windows.h>
-// IWYU pragma: no_include "fla_exception_service.h"
-// IWYU pragma: no_include <flp_exception_service.h>
+// IWYU pragma: no_include <faultline/fl_exception.h>
 // IWYU pragma: no_include <pthread_time.h>
 #include <faultline/fl_abbreviated_types.h> // for i64, u64
 

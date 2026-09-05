@@ -13,8 +13,7 @@
 #include "but_driver.c"
 #include "but_result_context.c"
 #include "digital_search_tree.c"
-#include "fl_exception_service.c"
-#include "flp_exception_service.c"
+#include "fl_exception.c"
 #include "flp_file_service.c"
 #include "flp_log_service.c"    // calls flp_stream_open/write/close
 #include "flp_memory_service.c" // FL_MALLOC/FL_FREE backing (flp_malloc/flp_free)
@@ -31,13 +30,6 @@
 #if defined(__cplusplus)
 extern "C" {
 #endif
-
-// Dummy fla_set_exception_service so set_up_test_driver_data() in but_test_cases.c has
-// a function to load.
-FL_DECL_SPEC FLA_SET_EXCEPTION_SERVICE_FN(fla_set_exception_service) {
-    FL_UNUSED(svc);
-    FL_UNUSED(size);
-}
 
 FL_SPEC_EXPORT FL_EXCEPTION_HANDLER_FN(test_data_handler) {
     BasicContext *bctx = (BasicContext *)ctx;

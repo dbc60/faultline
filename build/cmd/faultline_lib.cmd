@@ -40,8 +40,7 @@ IF %build% EQU 1 (
     if exist %DIR_OUT_OBJ%\faultline_context.obj  del %DIR_OUT_OBJ%\faultline_context.obj
     if exist %DIR_OUT_OBJ%\faultline_driver.obj   del %DIR_OUT_OBJ%\faultline_driver.obj
     if exist %DIR_OUT_OBJ%\faultline_sqlite.obj   del %DIR_OUT_OBJ%\faultline_sqlite.obj
-    if exist %DIR_OUT_OBJ%\fl_exception_service.obj del %DIR_OUT_OBJ%\fl_exception_service.obj
-    if exist %DIR_OUT_OBJ%\fla_exception_service.obj del %DIR_OUT_OBJ%\fla_exception_service.obj
+    if exist %DIR_OUT_OBJ%\fl_exception.obj       del %DIR_OUT_OBJ%\fl_exception.obj
     if exist %DIR_OUT_OBJ%\fla_log_service.obj    del %DIR_OUT_OBJ%\fla_log_service.obj
     if exist %DIR_OUT_OBJ%\FNV64.obj              del %DIR_OUT_OBJ%\FNV64.obj
     if exist %DIR_OUT_OBJ%\region.obj             del %DIR_OUT_OBJ%\region.obj
@@ -78,8 +77,7 @@ IF %build% EQU 1 (
         %DIR_REPO%\src\faultline_context.c ^
         %DIR_REPO%\src\faultline_driver.c ^
         %DIR_REPO%\src\faultline_sqlite.c ^
-        %DIR_REPO%\src\fl_exception_service.c ^
-        %DIR_REPO%\src\fla_exception_service.c ^
+        %DIR_REPO%\src\fl_exception.c ^
         %DIR_REPO%\src\fla_log_service.c ^
         %DIR_THIRD_PARTY%\fnv\FNV64.c ^
         %DIR_REPO%\src\region.c ^
@@ -108,8 +106,7 @@ IF %build% EQU 1 (
         %DIR_OUT_OBJ%\faultline_context.obj ^
         %DIR_OUT_OBJ%\faultline_driver.obj ^
         %DIR_OUT_OBJ%\faultline_sqlite.obj ^
-        %DIR_OUT_OBJ%\fl_exception_service.obj ^
-        %DIR_OUT_OBJ%\fla_exception_service.obj ^
+        %DIR_OUT_OBJ%\fl_exception.obj ^
         %DIR_OUT_OBJ%\fla_log_service.obj ^
         %DIR_OUT_OBJ%\FNV64.obj ^
         %DIR_OUT_OBJ%\region.obj ^

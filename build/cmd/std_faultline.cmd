@@ -74,8 +74,8 @@ IF %build% EQU 1 (
     %DIR_REPO%\src\buffer.c %DIR_REPO%\src\digital_search_tree.c ^
     %DIR_REPO%\src\fault_injector.c %DIR_REPO%\src\fla_memory_service.c ^
     %DIR_REPO%\src\faultline_context.c %DIR_REPO%\src\faultline_driver.c ^
-    %DIR_REPO%\src\faultline_sqlite.c %DIR_REPO%\src\fl_exception_service.c ^
-    %DIR_REPO%\src\fl_threads.c %DIR_REPO%\src\fla_exception_service.c ^
+    %DIR_REPO%\src\faultline_sqlite.c %DIR_REPO%\src\fl_exception.c ^
+    %DIR_REPO%\src\fl_threads.c ^
     %DIR_REPO%\src\fla_log_service.c %DIR_REPO%\src\region.c ^
     %DIR_REPO%\src\region_node.c %DIR_REPO%\src\region_os.c ^
     %DIR_REPO%\src\lock_os.c ^
@@ -111,8 +111,8 @@ IF %build% EQU 1 (
     %DIR_REPO%\src\buffer.c %DIR_REPO%\src\command.c ^
     %DIR_REPO%\src\digital_search_tree.c %DIR_REPO%\src\fault_injector.c ^
     %DIR_REPO%\src\faultline_context.c %DIR_REPO%\src\faultline_driver.c ^
-    %DIR_REPO%\src\faultline_sqlite.c %DIR_REPO%\src\fl_exception_service.c ^
-    %DIR_REPO%\src\fl_threads.c %DIR_REPO%\src\flp_exception_service.c ^
+    %DIR_REPO%\src\faultline_sqlite.c %DIR_REPO%\src\fl_exception.c ^
+    %DIR_REPO%\src\fl_threads.c ^
     %DIR_REPO%\src\flp_log_service.c %DIR_REPO%\src\flp_memory_service.c ^
     %DIR_REPO%\src\flp_fault_memory_service.c %DIR_REPO%\src\flp_timer_service.c ^
     %DIR_REPO%\src\flp_file_service.c %DIR_REPO%\src\flp_stream_service.c ^

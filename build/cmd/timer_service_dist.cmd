@@ -6,9 +6,9 @@ SETLOCAL
 :: Collect the timer service package into dist\timer_service\.
 ::
 :: The package ships only the timer's own files and declares a dependency on
-:: exception_service, which supplies the fl_try.h / assert header closure the
+:: exceptions, which supplies the fl_try.h / assert header closure the
 :: provider compiles against and the exception implementations it links
-:: against. Import exception_service first; fl_import enforces the order.
+:: against. Import exceptions first; fl_import enforces the order.
 ::
 :: What this package contains lives in build\dist\packages.psd1.
 ::

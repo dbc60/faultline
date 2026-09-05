@@ -11,24 +11,23 @@
  * null-parameter checks, state-error checks, basis derivation, one-shot
  * hashes, incremental hashes, and file hashes.
  *
- * The driver injects an FLExceptionService via fla_set_exception_service().
+ * Exceptions are this module's own: it compiles fl_exception.c.
  * FL_ASSERT macros throw exceptions caught by but_driver.exe.
  */
 
 // Unity build: exception services first, then code under test.
-#include <faultline/fl_exception_service_assert.h> // FL_ASSERT_* macros
+#include <faultline/fl_exception_assert.h> // FL_ASSERT_* macros
 #include <faultline/fl_test.h> // FL_VOID_TEST_SETUP_CLEANUP, FL_SUITE_*, FL_GET_TEST_SUITE
 #include <faultline/fl_try.h> // FL_TRY, FL_CATCH, FL_THROW (resolves to FLA_* in DLL builds)
 
-#include "fl_exception_service.c"  // exception reason constants
-#include "fla_exception_service.c" // TLS exception service (app-side)
-#include "fla_timer_service.c"     // g_fla_timer_service, fla_set_timer_service
-#include "fnv/FNV32.c"             // code under test
-#include "fnv/FNV64.c"             // code under test
-#include "fnv/FNV128.c"            // code under test
-#include "fnv/FNV256.c"            // code under test
-#include "fnv/FNV512.c"            // code under test
-#include "fnv/FNV1024.c"           // code under test
+#include "fl_exception.c"      // exception reasons, push/pop/throw
+#include "fla_timer_service.c" // g_fla_timer_service, fla_set_timer_service
+#include "fnv/FNV32.c"         // code under test
+#include "fnv/FNV64.c"         // code under test
+#include "fnv/FNV128.c"        // code under test
+#include "fnv/FNV256.c"        // code under test
+#include "fnv/FNV512.c"        // code under test
+#include "fnv/FNV1024.c"       // code under test
 
 #include <stdint.h>
 #include <string.h>

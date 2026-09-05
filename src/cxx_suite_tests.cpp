@@ -13,18 +13,17 @@
  * it. fl_run_case catches the throw inside this module and hands the driver an outcome,
  * so the driver reading these results is the same faultline.exe built as C.
  */
-#include <faultline/fl_exception_service_assert.h> // FL_ASSERT_TRUE, FL_ASSERT_NOT_NULL
-#include <faultline/fl_macros.h>                   // FL_UNUSED
-#include <faultline/fl_memory.h>                   // FL_MALLOC, FL_FREE
-#include <faultline/fl_test.h> // FL_TEST, FL_SUITE_*, FL_GET_TEST_SUITE
-#include <faultline/fl_try.h>  // FL_THROW
+#include <faultline/fl_exception_assert.h> // FL_ASSERT_TRUE, FL_ASSERT_NOT_NULL
+#include <faultline/fl_macros.h>           // FL_UNUSED
+#include <faultline/fl_memory.h>           // FL_MALLOC, FL_FREE
+#include <faultline/fl_test.h>             // FL_TEST, FL_SUITE_*, FL_GET_TEST_SUITE
+#include <faultline/fl_try.h>              // FL_THROW
 
 #include <exception> // std::uncaught_exceptions
 
-#include "fl_exception_service.c"  // fl_expected_failure and the other reasons
-#include "fla_exception_service.c" // the module's own push/pop/throw
-#include "fla_memory_service.c"    // g_fla_memory_service, fla_set_memory_service
-#include "fla_timer_service.c"     // g_fla_timer_service, fla_set_timer_service
+#include "fl_exception.c"       // exception reasons, push/pop/throw
+#include "fla_memory_service.c" // g_fla_memory_service, fla_set_memory_service
+#include "fla_timer_service.c"  // g_fla_timer_service, fla_set_timer_service
 
 /// Destructor calls that ran at ordinary scope exit, across every case and pass.
 static int g_blocks_destroyed = 0;

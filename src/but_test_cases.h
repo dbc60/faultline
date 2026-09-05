@@ -11,8 +11,7 @@
  * See LICENSE.txt for copyright and licensing information about this file.
  */
 #include "but_driver.h"
-#include <faultline/fl_exception_service.h> // fla_set_exception_service
-#include <faultline/fl_test.h>              // FLTestCase, FLTestSuite
+#include <faultline/fl_test.h> // FLTestCase, FLTestSuite
 
 #include <stddef.h>  // size_t
 #include <stdbool.h> // bool
@@ -27,8 +26,6 @@
 // Test driver's data
 struct TestDriverData {
     HMODULE                        h;
-    fla_set_exception_service_fn  *set_service;
-    FLExceptionService             exception_service;
     BasicContext                   context;
     FLTestCase                     tc;
     FLTestSuite                   *ts;

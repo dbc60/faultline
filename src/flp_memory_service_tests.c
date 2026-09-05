@@ -3,8 +3,7 @@
 #include "arena_malloc.c"
 #include "buffer.c"
 #include "digital_search_tree.c"
-#include "fl_exception_service.c"
-#include "fla_exception_service.c"
+#include "fl_exception.c"
 #include "fla_log_service.c"
 #include "fla_memory_service.c"
 #include "fla_timer_service.c" // g_fla_timer_service, fla_set_timer_service

@@ -39,9 +39,8 @@
 #include "arena_malloc.c" // FL_MALLOC/FL_FREE backing, needed by flp_file_service.c
 #include "arena_pool.c"
 #include "digital_search_tree.c"
-#include "fl_exception_service.c"
+#include "fl_exception.c"
 #include "fl_threads.c"
-#include "flp_exception_service.c"
 #include "flp_file_service.c"
 #include "flp_log_service.c"    // calls flp_stream_open/write/close
 #include "flp_memory_service.c" // FL_MALLOC/FL_FREE backing (flp_malloc/flp_free)
@@ -427,10 +426,10 @@ enum {
 };
 
 typedef struct XferShared {
-    ArenaPool      *pool;
-    size_t          iters;
-    atomic_int     *ready;
-    atomic_int     *go;
+    ArenaPool  *pool;
+    size_t      iters;
+    atomic_int *ready;
+    atomic_int *go;
     FL_ATOMIC(void *) ring[BM_XFER_RING];
 } XferShared;
 
@@ -454,8 +453,8 @@ static int bm_xfer_worker(void *arg) {
     FL_TRY {
         if (xa->producer) {
             for (size_t i = 0; i < sh->iters; i++) {
-                void *mem             = ARENA_POOL_MALLOC_THROW(sh->pool, 64);
-                *(char *)mem          = (char)i;
+                void *mem               = ARENA_POOL_MALLOC_THROW(sh->pool, 64);
+                *(char *)mem            = (char)i;
                 FL_ATOMIC(void *) *slot = &sh->ring[i % BM_XFER_RING];
                 while (atomic_load_explicit(slot, memory_order_relaxed) != NULL) {
                     YieldProcessor();
@@ -465,7 +464,7 @@ static int bm_xfer_worker(void *arg) {
         } else {
             for (size_t i = 0; i < sh->iters; i++) {
                 FL_ATOMIC(void *) *slot = &sh->ring[i % BM_XFER_RING];
-                void            *mem;
+                void *mem;
                 while ((mem = atomic_load_explicit(slot, memory_order_acquire))
                        == NULL) {
                     YieldProcessor();

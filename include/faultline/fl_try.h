@@ -6,14 +6,10 @@
  * @brief Unified try/catch/throw macros for both platform and consumer code.
  *
  * Single definition site for the FL_TRY / FL_CATCH* / FL_THROW* / FL_END_TRY family.
- * The push/pop/throw hooks are the only thing that differs between the platform
- * provider (flp_push/pop/throw) and the injected consumer accessor
- * (g_fla_exception_service); this header selects the hooks by whether
- * FL_PLATFORM_BUILD is defined, then defines the whole family once over them. A
- * translation unit gets exactly one backend, and call sites use FL_TRY/FL_THROW
- * the same either way.
+ * The family is defined once over the FL_EXC_PUSH/POP/THROW hooks, which resolve to
+ * fl_push/fl_pop/fl_throw in every translation unit, platform or consumer alike.
  */
-#include <faultline/fl_exception_service.h> // fl_not_implemented, FL_*_EXCEPTION_SERVICE_FN
+#include <faultline/fl_exception.h> // fl_not_implemented, fl_push, fl_pop, fl_throw
 #include <faultline/fl_exception_types.h> // FLExceptionEnvironment, FL_ENTERED/THROWN/HANDLED, FL_MAX_DETAILS_LENGTH
 #include <faultline/fl_macros.h> // FL_THREAD_LOCAL, FL_MAYBE_UNUSED
 #include <setjmp.h>              // setjmp
@@ -25,38 +21,19 @@
 #error "FL_EXC_BACKEND_CXX requires compiling as C++"
 #endif
 
-// The push/pop/throw hooks are the only asymmetry between the platform provider and
-// the consumer accessor; everything below is defined once over them. FL_EXC_BACKEND_CXX
-// is a separate, orthogonal axis: it picks the try/catch/throw *mechanism* (setjmp vs.
-// a real C++ throw), independent of which side -- platform or consumer -- owns the
-// throw hook that carries it out.
+// FL_EXC_BACKEND_CXX picks the try/catch/throw *mechanism*: setjmp/longjmp over an
+// explicit environment stack, or a real C++ throw.
 #if defined(FL_EXC_BACKEND_CXX)
 // C++ unwinding needs no manual stack: the language finds its own way back to the
 // matching catch, so pushing/popping an environment has nothing to do.
 #define FL_EXC_PUSH(env) ((void)0)
 #define FL_EXC_POP()     ((void)0)
-#if defined(FL_PLATFORM_BUILD)
-#include "flp_exception_service.h" // IWYU pragma: export -- flp_throw
-#define FL_EXC_THROW(reason, details, file, line) flp_throw(reason, details, file, line)
-#else                                        // consumer / DLL build
-#include <faultline/fla_exception_service.h> // IWYU pragma: export -- g_fla_exception_service
-#define FL_EXC_THROW(reason, details, file, line) \
-    g_fla_exception_service.throw_exc(reason, details, file, line)
-#endif // FL_PLATFORM_BUILD
-#else  // setjmp backend
-#if defined(FL_PLATFORM_BUILD)
-#include "flp_exception_service.h" // IWYU pragma: export -- flp_push/pop/throw
-#define FL_EXC_PUSH(env)                          flp_push(env)
-#define FL_EXC_POP()                              flp_pop()
-#define FL_EXC_THROW(reason, details, file, line) flp_throw(reason, details, file, line)
-#else                                        // consumer / DLL build
-#include <faultline/fla_exception_service.h> // IWYU pragma: export -- g_fla_exception_service
-#define FL_EXC_PUSH(env) g_fla_exception_service.push_env(env)
-#define FL_EXC_POP()     g_fla_exception_service.pop_env()
-#define FL_EXC_THROW(reason, details, file, line) \
-    g_fla_exception_service.throw_exc(reason, details, file, line)
-#endif // FL_PLATFORM_BUILD
+#else
+#define FL_EXC_PUSH(env) fl_push(env)
+#define FL_EXC_POP()     fl_pop()
 #endif // FL_EXC_BACKEND_CXX
+
+#define FL_EXC_THROW(reason, details, file, line) fl_throw(reason, details, file, line)
 
 // FL_TRY relies on {0}-initialization of FLExceptionEnvironment (or, under
 // FL_EXC_BACKEND_CXX, FLExceptionFrame) leaving state == FL_ENTERED on setjmp's first
@@ -354,9 +331,9 @@ static inline FL_MAYBE_UNUSED void fl_cxx_capture_foreign(FLExceptionFrame &env,
  * Compares fl_env_.reason to @p exception using strcmp rather than pointer
  * equality. Use this instead of FL_CATCH when the exception may have been
  * thrown by a different module (e.g., a test suite DLL catching one of the
- * shared reason constants from fl_exception_service.h). Because those
- * constants are statically linked into each module separately, their addresses
- * differ across modules and FL_CATCH would silently fail to match.
+ * shared reason constants from fl_exception.h). Because those constants are
+ * statically linked into each module separately, their addresses differ across
+ * modules and FL_CATCH would silently fail to match.
  *
  *   FL_TRY { ... }
  *   FL_CATCH_STR(fl_unexpected_failure) { ... }

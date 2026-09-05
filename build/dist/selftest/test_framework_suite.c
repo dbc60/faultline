@@ -23,9 +23,9 @@
  */
 
 #include <faultline/fl_test.h>              // FL_TEST, FL_SUITE_*, FL_GET_TEST_SUITE
-#include <faultline/fl_exception_service.h> // fl_expected_failure
-#include <faultline/fl_macros.h>            // FL_SPEC_EXPORT, FL_UNUSED
-#include <faultline/fl_try.h>               // FL_THROW (consumer side)
+#include <faultline/fl_exception.h> // fl_expected_failure
+#include <faultline/fl_macros.h>    // FL_SPEC_EXPORT, FL_UNUSED
+#include <faultline/fl_try.h>       // FL_THROW
 
 static int g_steps = 0;
 

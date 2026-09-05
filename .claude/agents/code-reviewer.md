@@ -79,7 +79,7 @@ Check:
   words (*caller*, *consumer*, *the core*) and the axis words (*core*, *platform*). They must
   not leak Faultline role words (*driver*, *suite*, *test*). Code that assembles services
   into Faultline may use those role words freely. The documented exception is
-  `fl_exception_service.h`, whose `fl_expected_failure` genuinely encodes test semantics.
+  `fl_exception.h`, whose `fl_expected_failure` genuinely encodes test semantics.
 - New service work should mirror the established shape: contract header, platform provider,
   consumer accessor, injection through `GetProcAddress` in `command_run.c` and installation
   into the core's globals in `faultline_app_main.c`. A new service that skips a piece of that

@@ -11,11 +11,11 @@
 #include "arena_internal.h"
 #include "win32_platform.h" // get_memory_info()
 
-#include <faultline/fl_test.h>                     // FLTestCase, fl_default_setup
-#include <faultline/fl_try.h>                      //FL_THROW
-#include <faultline/fl_exception_service_assert.h> //FL_ASSERT()
-#include <faultline/fl_math.h>                     // SUM_OVER_SCALED_RANGE
-#include <faultline/fl_abbreviated_types.h>        // u32
+#include <faultline/fl_test.h>              // FLTestCase, fl_default_setup
+#include <faultline/fl_try.h>               //FL_THROW
+#include <faultline/fl_exception_assert.h>  //FL_ASSERT()
+#include <faultline/fl_math.h>              // SUM_OVER_SCALED_RANGE
+#include <faultline/fl_abbreviated_types.h> // u32
 
 #include <stddef.h> // size_t, NULL
 

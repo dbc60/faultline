@@ -12,7 +12,6 @@
  *
  */
 #include <faultline/fl_exception_types.h>   // BUTExceptionContext
-#include <faultline/fl_exception_service.h> // FLExceptionService
 #include <faultline/fl_case_outcome.h>      // fl_run_case_fn
 #include <faultline/fl_abbreviated_types.h> // u32
 

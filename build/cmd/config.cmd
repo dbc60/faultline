@@ -40,6 +40,9 @@ SETLOCAL ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 ::   /wd4100 - 'identifier' : unreferenced formal parameter (this happens a lot while developing code)
 ::   /wd4189 - 'identifier' : local variable is initialized but not referenced
 ::   /wd4127 - conditional expression is constant ("do {...} while (0)" in macros)
+::   /wd4702 - unreachable code. Deliberately not set here. Only the test suites that
+::             throw unconditionally inside FL_TRY need it, and each sets it for itself,
+::             so the warning still covers everything else.
 ::   /wd4456 - warning C4456: declaration of '<var>' hides previous local declaration
 ::   /wd6246 - Local declaration of '<var>' hides declaration of the same name in outer scope. This warning
 ::             occurs when the /analyze option is used. The exception code can cause nested blocks each
