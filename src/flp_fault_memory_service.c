@@ -94,6 +94,11 @@ FL_CALLOC_FN(flp_fault_calloc) {
 }
 
 FL_FREE_FN(flp_fault_free) {
+    // If mem is a NULL pointer, the function does nothing.
+    if (ptr == NULL) {
+        return;
+    }
+
     FL_TRY {
         LOG_DEBUG("FAULT FREE", "releasing 0x%p", ptr);
         (void)FREE_CHUNK_FROM_MEMORY(ptr, file, line);
@@ -119,6 +124,11 @@ FL_FREE_FN(flp_fault_free) {
 FL_FREE_POINTER_FN(flp_fault_free_pointer) {
     FL_ASSERT_NOT_NULL(ptr);
     void *mem = *ptr;
+
+    // If mem is a NULL pointer, the function does nothing.
+    if (mem == NULL) {
+        return;
+    }
 
     FL_TRY {
         (void)FREE_CHUNK_FROM_MEMORY(mem, file, line);

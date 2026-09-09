@@ -3,7 +3,7 @@
 name memory_service
 version 0.4.0
 depends 
-generated 2026-09-05T14:52:39Z
+generated 2026-09-09T19:18:45Z
 f include/faultline/arena.h 35cb607c0992e53c3fc91d8ab2795e06cbdd9a8d1470fe3bef6a5ac4ab57676a
 f include/faultline/arena_malloc.h 2d75070c70adaebf533aebfa25e7b4ce3f9c4c2bbbb42820719242d7e44a370f
 f include/faultline/arena_pool.h 29ef4aaa8bfc5ea80c5e68390aa57600c3e5926b185de7f9041de4ba812b0796
@@ -28,7 +28,7 @@ f include/faultline/size.h f107084662951fb0e83a9f27eafbc7108836cb081ccfb9800825f
 f include/flp_log_service.h e93b92b6f0b2d194e0d45bd21c4b64f3eb38ca159650475eb7819da870dbd7d2
 f include/flp_memory_service.h 8d79bf0094bbb4f8464876a84e79721414d87c672c4b971cc9d0d01f176d0d87
 f include/flp_stream_service.h 95db8d77f32ff450483fb3c511e62f7d6c8db999c2f2e6981b122721ec9c39a4
-f src/arena.c 1a35a22c994eae368cf21729ab4ef798547c1f2bedcaa75026c49e9ea924ddba
+f src/arena.c 078ecb86061be2fe9b00536cd0c7fc7f987b3d2fdc3789b0bb549d184edb4883
 f src/arena_dbg.c baa59d55b3509a7eb02231588ec4c9ff2beca1f5ca05145dc24a700927371d18
 f src/arena_dbg.h 8a809f496b2a26796f7b44afb1a4fdefcff8d4f4c8be30885a6fc935746fb5c1
 f src/arena_internal.h 41c270a0c618890b38368c6e7189089cda29f73dbb6dc1ea56cf9fd1bea94015

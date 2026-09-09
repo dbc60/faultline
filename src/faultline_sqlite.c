@@ -1681,12 +1681,12 @@ void faultline_show_run_details(sqlite3 *db, int run_id) {
             sqlite3_bind_int(stmt, 1, run_id);
 
             printf("\n--- Individual Test Results ---\n");
-            printf("%-25s %-12s %-8s %-6s %-30s %-30s %-30s\n", "Test Name", "Result",
+            printf("%-25s %-12s %-8s %-6s %-50s %-40s %-40s\n", "Test Name", "Result",
                    "Time(s)", "Faults", "Reason", "Details", "Location");
-            printf("%-25s %-12s %-8s %-6s %-30s %-30s %-30s\n",
+            printf("%-25s %-12s %-8s %-6s %-50s %-40s %-40s\n",
                    "-------------------------", "------------", "--------", "------",
-                   "------------------------------", "------------------------------",
-                   "------------------------------");
+                   "--------------------------------------------------", "----------------------------------------",
+                   "----------------------------------------");
 
             while (sqlite3_step(stmt) == SQLITE_ROW) {
                 char const *test_name
@@ -1707,7 +1707,7 @@ void faultline_show_run_details(sqlite3 *db, int run_id) {
                     = faultline_result_code_to_string((FLResultCode)result_code);
 
                 // Format location string
-                char location[31]; // 30 chars + null terminator
+                char location[41]; // 40 chars + null terminator
                 if (source_file != NULL && source_line > 0) {
                     // Extract just the filename from the full path
                     char const *filename = strrchr(source_file, '\\');
@@ -1729,7 +1729,7 @@ void faultline_show_run_details(sqlite3 *db, int run_id) {
                     strcpy_s(location, sizeof location, "");
                 }
 
-                printf("%-25.25s %-12s %8.3f %6d %-30.30s %-30.30s %-30.30s\n",
+                printf("%-25.25s %-12s %8.3f %6d %-50.50s %-40.40s %-40.40s\n",
                        test_name, result_str, elapsed, faults, reason, details,
                        location);
             }

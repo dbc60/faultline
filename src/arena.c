@@ -819,6 +819,10 @@ static void *arena_calloc_impl(Arena *arena, size_t count, size_t size, char con
 }
 
 static void arena_free_impl(Arena *arena, void *mem, char const *file, int line) {
+    // If mem is a NULL pointer, the function does nothing.
+    if (mem == NULL) {
+        return;
+    }
     FreeChunk *ch = FREE_CHUNK_FROM_MEMORY(mem, file, line);
 
     // TODO: instead of throwing fl_internal_error, throw fl_invalid_address. This will
