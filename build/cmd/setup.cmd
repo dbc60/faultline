@@ -124,8 +124,16 @@ if "%VSSOLUTION%"=="" (
     )
 )
 
+:: Repository-specific settings, which config.cmd reads
+CALL !DIR_CMD!\project.cmd
+
+:: config.cmd exits non-zero when it cannot pick a flag set for the target platform.
+:: Propagate that instead of falling through: the ENDLOCAL & ( SET ... ) block below ends
+:: on a successful SET, which would reset errorlevel to 0 and leave the caller running cl
+:: with an empty %CommonCompilerFlagsFinal% -- no /std:c17, /W4, /WX or /D_AMD64_.
 if %build% EQU 1 (
     CALL !DIR_CMD!\config.cmd
+    IF ERRORLEVEL 1 EXIT /B 1
 )
 
 :: Build artifacts are written in the current repository to the path
@@ -204,6 +212,13 @@ ENDLOCAL & (
     SET "CommonLibrarianFlags=%CommonLibrarianFlags%"
     SET "CommonCompilerFlagsBuildMFC=%CommonCompilerFlagsBuildMFC%"
     SET "ANALYZE_FLAGS=%ANALYZE_FLAGS%"
+    SET "FL_PLATFORM_SOURCES=%FL_PLATFORM_SOURCES%"
+    SET "FL_CORE_SOURCES=%FL_CORE_SOURCES%"
+
+    REM Environment variables from project.cmd
+    SET "DIR_FL=%DIR_FL%"
+    SET "WIN32_PLATFORM_LIBS=%WIN32_PLATFORM_LIBS%"
+    SET "WIN32_SUBSYSTEM=%WIN32_SUBSYSTEM%"
 
     REM Export all command-line options except for win32
     SET "options=%options%"

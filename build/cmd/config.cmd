@@ -6,8 +6,6 @@ SETLOCAL ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 :: Added _UNICODE and UNICODE so I can use Unicode strings in structs and
 :: whatnot.
 ::
-:: Need user32.lib to link MessageBox(), which es used on branch DAY001
-:: Need gdi32.lib to link PatBlt(), which es used on branch DAY002
 :: 2015.01.25 (Day004) I added /FC to get full path names in diagnostics. It's
 :: helpful when using Emacs to code and launch the debugger and executable
 
@@ -49,9 +47,9 @@ SETLOCAL ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 ::             declaring exm_env_. This warning is not a problem.
 ::   /wd28301: No annotations for first declaration of "var"
 
-:: Static code analysis flags for the "analyze" build option. Only
-:: faultline_analyze.cmd consumes these; no ordinary build line carries them, because
-:: several ordinary build lines also name third-party sources.
+:: Static code analysis flags for the "analyze" build option. Only the analyze script
+:: all.cmd calls consumes these; no ordinary build line carries them, because ordinary
+:: build lines also name third-party sources.
 ::
 :: /analyze:only     analyze without generating code, so the pass writes no object
 ::                   files and needs no link step.
@@ -60,7 +58,7 @@ SETLOCAL ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 ::                   the backlog is triaged.
 :: /analyze:external- skip analysis of headers marked external. The analyze script
 ::                   marks third_party and the SDK/CRT include path, which keeps
-::                   SQLite, cwalk, FNV, and the Windows headers out of the report.
+::                   third-party code and the Windows headers out of the report.
 SET ANALYZE_FLAGS=/analyze /analyze:only /analyze:WX- /analyze:external- /wd6246 /wd28301
 
 :: /FC use full pathnames in diagnostics
@@ -179,34 +177,25 @@ SET CommonLinkerFlags=/MACHINE:X64 /nologo /incremental:no /MANIFESTUAC /opt:ref
 :: strip the C-only /std:c17 and /experimental:c11atomics (cl rejects /std:c17
 :: outright when /std:c++20 is also present, and /experimental:c11atomics selects
 :: a C header), add /TP and /std:c++20. C++20 rather than C++17 because the tree
-:: uses designated initializers throughout. cpp_probe.cmd derived this the same
-:: way; this promotes that recipe from a probe to a real configuration. Both sets
-:: stay exported: sqlite3.c and cwalk compile as C regardless of which dialect the
-:: first-party sources use.
+:: uses designated initializers throughout. Both sets stay exported: third-party
+:: sources compile as C regardless of which dialect the first-party sources use.
 :: /wd5054: FNV64.c does arithmetic between two different enum types, which C++20
-:: deprecates and this build's /WX would otherwise turn into a hard error. C-only
-:: under /WX-, cpp_probe.cmd never saw it; the real dialect flags do. FNV64.c is
+:: deprecates and this build's /WX would otherwise turn into a hard error. FNV64.c is
 :: third-party, so the warning is suppressed rather than the source edited.
 ::
 :: /wd4996: the UCRT headers mark localtime() (and its siblings) deprecated only
 :: under C++, not C17, so flp_log_service.c's existing localtime() call is silent
-:: under the C dialect and a /WX error under this one. cpp_probe.cmd's /WX- never
-:: saw this class of warning either; expect more of them as first-party files that
-:: happen to call an "unsafe" CRT function are found.
+:: under the C dialect and a /WX error under this one. Expect more of them as
+:: first-party files that happen to call an "unsafe" CRT function are found.
 ::
 :: /wd4477 /wd4313: NULL is ((void *)0) in C but a plain 0 (int) in C++, so every
-:: %p-formatted assert macro called as FL_ASSERT_NOT_NULL(NULL) -- fl_assert_tests.c
-:: exercises exactly that -- passes an int where snprintf's %p wants void*. Silent
-:: under C, a /WX error here; the fix is the same NULL-literal difference the
-:: project already works around elsewhere, not a bug in the macro or the test.
+:: %p-formatted assert macro called as FL_ASSERT_NOT_NULL(NULL) passes an int where
+:: snprintf's %p wants void*. Silent under C, a /WX error here; the fix is the same
+:: NULL-literal difference the project already works around elsewhere, not a bug in
+:: the macro or the test.
 SET "CommonCompilerFlagsCXX=%CommonCompilerFlags:/std:c17=%"
 SET "CommonCompilerFlagsCXX=%CommonCompilerFlagsCXX:/experimental:c11atomics=%"
 SET "CommonCompilerFlagsCXX=%CommonCompilerFlagsCXX% /TP /std:c++20 /DFL_EXC_BACKEND_CXX /wd5054 /wd4996 /wd4477 /wd4313"
-
-::SET CStandardLibraryIncludeFlags=/I"%VSINSTALLDIR%SDK\ScopeCppSDK\SDK\include\ucrt"
-::SET CMicrosoftIncludeFlags=/I"%VSINSTALLDIR%SDK\ScopeCppSDK\SDK\include\um" ^
-::    /I"%VSINSTALLDIR%SDK\ScopeCppSDK\SDK\include\shared"
-::SET CRuntimeIncludeFlags=/I"%VSINSTALLDIR%SDK\ScopeCppSDK\VC\include"
 
 :: Debug and optimized compiler flags
 :: /MTd     link with LIBCMTD.LIB debug lib
@@ -258,11 +247,43 @@ IF %release% EQU 1 (
     SET CommonLibrarianFlags=/nologo
 )
 
+:: FaultLine source files, grouped by which side of the platform/core split they
+:: belong to (see fl_macros.h's FL_DECL_SPEC), for a build script that compiles them as
+:: separate translation units rather than #including them into a unity build.
+:: project.cmd sets DIR_FL, the root of the FaultLine tree.
+::
+:: FL_PLATFORM_SOURCES: the flp_* platform-side implementations plus the core arena/
+:: region allocator they depend on. Only ever belongs to the platform driver (the .exe).
+:: FL_CORE_SOURCES: the fla_* core-side accessors plus the shared FLExceptionReason
+:: constants. Belongs to whichever binary uses the core libraries: the platform driver's
+:: own embedded bootstrap (built with /DFL_EMBEDDED) and the application DLL (built with
+:: /DDLL_BUILD).
+::
+:: fl_exception.c is in the core list, not the platform list, because exceptions are not
+:: a service: every image compiles that one file exactly once and calls fl_push/fl_pop/
+:: fl_throw directly. Each module getting its own copy of the reason strings is by
+:: design, because FaultLine treats a reason as an address token, so FL_CATCH matches by
+:: pointer within a module and cross-module catches must use FL_CATCH_STR (see fl_try.h).
+SET FL_PLATFORM_SOURCES=%DIR_FL%\src\flp_log_service.c ^
+    %DIR_FL%\src\flp_stream_service.c %DIR_FL%\src\flp_timer_service.c ^
+    %DIR_FL%\src\flp_file_service.c %DIR_FL%\src\flp_memory_service.c ^
+    %DIR_FL%\src\arena.c ^
+    %DIR_FL%\src\arena_malloc.c %DIR_FL%\src\arena_dbg.c %DIR_FL%\src\arena_pool.c ^
+    %DIR_FL%\src\digital_search_tree.c %DIR_FL%\src\region.c ^
+    %DIR_FL%\src\region_node.c %DIR_FL%\src\region_os.c %DIR_FL%\src\lock_os.c
+:: fla_timer_service.c: a suite's fl_run_case times the test body through the timer
+:: service, so a suite that omits it does not link.
+SET FL_CORE_SOURCES=%DIR_FL%\src\fla_log_service.c ^
+    %DIR_FL%\src\fla_memory_service.c %DIR_FL%\src\fla_file_service.c ^
+    %DIR_FL%\src\fla_timer_service.c %DIR_FL%\src\fl_exception.c
+
 if %trace% EQU 1 (
     ECHO CommonCompilerFlagsFinal = %CommonCompilerFlagsFinal%
     ECHO CommonCompilerFlagsFinalCXX = %CommonCompilerFlagsFinalCXX%
     ECHO CommonLinkerFlagsFinal = %CommonLinkerFlagsFinal%
     ECHO CommonLibrarianFlags = %CommonLibrarianFlags%
+    ECHO FL_PLATFORM_SOURCES = %FL_PLATFORM_SOURCES%
+    ECHO FL_CORE_SOURCES = %FL_CORE_SOURCES%
 )
 
 :: It seems that the minimum subsystem is 5.02 for 64-bit Windows XP. Both "/subsystem:windows,5.1" and
@@ -281,4 +302,6 @@ ENDLOCAL & (
     SET "CommonLibrarianFlags=%CommonLibrarianFlags%"
     SET "CommonCompilerFlagsBuildMFC=%CommonCompilerFlagsBuildMFC%"
     SET "ANALYZE_FLAGS=%ANALYZE_FLAGS%"
+    SET "FL_PLATFORM_SOURCES=%FL_PLATFORM_SOURCES%"
+    SET "FL_CORE_SOURCES=%FL_CORE_SOURCES%"
 )

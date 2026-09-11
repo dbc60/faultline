@@ -31,7 +31,7 @@ SETLOCAL ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 ::  timed:      Enable timing metrics collection with ctime.
 ::  analyze:    Run MSVC code analysis (/analyze) over the first-party translation
 ::              units. A separate pass after the build; findings are reported but
-::              do not fail it. See faultline_analyze.cmd.
+::              do not fail it. all.cmd runs the repository's analyze script.
 ::  cxx:        Build test suites as C++ (CommonCompilerFlagsFinalCXX, and the
 ::              FL_EXC_BACKEND_CXX exception backend) instead of the C/setjmp
 ::              default. Drivers, hosts, libraries and examples are always C: a

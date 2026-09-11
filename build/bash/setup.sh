@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# setup.sh - Derive directory paths, create output directories, handle clean.
+# setup.sh - Derive directory paths, handle clean, and source project.sh and config.sh.
 # Source this script after options.sh; do not execute it directly.
 # Expects options from options.sh to be set ($build, $test, $clean, $cleanall,
 # $debug, $release, $verbose, $trace).
@@ -11,7 +11,7 @@ _SETUP_SH_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DIR_REPO="$(cd "$_SETUP_SH_DIR/../.." && pwd)"
 DIR_INCLUDE="$DIR_REPO/include"
 DIR_THIRD_PARTY="$DIR_REPO/third_party"
-unset _SETUP_SH_DIR
+DIR_SRC="$DIR_REPO/src"
 
 # If build is not set, enable it when test is requested or when no clean flags are set
 if [[ $build -eq 0 ]]; then
@@ -33,7 +33,7 @@ else
     BUILD_TYPE=debug
 fi
 
-# Output directory structure: target/clang/x64/{debug|release}/{bin,lib,obj}
+# Output directory structure: target/clang/x64/{debug|release}/{bin,lib,obj}. The clang
 DIR_TARGET="$DIR_REPO/target"
 DIR_OUT_BASE="$DIR_TARGET/clang"
 DIR_OUT_PLATFORM="$DIR_OUT_BASE/x64"
@@ -42,16 +42,25 @@ DIR_OUT_OBJ="$DIR_OUT_BUILD/obj"
 DIR_OUT_LIB="$DIR_OUT_BUILD/lib"
 DIR_OUT_BIN="$DIR_OUT_BUILD/bin"
 
+# Where all.sh gathers the binaries and runs the suites.
+DIR_TEST="$DIR_REPO/test_clang"
+
 if [[ $trace -eq 1 ]]; then
     echo "SETUP.SH: directories"
     echo "  DIR_REPO=$DIR_REPO"
     echo "  DIR_INCLUDE=$DIR_INCLUDE"
+    echo "  DIR_THIRD_PARTY=$DIR_THIRD_PARTY"
+    echo "  DIR_SRC=$DIR_SRC"
     echo "  BUILD_TYPE=$BUILD_TYPE"
     echo "  DIR_OUT_BUILD=$DIR_OUT_BUILD"
     echo "  DIR_OUT_BIN=$DIR_OUT_BIN"
     echo "  DIR_OUT_LIB=$DIR_OUT_LIB"
     echo "  DIR_OUT_OBJ=$DIR_OUT_OBJ"
+    echo "  DIR_TEST=$DIR_TEST"
 fi
+
+# Repository-specific settings, which config.sh and build_test_dll.sh read
+source "$_SETUP_SH_DIR/project.sh"
 
 # Handle cleanall: remove the entire clang target tree
 if [[ $cleanall -eq 1 ]]; then
@@ -69,12 +78,9 @@ if [[ $clean -eq 1 ]]; then
     rm -rf "$DIR_OUT_BUILD"
 fi
 
-# Source compiler/linker configuration when building
+# Source compiler/linker configuration and create output directories when building
 if [[ $build -eq 1 ]]; then
-    source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/config.sh"
-fi
-
-# Create output directories when building
-if [[ $build -eq 1 ]]; then
+    source "$_SETUP_SH_DIR/config.sh"
     mkdir -p "$DIR_OUT_BIN" "$DIR_OUT_LIB" "$DIR_OUT_OBJ"
 fi
+unset _SETUP_SH_DIR
