@@ -8,7 +8,7 @@
  * See LICENSE.txt for copyright and licensing information about this file.
  */
 #include "faultline_commands.h"
-#include <faultline_sqlite.h>
+#include <faultline_dal.h> // faultline_baseline_reset
 #include <stdio.h>
 
 /**
@@ -24,12 +24,9 @@ COMMAND_HANDLER(baseline_reset_cmd) {
     char const *suite = get_string_option(cmd, "suite", NULL);
     char const *test  = get_string_option(cmd, "test", NULL);
 
-    int n = faultline_reset_baselines(ectx->db, suite, test);
-    if (n < 0) {
-        printf("Error re-pinning baselines\n");
-    } else {
-        printf("Re-pinned %d baseline%s to the latest run.\n", n, n == 1 ? "" : "s");
-    }
+    i64 const n = faultline_baseline_reset(ectx->db, suite, test);
+    printf("Re-pinned %lld baseline%s to the latest run.\n", (long long)n,
+           n == 1 ? "" : "s");
 }
 
 /**
@@ -40,9 +37,11 @@ COMMAND_HANDLER(baseline_reset_cmd) {
  */
 COMMAND_HANDLER(baseline_cmd) {
     if (cmd->subcommand != NULL) {
-        ExecutionContext *parent  = (ExecutionContext *)cmd;
-        ExecutionContext  sub_ctx = *parent;
-        sub_ctx.cmd               = *cmd->subcommand;
+        ExecutionContext *parent = (ExecutionContext *)cmd;
+        require_database(parent, "baseline");
+
+        ExecutionContext sub_ctx = *parent;
+        sub_ctx.cmd              = *cmd->subcommand;
         sub_ctx.cmd.command->handler((RuntimeCommand *)&sub_ctx);
     } else {
         fprintf(stderr, "Error: 'baseline' requires a subcommand (reset)\n");

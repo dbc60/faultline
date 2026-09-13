@@ -63,6 +63,7 @@
 
 /* -- Persistence & reporting ------------------------------------------------ */
 #include "faultline_sqlite.c"
+#include "faultline_dal.c"
 #include "output_junit.c"
 
 /* -- Command layer (option/command tables + handlers) ----------------------- */

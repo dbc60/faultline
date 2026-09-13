@@ -24,6 +24,8 @@ extern "C" {
  *
  * It is loosely ordered from the best result to the worst result.
  *
+ * The values are stored in the results database, so each keeps its number: add a new
+ * value at the end.
  */
 typedef enum {
     FL_NOT_RUN,      ///< not executed

@@ -148,7 +148,8 @@ FaultLine is organized into **6 modular component libraries** that can be used i
 - Implementation:
   - `src/faultline_driver.c` - Test driver logic
   - `src/faultline_context.c` - Context management
-  - `src/faultline_sqlite.c` - SQLite persistence
+  - `src/faultline_sqlite.c` - Opens the results database and applies its schema
+  - `src/faultline_dal.c` - Data-access layer: records runs and reads reports (slices in `src/faultline_dal_*.c`)
   - `src/fault_injector.c`, `src/fault_malloc.c` - Fault injection
   - `third_party/sqlite/sqlite3.c` - Embedded SQLite
 - Command-line interface: `cmd/faultline/main_windows.c`
@@ -352,24 +353,32 @@ above (which also covers the separate **core/platform** portability axis):
 ### FaultLine Database Features
 
 **Command-line Database Options**:
-- `--db PATH` or `--database PATH` - Use specified database file
-- `--no-db` - Disable database storage
-- Default: `./faultline_results.sqlite` if no database option specified
+- `--db PATH` - Use specified database file
+- `--no-db` - Disable database storage; `show` and `baseline` then exit 1
+- Default: `./faultline.sqlite` if no database option specified
+- A file holding the schema that preceded version 1 is refused and left unchanged: delete it or pass `--db` with a new path
 
 **Query Commands**:
-- `--show-runs` - Display recent test runs with summary statistics
-- `--show-failures` - Show test failures with filtering options
-- `--show-run ID` - Detailed results for specific run
-- `--show-suite NAME` - Suite summary statistics
-- `--limit N` - Control result count (default: show all)
+- `show results [--failures] [--suite NAME] [--limit N]` - Recent runs, or the failures of each suite's latest run
+- `show result ID` - One run's totals and each case's result
+- `show suites [--limit N] [-v]` - Suites, most recently run first
+- `show suite NAME [-v]` - One suite's totals; `-v` adds its cases
+- `show cases [--suite NAME] [--limit N] [-v]` - Case history; `-v` adds baseline against latest
+- `show hotspots [--suite NAME] [--limit N]` - Source locations with the most faults
+- `show trends [--suite NAME] [--limit N]` - Each suite's totals per day, with the change from the day before
+- `show regressions [--suite NAME] [--limit N] [--threshold PCT]` - Cases whose latest result lost fault sites, or ran slower by more than the threshold, against their baseline
+- `baseline reset [--suite NAME] [--test NAME]` - Make each matching case's latest run its baseline
+- `--limit N` - Control result count (0 = no limit; `show results` and `show suites` default to 10)
 - `--log-level LEVEL` - Set logging level (error|warn|info|debug)
 
-**Database Schema**:
-- `test_suites` - Test suite metadata
-- `test_runs` - Individual test execution runs
-- `test_case_executions` - Results for each test case
-- `fault_injections` - Fault injection attempt details
-- `raw_faults` - Detailed fault information when available
+**Database Schema** (version 1, in `PRAGMA user_version`; defined in `src/faultline_sqlite.c`):
+- `suites` - One row per suite name
+- `cases` - One row per case name within a suite, with the run it is compared against (its baseline)
+- `runs` - One row per finished suite run, written after its last case in one savepoint
+- `results` - One row per case per run
+- `faults` - One row per fault a result recorded
+- `run_totals` (view) - Each run's counts, computed from `results`
+- All reads and writes go through the data-access layer: `include/faultline_dal.h`, `src/faultline_dal*.c`
 
 ### Performance Analysis Tools
 

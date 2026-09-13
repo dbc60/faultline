@@ -18,7 +18,7 @@
 #include <faultline/fl_abi.h> // FLAbiInfo, fl_abi_check, fla_get_abi_fn, FLA_GET_ABI_STR
 #include <faultline/fl_context.h>      // FLContext, faultline_initialize, etc.
 #include <faultline_driver.h>          // faultline_run_test
-#include <faultline_sqlite.h>          // faultline_record_test_run_start, etc.
+#include <faultline_dal.h>             // faultline_run_record
 #include <faultline/fl_types.h>        // FLFailureType, FLTestPhase
 #include <faultline/fl_result_codes.h> // FL_PASS, etc.
 #if defined(FL_PLATFORM_BUILD)
@@ -264,15 +264,10 @@ static void display_test_results(FLContext *fctx, FLTestSuite *ts) {
 
 static void exercise_test_suite(FLContext *fctx, FLTestSuite *ts, sqlite3 *db,
                                 JUnitXML *junit) {
-    int run_id = -1;
-
     // faultline_begin stamps fctx->run_start_time and faultline_end clears it
     // after each suite, so the stamp must be taken before the run record is
     // written.
     faultline_begin(fctx, ts);
-    if (db != NULL) {
-        run_id = faultline_record_test_run_start(db, ts->name, fctx->run_start_time);
-    }
 
     if (!faultline_has_more(fctx)) {
         LOG_WARN("Faultline", "suite %s has no test cases", ts->name);
@@ -286,21 +281,20 @@ static void exercise_test_suite(FLContext *fctx, FLTestSuite *ts, sqlite3 *db,
     display_test_results(fctx, ts);
     junit_write(junit, fctx);
 
-    if (db != NULL && run_id > 0) {
-        // Reduce the number of writes to disk by writing test suite results in one
-        // transaction instead of one per test case.
-        faultline_db_begin_transaction(db);
-        faultline_record_test_run_complete(db, run_id, fctx);
-        size_t n = faultline_get_results_count(fctx);
-        for (size_t i = 0; i < n; i++) {
-            FLTestSummary *summary
-                = faultline_test_summary_buffer_get(&fctx->results, i);
-            char const *test_name = (summary->index < ts->count)
-                                        ? ts->test_cases[summary->index]->name
-                                        : "Null Test Case Name";
-            faultline_record_test_summary(db, run_id, summary, test_name);
+    // The run is written only after every case has finished, so a suite that crashes
+    // records nothing. A failed write is logged, and the remaining suites still run.
+    if (db != NULL) {
+        FL_TRY {
+            faultline_run_record(db, fctx);
         }
-        faultline_db_commit_transaction(db);
+        FL_CATCH_ALL {
+            char const *details = (FL_DETAILS != NULL) ? FL_DETAILS : "";
+            LOG_ERROR("Faultline", "Failed to record suite %s: %s: %s", ts->name,
+                      FL_REASON, details);
+            fprintf(stderr, "Error: failed to record suite %s: %s: %s\n", ts->name,
+                    FL_REASON, details);
+        }
+        FL_END_TRY;
     }
 
     faultline_end(fctx);

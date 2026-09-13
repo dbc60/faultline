@@ -68,7 +68,7 @@ int main(int argc, char **argv) {
         // Initialize database unless --no-db is specified
         if (!has_option(parsed_cmd, "no-db")) {
             char const *db_path
-                = get_string_option(parsed_cmd, "db", "./faultline_results.sqlite");
+                = get_string_option(parsed_cmd, "db", FL_DEFAULT_DB_PATH);
             FL_TRY {
                 db = faultline_init_database(db_path);
                 if (db == NULL) {
@@ -76,7 +76,12 @@ int main(int argc, char **argv) {
                 }
             }
             FL_CATCH_ALL {
-                LOG_ERROR(module, "Database initialization failed: %s", FL_REASON);
+                // Print as well as log: the log may not reach the console, and the
+                // details say how to recover from a refused file.
+                char const *details = (FL_DETAILS != NULL) ? FL_DETAILS : "";
+                LOG_ERROR(module, "Database initialization failed: %s: %s", FL_REASON,
+                          details);
+                fprintf(stderr, "Error: %s: %s\n", FL_REASON, details);
                 db = NULL;
             }
             FL_END_TRY;
@@ -111,7 +116,10 @@ int main(int argc, char **argv) {
         exit_code = 1;
     }
     FL_CATCH_ALL {
-        LOG_ERROR(module, "Unhandled exception: %s", FL_REASON);
+        char const *details = (FL_DETAILS != NULL) ? FL_DETAILS : "";
+        LOG_ERROR(module, "Unhandled exception: %s: %s", FL_REASON, details);
+        fprintf(stderr, "Error: %s%s%s\n", FL_REASON, (details[0] != '\0') ? ": " : "",
+                details);
         exit_code = 1;
     }
     FL_END_TRY;

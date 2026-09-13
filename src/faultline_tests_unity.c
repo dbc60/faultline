@@ -20,6 +20,8 @@
 #include "faultline_driver.c"
 #include "faultline_sqlite.c"
 #include "faultline_sqlite_test.c"
+#include "faultline_dal.c"
+#include "faultline_dal_test.c"
 #include "faultline_test.c"
 #include "fl_exception.c"
 #include "fla_log_service.c"

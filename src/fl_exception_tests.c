@@ -140,7 +140,7 @@ FL_TEST_SETUP_CLEANUP("Expected Test Setup Failure", setup_failure,
     ;
 }
 
-FL_TEST_SETUP_CLEANUP("Expected Test Setup Failure", cleanup_failure, fl_default_setup,
+FL_TEST_SETUP_CLEANUP("Expected Test Cleanup Failure", cleanup_failure, fl_default_setup,
                       test_expected_failure) {
     ;
 }

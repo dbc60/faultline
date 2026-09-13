@@ -21,6 +21,9 @@
 extern "C" {
 #endif
 
+// The database file used when --db is not given.
+#define FL_DEFAULT_DB_PATH "./faultline.sqlite"
+
 typedef struct FLPlatformAPI FLPlatformAPI;
 
 /**
@@ -48,6 +51,17 @@ typedef struct {
     FLPlatformAPI const *platform; // split core's OS access; NULL in the monolithic
                                    // driver, which reaches the OS directly
 } ExecutionContext;
+
+// Thrown by require_database.
+extern FLExceptionReason command_no_database;
+
+/**
+ * @brief Throw command_no_database when no database is open.
+ *
+ * A failed open has already printed why, and --no-db is deliberate, so the exception's
+ * details only name the command that needed the database.
+ */
+void require_database(ExecutionContext const *ectx, char const *command);
 
 // Get the faultline command table
 FormalCommand const *get_faultline_commands(void);

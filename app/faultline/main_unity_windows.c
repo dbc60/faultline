@@ -18,6 +18,7 @@
 #include "faultline_context.c"
 #include "faultline_driver.c"
 #include "faultline_sqlite.c"
+#include "faultline_dal.c"
 #include "fl_exception.c"
 #include "fl_threads.c"
 #include "flp_log_service.c"

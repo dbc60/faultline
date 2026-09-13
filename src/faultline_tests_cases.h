@@ -15,6 +15,7 @@
 #include <faultline/fl_test.h>     // FL_TYPE_TEST_DECL
 #include "faultline_test.h"        // TestDriverData
 #include "faultline_sqlite_test.h" // TestSchema
+#include "faultline_dal_test.h"    // TestDal
 
 // Driver tests (src/faultline_test.c)
 FL_TYPE_TEST_DECL(TestDriverData, load_driver_test);
@@ -30,21 +31,34 @@ FL_TYPE_TEST_DECL(TestDriverData, injection_failure_recording);
 FL_TYPE_TEST_DECL(TestDriverData, result_validation);
 
 // SQLite schema tests (src/faultline_sqlite_test.c)
-FL_TYPE_TEST_DECL(TestSchema, schema_creates_database);
-FL_TYPE_TEST_DECL(TestSchema, schema_creates_core_tables);
-FL_TYPE_TEST_DECL(TestSchema, schema_sets_version);
-FL_TYPE_TEST_DECL(TestSchema, schema_creates_foreign_keys);
-FL_TYPE_TEST_DECL(TestSchema, schema_creates_analysis_tables);
-FL_TYPE_TEST_DECL(TestSchema, schema_creates_views);
-FL_TYPE_TEST_DECL(TestSchema, schema_counts_successes);
-FL_TYPE_TEST_DECL(TestSchema, schema_tracks_baseline);
-FL_TYPE_TEST_DECL(TestSchema, schema_reports_regressions);
-FL_TYPE_TEST_DECL(TestSchema, schema_resets_baseline);
-FL_TYPE_TEST_DECL(TestSchema, schema_reports_trends);
-FL_TYPE_TEST_DECL(TestSchema, schema_reports_hotspots);
-FL_TYPE_TEST_DECL(TestSchema, schema_migrates_v1);
+FL_TYPE_TEST_DECL(TestSchema, schema_stamps_fresh_database);
+FL_TYPE_TEST_DECL(TestSchema, schema_reopen_is_idempotent);
+FL_TYPE_TEST_DECL(TestSchema, schema_creates_every_table);
+FL_TYPE_TEST_DECL(TestSchema, schema_creates_every_index);
+FL_TYPE_TEST_DECL(TestSchema, schema_creates_every_view);
+FL_TYPE_TEST_DECL(TestSchema, schema_enforces_foreign_keys);
+FL_TYPE_TEST_DECL(TestSchema, schema_checks_match_enums);
+FL_TYPE_TEST_DECL(TestSchema, schema_runs_in_wal);
+FL_TYPE_TEST_DECL(TestSchema, schema_refuses_future_version);
+FL_TYPE_TEST_DECL(TestSchema, schema_refuses_legacy_schema);
+FL_TYPE_TEST_DECL(TestSchema, schema_failure_rolls_back);
 FL_TYPE_TEST_DECL(TestSchema, schema_invalid_path_throws);
-FL_TYPE_TEST_DECL(TestSchema, schema_permission_denied_throws);
-FL_TYPE_TEST_DECL(TestSchema, schema_existing_database_succeeds);
+FL_TYPE_TEST_DECL(TestSchema, schema_read_only_throws);
+
+// Data-access layer tests (src/faultline_dal_test.c)
+FL_TYPE_TEST_DECL(TestDal, dal_record_round_trips);
+FL_TYPE_TEST_DECL(TestDal, dal_record_refuses_duplicates);
+FL_TYPE_TEST_DECL(TestDal, dal_run_totals_match);
+FL_TYPE_TEST_DECL(TestDal, dal_baseline_first_sighting);
+FL_TYPE_TEST_DECL(TestDal, dal_run_delete_cascades);
+FL_TYPE_TEST_DECL(TestDal, dal_run_list_newest_first);
+FL_TYPE_TEST_DECL(TestDal, dal_run_find_results);
+FL_TYPE_TEST_DECL(TestDal, dal_failures_latest_by_id);
+FL_TYPE_TEST_DECL(TestDal, dal_suite_list_find);
+FL_TYPE_TEST_DECL(TestDal, dal_case_history);
+FL_TYPE_TEST_DECL(TestDal, dal_regressions_classified);
+FL_TYPE_TEST_DECL(TestDal, dal_baseline_reset);
+FL_TYPE_TEST_DECL(TestDal, dal_trends_by_day);
+FL_TYPE_TEST_DECL(TestDal, dal_hotspots_ranked);
 
 #endif // FAULTLINE_TESTS_CASES_H_

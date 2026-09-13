@@ -9,7 +9,24 @@
  */
 #include "faultline_commands.h"
 
-#include <string.h> // strcmp
+#include <faultline/fl_try.h> // FL_THROW_DETAILS
+#include <string.h>           // strcmp
+
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
+FLExceptionReason command_no_database = "no database is open";
+
+#if defined(__cplusplus)
+}
+#endif
+
+void require_database(ExecutionContext const *ectx, char const *command) {
+    if (ectx->db == NULL) {
+        FL_THROW_DETAILS(command_no_database, "'%s' needs the results database", command);
+    }
+}
 
 // ============================================================================
 // Option Definitions
@@ -18,7 +35,7 @@
 // CoFmmon options (database and logging), shared by commands that dispatch to
 // subcommands (show, baseline) so the global options may precede the subcommand.
 static FormalOption common_options[] = {
-    {"d", "db", "Database file path (default: ./faultline_results.sqlite)", true, NULL},
+    {"d", "db", "Database file path (default: " FL_DEFAULT_DB_PATH ")", true, NULL},
     {NULL, "no-db", "Disable database storage (run command only)", false, NULL},
     {"l", "log-level", "Set log verbosity (error|warn|info|debug)", true, NULL},
     {NULL, "log-file", "Log output destination file", true, NULL},
@@ -27,7 +44,7 @@ static FormalOption common_options[] = {
 
 // Run command options
 static FormalOption run_options[] = {
-    {"d", "db", "Database file path (default: ./faultline_results.sqlite)", true, NULL},
+    {"d", "db", "Database file path (default: " FL_DEFAULT_DB_PATH ")", true, NULL},
     {NULL, "no-db", "Disable database storage", false, NULL},
     {"l", "log-level", "Set log verbosity (error|warn|info|debug)", true, NULL},
     {NULL, "log-file", "Log output destination file", true, NULL},

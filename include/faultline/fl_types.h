@@ -20,6 +20,9 @@ extern "C" {
 
 /**
  * @brief Test execution phase enumeration for failure categorization
+ *
+ * The values are stored in the results database, so each keeps its number: add a new
+ * value at the end.
  */
 typedef enum {
     FL_DISCOVERY_PHASE, ///< discovery phase - main path execution without fault
@@ -30,6 +33,9 @@ typedef enum {
 
 /**
  * @brief Test failure type enumeration for detailed categorization
+ *
+ * The values are stored in the results database, so each keeps its number: add a new
+ * value at the end.
  */
 typedef enum {
     FL_FAILURE_NONE,        ///< no failure occurred (test passed)
