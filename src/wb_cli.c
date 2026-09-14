@@ -356,8 +356,7 @@ static bool wb_flag_assign(WBFlag *flag, char const *text, WBCliIO const *io) {
         } else if (strcmp(text, "false") == 0 || strcmp(text, "0") == 0) {
             flag->value.b = false;
         } else {
-            fprintf(io->err, "invalid boolean value \"%s\" for --%s\n", text,
-                    flag->name);
+            fprintf(io->err, "invalid boolean value \"%s\" for --%s\n", text, flag->name);
             return false;
         }
         break;
@@ -368,8 +367,7 @@ static bool wb_flag_assign(WBFlag *flag, char const *text, WBCliIO const *io) {
 
     case WB_FLAG_I64:
         if (!wb_parse_i64(text, &flag->value.i)) {
-            fprintf(io->err, "invalid integer value \"%s\" for --%s\n", text,
-                    flag->name);
+            fprintf(io->err, "invalid integer value \"%s\" for --%s\n", text, flag->name);
             return false;
         }
         break;
@@ -657,8 +655,7 @@ int wb_command_execute(WBCommand *root, WBCliIO const *io, int argc, char **argv
             } else if (arg[2] != '\0') {
                 // Clustered shorthands (-abc) are not supported; say so rather than
                 // silently reading it as a long name.
-                fprintf(io->err, "combined short flags are not supported: \"%s\"\n",
-                        arg);
+                fprintf(io->err, "combined short flags are not supported: \"%s\"\n", arg);
                 wb_command_usage(cmd, io);
                 return WB_CLI_USAGE;
             }

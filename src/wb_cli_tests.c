@@ -329,8 +329,8 @@ static void build_tree(WbTestTree *tree) {
     wb_command_add(&tree->group, &tree->leaf);
 }
 
-FL_TYPE_TEST_SETUP_CLEANUP("A command's name is its use up to the first space",
-                           WbCliTest, name_is_first_word, setup_cli, cleanup_cli) {
+FL_TYPE_TEST_SETUP_CLEANUP("A command's name is its use up to the first space", WbCliTest,
+                           name_is_first_word, setup_cli, cleanup_cli) {
     WbTestTree tree;
     build_tree(&tree);
     FL_UNUSED(t);
@@ -358,8 +358,8 @@ FL_TYPE_TEST_SETUP_CLEANUP("Find walks as deep as the words go", WbCliTest,
     FL_ASSERT_EQ_INT(consumed, 2); // "magic" is an argument, not part of the path
 }
 
-FL_TYPE_TEST_SETUP_CLEANUP("Find stops at an unknown word", WbCliTest,
-                           find_stops_unknown, setup_cli, cleanup_cli) {
+FL_TYPE_TEST_SETUP_CLEANUP("Find stops at an unknown word", WbCliTest, find_stops_unknown,
+                           setup_cli, cleanup_cli) {
     WbTestTree tree;
     build_tree(&tree);
 
@@ -503,13 +503,11 @@ FL_TYPE_TEST_SETUP_CLEANUP("A second run does not inherit the first run's flags"
     build_flag_tree(&tree);
 
     int argc = split(t, "create -d first -c 99 -f");
-    FL_ASSERT_EQ_INT(wb_command_execute(&tree.root, &t->io, argc, t->argv, t),
-                     WB_CLI_OK);
+    FL_ASSERT_EQ_INT(wb_command_execute(&tree.root, &t->io, argc, t->argv, t), WB_CLI_OK);
     FL_ASSERT_STR_EQ(wb_flag_string(&tree.leaf, "description"), "first");
 
     argc = split(t, "create");
-    FL_ASSERT_EQ_INT(wb_command_execute(&tree.root, &t->io, argc, t->argv, t),
-                     WB_CLI_OK);
+    FL_ASSERT_EQ_INT(wb_command_execute(&tree.root, &t->io, argc, t->argv, t), WB_CLI_OK);
 
     FL_ASSERT_TRUE(wb_flag_string(&tree.leaf, "description") == NULL);
     FL_ASSERT_EQ_INT64(wb_flag_i64(&tree.leaf, "count"), (i64)7);
@@ -652,8 +650,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("The run function receives the user pointer", WbCliTe
     build_tree(&tree);
 
     int const argc = split(t, "module enable magic");
-    FL_ASSERT_EQ_INT(wb_command_execute(&tree.root, &t->io, argc, t->argv, t),
-                     WB_CLI_OK);
+    FL_ASSERT_EQ_INT(wb_command_execute(&tree.root, &t->io, argc, t->argv, t), WB_CLI_OK);
     FL_ASSERT_TRUE(t->ran);
     FL_ASSERT_EQ_PTR(t->seen_user, (void *)t);
     FL_ASSERT_STR_EQ(t->seen_argv[0], "magic");
@@ -712,8 +709,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("-h is the same as --help", WbCliTest, help_shorthand
     build_tree(&tree);
 
     int const argc = split(t, "module enable -h");
-    FL_ASSERT_EQ_INT(wb_command_execute(&tree.root, &t->io, argc, t->argv, t),
-                     WB_CLI_OK);
+    FL_ASSERT_EQ_INT(wb_command_execute(&tree.root, &t->io, argc, t->argv, t), WB_CLI_OK);
     FL_ASSERT_FALSE(t->ran);
     FL_ASSERT_TRUE(strstr(captured(t, t->io.out), "Usage:") != NULL);
 }

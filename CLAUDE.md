@@ -28,7 +28,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Code Formatting
 - **Clang-format configuration**: `.clang-format` contains the project's formatting rules
-- Format follows a custom style with 4-space indentation, 89-column limit, and specific alignment rules
+- Format follows a custom style with 4-space indentation, 90-column limit, and specific alignment rules
 
 ### Documentation Generation
 - **Generate docs**: `doxygen Doxyfile` - Generates HTML documentation in `docs/html/`
