@@ -102,12 +102,18 @@ IF ERRORLEVEL 1 GOTO :ERROR
 CALL :ANALYZE src\malloc_cleanup_config_tests.c "/DDLL_BUILD"
 IF ERRORLEVEL 1 GOTO :ERROR
 
+CALL :ANALYZE src\wb_cli_tests.c "/DDLL_BUILD"
+IF ERRORLEVEL 1 GOTO :ERROR
+
+CALL :ANALYZE src\faultline_cli_tests.c "/DDLL_BUILD /I%DIR_REPO%\app\faultline"
+IF ERRORLEVEL 1 GOTO :ERROR
+
 :: The per-component suites built by build_test_dll.cmd. They are listed as bare stems
 :: rather than as their own CALL lines because they differ in nothing this pass cares
 :: about: each is one src\<stem>.c compiled /DDLL_BUILD. Add a stem here when a new
 :: suite script is added beside the others.
 SET SUITE_TUS=arena_tests arena_pool_tests bits_tests buffer_tests chunk_tests ^
-    command_tests digital_search_tree_tests dlist_tests fault_injector_tests ^
+    digital_search_tree_tests dlist_tests fault_injector_tests ^
     fl_assert_tests fl_exception_tests fl_log_service_tests flp_file_service_tests ^
     flp_memory_service_tests flp_stream_service_tests fnv_tests math_tests ^
     region_tests set_tests timer_tests

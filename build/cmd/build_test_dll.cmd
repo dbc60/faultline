@@ -116,8 +116,8 @@ if %test% EQU 1 (
     )
     pushd %DIR_OUT_BIN%
     .\faultline.exe run %_BTDLL_DLL%.dll
-    .\faultline.exe show results --limit 1
-    .\faultline.exe show results --failures
+    .\faultline.exe result list --limit 1
+    .\faultline.exe failure list
     popd
 )
 GOTO :_btdll_success

@@ -81,7 +81,7 @@ Check:
   into Faultline may use those role words freely. The documented exception is
   `fl_exception.h`, whose `fl_expected_failure` genuinely encodes test semantics.
 - New service work should mirror the established shape: contract header, platform provider,
-  consumer accessor, injection through `GetProcAddress` in `command_run.c` and installation
+  consumer accessor, injection through `GetProcAddress` in `faultline_cli_commands_run.c` and installation
   into the core's globals in `faultline_app_main.c`. A new service that skips a piece of that
   pattern needs a stated reason.
 - **Bootstrap order**: the platform host opens its default log file before the memory service

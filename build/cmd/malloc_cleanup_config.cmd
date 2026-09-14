@@ -75,7 +75,7 @@ if %test% EQU 1 (
     )
     pushd test
     .\faultline.exe run malloc_cleanup_config_tests.dll
-    .\faultline.exe show results --limit 1
+    .\faultline.exe result list --limit 1
     popd
 )
 GOTO :SUCCESS

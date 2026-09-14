@@ -110,7 +110,7 @@ if %test% EQU 1 (
     )
     pushd %DIR_OUT_BIN%
     .\win32_faultline.exe run faultline_tests.dll
-    .\win32_faultline.exe show results --limit 1
+    .\win32_faultline.exe result list --limit 1
     popd
 )
 GOTO :SUCCESS

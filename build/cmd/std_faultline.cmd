@@ -104,13 +104,10 @@ IF %build% EQU 1 (
     /I%DIR_INCLUDE% /I"%DIR_THIRD_PARTY%" /I"%DIR_THIRD_PARTY%\cwalk\include" ^
     /I%DIR_REPO%\src ^
     %DIR_REPO%\app\faultline\main_windows.c ^
-    %DIR_REPO%\app\faultline\faultline_commands.c ^
-    %DIR_REPO%\app\faultline\command_run.c ^
-    %DIR_REPO%\app\faultline\command_show.c ^
-    %DIR_REPO%\app\faultline\command_baseline.c ^
-    %DIR_REPO%\app\faultline\command_help.c ^
+    %DIR_REPO%\app\faultline\faultline_cli_commands.c ^
+    %DIR_REPO%\app\faultline\faultline_cli.c ^
     %DIR_REPO%\src\arena.c %DIR_REPO%\src\arena_dbg.c %DIR_REPO%\src\arena_malloc.c ^
-    %DIR_REPO%\src\buffer.c %DIR_REPO%\src\command.c ^
+    %DIR_REPO%\src\buffer.c %DIR_REPO%\src\wb_cli.c ^
     %DIR_REPO%\src\digital_search_tree.c %DIR_REPO%\src\fault_injector.c ^
     %DIR_REPO%\src\faultline_context.c %DIR_REPO%\src\faultline_driver.c ^
     %DIR_REPO%\src\faultline_sqlite.c %DIR_REPO%\src\faultline_dal.c ^
@@ -146,7 +143,7 @@ if %test% EQU 1 (
     )
     pushd %DIR_OUT_BIN%
     .\std_faultline.exe run std_faultline_tests.dll
-    .\std_faultline.exe show results --limit 1
+    .\std_faultline.exe result list --limit 1
     popd
 )
 GOTO :SUCCESS

@@ -12,7 +12,7 @@
 #include "arena_dbg.c"
 #include "arena_malloc.c"
 #include "buffer.c"
-#include "command.c"
+#include "wb_cli.c"
 #include "digital_search_tree.c"
 #include "fault_injector.c"
 #include "faultline_context.c"
@@ -37,10 +37,7 @@
 #include "win_timer.c"
 
 // Command infrastructure
-#include "faultline_commands.c"
-#include "command_run.c"
-#include "command_show.c"
-#include "command_baseline.c"
-#include "command_help.c"
+#include "faultline_cli_commands.c"
+#include "faultline_cli.c"
 
 #include "main_windows.c"

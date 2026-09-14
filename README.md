@@ -132,10 +132,10 @@ Pass `--db` to store results in a SQLite database and query them later:
 ```cmd
 faultline.exe run --db results.sqlite my_tests.dll
 
-faultline.exe show results  --db results.sqlite
-faultline.exe show result 1 --db results.sqlite
-faultline.exe show suites   --db results.sqlite
-faultline.exe show hotspots --db results.sqlite
+faultline.exe result list   --db results.sqlite
+faultline.exe result show 1 --db results.sqlite
+faultline.exe suite list    --db results.sqlite
+faultline.exe hotspot list  --db results.sqlite
 ```
 
 Run `faultline.exe help` or `faultline.exe help <command>` for the full list of options.

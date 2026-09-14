@@ -51,8 +51,9 @@ bash "$SCRIPT_DIR/set.sh"                   "${_forward_args[@]}"
 bash "$SCRIPT_DIR/timer.sh"                 "${_forward_args[@]}"
 bash "$SCRIPT_DIR/fault_injector.sh"        "${_forward_args[@]}"
 bash "$SCRIPT_DIR/fl_assert.sh"             "${_forward_args[@]}"
-bash "$SCRIPT_DIR/command.sh"               "${_forward_args[@]}"
+bash "$SCRIPT_DIR/wb_cli_tests.sh"          "${_forward_args[@]}"
 bash "$SCRIPT_DIR/faultline.sh"             "${_forward_args[@]}"
+bash "$SCRIPT_DIR/faultline_cli_tests.sh"   "${_forward_args[@]}"
 bash "$SCRIPT_DIR/faultline_split.sh"       "${_forward_args[@]}"
 bash "$SCRIPT_DIR/malloc_cleanup_config.sh" "${_forward_args[@]}"
 bash "$SCRIPT_DIR/memory_service.sh"        "${_forward_args[@]}"
@@ -118,7 +119,8 @@ if [[ $_has_test -eq 1 ]]; then
         timer_tests.dll \
         fault_injector_tests.dll \
         fl_assert_tests.dll \
-        command_tests.dll \
+        wb_cli_tests.dll \
+        faultline_cli_tests.dll \
         faultline_tests.dll \
         malloc_cleanup_config_tests.dll \
         flp_memory_service_tests.dll \
@@ -134,14 +136,14 @@ if [[ $_has_test -eq 1 ]]; then
     # `_run_rc=$?`: under `set -e` a bare non-zero command exits the script on the
     # spot, so the checks at the end of this block would never be reached and the
     # split-host smoke below would be skipped along with them.
-    ./faultline.exe show results --limit 26
+    ./faultline.exe result list --limit 27
     # Split-architecture smoke: the same suites driven through the split host.
     ./win32_faultline.exe run \
         faultline_tests.dll \
         flp_file_service_tests.dll \
         flp_stream_service_tests.dll \
         timer_tests.dll || _split_rc=$?
-    ./win32_faultline.exe show results --limit 4
+    ./win32_faultline.exe result list --limit 4
     popd > /dev/null
 
     if [[ $_run_rc -ne 0 ]]; then

@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Building the Project
 - **Build all components**: `build\cmd\all.cmd` - Builds the entire project including all libraries and test suites
 - **Build specific components**: Use individual build scripts in `build\cmd\` (e.g., `build\cmd\faultline.cmd`, `build\cmd\arena.cmd`)
-- **Code analysis**: `build\cmd\faultline_analyze.cmd` - Runs `/analyze` over the 31 first-party translation units as a pass of its own, naming no third-party source. `faultline_lib.cmd` and `std_faultline.cmd` are not represented: both put `FNV64.c` and `sqlite3.c` on the same `cl` line as first-party code, and the four unity translation units already cover the same sources. Findings print but do not fail the build (`/analyze:WX-`), so unlike every other script here this one always prints its `cl` capture instead of only on failure
+- **Code analysis**: `build\cmd\faultline_analyze.cmd` - Runs `/analyze` over the 32 first-party translation units as a pass of its own, naming no third-party source. `faultline_lib.cmd` and `std_faultline.cmd` are not represented: both put `FNV64.c` and `sqlite3.c` on the same `cl` line as first-party code, and the four unity translation units already cover the same sources. Findings print but do not fail the build (`/analyze:WX-`), so unlike every other script here this one always prints its `cl` capture instead of only on failure
 - **Build with options**:
   - `build\cmd\all.cmd test` - Build and run all unit tests
   - `build\cmd\all.cmd debug` - Build debug version (default)
@@ -24,7 +24,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Single component test**: `build\cmd\<component>.cmd test` (e.g., `build\cmd\arena.cmd test`)
 - **Manual test execution**: After building, use `but.exe` or `faultline.exe` with test DLL files
 - **FaultLine tests**: Use `faultline.exe` from the output bin directory for fault injection testing
-- **FaultLine with database**: `faultline.exe --db results.sqlite <test_suites>` - Store results in SQLite database
+- **FaultLine with database**: `faultline.exe run --db results.sqlite <test_suites>` - Store results in SQLite database
 
 ### Code Formatting
 - **Clang-format configuration**: `.clang-format` contains the project's formatting rules
@@ -152,7 +152,7 @@ FaultLine is organized into **6 modular component libraries** that can be used i
   - `src/faultline_dal.c` - Data-access layer: records runs and reads reports (slices in `src/faultline_dal_*.c`)
   - `src/fault_injector.c`, `src/fault_malloc.c` - Fault injection
   - `third_party/sqlite/sqlite3.c` - Embedded SQLite
-- Command-line interface: `cmd/faultline/main_windows.c`
+- Command-line interface: `app/faultline/faultline_cli_commands.c` (command tree over `src/wb_cli.c`); entry points `app/faultline/main_windows.c` and `app/faultline/faultline_app_main.c`
 - Features: Complete fault injection testing with database persistence
 - Build script: `build/cmd/faultline_lib.cmd`
 
@@ -197,7 +197,7 @@ fl_math.lib (no dependencies)
 - Shared API: `include/faultline/fl_file_service.h` - Service interface (`FLFileService` struct with open/read/write/close function pointers); `include/faultline/fl_file_types.h` - `FLFile` (opaque handle, shared with the stream and async file services), `FLFileMode` (`FL_FILE_READ`/`FL_FILE_WRITE`)
 - Unified macros: `include/faultline/fl_file.h` - the **single definition site** for `FL_FILE_OPEN`/`FL_FILE_READ`/`FL_FILE_WRITE`/`FL_FILE_CLOSE`; selects `flp_file_*` or `g_fla_file_service.*` by `FL_PLATFORM_BUILD`
 - Platform provider: `include/flp_file_service.h`, `src/flp_file_service.c` (Win32 `CreateFileW`, UTF-8→UTF-16 conversion, extended-length `\\?\` paths for names beyond `MAX_PATH`) · Consumer accessor: `include/faultline/fla_file_service.h`, `src/fla_file_service.c`
-- Service injection: same pattern as exceptions and logging — `command_run.c` resolves `fla_set_file_service` via `GetProcAddress` after `LoadLibrary()` and calls `flp_init_file_service(fla_set_file)` to inject the service into the DLL; `faultline_app_main.c` installs `platform->file` into the core's `g_fla_file_service`
+- Service injection: same pattern as exceptions and logging — `faultline_cli_commands_run.c` resolves `fla_set_file_service` via `GetProcAddress` after `LoadLibrary()` and calls `flp_init_file_service(fla_set_file)` to inject the service into the DLL; `faultline_app_main.c` installs `platform->file` into the core's `g_fla_file_service`
 - Contract shape: `open` takes a UTF-8 path and `FLFileMode`, returning `NULL` on failure. `read`/`write` are **positional** — an explicit byte offset, no implicit file pointer — so a handle is fully described by its arguments and safe to use from several threads at once; a short transferred count signals EOF, an error, or an injected fault. Append-only writes and console output are out of scope for this service — see the Stream Service below
 - Consumers: `output_junit.c`'s truncate-on-open (`FL_FILE_WRITE`) writes through this service; its append writes go through the stream service instead
 - Deferred: seek/tell/flush/size/stat (a later contract revision); a fault-injecting variant (`flp_fault_file_service`, parallel to the fault-injecting memory service) if I/O failure injection on the file service itself is ever wanted; an async contract sketch exists (`include/faultline/fl_async_file_service.h`) but is not implemented
@@ -206,7 +206,7 @@ fl_math.lib (no dependencies)
 - Shared API: `include/faultline/fl_stream_service.h` - Service interface (`FLStreamService` struct with open/write/close/console function pointers); `FLConsoleStream` (`FL_STREAM_STDOUT`/`FL_STREAM_STDERR`). Reuses `FLFile` from `fl_file_types.h` rather than defining its own opaque handle type — a handle from this service is not interchangeable with one from the file service
 - Unified macros: `include/faultline/fl_stream.h` - the **single definition site** for `FL_STREAM_OPEN`/`FL_STREAM_WRITE`/`FL_STREAM_CLOSE`/`FL_STREAM_CONSOLE`; selects `flp_stream_*` or `g_fla_stream_service.*` by `FL_PLATFORM_BUILD`
 - Platform provider: `include/flp_stream_service.h`, `src/flp_stream_service.c` (Win32 `FILE_APPEND_DATA`/`OPEN_ALWAYS` for `open`, `GetStdHandle` for `console`) · Consumer accessor: `include/faultline/fla_stream_service.h`, `src/fla_stream_service.c`
-- Service injection: same pattern as the other services — `command_run.c` resolves `fla_set_stream_service` via `GetProcAddress` after `LoadLibrary()` and calls `flp_init_stream_service(fla_set_stream)` to inject the service into the DLL; `faultline_app_main.c` installs `platform->stream` into the core's `g_fla_stream_service`
+- Service injection: same pattern as the other services — `faultline_cli_commands_run.c` resolves `fla_set_stream_service` via `GetProcAddress` after `LoadLibrary()` and calls `flp_init_stream_service(fla_set_stream)` to inject the service into the DLL; `faultline_app_main.c` installs `platform->stream` into the core's `g_fla_stream_service`
 - Contract shape: `write` takes **no offset parameter** — neither an append target nor a console target has an addressable position. `close()` on a `console()`-obtained handle is a documented no-op: stdout/stderr are process-wide and shared, never this service's to close. The provider distinguishes a console handle from an append-file handle via two fixed static slots (their addresses), not by allocating a wrapper, so `open()` stays allocation-free in the common (short-path) case — matching `flp_file_open` and avoiding a bootstrap-order hazard (the platform host opens its default log file before the memory service exists)
 - Write-only for now: no stdin read. Add a symmetric read-side contract if a consumer needs one
 - Consumers: the log service's path-based output (`flp_log_set_output_path`) and an opt-in console path (`flp_log_set_output_console`); JUnit XML output (`output_junit.c`)'s append writes (its truncate-on-open still uses the file service)
@@ -352,24 +352,26 @@ above (which also covers the separate **core/platform** portability axis):
 
 ### FaultLine Database Features
 
-**Command-line Database Options**:
+**Command-line Database Options** (accepted by every command, after the command name):
 - `--db PATH` - Use specified database file
-- `--no-db` - Disable database storage; `show` and `baseline` then exit 1
+- `--no-db` - Disable database storage; the query commands and `baseline reset` then exit 1
 - Default: `./faultline.sqlite` if no database option specified
 - A file holding the schema that preceded version 1 is refused and left unchanged: delete it or pass `--db` with a new path
 
-**Query Commands**:
-- `show results [--failures] [--suite NAME] [--limit N]` - Recent runs, or the failures of each suite's latest run
-- `show result ID` - One run's totals and each case's result
-- `show suites [--limit N] [-v]` - Suites, most recently run first
-- `show suite NAME [-v]` - One suite's totals; `-v` adds its cases
-- `show cases [--suite NAME] [--limit N] [-v]` - Case history; `-v` adds baseline against latest
-- `show hotspots [--suite NAME] [--limit N]` - Source locations with the most faults
-- `show trends [--suite NAME] [--limit N]` - Each suite's totals per day, with the change from the day before
-- `show regressions [--suite NAME] [--limit N] [--threshold PCT]` - Cases whose latest result lost fault sites, or ran slower by more than the threshold, against their baseline
-- `baseline reset [--suite NAME] [--test NAME]` - Make each matching case's latest run its baseline
-- `--limit N` - Control result count (0 = no limit; `show results` and `show suites` default to 10)
+**Query Commands** (`<noun> <verb>`, defined in `app/faultline/faultline_cli_commands*.c`):
+- `result list [--suite NAME] [--limit N]` - Recent runs
+- `result show ID` - One run's totals and each case's result
+- `failure list [--suite NAME] [--limit N]` - The failures of each suite's latest run
+- `suite list [--limit N] [-v]` - Suites, most recently run first
+- `suite show NAME [-v]` - One suite's totals; `-v` adds its cases
+- `case list [--suite NAME] [--limit N] [-v]` - Case history; `-v` adds baseline against latest
+- `hotspot list [--suite NAME] [--limit N]` - Source locations with the most faults
+- `trend list [--suite NAME] [--limit N]` - Each suite's totals per day, with the change from the day before
+- `regression list [--suite NAME] [--limit N] [--threshold PCT]` - Cases whose latest result lost fault sites, or ran slower by more than the threshold, against their baseline
+- `baseline reset [--suite NAME] [--case NAME]` - Make each matching case's latest run its baseline
+- `--limit N` - Control result count (0 = no limit; `result list`, `failure list`, and `suite list` default to 10)
 - `--log-level LEVEL` - Set logging level (error|warn|info|debug)
+- `help [command...]` prints generated help; a malformed command line exits 2
 
 **Database Schema** (version 1, in `PRAGMA user_version`; defined in `src/faultline_sqlite.c`):
 - `suites` - One row per suite name

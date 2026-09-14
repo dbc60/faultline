@@ -116,11 +116,6 @@ if errorlevel 1 (
     GOTO :ERROR
 )
 
-call %DIR_CMD%\command.cmd !args!
-if errorlevel 1 (
-    GOTO :ERROR
-)
-
 call %DIR_CMD%\faultline.cmd !args!
 if errorlevel 1 (
     GOTO :ERROR
@@ -163,7 +158,6 @@ if %test% EQU 1 (
         timer_tests.dll ^
         fault_injector_tests.dll ^
         fl_assert_tests.dll ^
-        command_tests.dll ^
         faultline_tests.dll ^
         malloc_cleanup_config_tests.dll
     set "_but_rc=!errorlevel!"

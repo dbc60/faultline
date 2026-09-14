@@ -94,7 +94,7 @@ if [[ $test -eq 1 ]]; then
     [[ $verbose -eq 1 ]] && echo "Run $PROJECT_NAME unit tests"
     pushd "$DIR_OUT_BIN" > /dev/null
     ./win32_faultline.exe run faultline_tests.dll
-    ./win32_faultline.exe show results --limit 1
+    ./win32_faultline.exe result list --limit 1
     popd > /dev/null
 fi
 

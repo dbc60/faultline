@@ -157,7 +157,7 @@ if [[ $test -eq 1 ]]; then
     [[ $verbose -eq 1 ]] && echo "Run ${_project_name} unit tests"
     pushd "$DIR_OUT_BIN" > /dev/null
     "$FL_TEST_DRIVER" run "${_dll_name}.dll"
-    "$FL_TEST_DRIVER" show results --limit 1
-    "$FL_TEST_DRIVER" show results --failures
+    "$FL_TEST_DRIVER" result list --limit 1
+    "$FL_TEST_DRIVER" failure list
     popd > /dev/null
 fi

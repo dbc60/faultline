@@ -121,12 +121,17 @@ if errorlevel 1 (
     GOTO :ERROR
 )
 
-call %DIR_CMD%\command.cmd !args!
+call %DIR_CMD%\wb_cli_tests.cmd !args!
 if errorlevel 1 (
     GOTO :ERROR
 )
 
 call %DIR_CMD%\faultline_fixtures.cmd !args!
+if errorlevel 1 (
+    GOTO :ERROR
+)
+
+call %DIR_CMD%\faultline_cli_tests.cmd !args!
 if errorlevel 1 (
     GOTO :ERROR
 )
@@ -223,7 +228,8 @@ if %test% EQU 1 (
         timer_tests.dll ^
         fault_injector_tests.dll ^
         fl_assert_tests.dll ^
-        command_tests.dll ^
+        wb_cli_tests.dll ^
+        faultline_cli_tests.dll ^
         faultline_tests.dll ^
         malloc_cleanup_config_tests.dll ^
         flp_memory_service_tests.dll ^
@@ -237,7 +243,7 @@ if %test% EQU 1 (
     REM listing. Fail the build rather than let a truncated run pass for a
     REM complete one.
     set "_run_rc=!errorlevel!"
-    .\faultline.exe show results --limit 26
+    .\faultline.exe result list --limit 27
     REM Split-architecture smoke: the same suites driven through the split host.
     REM Its log goes to faultline.log; the results table shows the runs.
     .\win32_faultline.exe run ^
@@ -246,7 +252,7 @@ if %test% EQU 1 (
         flp_stream_service_tests.dll ^
         timer_tests.dll
     set "_split_rc=!errorlevel!"
-    .\win32_faultline.exe show results --limit 4
+    .\win32_faultline.exe result list --limit 4
     popd
     if not "!_run_rc!"=="0" (
         ECHO ALL.CMD ERROR: test driver exited with !_run_rc! -- suites listed 1>&2

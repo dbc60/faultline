@@ -1,14 +1,15 @@
 /**
- * @file command_run.c
+ * @file faultline_cli_commands_run.c
  * @author Douglas Cuthbertson
- * @brief Implementation of "run" command handler
+ * @brief The "run" command: load test suites, run their cases, and record each run.
  * @version 0.1
  * @date 2026-01-08
  *
  * See LICENSE.txt for copyright and licensing information about this file.
+ *
+ * Not a standalone translation unit: faultline_cli_commands.c #includes it after the
+ * helpers it uses.
  */
-#include "command.h"            // RuntimeCommand, has_option, get_string_option
-#include "faultline_commands.h" // ExecutionContext, run_cmd
 #include <faultline/flp_fault_memory_context.h> // FLFaultMemoryContext (full definition)
 #include "output_junit.h"                       // write_junit_xml
 
@@ -52,6 +53,39 @@
 #include <string.h>
 
 #define COMMAND_MODULE_NAME "Faultline Run"
+
+// ---------------------------------------------------------------------------
+// The command
+// ---------------------------------------------------------------------------
+
+static WB_RUN_FN(run_suites);
+
+static WBFlag run_flags[] = {
+    {.name      = "junit-xml",
+     .shorthand = 0,
+     .type      = WB_FLAG_STRING,
+     .desc      = "Also write JUnit XML to this file, e.g. results/junit.xml",
+     .def       = {.s = NULL}},
+};
+
+static WBCommand run_cmd = {
+    .usage      = "run <suite.dll>...",
+    .short_desc = "Run test suites and record each run",
+    .long_desc  = "Loads each suite DLL, runs its cases with fault injection, and\n"
+                  "records the run in the results database unless --no-db is given.\n"
+                  "A suite that cannot be loaded is reported and skipped.",
+    .example    = "  run arena_tests.dll buffer_tests.dll\n"
+                  "  run --junit-xml results/junit.xml arena_tests.dll",
+    .flags      = run_flags,
+    .flag_count = FL_ARRAY_COUNT(run_flags),
+    .min_args   = 1,
+    .max_args   = WB_ARGS_ANY,
+    .run        = run_suites,
+};
+
+static void faultline_cli_add_run(WBCommand *root) {
+    wb_command_add(root, &run_cmd);
+}
 
 static char const *failure_type_to_string(FLFailureType type) {
     switch (type) {
@@ -304,15 +338,15 @@ static void exercise_test_suite(FLContext *fctx, FLTestSuite *ts, sqlite3 *db,
 // The run command loads suite modules, injects the platform's services, resolves the
 // test suite's entry point, and unloads. The monolithic driver (FL_PLATFORM_BUILD) holds
 // the platform symbols itself, so the mechanics are direct OS calls plus the flp_init_*
-// injection dance; the split core routes them through ectx->platform.
+// injection dance; the split core routes them through session->platform.
 
 #if defined(FL_PLATFORM_BUILD)
 
 typedef HMODULE SuiteHandle;
 
-static SuiteHandle suite_load(ExecutionContext *ectx, char const *path) {
+static SuiteHandle suite_load(FLCliSession *session, char const *path) {
     static char const module[] = COMMAND_MODULE_NAME;
-    (void)ectx;
+    (void)session;
 
     HMODULE m = LoadLibraryA(path);
     if (m == NULL) {
@@ -324,7 +358,7 @@ static SuiteHandle suite_load(ExecutionContext *ectx, char const *path) {
 // Inject the driver's services through the fla_set_*_service symbols the test suite
 // exports. Every service is optional: a suite that exports no fla_set_ for one keeps
 // its own. The memory service injected here is the FAULT-INJECTING binding.
-static void suite_inject(ExecutionContext *ectx, SuiteHandle suite) {
+static void suite_inject(FLCliSession *session, SuiteHandle suite) {
     // Log service (optional)
     fla_set_log_service_fn *fla_set_log
         = (fla_set_log_service_fn *)GetProcAddress(suite, FLA_SET_LOG_SERVICE_STR);
@@ -336,7 +370,7 @@ static void suite_inject(ExecutionContext *ectx, SuiteHandle suite) {
     fla_set_memory_service_fn *fla_set_mem
         = (fla_set_memory_service_fn *)GetProcAddress(suite, FLA_SET_MEMORY_SERVICE_STR);
     if (fla_set_mem != NULL) {
-        flp_init_fault_memory_service(fla_set_mem, ectx->mem_ctx);
+        flp_init_fault_memory_service(fla_set_mem, session->mem_ctx);
     }
 
     // Timer service (optional)
@@ -361,46 +395,44 @@ static void suite_inject(ExecutionContext *ectx, SuiteHandle suite) {
     }
 }
 
-static void *suite_symbol(ExecutionContext *ectx, SuiteHandle suite,
-                          char const *symbol) {
-    (void)ectx;
+static void *suite_symbol(FLCliSession *session, SuiteHandle suite, char const *symbol) {
+    (void)session;
     // The uintptr_t intermediate performs the function-to-data pointer conversion that
     // FARPROC requires (C4152 under /W4 otherwise).
     return (void *)(uintptr_t)GetProcAddress(suite, symbol);
 }
 
-static void suite_unload(ExecutionContext *ectx, SuiteHandle suite) {
-    (void)ectx;
+static void suite_unload(FLCliSession *session, SuiteHandle suite) {
+    (void)session;
     FreeLibrary(suite);
 }
 
-static FaultInjector *suite_injector(ExecutionContext *ectx) {
-    return ectx->mem_ctx->fi;
+static FaultInjector *suite_injector(FLCliSession *session) {
+    return session->mem_ctx->fi;
 }
 
 #else // split core: route through the platform API
 
 typedef FLModule *SuiteHandle;
 
-static SuiteHandle suite_load(ExecutionContext *ectx, char const *path) {
-    return ectx->platform->load_module(path);
+static SuiteHandle suite_load(FLCliSession *session, char const *path) {
+    return session->platform->load_module(path);
 }
 
-static void suite_inject(ExecutionContext *ectx, SuiteHandle suite) {
-    ectx->platform->inject_services(suite);
+static void suite_inject(FLCliSession *session, SuiteHandle suite) {
+    session->platform->inject_services(suite);
 }
 
-static void *suite_symbol(ExecutionContext *ectx, SuiteHandle suite,
-                          char const *symbol) {
-    return ectx->platform->resolve_symbol(suite, symbol);
+static void *suite_symbol(FLCliSession *session, SuiteHandle suite, char const *symbol) {
+    return session->platform->resolve_symbol(suite, symbol);
 }
 
-static void suite_unload(ExecutionContext *ectx, SuiteHandle suite) {
-    ectx->platform->unload_module(suite);
+static void suite_unload(FLCliSession *session, SuiteHandle suite) {
+    session->platform->unload_module(suite);
 }
 
-static FaultInjector *suite_injector(ExecutionContext *ectx) {
-    return ectx->platform->injector;
+static FaultInjector *suite_injector(FLCliSession *session) {
+    return session->platform->injector;
 }
 
 #endif // FL_PLATFORM_BUILD
@@ -408,12 +440,11 @@ static FaultInjector *suite_injector(ExecutionContext *ectx) {
 // Compare a suite's build identity with this driver's. A suite built before the
 // descriptor existed does not export it; that is reported and allowed through,
 // since refusing it would break every module built against an older contract.
-static bool suite_abi_ok(ExecutionContext *ectx, SuiteHandle suite,
-                         char const *dll_path) {
+static bool suite_abi_ok(FLCliSession *session, SuiteHandle suite, char const *dll_path) {
     static char const module[] = COMMAND_MODULE_NAME;
 
     fla_get_abi_fn *get_abi
-        = (fla_get_abi_fn *)(uintptr_t)suite_symbol(ectx, suite, FLA_GET_ABI_STR);
+        = (fla_get_abi_fn *)(uintptr_t)suite_symbol(session, suite, FLA_GET_ABI_STR);
     if (get_abi == NULL) {
         LOG_WARN(module,
                  "\"%s\" reports no build identity; running it unchecked. Rebuild it "
@@ -454,27 +485,27 @@ static bool suite_abi_ok(ExecutionContext *ectx, SuiteHandle suite,
  * Executes one or more test suites with optional database recording.
  * Positional arguments: test_suite_paths (one or more DLL paths)
  */
-COMMAND_HANDLER(run_cmd) {
-    ExecutionContext *ectx             = (ExecutionContext *)cmd;
-    FLContext        *fctx             = ectx->fctx;
-    int               test_suite_count = cmd->argc;
+static WB_RUN_FN(run_suites) {
+    FLCliSession     *session          = (FLCliSession *)user;
+    FLContext        *fctx             = session->fctx;
+    int               test_suite_count = argc;
     int               loaded           = 0;
     static char const module[]         = COMMAND_MODULE_NAME;
+    FL_UNUSED(io);
 
-    if (test_suite_count == 0) {
-        LOG_ERROR(module, "No test suite paths provided");
-        return;
-    }
+    // Without a database the suites still run, and nothing is recorded.
+    sqlite3 *db = faultline_cli_open(cmd, session, FL_CLI_DB_OPTIONAL);
 
-    JUnitXML junit = {0};
-    if (ectx->junit_xml_path) {
-        junit_init(&junit, ectx->arena, ectx->junit_xml_path);
+    char const *junit_path = wb_flag_string(cmd, "junit-xml");
+    JUnitXML    junit      = {0};
+    if (junit_path != NULL) {
+        junit_init(&junit, session->arena, junit_path);
     }
     junit_begin(&junit);
     FL_TRY {
         for (int i = 0; i < test_suite_count; i++) {
-            char const *dll_path   = cmd->args[i];
-            SuiteHandle test_suite = suite_load(ectx, dll_path);
+            char const *dll_path   = argv[i];
+            SuiteHandle test_suite = suite_load(session, dll_path);
             if (test_suite == NULL) {
                 LOG_ERROR(module, "Failed to load \"%s\"", dll_path);
                 continue;
@@ -486,19 +517,19 @@ COMMAND_HANDLER(run_cmd) {
             // same way by both images, and two toolchains that disagree produce an
             // access violation with no context. Skipping one suite keeps the rest of
             // the run alive.
-            if (!suite_abi_ok(ectx, test_suite, dll_path)) {
-                suite_unload(ectx, test_suite);
+            if (!suite_abi_ok(session, test_suite, dll_path)) {
+                suite_unload(session, test_suite);
                 continue;
             }
 
-            suite_inject(ectx, test_suite);
+            suite_inject(session, test_suite);
 
             // Run tests
             fl_get_test_suite_fn *fl_get_test_suite
-                = (fl_get_test_suite_fn *)(uintptr_t)suite_symbol(ectx, test_suite,
+                = (fl_get_test_suite_fn *)(uintptr_t)suite_symbol(session, test_suite,
                                                                   FL_GET_TEST_SUITE_STR);
             fl_run_case_fn *fl_run_case
-                = (fl_run_case_fn *)(uintptr_t)suite_symbol(ectx, test_suite,
+                = (fl_run_case_fn *)(uintptr_t)suite_symbol(session, test_suite,
                                                             FL_RUN_CASE_STR);
             if (fl_get_test_suite == NULL) {
                 LOG_ERROR(module, "\"%s\" does not export fl_get_test_suite", dll_path);
@@ -511,11 +542,11 @@ COMMAND_HANDLER(run_cmd) {
             } else {
                 FL_TRY {
                     FLTestSuite *ts = fl_get_test_suite();
-                    faultline_initialize(fctx, ts, ectx->arena);
+                    faultline_initialize(fctx, ts, session->arena);
                     // Restore what the memset in faultline_initialize cleared.
-                    fctx->injector = suite_injector(ectx);
+                    fctx->injector = suite_injector(session);
                     fctx->run_case = fl_run_case;
-                    exercise_test_suite(fctx, ts, ectx->db, &junit);
+                    exercise_test_suite(fctx, ts, db, &junit);
                 }
                 FL_CATCH_ALL {
                     LOG_ERROR(module, "\"%s\": unhandled exception: %s (%s:%d)",
@@ -525,7 +556,7 @@ COMMAND_HANDLER(run_cmd) {
                 loaded++;
             }
 
-            suite_unload(ectx, test_suite);
+            suite_unload(session, test_suite);
         }
     }
     FL_FINALLY {
@@ -533,4 +564,5 @@ COMMAND_HANDLER(run_cmd) {
     }
     FL_END_TRY;
     LOG_INFO(module, "Exercised %d of %d test suite(s).", loaded, test_suite_count);
+    return WB_CLI_OK;
 }

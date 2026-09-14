@@ -38,7 +38,7 @@
 #include "set.c"
 #include "buffer.c"
 #include "digital_search_tree.c"
-#include "command.c"
+#include "wb_cli.c"
 
 /* -- Shared exception reason tokens (one definition for the whole binary) ---- */
 #include "fl_exception.c"
@@ -66,12 +66,9 @@
 #include "faultline_dal.c"
 #include "output_junit.c"
 
-/* -- Command layer (option/command tables + handlers) ----------------------- */
-#include "faultline_commands.c"
-#include "command_run.c"
-#include "command_show.c"
-#include "command_baseline.c"
-#include "command_help.c"
+/* -- Command layer (command tree + dispatch) -------------------------------- */
+#include "faultline_cli_commands.c"
+#include "faultline_cli.c"
 
 /* -- Application entry point -----------------------------------------------------------
  * faultline_app_main(FLPlatformAPI const *, int argc, char **argv): installs the

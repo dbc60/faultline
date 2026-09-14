@@ -12,7 +12,7 @@ It is also a working check that the simplified package set actually composes.
 ## What it shows
 
 The pattern is the same one the real FaultLine driver uses to run test-suite
-DLLs (see `app/faultline/command_run.c`):
+DLLs (see `app/faultline/faultline_cli_commands_run.c`):
 
 ```
 demo_driver.exe  (platform side)              demo_suite.dll  (application side)

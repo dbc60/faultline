@@ -23,7 +23,8 @@ ctime.exe -begin timed_test.ctm
     timer_tests.dll ^
     fault_injector_tests.dll ^
     fl_assert_tests.dll ^
-    command_tests.dll ^
+    wb_cli_tests.dll ^
+    faultline_cli_tests.dll ^
     faultline_tests.dll ^
     malloc_cleanup_config_tests.dll ^
     flp_memory_service_tests.dll ^
