@@ -92,10 +92,10 @@ FL_TEST("Driver Injects Stream Service", driver_injects_stream_service) {
     FL_ASSERT_NOT_NULL(f);
     size_t wn = g_fla_stream_service.write(f, msg, sizeof msg - 1);
     g_fla_stream_service.close(f);
-    FL_ASSERT_EQ_SIZE_T(wn, sizeof msg - 1);
+    FL_ASSERT_EQ(wn, sizeof msg - 1);
 
     char buf[16] = {0};
-    FL_ASSERT_EQ_SIZE_T(read_back(path, buf, sizeof buf), sizeof msg - 1);
+    FL_ASSERT_EQ(read_back(path, buf, sizeof buf), sizeof msg - 1);
     FL_ASSERT_TRUE(memcmp(buf, msg, sizeof msg - 1) == 0);
 
     delete_path(path);
@@ -127,12 +127,12 @@ FL_TEST("Open Write Close Round Trip", open_write_close_round_trip) {
 
     FLFile *f = flp_stream_open(path);
     FL_ASSERT_NOT_NULL(f);
-    FL_ASSERT_EQ_SIZE_T(flp_stream_write(f, "AAA", 3), (size_t)3);
-    FL_ASSERT_EQ_SIZE_T(flp_stream_write(f, "BBB", 3), (size_t)3);
+    FL_ASSERT_EQ(flp_stream_write(f, "AAA", 3), (size_t)3);
+    FL_ASSERT_EQ(flp_stream_write(f, "BBB", 3), (size_t)3);
     flp_stream_close(f);
 
     char buf[8] = {0};
-    FL_ASSERT_EQ_SIZE_T(read_back(path, buf, sizeof buf), (size_t)6);
+    FL_ASSERT_EQ(read_back(path, buf, sizeof buf), (size_t)6);
     FL_ASSERT_TRUE(memcmp(buf, "AAABBB", 6) == 0);
 
     delete_path(path);
@@ -147,16 +147,16 @@ FL_TEST("Reopen Appends To Existing", reopen_appends_to_existing) {
 
     FLFile *f = flp_stream_open(path);
     FL_ASSERT_NOT_NULL(f);
-    FL_ASSERT_EQ_SIZE_T(flp_stream_write(f, "AAA", 3), (size_t)3);
+    FL_ASSERT_EQ(flp_stream_write(f, "AAA", 3), (size_t)3);
     flp_stream_close(f);
 
     f = flp_stream_open(path);
     FL_ASSERT_NOT_NULL(f);
-    FL_ASSERT_EQ_SIZE_T(flp_stream_write(f, "BBB", 3), (size_t)3);
+    FL_ASSERT_EQ(flp_stream_write(f, "BBB", 3), (size_t)3);
     flp_stream_close(f);
 
     char buf[8] = {0};
-    FL_ASSERT_EQ_SIZE_T(read_back(path, buf, sizeof buf), (size_t)6);
+    FL_ASSERT_EQ(read_back(path, buf, sizeof buf), (size_t)6);
     FL_ASSERT_TRUE(memcmp(buf, "AAABBB", 6) == 0);
 
     delete_path(path);
@@ -203,20 +203,20 @@ FL_TEST("Console Redirect Write Round Trip", console_redirect_write_round_trip) 
 
     FLFile *console = flp_stream_console(FL_STREAM_STDOUT);
     FL_ASSERT_NOT_NULL(console);
-    FL_ASSERT_EQ_SIZE_T(flp_stream_write(console, "first\n", 6), (size_t)6);
+    FL_ASSERT_EQ(flp_stream_write(console, "first\n", 6), (size_t)6);
     flp_stream_close(console); // must not close temp_handle
 
     // A fresh console() call must still resolve to the (still-open, still-redirected)
     // real handle, not a handle invalidated by the close() above.
     console = flp_stream_console(FL_STREAM_STDOUT);
     FL_ASSERT_NOT_NULL(console);
-    FL_ASSERT_EQ_SIZE_T(flp_stream_write(console, "second\n", 7), (size_t)7);
+    FL_ASSERT_EQ(flp_stream_write(console, "second\n", 7), (size_t)7);
 
     FL_ASSERT_TRUE(SetStdHandle(STD_OUTPUT_HANDLE, saved) != 0);
     flp_file_close(temp); // the test's own handle, not the service's to close
 
     char buf[16] = {0};
-    FL_ASSERT_EQ_SIZE_T(read_back(path, buf, sizeof buf), (size_t)13);
+    FL_ASSERT_EQ(read_back(path, buf, sizeof buf), (size_t)13);
     FL_ASSERT_TRUE(memcmp(buf, "first\nsecond\n", 13) == 0);
 
     delete_path(path);

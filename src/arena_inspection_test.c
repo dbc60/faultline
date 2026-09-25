@@ -60,11 +60,11 @@ FL_TYPE_TEST_SETUP_CLEANUP("Footprint After Init", ArenaInspectionTest,
     size_t footprint = arena_footprint(arena);
 
     // Footprint should be nonzero after initialization
-    FL_ASSERT_GT_SIZE_T(footprint, (size_t)0);
+    FL_ASSERT_GT(footprint, (size_t)0);
 
     // Footprint should match the committed bytes of the primary region
     size_t committed = REGION_BYTES_COMMITTED(MEM_TO_REGION(arena));
-    FL_ASSERT_EQ_SIZE_T(committed, footprint);
+    FL_ASSERT_EQ(committed, footprint);
 }
 
 // ============================================================================
@@ -92,7 +92,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Footprint After Extend", ArenaInspectionTest,
         }
     }
 
-    FL_ASSERT_GT_SIZE_T(arena_footprint(arena), initial_footprint);
+    FL_ASSERT_GT(arena_footprint(arena), initial_footprint);
 }
 
 // ============================================================================
@@ -109,15 +109,15 @@ FL_TYPE_TEST_SETUP_CLEANUP("Max Footprint Tracks Peak", ArenaInspectionTest,
     size_t initial_fp  = arena_footprint(arena);
 
     // Initially, max_footprint should equal footprint
-    FL_ASSERT_EQ_SIZE_T(initial_fp, initial_max);
+    FL_ASSERT_EQ(initial_fp, initial_max);
 
     // After some allocations (that don't trigger extend), max should still match
     void *mem = arena_malloc_throw(arena, 256, __FILE__, __LINE__);
-    FL_ASSERT_GE_SIZE_T(arena_max_footprint(arena), arena_footprint(arena));
+    FL_ASSERT_GE(arena_max_footprint(arena), arena_footprint(arena));
 
     // max_footprint should never decrease, even after releasing
     arena_free_throw(arena, mem, __FILE__, __LINE__);
-    FL_ASSERT_GE_SIZE_T(arena_max_footprint(arena), initial_max);
+    FL_ASSERT_GE(arena_max_footprint(arena), initial_max);
 }
 
 // ============================================================================
@@ -131,7 +131,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Allocation Count Lifecycle", ArenaInspectionTest,
     Arena *arena = t->arena;
 
     // Initially, no allocations
-    FL_ASSERT_EQ_SIZE_T((size_t)0, arena_allocation_count(arena));
+    FL_ASSERT_EQ((size_t)0, arena_allocation_count(arena));
 
     // Allocate 5 items
     enum {
@@ -142,7 +142,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Allocation Count Lifecycle", ArenaInspectionTest,
     for (int i = 0; i < N; i++) {
         ptrs[i] = arena_malloc_throw(arena, 32, __FILE__, __LINE__);
     }
-    FL_ASSERT_EQ_SIZE_T((size_t)N, arena_allocation_count(arena));
+    FL_ASSERT_EQ((size_t)N, arena_allocation_count(arena));
 
     // Free 3 items
     enum {
@@ -152,13 +152,13 @@ FL_TYPE_TEST_SETUP_CLEANUP("Allocation Count Lifecycle", ArenaInspectionTest,
     for (int i = 0; i < M; i++) {
         arena_free_throw(arena, ptrs[i], __FILE__, __LINE__);
     }
-    FL_ASSERT_EQ_SIZE_T((size_t)(N - M), arena_allocation_count(arena));
+    FL_ASSERT_EQ((size_t)(N - M), arena_allocation_count(arena));
 
     // Free the remaining 2
     for (int i = M; i < N; i++) {
         arena_free_throw(arena, ptrs[i], __FILE__, __LINE__);
     }
-    FL_ASSERT_EQ_SIZE_T((size_t)0, arena_allocation_count(arena));
+    FL_ASSERT_EQ((size_t)0, arena_allocation_count(arena));
 }
 
 // ============================================================================
@@ -173,7 +173,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Allocation Size Returns Chunk Size", ArenaInspection
     Arena *arena = t->arena;
 
     // NULL should return 0
-    FL_ASSERT_EQ_SIZE_T((size_t)0, ARENA_ALLOCATION_SIZE_THROW(arena, NULL));
+    FL_ASSERT_EQ((size_t)0, ARENA_ALLOCATION_SIZE_THROW(arena, NULL));
 
     // Test a range of request sizes
     size_t requests[] = {1, 8, 16, 32, 64, 128, 256, 512, 1024, 4096};
@@ -185,13 +185,13 @@ FL_TYPE_TEST_SETUP_CLEANUP("Allocation Size Returns Chunk Size", ArenaInspection
 
         // The chunk size should be >= the request (it includes chunk overhead
         // and may be rounded up for alignment)
-        FL_ASSERT_GE_SIZE_T(alloc_size, request);
+        FL_ASSERT_GE(alloc_size, request);
 
         // The chunk size should be aligned
-        FL_ASSERT_EQ_SIZE_T((size_t)0, alloc_size & CHUNK_ALIGNMENT_MASK);
+        FL_ASSERT_EQ((size_t)0, alloc_size & CHUNK_ALIGNMENT_MASK);
 
         // The chunk size should be at least CHUNK_MIN_SIZE
-        FL_ASSERT_GE_SIZE_T(alloc_size, CHUNK_MIN_SIZE);
+        FL_ASSERT_GE(alloc_size, CHUNK_MIN_SIZE);
 
         arena_free_throw(arena, mem, __FILE__, __LINE__);
     }
@@ -264,7 +264,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Allocation Size Rejects Foreign Pointer",
     FL_ASSERT_TRUE(threw);
 
     // The arena that does own it answers normally.
-    FL_ASSERT_GE_SIZE_T(ARENA_ALLOCATION_SIZE_THROW(other, mem), (size_t)64);
+    FL_ASSERT_GE(ARENA_ALLOCATION_SIZE_THROW(other, mem), (size_t)64);
 
     // An address that is no allocation at all.
     int stack_var = 42;

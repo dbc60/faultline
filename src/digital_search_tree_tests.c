@@ -143,7 +143,7 @@ FL_TEST("Init", test_init) {
     DigitalSearchTree node;
     dst_init(&node, 1024);
 
-    FL_ASSERT_EQ_SIZE_T((size_t)1024, node.size);
+    FL_ASSERT_EQ((size_t)1024, node.size);
     FL_ASSERT_TRUE(DST_IS_ROOT(&node));
     FL_ASSERT_TRUE(DST_IS_LEAF(&node));
     FL_ASSERT_FALSE(DST_HAS_PARENT(&node));
@@ -362,7 +362,7 @@ FL_TEST("Find Best Fit", test_find_best_fit) {
     FL_ASSERT_EQ_PTR(&b, found);
 
     // Verify the result is >= the requested size
-    FL_ASSERT_GE_SIZE_T(CHUNK_SIZE(found), (size_t)1030);
+    FL_ASSERT_GE(CHUNK_SIZE(found), (size_t)1030);
 }
 
 // ---------------------------------------------------------------------------

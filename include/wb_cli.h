@@ -207,9 +207,9 @@ WBCommand *wb_command_find(WBCommand *root, int argc, char **argv, int *out_cons
 /**
  * @brief Resolve, parse flags, validate arguments, and run.
  *
- * Every flag reachable from the resolved command, its own and the persistent flags of
- * each ancestor, is reset to its default before parsing, which is what makes a static
- * flag table safe in a REPL that runs the same command repeatedly.
+ * Every flag that can be applied to the resolved command, its own and the persistent
+ * flags of each ancestor, is reset to its default before parsing, which is what makes a
+ * static flag table safe in a REPL that runs the same command repeatedly.
  *
  * `--help` or `-h` anywhere on the line prints help instead of running.
  *

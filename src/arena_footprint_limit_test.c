@@ -55,10 +55,10 @@ FL_TYPE_TEST_SETUP_CLEANUP("Footprint Limit Rounds Up", ArenaLimitTest,
     arena_set_footprint_limit(arena, requested);
 
     size_t expected = ALIGN_UP(requested, granularity);
-    FL_ASSERT_EQ_SIZE_T(expected, arena->footprint_limit);
+    FL_ASSERT_EQ(expected, arena->footprint_limit);
 
     // The stored limit must be a multiple of granularity.
-    FL_ASSERT_EQ_SIZE_T((size_t)0, arena->footprint_limit % granularity);
+    FL_ASSERT_EQ((size_t)0, arena->footprint_limit % granularity);
 }
 
 // ============================================================================
@@ -101,11 +101,11 @@ FL_TYPE_TEST_SETUP_CLEANUP("Footprint Limit Zero Means Unlimited", ArenaLimitTes
 
     // Apply a tight limit to confirm the mechanism works.
     arena_set_footprint_limit(arena, arena_footprint(arena));
-    FL_ASSERT_GT_SIZE_T(arena->footprint_limit, (size_t)0);
+    FL_ASSERT_GT(arena->footprint_limit, (size_t)0);
 
     // Clear the limit.
     arena_set_footprint_limit(arena, 0);
-    FL_ASSERT_EQ_SIZE_T((size_t)0, arena->footprint_limit);
+    FL_ASSERT_EQ((size_t)0, arena->footprint_limit);
 
     // A large allocation must now succeed.
     bool threw = false;

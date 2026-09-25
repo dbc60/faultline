@@ -55,9 +55,9 @@ typedef struct DigitalSearchTree {
  * @brief Select the subtree to descend into for a key at a given decision bit.
  *
  * The key is widened to 64 bits because BITS_RIGHT_MSB_LEAST discriminates against
- * the most-significant bit of a 64-bit word, which a size_t does not necessarily
- * reach. The left-shift a caller supplies is therefore relative to bit 63, not to
- * the width of a size_t.
+ * the most-significant bit of a 64-bit word. Note that size_t cannot be used here,
+ * because it's a 32-bit value. The left-shift a caller supplies must be relative to bit
+ * 63, not to the width of a size_t.
  */
 #define DST_NEXT_CHILD(SIZE, LEFT_SHIFT) \
     BITS_RIGHT_MSB_LEAST((u64)(SIZE), (LEFT_SHIFT), 1)

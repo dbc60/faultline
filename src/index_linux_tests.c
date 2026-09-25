@@ -25,7 +25,7 @@ FL_TEST("COMPUTE_LSB2IDX32 single bit", lsb2idx32_single_bit) {
     for (u32 i = 0; i < U32_BIT; i++) {
         u32 bit = 1ul << i;
         COMPUTE_LSB2IDX32(bit, actual);
-        FL_ASSERT_EQ_UINT32(i, actual);
+        FL_ASSERT_EQ(i, actual);
     }
 }
 
@@ -34,19 +34,19 @@ FL_TEST("COMPUTE_LSB2IDX32 edge cases", lsb2idx32_edge_cases) {
 
     // Zero input returns zero
     COMPUTE_LSB2IDX32(0, actual);
-    FL_ASSERT_EQ_UINT32(0, actual);
+    FL_ASSERT_EQ(0, actual);
 
     // Multi-bit: LSB of 0x06 (binary 110) is bit 1
     COMPUTE_LSB2IDX32(0x06, actual);
-    FL_ASSERT_EQ_UINT32(1, actual);
+    FL_ASSERT_EQ(1, actual);
 
     // Multi-bit: LSB of 0x30 (binary 110000) is bit 4
     COMPUTE_LSB2IDX32(0x30, actual);
-    FL_ASSERT_EQ_UINT32(4, actual);
+    FL_ASSERT_EQ(4, actual);
 
     // All bits set: LSB is bit 0
     COMPUTE_LSB2IDX32(0xFFFFFFFF, actual);
-    FL_ASSERT_EQ_UINT32(0, actual);
+    FL_ASSERT_EQ(0, actual);
 }
 
 // ===========================================================================
@@ -58,7 +58,7 @@ FL_TEST("COMPUTE_LSB2IDX64 single bit", lsb2idx64_single_bit) {
     for (u32 i = 0; i < U64_BIT; i++) {
         u64 bit = 1ull << i;
         COMPUTE_LSB2IDX64(bit, actual);
-        FL_ASSERT_EQ_UINT32(i, actual);
+        FL_ASSERT_EQ(i, actual);
     }
 }
 
@@ -67,19 +67,19 @@ FL_TEST("COMPUTE_LSB2IDX64 edge cases", lsb2idx64_edge_cases) {
 
     // Zero input returns zero
     COMPUTE_LSB2IDX64(0, actual);
-    FL_ASSERT_EQ_UINT32(0, actual);
+    FL_ASSERT_EQ(0, actual);
 
     // Multi-bit: LSB of 0x06 is bit 1
     COMPUTE_LSB2IDX64(0x06ull, actual);
-    FL_ASSERT_EQ_UINT32(1, actual);
+    FL_ASSERT_EQ(1, actual);
 
     // Single high bit: LSB of 0x8000000000000000 is bit 63
     COMPUTE_LSB2IDX64(0x8000000000000000ull, actual);
-    FL_ASSERT_EQ_UINT32(63, actual);
+    FL_ASSERT_EQ(63, actual);
 
     // All bits set: LSB is bit 0
     COMPUTE_LSB2IDX64(0xFFFFFFFFFFFFFFFFull, actual);
-    FL_ASSERT_EQ_UINT32(0, actual);
+    FL_ASSERT_EQ(0, actual);
 }
 
 // ===========================================================================
@@ -91,7 +91,7 @@ FL_TEST("COMPUTE_MSB2IDX32 single bit", msb2idx32_single_bit) {
     for (u32 i = 0; i < U32_BIT; i++) {
         u32 bit = 1ul << i;
         COMPUTE_MSB2IDX32(bit, actual);
-        FL_ASSERT_EQ_UINT32(i, actual);
+        FL_ASSERT_EQ(i, actual);
     }
 }
 
@@ -100,19 +100,19 @@ FL_TEST("COMPUTE_MSB2IDX32 edge cases", msb2idx32_edge_cases) {
 
     // Zero input returns zero
     COMPUTE_MSB2IDX32(0, actual);
-    FL_ASSERT_EQ_UINT32(0, actual);
+    FL_ASSERT_EQ(0, actual);
 
     // Multi-bit: MSB of 0x06 (binary 110) is bit 2
     COMPUTE_MSB2IDX32(0x06, actual);
-    FL_ASSERT_EQ_UINT32(2, actual);
+    FL_ASSERT_EQ(2, actual);
 
     // Multi-bit: MSB of 0x30 (binary 110000) is bit 5
     COMPUTE_MSB2IDX32(0x30, actual);
-    FL_ASSERT_EQ_UINT32(5, actual);
+    FL_ASSERT_EQ(5, actual);
 
     // All bits set: MSB is bit 31
     COMPUTE_MSB2IDX32(0xFFFFFFFF, actual);
-    FL_ASSERT_EQ_UINT32(31, actual);
+    FL_ASSERT_EQ(31, actual);
 }
 
 // ===========================================================================
@@ -124,7 +124,7 @@ FL_TEST("COMPUTE_MSB2IDX64 single bit", msb2idx64_single_bit) {
     for (u32 i = 0; i < U64_BIT; i++) {
         u64 bit = 1ull << i;
         COMPUTE_MSB2IDX64(bit, actual);
-        FL_ASSERT_EQ_UINT32(i, actual);
+        FL_ASSERT_EQ(i, actual);
     }
 }
 
@@ -133,19 +133,19 @@ FL_TEST("COMPUTE_MSB2IDX64 edge cases", msb2idx64_edge_cases) {
 
     // Zero input returns zero
     COMPUTE_MSB2IDX64(0, actual);
-    FL_ASSERT_EQ_UINT32(0, actual);
+    FL_ASSERT_EQ(0, actual);
 
     // Multi-bit: MSB of 0x06 is bit 2
     COMPUTE_MSB2IDX64(0x06ull, actual);
-    FL_ASSERT_EQ_UINT32(2, actual);
+    FL_ASSERT_EQ(2, actual);
 
     // Single high bit: MSB of 0x8000000000000000 is bit 63
     COMPUTE_MSB2IDX64(0x8000000000000000ull, actual);
-    FL_ASSERT_EQ_UINT32(63, actual);
+    FL_ASSERT_EQ(63, actual);
 
     // All bits set: MSB is bit 63
     COMPUTE_MSB2IDX64(0xFFFFFFFFFFFFFFFFull, actual);
-    FL_ASSERT_EQ_UINT32(63, actual);
+    FL_ASSERT_EQ(63, actual);
 }
 
 // ===========================================================================
@@ -158,19 +158,19 @@ FL_TEST("INDEX_BY_VALUE64 doc examples", index_by_value64_examples) {
 
     // val=1024, cnt=48, exp=10 -> idx=0
     INDEX_BY_VALUE64(1024ull, 48, 10, idx);
-    FL_ASSERT_EQ_UINT32(0, idx);
+    FL_ASSERT_EQ(0, idx);
 
     // val=1536, cnt=48, exp=10 -> idx=1
     INDEX_BY_VALUE64(1536ull, 48, 10, idx);
-    FL_ASSERT_EQ_UINT32(1, idx);
+    FL_ASSERT_EQ(1, idx);
 
     // val=3000, cnt=48, exp=10 -> idx=2
     INDEX_BY_VALUE64(3000ull, 48, 10, idx);
-    FL_ASSERT_EQ_UINT32(2, idx);
+    FL_ASSERT_EQ(2, idx);
 
     // val=65536, cnt=48, exp=10 -> idx=12
     INDEX_BY_VALUE64(65536ull, 48, 10, idx);
-    FL_ASSERT_EQ_UINT32(12, idx);
+    FL_ASSERT_EQ(12, idx);
 }
 
 FL_TEST("INDEX_BY_VALUE64 edge cases", index_by_value64_edge_cases) {
@@ -178,15 +178,15 @@ FL_TEST("INDEX_BY_VALUE64 edge cases", index_by_value64_edge_cases) {
 
     // Below threshold: val=0 -> idx=0
     INDEX_BY_VALUE64(0ull, 48, 10, idx);
-    FL_ASSERT_EQ_UINT32(0, idx);
+    FL_ASSERT_EQ(0, idx);
 
     // Below threshold: val=512 (less than 1<<10=1024) -> idx=0
     INDEX_BY_VALUE64(512ull, 48, 10, idx);
-    FL_ASSERT_EQ_UINT32(0, idx);
+    FL_ASSERT_EQ(0, idx);
 
     // Overflow clamp: very large value -> idx=CNT-1=47
     INDEX_BY_VALUE64(0xFFFFFFFFFFFFFFFFull, 48, 10, idx);
-    FL_ASSERT_EQ_UINT32(47, idx);
+    FL_ASSERT_EQ(47, idx);
 }
 
 // ===========================================================================
@@ -215,7 +215,7 @@ FL_TEST("index_by_value matches INDEX_BY_VALUE64", index_by_value_matches_macro)
         u32 macro_idx;
         INDEX_BY_VALUE64(test_vals[i], cnt, exp, macro_idx);
         u32 func_idx = index_by_value(test_vals[i], cnt, exp);
-        FL_ASSERT_EQ_UINT32(macro_idx, func_idx);
+        FL_ASSERT_EQ(macro_idx, func_idx);
     }
 }
 
@@ -228,27 +228,27 @@ FL_TEST("INDEX_BY_VALUE32 basic", index_by_value32_basic) {
 
     // Below threshold: val=0 -> idx=0
     INDEX_BY_VALUE32(0, 32, 8, idx);
-    FL_ASSERT_EQ_UINT32(0, idx);
+    FL_ASSERT_EQ(0, idx);
 
     // Below threshold: val=128 (less than 1<<8=256) -> idx=0
     INDEX_BY_VALUE32(128, 32, 8, idx);
-    FL_ASSERT_EQ_UINT32(0, idx);
+    FL_ASSERT_EQ(0, idx);
 
     // At threshold: val=256 (1<<8) -> idx=0
     INDEX_BY_VALUE32(256, 32, 8, idx);
-    FL_ASSERT_EQ_UINT32(0, idx);
+    FL_ASSERT_EQ(0, idx);
 
     // val=384 -> idx=1
     INDEX_BY_VALUE32(384, 32, 8, idx);
-    FL_ASSERT_EQ_UINT32(1, idx);
+    FL_ASSERT_EQ(1, idx);
 
     // val=512 -> idx=2
     INDEX_BY_VALUE32(512, 32, 8, idx);
-    FL_ASSERT_EQ_UINT32(2, idx);
+    FL_ASSERT_EQ(2, idx);
 
     // val=768 -> idx=3
     INDEX_BY_VALUE32(768, 32, 8, idx);
-    FL_ASSERT_EQ_UINT32(3, idx);
+    FL_ASSERT_EQ(3, idx);
 }
 
 FL_TEST("INDEX_BY_VALUE32 overflow clamp", index_by_value32_overflow) {
@@ -256,7 +256,7 @@ FL_TEST("INDEX_BY_VALUE32 overflow clamp", index_by_value32_overflow) {
 
     // With p2=0, val=0x80000000: X > MAX_X -> idx=CNT-1=31
     INDEX_BY_VALUE32(0x80000000ul, 32, 0, idx);
-    FL_ASSERT_EQ_UINT32(31, idx);
+    FL_ASSERT_EQ(31, idx);
 }
 
 // ===========================================================================
@@ -265,23 +265,23 @@ FL_TEST("INDEX_BY_VALUE32 overflow clamp", index_by_value32_overflow) {
 
 FL_TEST("INDEX_BIN_TO_LOWER_LIMIT known values", bin_lower_limit_known_values) {
     // With P2=10, first bin starts at 1024 (1<<10)
-    FL_ASSERT_EQ_SIZE_T((size_t)1024, (size_t)INDEX_BIN_TO_LOWER_LIMIT(0, 10));
-    FL_ASSERT_EQ_SIZE_T((size_t)1536, (size_t)INDEX_BIN_TO_LOWER_LIMIT(1, 10));
-    FL_ASSERT_EQ_SIZE_T((size_t)2048, (size_t)INDEX_BIN_TO_LOWER_LIMIT(2, 10));
-    FL_ASSERT_EQ_SIZE_T((size_t)3072, (size_t)INDEX_BIN_TO_LOWER_LIMIT(3, 10));
-    FL_ASSERT_EQ_SIZE_T((size_t)4096, (size_t)INDEX_BIN_TO_LOWER_LIMIT(4, 10));
-    FL_ASSERT_EQ_SIZE_T((size_t)6144, (size_t)INDEX_BIN_TO_LOWER_LIMIT(5, 10));
+    FL_ASSERT_EQ((size_t)1024, (size_t)INDEX_BIN_TO_LOWER_LIMIT(0, 10));
+    FL_ASSERT_EQ((size_t)1536, (size_t)INDEX_BIN_TO_LOWER_LIMIT(1, 10));
+    FL_ASSERT_EQ((size_t)2048, (size_t)INDEX_BIN_TO_LOWER_LIMIT(2, 10));
+    FL_ASSERT_EQ((size_t)3072, (size_t)INDEX_BIN_TO_LOWER_LIMIT(3, 10));
+    FL_ASSERT_EQ((size_t)4096, (size_t)INDEX_BIN_TO_LOWER_LIMIT(4, 10));
+    FL_ASSERT_EQ((size_t)6144, (size_t)INDEX_BIN_TO_LOWER_LIMIT(5, 10));
 }
 
 FL_TEST("INDEX_BIN_TO_UPPER_LIMIT known values", bin_upper_limit_known_values) {
     // Upper = Lower + half-range - alignment
-    FL_ASSERT_EQ_SIZE_T(1024 + 512 - INDEX_BIN_ALIGNMENT,
+    FL_ASSERT_EQ(1024 + 512 - INDEX_BIN_ALIGNMENT,
                         (size_t)INDEX_BIN_TO_UPPER_LIMIT(0, 10));
-    FL_ASSERT_EQ_SIZE_T(1536 + 512 - INDEX_BIN_ALIGNMENT,
+    FL_ASSERT_EQ(1536 + 512 - INDEX_BIN_ALIGNMENT,
                         (size_t)INDEX_BIN_TO_UPPER_LIMIT(1, 10));
-    FL_ASSERT_EQ_SIZE_T(2048 + 1024 - INDEX_BIN_ALIGNMENT,
+    FL_ASSERT_EQ(2048 + 1024 - INDEX_BIN_ALIGNMENT,
                         (size_t)INDEX_BIN_TO_UPPER_LIMIT(2, 10));
-    FL_ASSERT_EQ_SIZE_T(3072 + 1024 - INDEX_BIN_ALIGNMENT,
+    FL_ASSERT_EQ(3072 + 1024 - INDEX_BIN_ALIGNMENT,
                         (size_t)INDEX_BIN_TO_UPPER_LIMIT(3, 10));
 }
 
@@ -298,7 +298,7 @@ FL_TEST("Bin limits structural properties", bin_limits_properties) {
         // Contiguity: next bin's lower limit = this bin's upper limit + alignment
         if (idx < 19) {
             size_t next_lower = INDEX_BIN_TO_LOWER_LIMIT(idx + 1, p2);
-            FL_ASSERT_EQ_SIZE_T(next_lower, upper + INDEX_BIN_ALIGNMENT);
+            FL_ASSERT_EQ(next_lower, upper + INDEX_BIN_ALIGNMENT);
         }
     }
 }
@@ -311,7 +311,7 @@ FL_TEST("Bin lower limit round-trips through index_by_value", bin_limit_round_tr
     for (u32 idx = 0; idx < cnt; idx++) {
         size_t lower     = INDEX_BIN_TO_LOWER_LIMIT(idx, p2);
         u32    round_idx = index_by_value((flag64)lower, cnt, p2);
-        FL_ASSERT_EQ_UINT32(idx, round_idx);
+        FL_ASSERT_EQ(idx, round_idx);
     }
 }
 

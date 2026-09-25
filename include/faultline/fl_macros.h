@@ -113,6 +113,26 @@ extern "C" {
 #endif
 
 /**
+ * @brief The type of an expression, for declaring a temporary that matches it.
+ *
+ * Lets a macro capture its operands into temporaries without being told their
+ * type, so one assertion macro can stand in for a family of per-type ones.
+ * __typeof__ is the C spelling MSVC, GCC and Clang all accept, and C23's typeof
+ * would replace it once the build moves to that standard.
+ *
+ * C++ needs decay around decltype, not decltype alone: decltype of an lvalue
+ * expression such as *p yields a reference (int &, not int), and a reference
+ * cannot bind to the literal on the other side of a comparison. Decaying also
+ * drops the cv-qualifiers, so the temporary is assignable.
+ */
+#if defined(__cplusplus)
+#include <type_traits> // std::decay_t
+#define FL_TYPEOF(V) std::decay_t<decltype(V)>
+#else
+#define FL_TYPEOF(V) __typeof__(V)
+#endif
+
+/**
  * @brief Mark a variadic function as taking a printf-style format string.
  *
  * @param fmt_index the 1-based position of the format parameter.

@@ -52,10 +52,10 @@ static FL_CLEANUP_FN(cleanup) {
 // ============================================================================
 
 FL_TEST("Constants", constants) {
-    FL_ASSERT_EQ_SIZE_T(TWO_SIZE_T_SIZES, CHUNK_ALIGNMENT);
+    FL_ASSERT_EQ(TWO_SIZE_T_SIZES, CHUNK_ALIGNMENT);
     FL_ASSERT_TRUE(CHUNK_MIN_SIZE >= sizeof(FreeChunk));
-    FL_ASSERT_EQ_SIZE_T((size_t)0, CHUNK_MIN_SIZE & CHUNK_ALIGNMENT_MASK);
-    FL_ASSERT_EQ_SIZE_T((size_t)0, CHUNK_ALIGNED_SIZE & CHUNK_ALIGNMENT_MASK);
+    FL_ASSERT_EQ((size_t)0, CHUNK_MIN_SIZE & CHUNK_ALIGNMENT_MASK);
+    FL_ASSERT_EQ((size_t)0, CHUNK_ALIGNED_SIZE & CHUNK_ALIGNMENT_MASK);
 
     // Verify CHUNK_IS_ALIGNED works for a known-aligned address
     size_t aligned_addr = 0x1000;
@@ -77,7 +77,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Init Free Chunk", TestChunk, init_free_chunk, setup,
     FL_ASSERT_FALSE(CHUNK_IS_INUSE(ch));
     FL_ASSERT_TRUE(CHUNK_IS_PREVIOUS_INUSE(ch));
     FL_ASSERT_TRUE(DLIST_IS_EMPTY(&ch->siblings));
-    FL_ASSERT_EQ_SIZE_T(size, free_chunk_footer_size(ch));
+    FL_ASSERT_EQ(size, free_chunk_footer_size(ch));
 }
 
 FL_TYPE_TEST_SETUP_CLEANUP("Init Free Chunk Previous Not Inuse", TestChunk,
@@ -93,7 +93,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Init Free Chunk Previous Not Inuse", TestChunk,
     FL_ASSERT_FALSE(CHUNK_IS_INUSE(rem));
     FL_ASSERT_FALSE(CHUNK_IS_PREVIOUS_INUSE(rem));
     FL_ASSERT_TRUE(DLIST_IS_EMPTY(&rem->siblings));
-    FL_ASSERT_EQ_SIZE_T(rem_size, free_chunk_footer_size(rem));
+    FL_ASSERT_EQ(rem_size, free_chunk_footer_size(rem));
     FL_UNUSED(initial_size);
 }
 
@@ -105,13 +105,13 @@ FL_TYPE_TEST_SETUP_CLEANUP("Init Free Chunk Min Size", TestChunk, init_min_size,
     size_t     big_size = CHUNK_SIZE(ch) - CHUNK_MIN_SIZE;
     FreeChunk *rem      = free_chunk_split(ch, big_size, __FILE__, __LINE__);
     FL_ASSERT_NOT_NULL(rem);
-    FL_ASSERT_EQ_SIZE_T(CHUNK_MIN_SIZE, CHUNK_SIZE(rem));
+    FL_ASSERT_EQ(CHUNK_MIN_SIZE, CHUNK_SIZE(rem));
 
     // Re-init at minimum size: the footer field IS the footer in this case
     free_chunk_init(rem, CHUNK_MIN_SIZE, true);
     FL_ASSERT_FALSE(CHUNK_IS_INUSE(rem));
     FL_ASSERT_TRUE(CHUNK_IS_PREVIOUS_INUSE(rem));
-    FL_ASSERT_EQ_SIZE_T(CHUNK_MIN_SIZE, rem->footer);
+    FL_ASSERT_EQ(CHUNK_MIN_SIZE, rem->footer);
 }
 
 // ============================================================================
@@ -126,15 +126,15 @@ FL_TYPE_TEST_SETUP_CLEANUP("Split", TestChunk, split, setup, cleanup) {
     size_t     initial_size = CHUNK_SIZE(ch);
     FreeChunk *rem          = free_chunk_split(ch, MEBI(10), __FILE__, __LINE__);
     size_t     new_size     = CHUNK_SIZE(ch);
-    FL_ASSERT_EQ_SIZE_T(MEBI(10), new_size);
+    FL_ASSERT_EQ(MEBI(10), new_size);
 
     size_t rem_size = CHUNK_SIZE(rem);
-    FL_ASSERT_EQ_SIZE_T(initial_size - new_size, rem_size);
+    FL_ASSERT_EQ(initial_size - new_size, rem_size);
 
     FL_ASSERT_FALSE(CHUNK_IS_INUSE(rem));
     FL_ASSERT_TRUE(CHUNK_IS_PREVIOUS_INUSE(rem));
 
-    FL_ASSERT_EQ_SIZE_T(rem_size, free_chunk_footer_size(rem));
+    FL_ASSERT_EQ(rem_size, free_chunk_footer_size(rem));
 }
 
 FL_TYPE_TEST_SETUP_CLEANUP("Split Preserves Flags", TestChunk, split_preserves_flags,
@@ -165,7 +165,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Split Exact Fit", TestChunk, split_exact_fit, setup,
     // Splitting to the exact current size leaves no remainder
     FreeChunk *rem = free_chunk_split(ch, size, __FILE__, __LINE__);
     FL_ASSERT_NULL(rem);
-    FL_ASSERT_EQ_SIZE_T(size, CHUNK_SIZE(ch));
+    FL_ASSERT_EQ(size, CHUNK_SIZE(ch));
 }
 
 FL_TYPE_TEST_SETUP_CLEANUP("Split Remainder Too Small", TestChunk,
@@ -188,7 +188,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Split Remainder Too Small", TestChunk,
     if (remainder > 0 && remainder < CHUNK_MIN_SIZE) {
         FL_ASSERT_NULL(rem);
         // Chunk size is unchanged when split fails to produce a remainder
-        FL_ASSERT_EQ_SIZE_T(size, CHUNK_SIZE(ch));
+        FL_ASSERT_EQ(size, CHUNK_SIZE(ch));
     }
 }
 
@@ -246,9 +246,9 @@ FL_TYPE_TEST_SETUP_CLEANUP("Merge with Previous", TestChunk, merge_previous, set
 
     FreeChunk *merged = free_chunk_merge_previous(rem);
     FL_ASSERT_FALSE(CHUNK_IS_INUSE(merged));
-    FL_ASSERT_EQ_SIZE_T(previous_size + rem_size, CHUNK_SIZE(merged));
-    FL_ASSERT_EQ_SIZE_T(initial_size, previous_size + rem_size);
-    FL_ASSERT_EQ_SIZE_T(initial_size, free_chunk_footer_size(merged));
+    FL_ASSERT_EQ(previous_size + rem_size, CHUNK_SIZE(merged));
+    FL_ASSERT_EQ(initial_size, previous_size + rem_size);
+    FL_ASSERT_EQ(initial_size, free_chunk_footer_size(merged));
 }
 
 FL_TYPE_TEST_SETUP_CLEANUP("Merge with Next", TestChunk, merge_next, setup, cleanup) {
@@ -266,8 +266,8 @@ FL_TYPE_TEST_SETUP_CLEANUP("Merge with Next", TestChunk, merge_next, setup, clea
 
     // Merge middle with tail
     free_chunk_merge_next(middle_and_tail);
-    FL_ASSERT_EQ_SIZE_T(middle_size + tail_size, CHUNK_SIZE(middle_and_tail));
-    FL_ASSERT_EQ_SIZE_T(middle_size + tail_size,
+    FL_ASSERT_EQ(middle_size + tail_size, CHUNK_SIZE(middle_and_tail));
+    FL_ASSERT_EQ(middle_size + tail_size,
                         free_chunk_footer_size(middle_and_tail));
     FL_UNUSED(initial_size);
 }
@@ -293,7 +293,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Chunk Free", TestChunk, chunk_free_test, setup, clea
     FL_ASSERT_EQ_PTR((void *)rem, (void *)freed);
     FL_ASSERT_FALSE(CHUNK_IS_INUSE(freed));
     FL_ASSERT_TRUE(DLIST_IS_EMPTY(&freed->siblings));
-    FL_ASSERT_EQ_SIZE_T(CHUNK_SIZE(freed), free_chunk_footer_size(freed));
+    FL_ASSERT_EQ(CHUNK_SIZE(freed), free_chunk_footer_size(freed));
 
     // Next chunk's previous-inuse flag should be cleared
     FL_ASSERT_FALSE(CHUNK_IS_PREVIOUS_INUSE(CHUNK_NEXT(freed)));
@@ -428,13 +428,13 @@ FL_TYPE_TEST_SETUP_CLEANUP("Payload Size", TestChunk, chunk_payload_size, setup,
                            cleanup) {
     FreeChunk *ch   = t->ch;
     size_t     size = CHUNK_SIZE(ch);
-    FL_ASSERT_EQ_SIZE_T(size - CHUNK_ALIGNED_SIZE, CHUNK_PAYLOAD_SIZE(ch));
+    FL_ASSERT_EQ(size - CHUNK_ALIGNED_SIZE, CHUNK_PAYLOAD_SIZE(ch));
 
     // Also verify after a split
     FreeChunk *rem = free_chunk_split(ch, MEBI(10), __FILE__, __LINE__);
     FL_ASSERT_NOT_NULL(rem);
-    FL_ASSERT_EQ_SIZE_T(MEBI(10) - CHUNK_ALIGNED_SIZE, CHUNK_PAYLOAD_SIZE(ch));
-    FL_ASSERT_EQ_SIZE_T(CHUNK_SIZE(rem) - CHUNK_ALIGNED_SIZE, CHUNK_PAYLOAD_SIZE(rem));
+    FL_ASSERT_EQ(MEBI(10) - CHUNK_ALIGNED_SIZE, CHUNK_PAYLOAD_SIZE(ch));
+    FL_ASSERT_EQ(CHUNK_SIZE(rem) - CHUNK_ALIGNED_SIZE, CHUNK_PAYLOAD_SIZE(rem));
 }
 
 // ============================================================================
@@ -448,16 +448,16 @@ static void request_to_size_is_valid(size_t request) {
     size_t size = CHUNK_SIZE_FROM_REQUEST(request);
 
     // Ensure the request didn't shrink
-    FL_ASSERT_GE_SIZE_T(size, request);
+    FL_ASSERT_GE(size, request);
 
     // If the request is no more than the minimum size for a Chunk, then ensure size is
     // at least the minimum. Otherwise, ensure the chunk is large enough to satisfy the
     // request.
     if (request <= CHUNK_FOOTER_SIZE) {
-        FL_ASSERT_EQ_SIZE_T(CHUNK_MIN_SIZE, size);
+        FL_ASSERT_EQ(CHUNK_MIN_SIZE, size);
     } else {
-        FL_ASSERT_GE_SIZE_T(size, CHUNK_MIN_SIZE);
-        FL_ASSERT_EQ_SIZE_T((size_t)0, size & CHUNK_ALIGNMENT_MASK);
+        FL_ASSERT_GE(size, CHUNK_MIN_SIZE);
+        FL_ASSERT_EQ((size_t)0, size & CHUNK_ALIGNMENT_MASK);
     }
 }
 
@@ -468,11 +468,11 @@ static void request_to_size_is_valid(size_t request) {
  */
 FL_TEST("Maximum Request", max_request) {
     size_t actual = CHUNK_SIZE_FROM_REQUEST(CHUNK_MAX_REQUEST);
-    FL_ASSERT_LT_SIZE_T(actual, MAX_SIZE_T);
-    FL_ASSERT_GT_SIZE_T(actual, CHUNK_MIN_SIZE);
+    FL_ASSERT_LT(actual, MAX_SIZE_T);
+    FL_ASSERT_GT(actual, CHUNK_MIN_SIZE);
 
     actual = CHUNK_SIZE_FROM_REQUEST(CHUNK_MAX_REQUEST + 1);
-    FL_ASSERT_EQ_SIZE_T((size_t)0, actual);
+    FL_ASSERT_EQ((size_t)0, actual);
 }
 
 /**
@@ -509,7 +509,7 @@ FL_TEST("Request out of range", request_out_of_range) {
  * minimal chunk.
  */
 FL_TEST("Pad Request", pad_request) {
-    FL_ASSERT_EQ_SIZE_T(CHUNK_MIN_SIZE, CHUNK_SIZE_FROM_REQUEST(CHUNK_FOOTER_SIZE));
+    FL_ASSERT_EQ(CHUNK_MIN_SIZE, CHUNK_SIZE_FROM_REQUEST(CHUNK_FOOTER_SIZE));
 }
 
 /**
@@ -523,7 +523,7 @@ FL_TEST("Payload vs Chunk Size", payload_vs_chunk_size) {
         size_t chunk_size = CHUNK_SIZE_FROM_REQUEST(req);
         size_t expected   = chunk_size - CHUNK_ALIGNED_SIZE;
         size_t actual     = CHUNK_REQUEST_TO_PAYLOAD(req);
-        FL_ASSERT_EQ_SIZE_T(expected, actual);
+        FL_ASSERT_EQ(expected, actual);
     }
 }
 

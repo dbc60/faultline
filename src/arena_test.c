@@ -503,7 +503,7 @@ static void setup_small_from_large_arena_test(FLTestCase *btc) {
             CHUNK_ALIGNED_SIZE, CHUNK_ALIGNMENT, request, lower,
             CHUNK_SIZE_FROM_REQUEST(request));
         mem[i] = arena_malloc_throw(at->arena, request, __FILE__, __LINE__);
-        FL_ASSERT_EQ_SIZE_T(lower, CHUNK_SIZE(CHUNK_FROM_MEMORY(mem[i])));
+        FL_ASSERT_EQ(lower, CHUNK_SIZE(CHUNK_FROM_MEMORY(mem[i])));
         lower += CHUNK_ALIGNMENT;
         request = lower - CHUNK_ALIGNED_SIZE;
     }

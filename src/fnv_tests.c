@@ -276,11 +276,11 @@ static uint8_t const k_fnv1024_b[FNV_N_TEST_STRINGS][FNV1024size]
 static char const *write_temp(char const *str, long int len) {
     FILE   *fp  = NULL;
     errno_t err = fopen_s(&fp, g_fnv_temp_name, "wb");
-    FL_ASSERT_EQ_INT(0, (int)err);
+    FL_ASSERT_EQ(0, (int)err);
     FL_ASSERT_NOT_NULL(fp);
     long int written = (long int)fwrite(str, 1, (size_t)len, fp);
     fclose(fp);
-    FL_ASSERT_EQ_INT32(len, written);
+    FL_ASSERT_EQ(len, written);
     return g_fnv_temp_name;
 }
 
@@ -295,7 +295,7 @@ typedef struct {
 static void setup_test_fnv(FLTestCase *tc) {
     FL_UNUSED(tc);
     errno_t err = tmpnam_s(g_fnv_temp_name, sizeof g_fnv_temp_name);
-    FL_ASSERT_EQ_INT(0, (int)err);
+    FL_ASSERT_EQ(0, (int)err);
 }
 
 static void cleanup_test_fnv(FLTestCase *tc) {
@@ -316,74 +316,74 @@ FL_VOID_TEST_SETUP_CLEANUP("case32", TestFnv, test_fnv32, setup_test_fnv, cleanu
     uint32_t     basis_t = FNV32basis;
 
     // --- Null-parameter checks: stateless one-shot byte-vector functions ---
-    FL_ASSERT_EQ_INT(fnvNull, FNV32string(NULL, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV32string(g_fnv_err_string, NULL));
-    FL_ASSERT_EQ_INT(fnvNull,
+    FL_ASSERT_EQ(fnvNull, FNV32string(NULL, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV32string(g_fnv_err_string, NULL));
+    FL_ASSERT_EQ(fnvNull,
                      FNV32stringBasis(NULL, g_fnv_hash, (uint8_t const *)&basis_t));
-    FL_ASSERT_EQ_INT(fnvNull, FNV32stringBasis(g_fnv_err_string, NULL,
+    FL_ASSERT_EQ(fnvNull, FNV32stringBasis(g_fnv_err_string, NULL,
                                                (uint8_t const *)&basis_t));
-    FL_ASSERT_EQ_INT(fnvNull, FNV32stringBasis(g_fnv_err_string, g_fnv_hash, NULL));
-    FL_ASSERT_EQ_INT(fnvNull, FNV32block(NULL, 1, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvBadParam, FNV32block(g_fnv_err_bytes, -1, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV32block(g_fnv_err_bytes, 1, NULL));
-    FL_ASSERT_EQ_INT(fnvNull,
+    FL_ASSERT_EQ(fnvNull, FNV32stringBasis(g_fnv_err_string, g_fnv_hash, NULL));
+    FL_ASSERT_EQ(fnvNull, FNV32block(NULL, 1, g_fnv_hash));
+    FL_ASSERT_EQ(fnvBadParam, FNV32block(g_fnv_err_bytes, -1, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV32block(g_fnv_err_bytes, 1, NULL));
+    FL_ASSERT_EQ(fnvNull,
                      FNV32blockBasis(NULL, 1, g_fnv_hash, (uint8_t const *)&basis_t));
-    FL_ASSERT_EQ_INT(fnvBadParam, FNV32blockBasis(g_fnv_err_bytes, -1, g_fnv_hash,
+    FL_ASSERT_EQ(fnvBadParam, FNV32blockBasis(g_fnv_err_bytes, -1, g_fnv_hash,
                                                   (uint8_t const *)&basis_t));
-    FL_ASSERT_EQ_INT(fnvNull, FNV32blockBasis(g_fnv_err_bytes, 1, NULL,
+    FL_ASSERT_EQ(fnvNull, FNV32blockBasis(g_fnv_err_bytes, 1, NULL,
                                               (uint8_t const *)&basis_t));
-    FL_ASSERT_EQ_INT(fnvNull, FNV32blockBasis(g_fnv_err_bytes, 1, g_fnv_hash, NULL));
-    FL_ASSERT_EQ_INT(fnvNull, FNV32file(NULL, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV32file("foo.txt", NULL));
-    FL_ASSERT_EQ_INT(fnvNull,
+    FL_ASSERT_EQ(fnvNull, FNV32blockBasis(g_fnv_err_bytes, 1, g_fnv_hash, NULL));
+    FL_ASSERT_EQ(fnvNull, FNV32file(NULL, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV32file("foo.txt", NULL));
+    FL_ASSERT_EQ(fnvNull,
                      FNV32fileBasis(NULL, g_fnv_hash, (uint8_t const *)&basis_t));
-    FL_ASSERT_EQ_INT(fnvNull,
+    FL_ASSERT_EQ(fnvNull,
                      FNV32fileBasis("foo.txt", NULL, (uint8_t const *)&basis_t));
-    FL_ASSERT_EQ_INT(fnvNull, FNV32fileBasis("foo.txt", g_fnv_hash, NULL));
+    FL_ASSERT_EQ(fnvNull, FNV32fileBasis("foo.txt", g_fnv_hash, NULL));
 
     // --- Null-parameter checks: context-based init functions ---
-    FL_ASSERT_EQ_INT(fnvSuccess, FNV32init(&ctx));
-    FL_ASSERT_EQ_INT(fnvNull, FNV32init(NULL));
-    FL_ASSERT_EQ_INT(fnvSuccess, FNV32initBasis(&ctx, (uint8_t const *)&basis_t));
-    FL_ASSERT_EQ_INT(fnvNull, FNV32initBasis(NULL, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV32initBasis(&ctx, NULL));
+    FL_ASSERT_EQ(fnvSuccess, FNV32init(&ctx));
+    FL_ASSERT_EQ(fnvNull, FNV32init(NULL));
+    FL_ASSERT_EQ(fnvSuccess, FNV32initBasis(&ctx, (uint8_t const *)&basis_t));
+    FL_ASSERT_EQ(fnvNull, FNV32initBasis(NULL, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV32initBasis(&ctx, NULL));
 
     // --- Null-parameter checks: INT (integer-return) functions ---
-    FL_ASSERT_EQ_INT(fnvNull, FNV32INTstring(NULL, &u32));
-    FL_ASSERT_EQ_INT(fnvNull, FNV32INTstring(g_fnv_err_string, NULL));
-    FL_ASSERT_EQ_INT(fnvNull, FNV32INTstringBasis(NULL, &u32, FNV32basis));
-    FL_ASSERT_EQ_INT(fnvNull, FNV32INTstringBasis(g_fnv_err_string, NULL, FNV32basis));
-    FL_ASSERT_EQ_INT(fnvNull, FNV32INTblock(NULL, 1, &u32));
-    FL_ASSERT_EQ_INT(fnvBadParam, FNV32INTblock(g_fnv_err_bytes, -1, &u32));
-    FL_ASSERT_EQ_INT(fnvNull, FNV32INTblock(g_fnv_err_bytes, 1, NULL));
-    FL_ASSERT_EQ_INT(fnvNull, FNV32INTblockBasis(NULL, 1, &u32, FNV32basis));
-    FL_ASSERT_EQ_INT(fnvBadParam,
+    FL_ASSERT_EQ(fnvNull, FNV32INTstring(NULL, &u32));
+    FL_ASSERT_EQ(fnvNull, FNV32INTstring(g_fnv_err_string, NULL));
+    FL_ASSERT_EQ(fnvNull, FNV32INTstringBasis(NULL, &u32, FNV32basis));
+    FL_ASSERT_EQ(fnvNull, FNV32INTstringBasis(g_fnv_err_string, NULL, FNV32basis));
+    FL_ASSERT_EQ(fnvNull, FNV32INTblock(NULL, 1, &u32));
+    FL_ASSERT_EQ(fnvBadParam, FNV32INTblock(g_fnv_err_bytes, -1, &u32));
+    FL_ASSERT_EQ(fnvNull, FNV32INTblock(g_fnv_err_bytes, 1, NULL));
+    FL_ASSERT_EQ(fnvNull, FNV32INTblockBasis(NULL, 1, &u32, FNV32basis));
+    FL_ASSERT_EQ(fnvBadParam,
                      FNV32INTblockBasis(g_fnv_err_bytes, -1, &u32, FNV32basis));
-    FL_ASSERT_EQ_INT(fnvNull, FNV32INTblockBasis(g_fnv_err_bytes, 1, NULL, FNV32basis));
-    FL_ASSERT_EQ_INT(fnvNull, FNV32INTinitBasis(NULL, FNV32basis));
+    FL_ASSERT_EQ(fnvNull, FNV32INTblockBasis(g_fnv_err_bytes, 1, NULL, FNV32basis));
+    FL_ASSERT_EQ(fnvNull, FNV32INTinitBasis(NULL, FNV32basis));
 
     // --- State-error checks: put ctx into a known-bad (FNVclobber) state ---
     ctx.Computed = FNVclobber + FNV32state;
-    FL_ASSERT_EQ_INT(fnvNull, FNV32blockin(NULL, g_fnv_err_bytes, 3));
-    FL_ASSERT_EQ_INT(fnvNull, FNV32blockin(&ctx, NULL, 3));
-    FL_ASSERT_EQ_INT(fnvBadParam, FNV32blockin(&ctx, g_fnv_err_bytes, -1));
-    FL_ASSERT_EQ_INT(fnvStateError, FNV32blockin(&ctx, g_fnv_err_bytes, 3));
-    FL_ASSERT_EQ_INT(fnvNull, FNV32stringin(NULL, g_fnv_err_string));
-    FL_ASSERT_EQ_INT(fnvNull, FNV32stringin(&ctx, NULL));
-    FL_ASSERT_EQ_INT(fnvStateError, FNV32stringin(&ctx, g_fnv_err_string));
-    FL_ASSERT_EQ_INT(fnvNull, FNV32filein(NULL, g_fnv_err_string));
-    FL_ASSERT_EQ_INT(fnvNull, FNV32filein(&ctx, NULL));
-    FL_ASSERT_EQ_INT(fnvStateError, FNV32filein(&ctx, g_fnv_err_string));
-    FL_ASSERT_EQ_INT(fnvNull, FNV32result(NULL, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV32result(&ctx, NULL));
-    FL_ASSERT_EQ_INT(fnvStateError, FNV32result(&ctx, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV32INTresult(NULL, &u32));
-    FL_ASSERT_EQ_INT(fnvNull, FNV32INTresult(&ctx, NULL));
-    FL_ASSERT_EQ_INT(fnvStateError, FNV32INTresult(&ctx, &u32));
-    FL_ASSERT_EQ_INT(fnvNull, FNV32INTfile(NULL, &u32));
-    FL_ASSERT_EQ_INT(fnvNull, FNV32INTfile("foo.txt", NULL));
-    FL_ASSERT_EQ_INT(fnvNull, FNV32INTfileBasis(NULL, &u32, FNV32basis));
-    FL_ASSERT_EQ_INT(fnvNull, FNV32INTfileBasis("foo.txt", NULL, FNV32basis));
+    FL_ASSERT_EQ(fnvNull, FNV32blockin(NULL, g_fnv_err_bytes, 3));
+    FL_ASSERT_EQ(fnvNull, FNV32blockin(&ctx, NULL, 3));
+    FL_ASSERT_EQ(fnvBadParam, FNV32blockin(&ctx, g_fnv_err_bytes, -1));
+    FL_ASSERT_EQ(fnvStateError, FNV32blockin(&ctx, g_fnv_err_bytes, 3));
+    FL_ASSERT_EQ(fnvNull, FNV32stringin(NULL, g_fnv_err_string));
+    FL_ASSERT_EQ(fnvNull, FNV32stringin(&ctx, NULL));
+    FL_ASSERT_EQ(fnvStateError, FNV32stringin(&ctx, g_fnv_err_string));
+    FL_ASSERT_EQ(fnvNull, FNV32filein(NULL, g_fnv_err_string));
+    FL_ASSERT_EQ(fnvNull, FNV32filein(&ctx, NULL));
+    FL_ASSERT_EQ(fnvStateError, FNV32filein(&ctx, g_fnv_err_string));
+    FL_ASSERT_EQ(fnvNull, FNV32result(NULL, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV32result(&ctx, NULL));
+    FL_ASSERT_EQ(fnvStateError, FNV32result(&ctx, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV32INTresult(NULL, &u32));
+    FL_ASSERT_EQ(fnvNull, FNV32INTresult(&ctx, NULL));
+    FL_ASSERT_EQ(fnvStateError, FNV32INTresult(&ctx, &u32));
+    FL_ASSERT_EQ(fnvNull, FNV32INTfile(NULL, &u32));
+    FL_ASSERT_EQ(fnvNull, FNV32INTfile("foo.txt", NULL));
+    FL_ASSERT_EQ(fnvNull, FNV32INTfileBasis(NULL, &u32, FNV32basis));
+    FL_ASSERT_EQ(fnvNull, FNV32INTfileBasis("foo.txt", NULL, FNV32basis));
 
     // --- FNV-0 basis derivation (little-endian: XOR byte [0]) ---
     {
@@ -392,13 +392,13 @@ FL_VOID_TEST_SETUP_CLEANUP("case32", TestFnv, test_fnv32, setup_test_fnv, cleanu
         memset(zero_basis, 0, sizeof zero_basis);
 
         // Byte-vector variant
-        FL_ASSERT_EQ_INT(fnvSuccess,
+        FL_ASSERT_EQ(fnvSuccess,
                          FNV32stringBasis(basis_string, g_fnv_hash, zero_basis));
         g_fnv_hash[0] ^= '\\';
         FL_ASSERT_MEM_EQ(&k_fnv32_s[0], g_fnv_hash, FNV32size);
 
         // Integer variant
-        FL_ASSERT_EQ_INT(fnvSuccess,
+        FL_ASSERT_EQ(fnvSuccess,
                          FNV32INTstringBasis(basis_string, &u32, (uint32_t)0));
         u32 ^= (uint32_t)'\\';
         FL_ASSERT_TRUE(u32 == k_fnv32_s[0]);
@@ -409,62 +409,62 @@ FL_VOID_TEST_SETUP_CLEANUP("case32", TestFnv, test_fnv32, setup_test_fnv, cleanu
         long int len = (long int)strlen(g_fnv_test_strings[i]);
 
         // INT one-shot string (no NUL)
-        FL_ASSERT_EQ_INT(fnvSuccess, FNV32INTstring(g_fnv_test_strings[i], &u32));
+        FL_ASSERT_EQ(fnvSuccess, FNV32INTstring(g_fnv_test_strings[i], &u32));
         FL_ASSERT_TRUE(u32 == k_fnv32_s[i]);
 
         // INT one-shot block (string + NUL)
-        FL_ASSERT_EQ_INT(fnvSuccess,
+        FL_ASSERT_EQ(fnvSuccess,
                          FNV32INTblock(g_fnv_test_strings[i],
                                        (long int)(strlen(g_fnv_test_strings[i]) + 1),
                                        &u32));
         FL_ASSERT_TRUE(u32 == k_fnv32_b[i]);
 
         // Byte one-shot string (no NUL)
-        FL_ASSERT_EQ_INT(fnvSuccess, FNV32string(g_fnv_test_strings[i], g_fnv_hash));
+        FL_ASSERT_EQ(fnvSuccess, FNV32string(g_fnv_test_strings[i], g_fnv_hash));
         FL_ASSERT_MEM_EQ(&k_fnv32_s[i], g_fnv_hash, FNV32size);
 
         // Byte one-shot block (string + NUL)
-        FL_ASSERT_EQ_INT(fnvSuccess,
+        FL_ASSERT_EQ(fnvSuccess,
                          FNV32block(g_fnv_test_strings[i],
                                     (long int)(strlen(g_fnv_test_strings[i]) + 1),
                                     g_fnv_hash));
         FL_ASSERT_MEM_EQ(&k_fnv32_b[i], g_fnv_hash, FNV32size);
 
         // Incremental byte: split string at midpoint
-        FL_ASSERT_EQ_INT(fnvSuccess, FNV32init(&ctx));
-        FL_ASSERT_EQ_INT(fnvSuccess, FNV32blockin(&ctx, g_fnv_test_strings[i], len / 2));
+        FL_ASSERT_EQ(fnvSuccess, FNV32init(&ctx));
+        FL_ASSERT_EQ(fnvSuccess, FNV32blockin(&ctx, g_fnv_test_strings[i], len / 2));
         if (i & 1) {
-            FL_ASSERT_EQ_INT(fnvSuccess, FNV32result(&ctx, g_fnv_hash));
-            FL_ASSERT_EQ_INT(fnvSuccess, FNV32initBasis(&ctx, g_fnv_hash));
+            FL_ASSERT_EQ(fnvSuccess, FNV32result(&ctx, g_fnv_hash));
+            FL_ASSERT_EQ(fnvSuccess, FNV32initBasis(&ctx, g_fnv_hash));
         }
-        FL_ASSERT_EQ_INT(fnvSuccess,
+        FL_ASSERT_EQ(fnvSuccess,
                          FNV32stringin(&ctx, g_fnv_test_strings[i] + len / 2));
-        FL_ASSERT_EQ_INT(fnvSuccess, FNV32result(&ctx, g_fnv_hash));
+        FL_ASSERT_EQ(fnvSuccess, FNV32result(&ctx, g_fnv_hash));
         FL_ASSERT_MEM_EQ(&k_fnv32_s[i], g_fnv_hash, FNV32size);
 
         // Incremental INT
-        FL_ASSERT_EQ_INT(fnvSuccess, FNV32init(&ctx));
-        FL_ASSERT_EQ_INT(fnvSuccess, FNV32blockin(&ctx, g_fnv_test_strings[i], len / 2));
-        FL_ASSERT_EQ_INT(fnvSuccess,
+        FL_ASSERT_EQ(fnvSuccess, FNV32init(&ctx));
+        FL_ASSERT_EQ(fnvSuccess, FNV32blockin(&ctx, g_fnv_test_strings[i], len / 2));
+        FL_ASSERT_EQ(fnvSuccess,
                          FNV32stringin(&ctx, g_fnv_test_strings[i] + len / 2));
-        FL_ASSERT_EQ_INT(fnvSuccess, FNV32INTresult(&ctx, &u32));
+        FL_ASSERT_EQ(fnvSuccess, FNV32INTresult(&ctx, &u32));
         FL_ASSERT_TRUE(u32 == k_fnv32_s[i]);
 
         // Incremental with custom basis (same value as the standard FNV32 basis)
-        FL_ASSERT_EQ_INT(fnvSuccess, FNV32initBasis(&ctx, (uint8_t const *)&basis_t));
-        FL_ASSERT_EQ_INT(fnvSuccess, FNV32blockin(&ctx, g_fnv_test_strings[i], len / 2));
-        FL_ASSERT_EQ_INT(fnvSuccess,
+        FL_ASSERT_EQ(fnvSuccess, FNV32initBasis(&ctx, (uint8_t const *)&basis_t));
+        FL_ASSERT_EQ(fnvSuccess, FNV32blockin(&ctx, g_fnv_test_strings[i], len / 2));
+        FL_ASSERT_EQ(fnvSuccess,
                          FNV32stringin(&ctx, g_fnv_test_strings[i] + len / 2));
-        FL_ASSERT_EQ_INT(fnvSuccess, FNV32result(&ctx, g_fnv_hash));
+        FL_ASSERT_EQ(fnvSuccess, FNV32result(&ctx, g_fnv_hash));
         FL_ASSERT_MEM_EQ(&k_fnv32_s[i], g_fnv_hash, FNV32size);
 
         // File hash (INT)
-        FL_ASSERT_EQ_INT(fnvSuccess,
+        FL_ASSERT_EQ(fnvSuccess,
                          FNV32INTfile(write_temp(g_fnv_test_strings[i], len), &u32));
         FL_ASSERT_TRUE(u32 == k_fnv32_s[i]);
 
         // File hash (byte)
-        FL_ASSERT_EQ_INT(fnvSuccess,
+        FL_ASSERT_EQ(fnvSuccess,
                          FNV32file(write_temp(g_fnv_test_strings[i], len), g_fnv_hash));
         FL_ASSERT_MEM_EQ(&k_fnv32_s[i], g_fnv_hash, FNV32size);
     }
@@ -482,74 +482,74 @@ FL_VOID_TEST_SETUP_CLEANUP("case64", TestFnv, test_fnv64, setup_test_fnv, cleanu
     uint64_t     basis_t = FNV64basis;
 
     // --- Null-parameter checks: stateless one-shot byte-vector functions ---
-    FL_ASSERT_EQ_INT(fnvNull, FNV64string(NULL, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV64string(g_fnv_err_string, NULL));
-    FL_ASSERT_EQ_INT(fnvNull,
+    FL_ASSERT_EQ(fnvNull, FNV64string(NULL, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV64string(g_fnv_err_string, NULL));
+    FL_ASSERT_EQ(fnvNull,
                      FNV64stringBasis(NULL, g_fnv_hash, (uint8_t const *)&basis_t));
-    FL_ASSERT_EQ_INT(fnvNull, FNV64stringBasis(g_fnv_err_string, NULL,
+    FL_ASSERT_EQ(fnvNull, FNV64stringBasis(g_fnv_err_string, NULL,
                                                (uint8_t const *)&basis_t));
-    FL_ASSERT_EQ_INT(fnvNull, FNV64stringBasis(g_fnv_err_string, g_fnv_hash, NULL));
-    FL_ASSERT_EQ_INT(fnvNull, FNV64block(NULL, 1, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvBadParam, FNV64block(g_fnv_err_bytes, -1, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV64block(g_fnv_err_bytes, 1, NULL));
-    FL_ASSERT_EQ_INT(fnvNull,
+    FL_ASSERT_EQ(fnvNull, FNV64stringBasis(g_fnv_err_string, g_fnv_hash, NULL));
+    FL_ASSERT_EQ(fnvNull, FNV64block(NULL, 1, g_fnv_hash));
+    FL_ASSERT_EQ(fnvBadParam, FNV64block(g_fnv_err_bytes, -1, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV64block(g_fnv_err_bytes, 1, NULL));
+    FL_ASSERT_EQ(fnvNull,
                      FNV64blockBasis(NULL, 1, g_fnv_hash, (uint8_t const *)&basis_t));
-    FL_ASSERT_EQ_INT(fnvBadParam, FNV64blockBasis(g_fnv_err_bytes, -1, g_fnv_hash,
+    FL_ASSERT_EQ(fnvBadParam, FNV64blockBasis(g_fnv_err_bytes, -1, g_fnv_hash,
                                                   (uint8_t const *)&basis_t));
-    FL_ASSERT_EQ_INT(fnvNull, FNV64blockBasis(g_fnv_err_bytes, 1, NULL,
+    FL_ASSERT_EQ(fnvNull, FNV64blockBasis(g_fnv_err_bytes, 1, NULL,
                                               (uint8_t const *)&basis_t));
-    FL_ASSERT_EQ_INT(fnvNull, FNV64blockBasis(g_fnv_err_bytes, 1, g_fnv_hash, NULL));
-    FL_ASSERT_EQ_INT(fnvNull, FNV64file(NULL, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV64file("foo.txt", NULL));
-    FL_ASSERT_EQ_INT(fnvNull,
+    FL_ASSERT_EQ(fnvNull, FNV64blockBasis(g_fnv_err_bytes, 1, g_fnv_hash, NULL));
+    FL_ASSERT_EQ(fnvNull, FNV64file(NULL, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV64file("foo.txt", NULL));
+    FL_ASSERT_EQ(fnvNull,
                      FNV64fileBasis(NULL, g_fnv_hash, (uint8_t const *)&basis_t));
-    FL_ASSERT_EQ_INT(fnvNull,
+    FL_ASSERT_EQ(fnvNull,
                      FNV64fileBasis("foo.txt", NULL, (uint8_t const *)&basis_t));
-    FL_ASSERT_EQ_INT(fnvNull, FNV64fileBasis("foo.txt", g_fnv_hash, NULL));
+    FL_ASSERT_EQ(fnvNull, FNV64fileBasis("foo.txt", g_fnv_hash, NULL));
 
     // --- Null-parameter checks: context-based init functions ---
-    FL_ASSERT_EQ_INT(fnvSuccess, FNV64init(&ctx));
-    FL_ASSERT_EQ_INT(fnvNull, FNV64init(NULL));
-    FL_ASSERT_EQ_INT(fnvSuccess, FNV64initBasis(&ctx, (uint8_t const *)&basis_t));
-    FL_ASSERT_EQ_INT(fnvNull, FNV64initBasis(NULL, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV64initBasis(&ctx, NULL));
+    FL_ASSERT_EQ(fnvSuccess, FNV64init(&ctx));
+    FL_ASSERT_EQ(fnvNull, FNV64init(NULL));
+    FL_ASSERT_EQ(fnvSuccess, FNV64initBasis(&ctx, (uint8_t const *)&basis_t));
+    FL_ASSERT_EQ(fnvNull, FNV64initBasis(NULL, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV64initBasis(&ctx, NULL));
 
     // --- Null-parameter checks: INT (integer-return) functions ---
-    FL_ASSERT_EQ_INT(fnvNull, FNV64INTstring(NULL, &u64));
-    FL_ASSERT_EQ_INT(fnvNull, FNV64INTstring(g_fnv_err_string, NULL));
-    FL_ASSERT_EQ_INT(fnvNull, FNV64INTstringBasis(NULL, &u64, FNV64basis));
-    FL_ASSERT_EQ_INT(fnvNull, FNV64INTstringBasis(g_fnv_err_string, NULL, FNV64basis));
-    FL_ASSERT_EQ_INT(fnvNull, FNV64INTblock(NULL, 1, &u64));
-    FL_ASSERT_EQ_INT(fnvBadParam, FNV64INTblock(g_fnv_err_bytes, -1, &u64));
-    FL_ASSERT_EQ_INT(fnvNull, FNV64INTblock(g_fnv_err_bytes, 1, NULL));
-    FL_ASSERT_EQ_INT(fnvNull, FNV64INTblockBasis(NULL, 1, &u64, FNV64basis));
-    FL_ASSERT_EQ_INT(fnvBadParam,
+    FL_ASSERT_EQ(fnvNull, FNV64INTstring(NULL, &u64));
+    FL_ASSERT_EQ(fnvNull, FNV64INTstring(g_fnv_err_string, NULL));
+    FL_ASSERT_EQ(fnvNull, FNV64INTstringBasis(NULL, &u64, FNV64basis));
+    FL_ASSERT_EQ(fnvNull, FNV64INTstringBasis(g_fnv_err_string, NULL, FNV64basis));
+    FL_ASSERT_EQ(fnvNull, FNV64INTblock(NULL, 1, &u64));
+    FL_ASSERT_EQ(fnvBadParam, FNV64INTblock(g_fnv_err_bytes, -1, &u64));
+    FL_ASSERT_EQ(fnvNull, FNV64INTblock(g_fnv_err_bytes, 1, NULL));
+    FL_ASSERT_EQ(fnvNull, FNV64INTblockBasis(NULL, 1, &u64, FNV64basis));
+    FL_ASSERT_EQ(fnvBadParam,
                      FNV64INTblockBasis(g_fnv_err_bytes, -1, &u64, FNV64basis));
-    FL_ASSERT_EQ_INT(fnvNull, FNV64INTblockBasis(g_fnv_err_bytes, 1, NULL, FNV64basis));
-    FL_ASSERT_EQ_INT(fnvNull, FNV64INTinitBasis(NULL, FNV64basis));
+    FL_ASSERT_EQ(fnvNull, FNV64INTblockBasis(g_fnv_err_bytes, 1, NULL, FNV64basis));
+    FL_ASSERT_EQ(fnvNull, FNV64INTinitBasis(NULL, FNV64basis));
 
     // --- State-error checks: put ctx into a known-bad (FNVclobber) state ---
     ctx.Computed = FNVclobber + FNV64state;
-    FL_ASSERT_EQ_INT(fnvNull, FNV64blockin(NULL, g_fnv_err_bytes, 3));
-    FL_ASSERT_EQ_INT(fnvNull, FNV64blockin(&ctx, NULL, 3));
-    FL_ASSERT_EQ_INT(fnvBadParam, FNV64blockin(&ctx, g_fnv_err_bytes, -1));
-    FL_ASSERT_EQ_INT(fnvStateError, FNV64blockin(&ctx, g_fnv_err_bytes, 3));
-    FL_ASSERT_EQ_INT(fnvNull, FNV64stringin(NULL, g_fnv_err_string));
-    FL_ASSERT_EQ_INT(fnvNull, FNV64stringin(&ctx, NULL));
-    FL_ASSERT_EQ_INT(fnvStateError, FNV64stringin(&ctx, g_fnv_err_string));
-    FL_ASSERT_EQ_INT(fnvNull, FNV64filein(NULL, g_fnv_err_string));
-    FL_ASSERT_EQ_INT(fnvNull, FNV64filein(&ctx, NULL));
-    FL_ASSERT_EQ_INT(fnvStateError, FNV64filein(&ctx, g_fnv_err_string));
-    FL_ASSERT_EQ_INT(fnvNull, FNV64result(NULL, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV64result(&ctx, NULL));
-    FL_ASSERT_EQ_INT(fnvStateError, FNV64result(&ctx, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV64INTresult(NULL, &u64));
-    FL_ASSERT_EQ_INT(fnvNull, FNV64INTresult(&ctx, NULL));
-    FL_ASSERT_EQ_INT(fnvStateError, FNV64INTresult(&ctx, &u64));
-    FL_ASSERT_EQ_INT(fnvNull, FNV64INTfile(NULL, &u64));
-    FL_ASSERT_EQ_INT(fnvNull, FNV64INTfile("foo.txt", NULL));
-    FL_ASSERT_EQ_INT(fnvNull, FNV64INTfileBasis(NULL, &u64, FNV64basis));
-    FL_ASSERT_EQ_INT(fnvNull, FNV64INTfileBasis("foo.txt", NULL, FNV64basis));
+    FL_ASSERT_EQ(fnvNull, FNV64blockin(NULL, g_fnv_err_bytes, 3));
+    FL_ASSERT_EQ(fnvNull, FNV64blockin(&ctx, NULL, 3));
+    FL_ASSERT_EQ(fnvBadParam, FNV64blockin(&ctx, g_fnv_err_bytes, -1));
+    FL_ASSERT_EQ(fnvStateError, FNV64blockin(&ctx, g_fnv_err_bytes, 3));
+    FL_ASSERT_EQ(fnvNull, FNV64stringin(NULL, g_fnv_err_string));
+    FL_ASSERT_EQ(fnvNull, FNV64stringin(&ctx, NULL));
+    FL_ASSERT_EQ(fnvStateError, FNV64stringin(&ctx, g_fnv_err_string));
+    FL_ASSERT_EQ(fnvNull, FNV64filein(NULL, g_fnv_err_string));
+    FL_ASSERT_EQ(fnvNull, FNV64filein(&ctx, NULL));
+    FL_ASSERT_EQ(fnvStateError, FNV64filein(&ctx, g_fnv_err_string));
+    FL_ASSERT_EQ(fnvNull, FNV64result(NULL, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV64result(&ctx, NULL));
+    FL_ASSERT_EQ(fnvStateError, FNV64result(&ctx, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV64INTresult(NULL, &u64));
+    FL_ASSERT_EQ(fnvNull, FNV64INTresult(&ctx, NULL));
+    FL_ASSERT_EQ(fnvStateError, FNV64INTresult(&ctx, &u64));
+    FL_ASSERT_EQ(fnvNull, FNV64INTfile(NULL, &u64));
+    FL_ASSERT_EQ(fnvNull, FNV64INTfile("foo.txt", NULL));
+    FL_ASSERT_EQ(fnvNull, FNV64INTfileBasis(NULL, &u64, FNV64basis));
+    FL_ASSERT_EQ(fnvNull, FNV64INTfileBasis("foo.txt", NULL, FNV64basis));
 
     // --- FNV-0 basis derivation (little-endian: XOR byte [0]) ---
     {
@@ -558,13 +558,13 @@ FL_VOID_TEST_SETUP_CLEANUP("case64", TestFnv, test_fnv64, setup_test_fnv, cleanu
         memset(zero_basis, 0, sizeof zero_basis);
 
         // Byte-vector variant
-        FL_ASSERT_EQ_INT(fnvSuccess,
+        FL_ASSERT_EQ(fnvSuccess,
                          FNV64stringBasis(basis_string, g_fnv_hash, zero_basis));
         g_fnv_hash[0] ^= '\\';
         FL_ASSERT_MEM_EQ(&k_fnv64_s[0], g_fnv_hash, FNV64size);
 
         // Integer variant
-        FL_ASSERT_EQ_INT(fnvSuccess,
+        FL_ASSERT_EQ(fnvSuccess,
                          FNV64INTstringBasis(basis_string, &u64, (uint64_t)0));
         u64 ^= (uint64_t)'\\';
         FL_ASSERT_TRUE(u64 == k_fnv64_s[0]);
@@ -575,62 +575,62 @@ FL_VOID_TEST_SETUP_CLEANUP("case64", TestFnv, test_fnv64, setup_test_fnv, cleanu
         long int len = (long int)strlen(g_fnv_test_strings[i]);
 
         // INT one-shot string (no NUL)
-        FL_ASSERT_EQ_INT(fnvSuccess, FNV64INTstring(g_fnv_test_strings[i], &u64));
+        FL_ASSERT_EQ(fnvSuccess, FNV64INTstring(g_fnv_test_strings[i], &u64));
         FL_ASSERT_TRUE(u64 == k_fnv64_s[i]);
 
         // INT one-shot block (string + NUL)
-        FL_ASSERT_EQ_INT(fnvSuccess,
+        FL_ASSERT_EQ(fnvSuccess,
                          FNV64INTblock(g_fnv_test_strings[i],
                                        (long int)(strlen(g_fnv_test_strings[i]) + 1),
                                        &u64));
         FL_ASSERT_TRUE(u64 == k_fnv64_b[i]);
 
         // Byte one-shot string (no NUL)
-        FL_ASSERT_EQ_INT(fnvSuccess, FNV64string(g_fnv_test_strings[i], g_fnv_hash));
+        FL_ASSERT_EQ(fnvSuccess, FNV64string(g_fnv_test_strings[i], g_fnv_hash));
         FL_ASSERT_MEM_EQ(&k_fnv64_s[i], g_fnv_hash, FNV64size);
 
         // Byte one-shot block (string + NUL)
-        FL_ASSERT_EQ_INT(fnvSuccess,
+        FL_ASSERT_EQ(fnvSuccess,
                          FNV64block(g_fnv_test_strings[i],
                                     (long int)(strlen(g_fnv_test_strings[i]) + 1),
                                     g_fnv_hash));
         FL_ASSERT_MEM_EQ(&k_fnv64_b[i], g_fnv_hash, FNV64size);
 
         // Incremental byte: split string at midpoint
-        FL_ASSERT_EQ_INT(fnvSuccess, FNV64init(&ctx));
-        FL_ASSERT_EQ_INT(fnvSuccess, FNV64blockin(&ctx, g_fnv_test_strings[i], len / 2));
+        FL_ASSERT_EQ(fnvSuccess, FNV64init(&ctx));
+        FL_ASSERT_EQ(fnvSuccess, FNV64blockin(&ctx, g_fnv_test_strings[i], len / 2));
         if (i & 1) {
-            FL_ASSERT_EQ_INT(fnvSuccess, FNV64result(&ctx, g_fnv_hash));
-            FL_ASSERT_EQ_INT(fnvSuccess, FNV64initBasis(&ctx, g_fnv_hash));
+            FL_ASSERT_EQ(fnvSuccess, FNV64result(&ctx, g_fnv_hash));
+            FL_ASSERT_EQ(fnvSuccess, FNV64initBasis(&ctx, g_fnv_hash));
         }
-        FL_ASSERT_EQ_INT(fnvSuccess,
+        FL_ASSERT_EQ(fnvSuccess,
                          FNV64stringin(&ctx, g_fnv_test_strings[i] + len / 2));
-        FL_ASSERT_EQ_INT(fnvSuccess, FNV64result(&ctx, g_fnv_hash));
+        FL_ASSERT_EQ(fnvSuccess, FNV64result(&ctx, g_fnv_hash));
         FL_ASSERT_MEM_EQ(&k_fnv64_s[i], g_fnv_hash, FNV64size);
 
         // Incremental INT
-        FL_ASSERT_EQ_INT(fnvSuccess, FNV64init(&ctx));
-        FL_ASSERT_EQ_INT(fnvSuccess, FNV64blockin(&ctx, g_fnv_test_strings[i], len / 2));
-        FL_ASSERT_EQ_INT(fnvSuccess,
+        FL_ASSERT_EQ(fnvSuccess, FNV64init(&ctx));
+        FL_ASSERT_EQ(fnvSuccess, FNV64blockin(&ctx, g_fnv_test_strings[i], len / 2));
+        FL_ASSERT_EQ(fnvSuccess,
                          FNV64stringin(&ctx, g_fnv_test_strings[i] + len / 2));
-        FL_ASSERT_EQ_INT(fnvSuccess, FNV64INTresult(&ctx, &u64));
+        FL_ASSERT_EQ(fnvSuccess, FNV64INTresult(&ctx, &u64));
         FL_ASSERT_TRUE(u64 == k_fnv64_s[i]);
 
         // Incremental with custom basis (same value as the standard FNV64 basis)
-        FL_ASSERT_EQ_INT(fnvSuccess, FNV64initBasis(&ctx, (uint8_t const *)&basis_t));
-        FL_ASSERT_EQ_INT(fnvSuccess, FNV64blockin(&ctx, g_fnv_test_strings[i], len / 2));
-        FL_ASSERT_EQ_INT(fnvSuccess,
+        FL_ASSERT_EQ(fnvSuccess, FNV64initBasis(&ctx, (uint8_t const *)&basis_t));
+        FL_ASSERT_EQ(fnvSuccess, FNV64blockin(&ctx, g_fnv_test_strings[i], len / 2));
+        FL_ASSERT_EQ(fnvSuccess,
                          FNV64stringin(&ctx, g_fnv_test_strings[i] + len / 2));
-        FL_ASSERT_EQ_INT(fnvSuccess, FNV64result(&ctx, g_fnv_hash));
+        FL_ASSERT_EQ(fnvSuccess, FNV64result(&ctx, g_fnv_hash));
         FL_ASSERT_MEM_EQ(&k_fnv64_s[i], g_fnv_hash, FNV64size);
 
         // File hash (INT)
-        FL_ASSERT_EQ_INT(fnvSuccess,
+        FL_ASSERT_EQ(fnvSuccess,
                          FNV64INTfile(write_temp(g_fnv_test_strings[i], len), &u64));
         FL_ASSERT_TRUE(u64 == k_fnv64_s[i]);
 
         // File hash (byte)
-        FL_ASSERT_EQ_INT(fnvSuccess,
+        FL_ASSERT_EQ(fnvSuccess,
                          FNV64file(write_temp(g_fnv_test_strings[i], len), g_fnv_hash));
         FL_ASSERT_MEM_EQ(&k_fnv64_s[i], g_fnv_hash, FNV64size);
     }
@@ -646,54 +646,54 @@ FL_VOID_TEST_SETUP_CLEANUP("case128", TestFnv, test_fnv128, setup_test_fnv, clea
     FNV128context ctx;
 
     // --- Null-parameter checks ---
-    FL_ASSERT_EQ_INT(fnvNull, FNV128string(NULL, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV128string(g_fnv_err_string, NULL));
-    FL_ASSERT_EQ_INT(fnvNull, FNV128stringBasis(NULL, g_fnv_hash, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV128stringBasis(g_fnv_err_string, NULL, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV128stringBasis(g_fnv_err_string, g_fnv_hash, NULL));
-    FL_ASSERT_EQ_INT(fnvNull, FNV128block(NULL, 1, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvBadParam, FNV128block(g_fnv_err_bytes, -1, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV128block(g_fnv_err_bytes, 1, NULL));
-    FL_ASSERT_EQ_INT(fnvNull, FNV128blockBasis(NULL, 1, g_fnv_hash, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvBadParam,
+    FL_ASSERT_EQ(fnvNull, FNV128string(NULL, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV128string(g_fnv_err_string, NULL));
+    FL_ASSERT_EQ(fnvNull, FNV128stringBasis(NULL, g_fnv_hash, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV128stringBasis(g_fnv_err_string, NULL, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV128stringBasis(g_fnv_err_string, g_fnv_hash, NULL));
+    FL_ASSERT_EQ(fnvNull, FNV128block(NULL, 1, g_fnv_hash));
+    FL_ASSERT_EQ(fnvBadParam, FNV128block(g_fnv_err_bytes, -1, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV128block(g_fnv_err_bytes, 1, NULL));
+    FL_ASSERT_EQ(fnvNull, FNV128blockBasis(NULL, 1, g_fnv_hash, g_fnv_hash));
+    FL_ASSERT_EQ(fnvBadParam,
                      FNV128blockBasis(g_fnv_err_bytes, -1, g_fnv_hash, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV128blockBasis(g_fnv_err_bytes, 1, NULL, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV128blockBasis(g_fnv_err_bytes, 1, g_fnv_hash, NULL));
-    FL_ASSERT_EQ_INT(fnvNull, FNV128file(NULL, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV128file("foo.txt", NULL));
-    FL_ASSERT_EQ_INT(fnvNull, FNV128fileBasis(NULL, g_fnv_hash, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV128fileBasis("foo.txt", NULL, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV128fileBasis("foo.txt", g_fnv_hash, NULL));
+    FL_ASSERT_EQ(fnvNull, FNV128blockBasis(g_fnv_err_bytes, 1, NULL, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV128blockBasis(g_fnv_err_bytes, 1, g_fnv_hash, NULL));
+    FL_ASSERT_EQ(fnvNull, FNV128file(NULL, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV128file("foo.txt", NULL));
+    FL_ASSERT_EQ(fnvNull, FNV128fileBasis(NULL, g_fnv_hash, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV128fileBasis("foo.txt", NULL, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV128fileBasis("foo.txt", g_fnv_hash, NULL));
 
     // --- Context init checks ---
-    FL_ASSERT_EQ_INT(fnvSuccess, FNV128init(&ctx));
-    FL_ASSERT_EQ_INT(fnvNull, FNV128init(NULL));
-    FL_ASSERT_EQ_INT(fnvSuccess, FNV128initBasis(&ctx, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV128initBasis(NULL, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV128initBasis(&ctx, NULL));
+    FL_ASSERT_EQ(fnvSuccess, FNV128init(&ctx));
+    FL_ASSERT_EQ(fnvNull, FNV128init(NULL));
+    FL_ASSERT_EQ(fnvSuccess, FNV128initBasis(&ctx, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV128initBasis(NULL, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV128initBasis(&ctx, NULL));
 
     // --- State-error checks ---
     ctx.Computed = FNVclobber + FNV128state;
-    FL_ASSERT_EQ_INT(fnvNull, FNV128blockin(NULL, g_fnv_err_bytes, 3));
-    FL_ASSERT_EQ_INT(fnvNull, FNV128blockin(&ctx, NULL, 3));
-    FL_ASSERT_EQ_INT(fnvBadParam, FNV128blockin(&ctx, g_fnv_err_bytes, -1));
-    FL_ASSERT_EQ_INT(fnvStateError, FNV128blockin(&ctx, g_fnv_err_bytes, 3));
-    FL_ASSERT_EQ_INT(fnvNull, FNV128stringin(NULL, g_fnv_err_string));
-    FL_ASSERT_EQ_INT(fnvNull, FNV128stringin(&ctx, NULL));
-    FL_ASSERT_EQ_INT(fnvStateError, FNV128stringin(&ctx, g_fnv_err_string));
-    FL_ASSERT_EQ_INT(fnvNull, FNV128filein(NULL, g_fnv_err_string));
-    FL_ASSERT_EQ_INT(fnvNull, FNV128filein(&ctx, NULL));
-    FL_ASSERT_EQ_INT(fnvStateError, FNV128filein(&ctx, g_fnv_err_string));
-    FL_ASSERT_EQ_INT(fnvNull, FNV128result(NULL, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV128result(&ctx, NULL));
-    FL_ASSERT_EQ_INT(fnvStateError, FNV128result(&ctx, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV128blockin(NULL, g_fnv_err_bytes, 3));
+    FL_ASSERT_EQ(fnvNull, FNV128blockin(&ctx, NULL, 3));
+    FL_ASSERT_EQ(fnvBadParam, FNV128blockin(&ctx, g_fnv_err_bytes, -1));
+    FL_ASSERT_EQ(fnvStateError, FNV128blockin(&ctx, g_fnv_err_bytes, 3));
+    FL_ASSERT_EQ(fnvNull, FNV128stringin(NULL, g_fnv_err_string));
+    FL_ASSERT_EQ(fnvNull, FNV128stringin(&ctx, NULL));
+    FL_ASSERT_EQ(fnvStateError, FNV128stringin(&ctx, g_fnv_err_string));
+    FL_ASSERT_EQ(fnvNull, FNV128filein(NULL, g_fnv_err_string));
+    FL_ASSERT_EQ(fnvNull, FNV128filein(&ctx, NULL));
+    FL_ASSERT_EQ(fnvStateError, FNV128filein(&ctx, g_fnv_err_string));
+    FL_ASSERT_EQ(fnvNull, FNV128result(NULL, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV128result(&ctx, NULL));
+    FL_ASSERT_EQ(fnvStateError, FNV128result(&ctx, g_fnv_hash));
 
     // --- Basis derivation (big-endian: XOR last byte) ---
     {
         char const basis_string[] = "chongo <Landon Curt Noll> /\\../";
         uint8_t    zero_basis[FNV128size];
         memset(zero_basis, 0, sizeof zero_basis);
-        FL_ASSERT_EQ_INT(fnvSuccess,
+        FL_ASSERT_EQ(fnvSuccess,
                          FNV128stringBasis(basis_string, g_fnv_hash, zero_basis));
         g_fnv_hash[FNV128size - 1] ^= '\\';
         FL_ASSERT_MEM_EQ(k_fnv128_s[0], g_fnv_hash, FNV128size);
@@ -703,30 +703,30 @@ FL_VOID_TEST_SETUP_CLEANUP("case128", TestFnv, test_fnv128, setup_test_fnv, clea
     for (int i = 0; i < FNV_N_TEST_STRINGS; ++i) {
         long int len = (long int)strlen(g_fnv_test_strings[i]);
 
-        FL_ASSERT_EQ_INT(fnvSuccess, FNV128string(g_fnv_test_strings[i], g_fnv_hash));
+        FL_ASSERT_EQ(fnvSuccess, FNV128string(g_fnv_test_strings[i], g_fnv_hash));
         FL_ASSERT_MEM_EQ(k_fnv128_s[i], g_fnv_hash, FNV128size);
 
-        FL_ASSERT_EQ_INT(fnvSuccess,
+        FL_ASSERT_EQ(fnvSuccess,
                          FNV128block(g_fnv_test_strings[i],
                                      (long int)(strlen(g_fnv_test_strings[i]) + 1),
                                      g_fnv_hash));
         FL_ASSERT_MEM_EQ(k_fnv128_b[i], g_fnv_hash, FNV128size);
 
         // Incremental
-        FL_ASSERT_EQ_INT(fnvSuccess, FNV128init(&ctx));
-        FL_ASSERT_EQ_INT(fnvSuccess,
+        FL_ASSERT_EQ(fnvSuccess, FNV128init(&ctx));
+        FL_ASSERT_EQ(fnvSuccess,
                          FNV128blockin(&ctx, g_fnv_test_strings[i], len / 2));
         if (i & 1) {
-            FL_ASSERT_EQ_INT(fnvSuccess, FNV128result(&ctx, g_fnv_hash));
-            FL_ASSERT_EQ_INT(fnvSuccess, FNV128initBasis(&ctx, g_fnv_hash));
+            FL_ASSERT_EQ(fnvSuccess, FNV128result(&ctx, g_fnv_hash));
+            FL_ASSERT_EQ(fnvSuccess, FNV128initBasis(&ctx, g_fnv_hash));
         }
-        FL_ASSERT_EQ_INT(fnvSuccess,
+        FL_ASSERT_EQ(fnvSuccess,
                          FNV128stringin(&ctx, g_fnv_test_strings[i] + len / 2));
-        FL_ASSERT_EQ_INT(fnvSuccess, FNV128result(&ctx, g_fnv_hash));
+        FL_ASSERT_EQ(fnvSuccess, FNV128result(&ctx, g_fnv_hash));
         FL_ASSERT_MEM_EQ(k_fnv128_s[i], g_fnv_hash, FNV128size);
 
         // File hash
-        FL_ASSERT_EQ_INT(fnvSuccess,
+        FL_ASSERT_EQ(fnvSuccess,
                          FNV128file(write_temp(g_fnv_test_strings[i], len), g_fnv_hash));
         FL_ASSERT_MEM_EQ(k_fnv128_s[i], g_fnv_hash, FNV128size);
     }
@@ -742,54 +742,54 @@ FL_VOID_TEST_SETUP_CLEANUP("case256", TestFnv, test_fnv256, setup_test_fnv, clea
     FNV256context ctx;
 
     // --- Null-parameter checks ---
-    FL_ASSERT_EQ_INT(fnvNull, FNV256string(NULL, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV256string(g_fnv_err_string, NULL));
-    FL_ASSERT_EQ_INT(fnvNull, FNV256stringBasis(NULL, g_fnv_hash, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV256stringBasis(g_fnv_err_string, NULL, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV256stringBasis(g_fnv_err_string, g_fnv_hash, NULL));
-    FL_ASSERT_EQ_INT(fnvNull, FNV256block(NULL, 1, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvBadParam, FNV256block(g_fnv_err_bytes, -1, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV256block(g_fnv_err_bytes, 1, NULL));
-    FL_ASSERT_EQ_INT(fnvNull, FNV256blockBasis(NULL, 1, g_fnv_hash, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvBadParam,
+    FL_ASSERT_EQ(fnvNull, FNV256string(NULL, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV256string(g_fnv_err_string, NULL));
+    FL_ASSERT_EQ(fnvNull, FNV256stringBasis(NULL, g_fnv_hash, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV256stringBasis(g_fnv_err_string, NULL, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV256stringBasis(g_fnv_err_string, g_fnv_hash, NULL));
+    FL_ASSERT_EQ(fnvNull, FNV256block(NULL, 1, g_fnv_hash));
+    FL_ASSERT_EQ(fnvBadParam, FNV256block(g_fnv_err_bytes, -1, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV256block(g_fnv_err_bytes, 1, NULL));
+    FL_ASSERT_EQ(fnvNull, FNV256blockBasis(NULL, 1, g_fnv_hash, g_fnv_hash));
+    FL_ASSERT_EQ(fnvBadParam,
                      FNV256blockBasis(g_fnv_err_bytes, -1, g_fnv_hash, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV256blockBasis(g_fnv_err_bytes, 1, NULL, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV256blockBasis(g_fnv_err_bytes, 1, g_fnv_hash, NULL));
-    FL_ASSERT_EQ_INT(fnvNull, FNV256file(NULL, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV256file("foo.txt", NULL));
-    FL_ASSERT_EQ_INT(fnvNull, FNV256fileBasis(NULL, g_fnv_hash, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV256fileBasis("foo.txt", NULL, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV256fileBasis("foo.txt", g_fnv_hash, NULL));
+    FL_ASSERT_EQ(fnvNull, FNV256blockBasis(g_fnv_err_bytes, 1, NULL, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV256blockBasis(g_fnv_err_bytes, 1, g_fnv_hash, NULL));
+    FL_ASSERT_EQ(fnvNull, FNV256file(NULL, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV256file("foo.txt", NULL));
+    FL_ASSERT_EQ(fnvNull, FNV256fileBasis(NULL, g_fnv_hash, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV256fileBasis("foo.txt", NULL, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV256fileBasis("foo.txt", g_fnv_hash, NULL));
 
     // --- Context init checks ---
-    FL_ASSERT_EQ_INT(fnvSuccess, FNV256init(&ctx));
-    FL_ASSERT_EQ_INT(fnvNull, FNV256init(NULL));
-    FL_ASSERT_EQ_INT(fnvSuccess, FNV256initBasis(&ctx, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV256initBasis(NULL, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV256initBasis(&ctx, NULL));
+    FL_ASSERT_EQ(fnvSuccess, FNV256init(&ctx));
+    FL_ASSERT_EQ(fnvNull, FNV256init(NULL));
+    FL_ASSERT_EQ(fnvSuccess, FNV256initBasis(&ctx, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV256initBasis(NULL, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV256initBasis(&ctx, NULL));
 
     // --- State-error checks ---
     ctx.Computed = FNVclobber + FNV256state;
-    FL_ASSERT_EQ_INT(fnvNull, FNV256blockin(NULL, g_fnv_err_bytes, 3));
-    FL_ASSERT_EQ_INT(fnvNull, FNV256blockin(&ctx, NULL, 3));
-    FL_ASSERT_EQ_INT(fnvBadParam, FNV256blockin(&ctx, g_fnv_err_bytes, -1));
-    FL_ASSERT_EQ_INT(fnvStateError, FNV256blockin(&ctx, g_fnv_err_bytes, 3));
-    FL_ASSERT_EQ_INT(fnvNull, FNV256stringin(NULL, g_fnv_err_string));
-    FL_ASSERT_EQ_INT(fnvNull, FNV256stringin(&ctx, NULL));
-    FL_ASSERT_EQ_INT(fnvStateError, FNV256stringin(&ctx, g_fnv_err_string));
-    FL_ASSERT_EQ_INT(fnvNull, FNV256filein(NULL, g_fnv_err_string));
-    FL_ASSERT_EQ_INT(fnvNull, FNV256filein(&ctx, NULL));
-    FL_ASSERT_EQ_INT(fnvStateError, FNV256filein(&ctx, g_fnv_err_string));
-    FL_ASSERT_EQ_INT(fnvNull, FNV256result(NULL, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV256result(&ctx, NULL));
-    FL_ASSERT_EQ_INT(fnvStateError, FNV256result(&ctx, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV256blockin(NULL, g_fnv_err_bytes, 3));
+    FL_ASSERT_EQ(fnvNull, FNV256blockin(&ctx, NULL, 3));
+    FL_ASSERT_EQ(fnvBadParam, FNV256blockin(&ctx, g_fnv_err_bytes, -1));
+    FL_ASSERT_EQ(fnvStateError, FNV256blockin(&ctx, g_fnv_err_bytes, 3));
+    FL_ASSERT_EQ(fnvNull, FNV256stringin(NULL, g_fnv_err_string));
+    FL_ASSERT_EQ(fnvNull, FNV256stringin(&ctx, NULL));
+    FL_ASSERT_EQ(fnvStateError, FNV256stringin(&ctx, g_fnv_err_string));
+    FL_ASSERT_EQ(fnvNull, FNV256filein(NULL, g_fnv_err_string));
+    FL_ASSERT_EQ(fnvNull, FNV256filein(&ctx, NULL));
+    FL_ASSERT_EQ(fnvStateError, FNV256filein(&ctx, g_fnv_err_string));
+    FL_ASSERT_EQ(fnvNull, FNV256result(NULL, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV256result(&ctx, NULL));
+    FL_ASSERT_EQ(fnvStateError, FNV256result(&ctx, g_fnv_hash));
 
     // --- Basis derivation (big-endian: XOR last byte) ---
     {
         char const basis_string[] = "chongo <Landon Curt Noll> /\\../";
         uint8_t    zero_basis[FNV256size];
         memset(zero_basis, 0, sizeof zero_basis);
-        FL_ASSERT_EQ_INT(fnvSuccess,
+        FL_ASSERT_EQ(fnvSuccess,
                          FNV256stringBasis(basis_string, g_fnv_hash, zero_basis));
         g_fnv_hash[FNV256size - 1] ^= '\\';
         FL_ASSERT_MEM_EQ(k_fnv256_s[0], g_fnv_hash, FNV256size);
@@ -799,30 +799,30 @@ FL_VOID_TEST_SETUP_CLEANUP("case256", TestFnv, test_fnv256, setup_test_fnv, clea
     for (int i = 0; i < FNV_N_TEST_STRINGS; ++i) {
         long int len = (long int)strlen(g_fnv_test_strings[i]);
 
-        FL_ASSERT_EQ_INT(fnvSuccess, FNV256string(g_fnv_test_strings[i], g_fnv_hash));
+        FL_ASSERT_EQ(fnvSuccess, FNV256string(g_fnv_test_strings[i], g_fnv_hash));
         FL_ASSERT_MEM_EQ(k_fnv256_s[i], g_fnv_hash, FNV256size);
 
-        FL_ASSERT_EQ_INT(fnvSuccess,
+        FL_ASSERT_EQ(fnvSuccess,
                          FNV256block(g_fnv_test_strings[i],
                                      (long int)(strlen(g_fnv_test_strings[i]) + 1),
                                      g_fnv_hash));
         FL_ASSERT_MEM_EQ(k_fnv256_b[i], g_fnv_hash, FNV256size);
 
         // Incremental
-        FL_ASSERT_EQ_INT(fnvSuccess, FNV256init(&ctx));
-        FL_ASSERT_EQ_INT(fnvSuccess,
+        FL_ASSERT_EQ(fnvSuccess, FNV256init(&ctx));
+        FL_ASSERT_EQ(fnvSuccess,
                          FNV256blockin(&ctx, g_fnv_test_strings[i], len / 2));
         if (i & 1) {
-            FL_ASSERT_EQ_INT(fnvSuccess, FNV256result(&ctx, g_fnv_hash));
-            FL_ASSERT_EQ_INT(fnvSuccess, FNV256initBasis(&ctx, g_fnv_hash));
+            FL_ASSERT_EQ(fnvSuccess, FNV256result(&ctx, g_fnv_hash));
+            FL_ASSERT_EQ(fnvSuccess, FNV256initBasis(&ctx, g_fnv_hash));
         }
-        FL_ASSERT_EQ_INT(fnvSuccess,
+        FL_ASSERT_EQ(fnvSuccess,
                          FNV256stringin(&ctx, g_fnv_test_strings[i] + len / 2));
-        FL_ASSERT_EQ_INT(fnvSuccess, FNV256result(&ctx, g_fnv_hash));
+        FL_ASSERT_EQ(fnvSuccess, FNV256result(&ctx, g_fnv_hash));
         FL_ASSERT_MEM_EQ(k_fnv256_s[i], g_fnv_hash, FNV256size);
 
         // File hash
-        FL_ASSERT_EQ_INT(fnvSuccess,
+        FL_ASSERT_EQ(fnvSuccess,
                          FNV256file(write_temp(g_fnv_test_strings[i], len), g_fnv_hash));
         FL_ASSERT_MEM_EQ(k_fnv256_s[i], g_fnv_hash, FNV256size);
     }
@@ -838,54 +838,54 @@ FL_VOID_TEST_SETUP_CLEANUP("case512", TestFnv, test_fnv512, setup_test_fnv, clea
     FNV512context ctx;
 
     // --- Null-parameter checks ---
-    FL_ASSERT_EQ_INT(fnvNull, FNV512string(NULL, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV512string(g_fnv_err_string, NULL));
-    FL_ASSERT_EQ_INT(fnvNull, FNV512stringBasis(NULL, g_fnv_hash, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV512stringBasis(g_fnv_err_string, NULL, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV512stringBasis(g_fnv_err_string, g_fnv_hash, NULL));
-    FL_ASSERT_EQ_INT(fnvNull, FNV512block(NULL, 1, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvBadParam, FNV512block(g_fnv_err_bytes, -1, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV512block(g_fnv_err_bytes, 1, NULL));
-    FL_ASSERT_EQ_INT(fnvNull, FNV512blockBasis(NULL, 1, g_fnv_hash, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvBadParam,
+    FL_ASSERT_EQ(fnvNull, FNV512string(NULL, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV512string(g_fnv_err_string, NULL));
+    FL_ASSERT_EQ(fnvNull, FNV512stringBasis(NULL, g_fnv_hash, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV512stringBasis(g_fnv_err_string, NULL, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV512stringBasis(g_fnv_err_string, g_fnv_hash, NULL));
+    FL_ASSERT_EQ(fnvNull, FNV512block(NULL, 1, g_fnv_hash));
+    FL_ASSERT_EQ(fnvBadParam, FNV512block(g_fnv_err_bytes, -1, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV512block(g_fnv_err_bytes, 1, NULL));
+    FL_ASSERT_EQ(fnvNull, FNV512blockBasis(NULL, 1, g_fnv_hash, g_fnv_hash));
+    FL_ASSERT_EQ(fnvBadParam,
                      FNV512blockBasis(g_fnv_err_bytes, -1, g_fnv_hash, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV512blockBasis(g_fnv_err_bytes, 1, NULL, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV512blockBasis(g_fnv_err_bytes, 1, g_fnv_hash, NULL));
-    FL_ASSERT_EQ_INT(fnvNull, FNV512file(NULL, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV512file("foo.txt", NULL));
-    FL_ASSERT_EQ_INT(fnvNull, FNV512fileBasis(NULL, g_fnv_hash, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV512fileBasis("foo.txt", NULL, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV512fileBasis("foo.txt", g_fnv_hash, NULL));
+    FL_ASSERT_EQ(fnvNull, FNV512blockBasis(g_fnv_err_bytes, 1, NULL, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV512blockBasis(g_fnv_err_bytes, 1, g_fnv_hash, NULL));
+    FL_ASSERT_EQ(fnvNull, FNV512file(NULL, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV512file("foo.txt", NULL));
+    FL_ASSERT_EQ(fnvNull, FNV512fileBasis(NULL, g_fnv_hash, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV512fileBasis("foo.txt", NULL, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV512fileBasis("foo.txt", g_fnv_hash, NULL));
 
     // --- Context init checks ---
-    FL_ASSERT_EQ_INT(fnvSuccess, FNV512init(&ctx));
-    FL_ASSERT_EQ_INT(fnvNull, FNV512init(NULL));
-    FL_ASSERT_EQ_INT(fnvSuccess, FNV512initBasis(&ctx, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV512initBasis(NULL, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV512initBasis(&ctx, NULL));
+    FL_ASSERT_EQ(fnvSuccess, FNV512init(&ctx));
+    FL_ASSERT_EQ(fnvNull, FNV512init(NULL));
+    FL_ASSERT_EQ(fnvSuccess, FNV512initBasis(&ctx, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV512initBasis(NULL, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV512initBasis(&ctx, NULL));
 
     // --- State-error checks ---
     ctx.Computed = FNVclobber + FNV512state;
-    FL_ASSERT_EQ_INT(fnvNull, FNV512blockin(NULL, g_fnv_err_bytes, 3));
-    FL_ASSERT_EQ_INT(fnvNull, FNV512blockin(&ctx, NULL, 3));
-    FL_ASSERT_EQ_INT(fnvBadParam, FNV512blockin(&ctx, g_fnv_err_bytes, -1));
-    FL_ASSERT_EQ_INT(fnvStateError, FNV512blockin(&ctx, g_fnv_err_bytes, 3));
-    FL_ASSERT_EQ_INT(fnvNull, FNV512stringin(NULL, g_fnv_err_string));
-    FL_ASSERT_EQ_INT(fnvNull, FNV512stringin(&ctx, NULL));
-    FL_ASSERT_EQ_INT(fnvStateError, FNV512stringin(&ctx, g_fnv_err_string));
-    FL_ASSERT_EQ_INT(fnvNull, FNV512filein(NULL, g_fnv_err_string));
-    FL_ASSERT_EQ_INT(fnvNull, FNV512filein(&ctx, NULL));
-    FL_ASSERT_EQ_INT(fnvStateError, FNV512filein(&ctx, g_fnv_err_string));
-    FL_ASSERT_EQ_INT(fnvNull, FNV512result(NULL, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV512result(&ctx, NULL));
-    FL_ASSERT_EQ_INT(fnvStateError, FNV512result(&ctx, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV512blockin(NULL, g_fnv_err_bytes, 3));
+    FL_ASSERT_EQ(fnvNull, FNV512blockin(&ctx, NULL, 3));
+    FL_ASSERT_EQ(fnvBadParam, FNV512blockin(&ctx, g_fnv_err_bytes, -1));
+    FL_ASSERT_EQ(fnvStateError, FNV512blockin(&ctx, g_fnv_err_bytes, 3));
+    FL_ASSERT_EQ(fnvNull, FNV512stringin(NULL, g_fnv_err_string));
+    FL_ASSERT_EQ(fnvNull, FNV512stringin(&ctx, NULL));
+    FL_ASSERT_EQ(fnvStateError, FNV512stringin(&ctx, g_fnv_err_string));
+    FL_ASSERT_EQ(fnvNull, FNV512filein(NULL, g_fnv_err_string));
+    FL_ASSERT_EQ(fnvNull, FNV512filein(&ctx, NULL));
+    FL_ASSERT_EQ(fnvStateError, FNV512filein(&ctx, g_fnv_err_string));
+    FL_ASSERT_EQ(fnvNull, FNV512result(NULL, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV512result(&ctx, NULL));
+    FL_ASSERT_EQ(fnvStateError, FNV512result(&ctx, g_fnv_hash));
 
     // --- Basis derivation (big-endian: XOR last byte) ---
     {
         char const basis_string[] = "chongo <Landon Curt Noll> /\\../";
         uint8_t    zero_basis[FNV512size];
         memset(zero_basis, 0, sizeof zero_basis);
-        FL_ASSERT_EQ_INT(fnvSuccess,
+        FL_ASSERT_EQ(fnvSuccess,
                          FNV512stringBasis(basis_string, g_fnv_hash, zero_basis));
         g_fnv_hash[FNV512size - 1] ^= '\\';
         FL_ASSERT_MEM_EQ(k_fnv512_s[0], g_fnv_hash, FNV512size);
@@ -895,30 +895,30 @@ FL_VOID_TEST_SETUP_CLEANUP("case512", TestFnv, test_fnv512, setup_test_fnv, clea
     for (int i = 0; i < FNV_N_TEST_STRINGS; ++i) {
         long int len = (long int)strlen(g_fnv_test_strings[i]);
 
-        FL_ASSERT_EQ_INT(fnvSuccess, FNV512string(g_fnv_test_strings[i], g_fnv_hash));
+        FL_ASSERT_EQ(fnvSuccess, FNV512string(g_fnv_test_strings[i], g_fnv_hash));
         FL_ASSERT_MEM_EQ(k_fnv512_s[i], g_fnv_hash, FNV512size);
 
-        FL_ASSERT_EQ_INT(fnvSuccess,
+        FL_ASSERT_EQ(fnvSuccess,
                          FNV512block(g_fnv_test_strings[i],
                                      (long int)(strlen(g_fnv_test_strings[i]) + 1),
                                      g_fnv_hash));
         FL_ASSERT_MEM_EQ(k_fnv512_b[i], g_fnv_hash, FNV512size);
 
         // Incremental
-        FL_ASSERT_EQ_INT(fnvSuccess, FNV512init(&ctx));
-        FL_ASSERT_EQ_INT(fnvSuccess,
+        FL_ASSERT_EQ(fnvSuccess, FNV512init(&ctx));
+        FL_ASSERT_EQ(fnvSuccess,
                          FNV512blockin(&ctx, g_fnv_test_strings[i], len / 2));
         if (i & 1) {
-            FL_ASSERT_EQ_INT(fnvSuccess, FNV512result(&ctx, g_fnv_hash));
-            FL_ASSERT_EQ_INT(fnvSuccess, FNV512initBasis(&ctx, g_fnv_hash));
+            FL_ASSERT_EQ(fnvSuccess, FNV512result(&ctx, g_fnv_hash));
+            FL_ASSERT_EQ(fnvSuccess, FNV512initBasis(&ctx, g_fnv_hash));
         }
-        FL_ASSERT_EQ_INT(fnvSuccess,
+        FL_ASSERT_EQ(fnvSuccess,
                          FNV512stringin(&ctx, g_fnv_test_strings[i] + len / 2));
-        FL_ASSERT_EQ_INT(fnvSuccess, FNV512result(&ctx, g_fnv_hash));
+        FL_ASSERT_EQ(fnvSuccess, FNV512result(&ctx, g_fnv_hash));
         FL_ASSERT_MEM_EQ(k_fnv512_s[i], g_fnv_hash, FNV512size);
 
         // File hash
-        FL_ASSERT_EQ_INT(fnvSuccess,
+        FL_ASSERT_EQ(fnvSuccess,
                          FNV512file(write_temp(g_fnv_test_strings[i], len), g_fnv_hash));
         FL_ASSERT_MEM_EQ(k_fnv512_s[i], g_fnv_hash, FNV512size);
     }
@@ -934,54 +934,54 @@ FL_VOID_TEST_SETUP_CLEANUP("case1024", TestFnv, test_fnv1024, setup_test_fnv, cl
     FNV1024context ctx;
 
     // --- Null-parameter checks ---
-    FL_ASSERT_EQ_INT(fnvNull, FNV1024string(NULL, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV1024string(g_fnv_err_string, NULL));
-    FL_ASSERT_EQ_INT(fnvNull, FNV1024stringBasis(NULL, g_fnv_hash, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV1024stringBasis(g_fnv_err_string, NULL, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV1024stringBasis(g_fnv_err_string, g_fnv_hash, NULL));
-    FL_ASSERT_EQ_INT(fnvNull, FNV1024block(NULL, 1, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvBadParam, FNV1024block(g_fnv_err_bytes, -1, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV1024block(g_fnv_err_bytes, 1, NULL));
-    FL_ASSERT_EQ_INT(fnvNull, FNV1024blockBasis(NULL, 1, g_fnv_hash, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvBadParam,
+    FL_ASSERT_EQ(fnvNull, FNV1024string(NULL, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV1024string(g_fnv_err_string, NULL));
+    FL_ASSERT_EQ(fnvNull, FNV1024stringBasis(NULL, g_fnv_hash, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV1024stringBasis(g_fnv_err_string, NULL, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV1024stringBasis(g_fnv_err_string, g_fnv_hash, NULL));
+    FL_ASSERT_EQ(fnvNull, FNV1024block(NULL, 1, g_fnv_hash));
+    FL_ASSERT_EQ(fnvBadParam, FNV1024block(g_fnv_err_bytes, -1, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV1024block(g_fnv_err_bytes, 1, NULL));
+    FL_ASSERT_EQ(fnvNull, FNV1024blockBasis(NULL, 1, g_fnv_hash, g_fnv_hash));
+    FL_ASSERT_EQ(fnvBadParam,
                      FNV1024blockBasis(g_fnv_err_bytes, -1, g_fnv_hash, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV1024blockBasis(g_fnv_err_bytes, 1, NULL, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV1024blockBasis(g_fnv_err_bytes, 1, g_fnv_hash, NULL));
-    FL_ASSERT_EQ_INT(fnvNull, FNV1024file(NULL, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV1024file("foo.txt", NULL));
-    FL_ASSERT_EQ_INT(fnvNull, FNV1024fileBasis(NULL, g_fnv_hash, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV1024fileBasis("foo.txt", NULL, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV1024fileBasis("foo.txt", g_fnv_hash, NULL));
+    FL_ASSERT_EQ(fnvNull, FNV1024blockBasis(g_fnv_err_bytes, 1, NULL, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV1024blockBasis(g_fnv_err_bytes, 1, g_fnv_hash, NULL));
+    FL_ASSERT_EQ(fnvNull, FNV1024file(NULL, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV1024file("foo.txt", NULL));
+    FL_ASSERT_EQ(fnvNull, FNV1024fileBasis(NULL, g_fnv_hash, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV1024fileBasis("foo.txt", NULL, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV1024fileBasis("foo.txt", g_fnv_hash, NULL));
 
     // --- Context init checks ---
-    FL_ASSERT_EQ_INT(fnvSuccess, FNV1024init(&ctx));
-    FL_ASSERT_EQ_INT(fnvNull, FNV1024init(NULL));
-    FL_ASSERT_EQ_INT(fnvSuccess, FNV1024initBasis(&ctx, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV1024initBasis(NULL, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV1024initBasis(&ctx, NULL));
+    FL_ASSERT_EQ(fnvSuccess, FNV1024init(&ctx));
+    FL_ASSERT_EQ(fnvNull, FNV1024init(NULL));
+    FL_ASSERT_EQ(fnvSuccess, FNV1024initBasis(&ctx, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV1024initBasis(NULL, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV1024initBasis(&ctx, NULL));
 
     // --- State-error checks ---
     ctx.Computed = FNVclobber + FNV1024state;
-    FL_ASSERT_EQ_INT(fnvNull, FNV1024blockin(NULL, g_fnv_err_bytes, 3));
-    FL_ASSERT_EQ_INT(fnvNull, FNV1024blockin(&ctx, NULL, 3));
-    FL_ASSERT_EQ_INT(fnvBadParam, FNV1024blockin(&ctx, g_fnv_err_bytes, -1));
-    FL_ASSERT_EQ_INT(fnvStateError, FNV1024blockin(&ctx, g_fnv_err_bytes, 3));
-    FL_ASSERT_EQ_INT(fnvNull, FNV1024stringin(NULL, g_fnv_err_string));
-    FL_ASSERT_EQ_INT(fnvNull, FNV1024stringin(&ctx, NULL));
-    FL_ASSERT_EQ_INT(fnvStateError, FNV1024stringin(&ctx, g_fnv_err_string));
-    FL_ASSERT_EQ_INT(fnvNull, FNV1024filein(NULL, g_fnv_err_string));
-    FL_ASSERT_EQ_INT(fnvNull, FNV1024filein(&ctx, NULL));
-    FL_ASSERT_EQ_INT(fnvStateError, FNV1024filein(&ctx, g_fnv_err_string));
-    FL_ASSERT_EQ_INT(fnvNull, FNV1024result(NULL, g_fnv_hash));
-    FL_ASSERT_EQ_INT(fnvNull, FNV1024result(&ctx, NULL));
-    FL_ASSERT_EQ_INT(fnvStateError, FNV1024result(&ctx, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV1024blockin(NULL, g_fnv_err_bytes, 3));
+    FL_ASSERT_EQ(fnvNull, FNV1024blockin(&ctx, NULL, 3));
+    FL_ASSERT_EQ(fnvBadParam, FNV1024blockin(&ctx, g_fnv_err_bytes, -1));
+    FL_ASSERT_EQ(fnvStateError, FNV1024blockin(&ctx, g_fnv_err_bytes, 3));
+    FL_ASSERT_EQ(fnvNull, FNV1024stringin(NULL, g_fnv_err_string));
+    FL_ASSERT_EQ(fnvNull, FNV1024stringin(&ctx, NULL));
+    FL_ASSERT_EQ(fnvStateError, FNV1024stringin(&ctx, g_fnv_err_string));
+    FL_ASSERT_EQ(fnvNull, FNV1024filein(NULL, g_fnv_err_string));
+    FL_ASSERT_EQ(fnvNull, FNV1024filein(&ctx, NULL));
+    FL_ASSERT_EQ(fnvStateError, FNV1024filein(&ctx, g_fnv_err_string));
+    FL_ASSERT_EQ(fnvNull, FNV1024result(NULL, g_fnv_hash));
+    FL_ASSERT_EQ(fnvNull, FNV1024result(&ctx, NULL));
+    FL_ASSERT_EQ(fnvStateError, FNV1024result(&ctx, g_fnv_hash));
 
     // --- Basis derivation (big-endian: XOR last byte) ---
     {
         char const basis_string[] = "chongo <Landon Curt Noll> /\\../";
         uint8_t    zero_basis[FNV1024size];
         memset(zero_basis, 0, sizeof zero_basis);
-        FL_ASSERT_EQ_INT(fnvSuccess,
+        FL_ASSERT_EQ(fnvSuccess,
                          FNV1024stringBasis(basis_string, g_fnv_hash, zero_basis));
         g_fnv_hash[FNV1024size - 1] ^= '\\';
         FL_ASSERT_MEM_EQ(k_fnv1024_s[0], g_fnv_hash, FNV1024size);
@@ -991,30 +991,30 @@ FL_VOID_TEST_SETUP_CLEANUP("case1024", TestFnv, test_fnv1024, setup_test_fnv, cl
     for (int i = 0; i < FNV_N_TEST_STRINGS; ++i) {
         long int len = (long int)strlen(g_fnv_test_strings[i]);
 
-        FL_ASSERT_EQ_INT(fnvSuccess, FNV1024string(g_fnv_test_strings[i], g_fnv_hash));
+        FL_ASSERT_EQ(fnvSuccess, FNV1024string(g_fnv_test_strings[i], g_fnv_hash));
         FL_ASSERT_MEM_EQ(k_fnv1024_s[i], g_fnv_hash, FNV1024size);
 
-        FL_ASSERT_EQ_INT(fnvSuccess,
+        FL_ASSERT_EQ(fnvSuccess,
                          FNV1024block(g_fnv_test_strings[i],
                                       (long int)(strlen(g_fnv_test_strings[i]) + 1),
                                       g_fnv_hash));
         FL_ASSERT_MEM_EQ(k_fnv1024_b[i], g_fnv_hash, FNV1024size);
 
         // Incremental
-        FL_ASSERT_EQ_INT(fnvSuccess, FNV1024init(&ctx));
-        FL_ASSERT_EQ_INT(fnvSuccess,
+        FL_ASSERT_EQ(fnvSuccess, FNV1024init(&ctx));
+        FL_ASSERT_EQ(fnvSuccess,
                          FNV1024blockin(&ctx, g_fnv_test_strings[i], len / 2));
         if (i & 1) {
-            FL_ASSERT_EQ_INT(fnvSuccess, FNV1024result(&ctx, g_fnv_hash));
-            FL_ASSERT_EQ_INT(fnvSuccess, FNV1024initBasis(&ctx, g_fnv_hash));
+            FL_ASSERT_EQ(fnvSuccess, FNV1024result(&ctx, g_fnv_hash));
+            FL_ASSERT_EQ(fnvSuccess, FNV1024initBasis(&ctx, g_fnv_hash));
         }
-        FL_ASSERT_EQ_INT(fnvSuccess,
+        FL_ASSERT_EQ(fnvSuccess,
                          FNV1024stringin(&ctx, g_fnv_test_strings[i] + len / 2));
-        FL_ASSERT_EQ_INT(fnvSuccess, FNV1024result(&ctx, g_fnv_hash));
+        FL_ASSERT_EQ(fnvSuccess, FNV1024result(&ctx, g_fnv_hash));
         FL_ASSERT_MEM_EQ(k_fnv1024_s[i], g_fnv_hash, FNV1024size);
 
         // File hash
-        FL_ASSERT_EQ_INT(fnvSuccess, FNV1024file(write_temp(g_fnv_test_strings[i], len),
+        FL_ASSERT_EQ(fnvSuccess, FNV1024file(write_temp(g_fnv_test_strings[i], len),
                                                  g_fnv_hash));
         FL_ASSERT_MEM_EQ(k_fnv1024_s[i], g_fnv_hash, FNV1024size);
     }

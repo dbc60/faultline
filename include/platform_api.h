@@ -16,14 +16,14 @@
  *
  * See LICENSE.txt for copyright and licensing information about this file.
  */
-#include <faultline/fl_memory_service.h>    // FLMemoryService
-#include <faultline/fl_log_service.h>       // FLLogService, FLLogLevel
-#include <faultline/fl_timer_service.h>     // FLTimerService
-#include <faultline/fl_file_service.h>      // FLFileService, FLFile (opaque)
-#include <faultline/fl_stream_service.h>    // FLStreamService
-#include <faultline/arena.h>                // Arena
-#include <faultline/fault_injector.h>       // FaultInjector
-#include <faultline/fl_macros.h>            // FL_STR
+#include <faultline/fl_memory_service.h> // FLMemoryService
+#include <faultline/fl_log_service.h>    // FLLogService, FLLogLevel
+#include <faultline/fl_timer_service.h>  // FLTimerService
+#include <faultline/fl_file_service.h>   // FLFileService, FLFile (opaque)
+#include <faultline/fl_stream_service.h> // FLStreamService
+#include <faultline/arena.h>             // Arena
+#include <faultline/fault_injector.h>    // FaultInjector
+#include <faultline/fl_macros.h>         // FL_STR
 #include <stdbool.h>
 #include <stddef.h> // size_t
 
@@ -64,7 +64,7 @@ typedef struct FLPlatformAPI {
     // Services installed into the core's own fla_ globals at faultline_app_main
     // entry. `memory` is the PLAIN, non-fault-injecting arena service: the
     // framework's own allocations must never be injected. (The fault-injecting
-    // counterpart is reachable only via inject_services, above.)
+    // counterpart can be accessed only via inject_services, above.)
     FLMemoryService *memory;
     FLLogService    *log;
     FLTimerService  *timer;

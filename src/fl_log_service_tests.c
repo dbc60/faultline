@@ -130,7 +130,7 @@ FL_TEST("Init Defaults", init_defaults) {
     flp_log_set_level(LOG_LEVEL_INFO);
     flp_write_log(LOG_LEVEL_INFO, __FILE__, __LINE__, "test", "hello %s", "world");
     size_t n = read_output(path, buf, sizeof buf);
-    FL_ASSERT_GT_SIZE_T(n, (size_t)0);
+    FL_ASSERT_GT(n, (size_t)0);
     FL_ASSERT_TRUE(strstr(buf, "hello world") != NULL);
 }
 
@@ -139,7 +139,7 @@ FL_TEST("Cleanup Flushes Owned File", cleanup_flushes_owned_file) {
     init_to_tmpfile(path, sizeof path);
     flp_write_log(LOG_LEVEL_INFO, __FILE__, __LINE__, "test", "flush check");
     size_t n = read_output(path, buf, sizeof buf);
-    FL_ASSERT_GT_SIZE_T(n, (size_t)0);
+    FL_ASSERT_GT(n, (size_t)0);
     FL_ASSERT_TRUE(strstr(buf, "flush check") != NULL);
 }
 
@@ -159,7 +159,7 @@ FL_TEST("Cleanup Does Not Close Unowned", cleanup_does_not_close_unowned) {
 
     // f should still be writable after cleanup
     int result = fprintf(f, "still open\n");
-    FL_ASSERT_GT_INT(result, 0);
+    FL_ASSERT_GT(result, 0);
     fclose(f);
     remove(path);
 }
@@ -173,7 +173,7 @@ FL_TEST("Init Cleanup Reinit", init_cleanup_reinit) {
     init_to_tmpfile(path, sizeof path);
     flp_write_log(LOG_LEVEL_INFO, __FILE__, __LINE__, "test", "reinit works");
     size_t n = read_output(path, buf, sizeof buf);
-    FL_ASSERT_GT_SIZE_T(n, (size_t)0);
+    FL_ASSERT_GT(n, (size_t)0);
     FL_ASSERT_TRUE(strstr(buf, "reinit works") != NULL);
 }
 
@@ -184,11 +184,11 @@ FL_TEST("Init Custom With Path", init_custom_with_path) {
     // init_custom with a non-NULL path opens the file itself and takes ownership.
     flp_log_init_custom(LOG_LEVEL_TRACE, path);
     FL_ASSERT_TRUE(g_logger.output_kind == FLP_LOG_OUTPUT_STREAM);
-    FL_ASSERT_EQ_INT((int)g_logger.max_level, (int)LOG_LEVEL_TRACE);
+    FL_ASSERT_EQ((int)g_logger.max_level, (int)LOG_LEVEL_TRACE);
 
     flp_write_log(LOG_LEVEL_INFO, __FILE__, __LINE__, "test", "custom path msg");
     size_t n = read_output(path, buf, sizeof buf);
-    FL_ASSERT_GT_SIZE_T(n, (size_t)0);
+    FL_ASSERT_GT(n, (size_t)0);
     FL_ASSERT_TRUE(strstr(buf, "custom path msg") != NULL);
 }
 
@@ -197,7 +197,7 @@ FL_TEST("Init Custom Null Path Stdout", init_custom_null_path_stdout) {
     flp_log_init_custom(LOG_LEVEL_WARN, NULL);
     FL_ASSERT_TRUE(g_logger.output_kind == FLP_LOG_OUTPUT_STDIO);
     FL_ASSERT_EQ_PTR((void *)g_logger.stdio_output, (void *)stdout);
-    FL_ASSERT_EQ_INT((int)g_logger.max_level, (int)LOG_LEVEL_WARN);
+    FL_ASSERT_EQ((int)g_logger.max_level, (int)LOG_LEVEL_WARN);
     flp_log_cleanup();
 }
 
@@ -206,7 +206,7 @@ FL_TEST("Init Is Idempotent", init_is_idempotent) {
     // and must not overwrite the configured level.
     flp_log_init_custom(LOG_LEVEL_WARN, NULL);
     flp_log_init_custom(LOG_LEVEL_TRACE, NULL);
-    FL_ASSERT_EQ_INT((int)g_logger.max_level, (int)LOG_LEVEL_WARN);
+    FL_ASSERT_EQ((int)g_logger.max_level, (int)LOG_LEVEL_WARN);
     flp_log_cleanup();
 }
 
@@ -236,7 +236,7 @@ FL_TEST("Set Level Trace All Pass", set_level_trace_all_pass) {
     flp_write_log(LOG_LEVEL_DEBUG, __FILE__, __LINE__, "test", "debug");
     flp_write_log(LOG_LEVEL_TRACE, __FILE__, __LINE__, "test", "trace");
     read_output(path, buf, sizeof buf);
-    FL_ASSERT_EQ_SIZE_T(count_lines(buf), (size_t)7);
+    FL_ASSERT_EQ(count_lines(buf), (size_t)7);
 }
 
 FL_TEST("Set Level Fatal Only", set_level_fatal_only) {
@@ -247,7 +247,7 @@ FL_TEST("Set Level Fatal Only", set_level_fatal_only) {
     flp_write_log(LOG_LEVEL_ERROR, __FILE__, __LINE__, "test", "error");
     flp_write_log(LOG_LEVEL_WARN, __FILE__, __LINE__, "test", "warn");
     read_output(path, buf, sizeof buf);
-    FL_ASSERT_EQ_SIZE_T(count_lines(buf), (size_t)1);
+    FL_ASSERT_EQ(count_lines(buf), (size_t)1);
 }
 
 FL_TEST("Level Boundary", level_boundary) {
@@ -475,8 +475,7 @@ FL_TEST("App Writes to Platform Log", app_writes_to_platform_log) {
     char path[256], buf[4096];
     init_to_tmpfile(path, sizeof path);
     flp_init_log_service(set_log_service);
-    test_svc.write(LOG_LEVEL_TRACE, __FILE__, __LINE__, "test", "noop check to %s",
-                   path);
+    test_svc.write(LOG_LEVEL_TRACE, __FILE__, __LINE__, "test", "noop check to %s", path);
     read_output(path, buf, sizeof buf);
     FL_ASSERT_TRUE(strstr(buf, "noop check") != NULL);
 }
@@ -485,11 +484,10 @@ FL_TEST("App Writes to Platform Log", app_writes_to_platform_log) {
 // Application-side service tests (fla_log_service.c)
 //
 // These exercise the real g_fla_log_service and fla_set_log_service, as opposed to the
-// local test_svc / set_log_service stub used above. Note the driver injects a real log
-// service into the DLL at load time, so g_fla_log_service is already wired before any
-// test runs; the initial default_write stub and the size-mismatch abort branch of
-// fla_set_log_service are therefore not reachable here and are intentionally left
-// uncovered.
+// local test_svc / set_log_service stub used above. The driver injects a real log service
+// into the DLL at load time, so g_fla_log_service is already wired before any test runs;
+// the initial default_write stub and the size-mismatch abort branch of
+// fla_set_log_service are therefore not called here and are intentionally left uncovered.
 // --------------------------------------------------------------------------------------
 
 static int        recording_write_called = 0;
@@ -516,8 +514,8 @@ FL_TEST("App Set Installs Write", app_set_installs_write) {
     recording_write_called = 0;
     recording_write_level  = LOG_LEVEL_FATAL;
     g_fla_log_service.write(LOG_LEVEL_WARN, __FILE__, __LINE__, "test", "routed %d", 1);
-    FL_ASSERT_EQ_INT(recording_write_called, 1);
-    FL_ASSERT_EQ_INT((int)recording_write_level, (int)LOG_LEVEL_WARN);
+    FL_ASSERT_EQ(recording_write_called, 1);
+    FL_ASSERT_EQ((int)recording_write_level, (int)LOG_LEVEL_WARN);
 
     g_fla_log_service.write = saved;
 }
@@ -579,7 +577,7 @@ FL_TEST("Concurrent Writes No Corruption", concurrent_writes_no_corruption) {
     }
 
     read_output(path, buf, sizeof buf);
-    FL_ASSERT_EQ_SIZE_T(count_lines(buf), (size_t)200);
+    FL_ASSERT_EQ(count_lines(buf), (size_t)200);
 }
 
 static int thread_single_log(void *arg) {
@@ -602,7 +600,7 @@ FL_TEST("Thread Ids Unique", thread_ids_unique) {
     }
 
     read_output(path, buf, sizeof buf);
-    FL_ASSERT_EQ_SIZE_T(count_lines(buf), (size_t)4);
+    FL_ASSERT_EQ(count_lines(buf), (size_t)4);
 
     unsigned long tids[4]   = {0};
     int           tid_count = 0;
@@ -614,11 +612,11 @@ FL_TEST("Thread Ids Unique", thread_ids_unique) {
             break;
         }
     }
-    FL_ASSERT_EQ_INT(tid_count, 4);
+    FL_ASSERT_EQ(tid_count, 4);
 
     for (int i = 0; i < 4; i++) {
         for (int j = i + 1; j < 4; j++) {
-            FL_ASSERT_NEQ_UINT32(tids[i], tids[j]);
+            FL_ASSERT_NEQ(tids[i], tids[j]);
         }
     }
 }
@@ -632,7 +630,7 @@ FL_TEST("Thread Id Stable", thread_id_stable) {
     flp_write_log(LOG_LEVEL_INFO, __FILE__, __LINE__, "test", "stable3");
 
     read_output(path, buf, sizeof buf);
-    FL_ASSERT_EQ_SIZE_T(count_lines(buf), (size_t)3);
+    FL_ASSERT_EQ(count_lines(buf), (size_t)3);
 
     unsigned long tids[3]   = {0};
     int           tid_count = 0;
@@ -644,9 +642,9 @@ FL_TEST("Thread Id Stable", thread_id_stable) {
             break;
         }
     }
-    FL_ASSERT_EQ_INT(tid_count, 3);
-    FL_ASSERT_EQ_UINT32(tids[0], tids[1]);
-    FL_ASSERT_EQ_UINT32(tids[1], tids[2]);
+    FL_ASSERT_EQ(tid_count, 3);
+    FL_ASSERT_EQ(tids[0], tids[1]);
+    FL_ASSERT_EQ(tids[1], tids[2]);
 }
 
 // ---------------------------------------------------------------------------

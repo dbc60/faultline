@@ -136,9 +136,9 @@
         FL_ASSERT_NOT_NULL(CH);                                 \
         size_t ch_size_ = CHUNK_SIZE(CH);                       \
                                                                 \
-        FL_ASSERT_ZERO_SIZE_T(ch_size_ & CHUNK_ALIGNMENT_MASK); \
-        FL_ASSERT_GE_SIZE_T(ch_size_, CHUNK_MIN_SIZE);          \
-        FL_ASSERT_GE_SIZE_T(ch_size_, (SIZE));                  \
+        FL_ASSERT_ZERO(ch_size_ & CHUNK_ALIGNMENT_MASK); \
+        FL_ASSERT_GE(ch_size_, CHUNK_MIN_SIZE);          \
+        FL_ASSERT_GE(ch_size_, (SIZE));                  \
     } while (0)
 
 #define CHUNK_SENTINEL_SIZE CHUNK_ALIGNED_SIZE

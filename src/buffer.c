@@ -32,7 +32,7 @@
  */
 static void increase_capacity(Buffer *buf, size_t count) {
     FL_ASSERT_NOT_NULL(buf);
-    FL_ASSERT_GT_SIZE_T(count, (size_t)0);
+    FL_ASSERT_GT(count, (size_t)0);
     FL_ASSERT_DETAILS(
         buf->capacity <= SIZE_MAX - count
             && (buf->capacity + count) <= SIZE_MAX / buf->element_size,

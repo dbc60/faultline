@@ -301,7 +301,7 @@ static void insert_small_chunk(Arena *arena, FreeChunk *ch, char const *file, in
     u32        index = ARENA_SMALL_INDEX(CHUNK_SIZE(ch));
     DList     *bin   = ARENA_SMALL_BIN_AT(arena, index);
     FreeChunk *next  = FREE_CHUNK_FROM_SIBLINGS(bin);
-    FL_ASSERT_GE_SIZE_T(CHUNK_SIZE(ch), CHUNK_MIN_SIZE);
+    FL_ASSERT_GE(CHUNK_SIZE(ch), CHUNK_MIN_SIZE);
     if (!ARENA_SMALL_MAP_IS_MARKED(arena, index)) {
         ARENA_MARK_SMALL_MAP(arena, index);
     } else {
@@ -354,10 +354,10 @@ static Chunk *allocate_exact_fit(Arena *arena, size_t size, char const *file, in
     DList     *bin   = ARENA_SMALL_BIN_AT(arena, index);
     FreeChunk *chunk = FREE_CHUNK_FROM_SIBLINGS(DLIST_NEXT(bin));
 
-    FL_ASSERT_LT_SIZE_T(CHUNK_SIZE(chunk), (size_t)ARENA_MIN_LARGE_CHUNK);
-    FL_ASSERT_EQ_SIZE_T(CHUNK_SIZE(chunk), ARENA_SMALL_INDEX_TO_SIZE(index));
+    FL_ASSERT_LT(CHUNK_SIZE(chunk), (size_t)ARENA_MIN_LARGE_CHUNK);
+    FL_ASSERT_EQ(CHUNK_SIZE(chunk), ARENA_SMALL_INDEX_TO_SIZE(index));
     if (index < ARENA_SMALL_BIN_COUNT - 1) {
-        FL_ASSERT_LT_SIZE_T(CHUNK_SIZE(chunk), ARENA_SMALL_INDEX_TO_SIZE(index + 1));
+        FL_ASSERT_LT(CHUNK_SIZE(chunk), ARENA_SMALL_INDEX_TO_SIZE(index + 1));
     }
 
     ARENA_RTCHECK(arena_address_ok(arena, chunk), file, line);
@@ -411,7 +411,7 @@ static Chunk *allocate_from_next_nonempty_small_bin(Arena *arena, size_t size,
     DList     *bin = ARENA_SMALL_BIN_AT(arena, index);
     FreeChunk *ch  = FREE_CHUNK_FROM_SIBLINGS(DLIST_NEXT(bin));
 
-    FL_ASSERT_EQ_SIZE_T(CHUNK_SIZE(ch), ARENA_SMALL_INDEX_TO_SIZE(index));
+    FL_ASSERT_EQ(CHUNK_SIZE(ch), ARENA_SMALL_INDEX_TO_SIZE(index));
     ARENA_RTCHECK(arena_address_ok(arena, ch), file, line);
 
     free_chunk_remove(ch);
@@ -439,7 +439,7 @@ static void unlink_small_chunk(Arena *arena, FreeChunk *node, size_t size,
 
     FL_ASSERT_NEQ_PTR(node, prev);
     FL_ASSERT_NEQ_PTR(node, next);
-    FL_ASSERT_EQ_SIZE_T(CHUNK_SIZE(node), ARENA_SMALL_INDEX_TO_SIZE(index));
+    FL_ASSERT_EQ(CHUNK_SIZE(node), ARENA_SMALL_INDEX_TO_SIZE(index));
 
     free_chunk_remove(node);
     if (prev == next) {

@@ -18,8 +18,8 @@
 #include <faultline/fl_exception_assert.h> // assert macro
 #include <faultline/fl_macros.h>           // FL_SPEC_EXPORT
 #include <faultline/fl_test.h>             // FL_SUITE_*, FL_GET_TEST_SUITE
-#include <faultline/fl_try.h> // FL_TRY, FL_CATCH, FL_THROW_DETAILS_FILE_LINE
-#include <stddef.h>           // size_t
+#include <faultline/fl_try.h>              // FL_TRY, FL_CATCH, FL_THROW_DETAILS_FILE_LINE
+#include <stddef.h>                        // size_t
 
 /**
  * @brief Allocate a new Region with default commit and reserve (0, 0).
@@ -27,7 +27,7 @@
 static void setup_region_allocation(FLTestCase *data) {
     RegionAllocationTestCase *tc = FL_CONTAINER_OF(data, RegionAllocationTestCase, tc);
     tc->region                   = new_region(0, 0);
-    FL_ASSERT_GE_SIZE_T(REGION_BYTES_RESERVED(tc->region), REGION_ALIGNED_SIZE);
+    FL_ASSERT_GE(REGION_BYTES_RESERVED(tc->region), REGION_ALIGNED_SIZE);
 }
 
 static void cleanup_region_allocation(FLTestCase *data) {
@@ -42,9 +42,8 @@ static void cleanup_region_allocation(FLTestCase *data) {
  * @brief verify that a newly allocated Region's fields are correctly
  * initialized.
  */
-FL_TYPE_TEST_SETUP_CLEANUP("Allocation", RegionAllocationTestCase,
-                           test_region_allocation, setup_region_allocation,
-                           cleanup_region_allocation) {
+FL_TYPE_TEST_SETUP_CLEANUP("Allocation", RegionAllocationTestCase, test_region_allocation,
+                           setup_region_allocation, cleanup_region_allocation) {
     Region *region = t->region;
     char   *top    = (char *)region;
     u32     granularity, page_size;
@@ -56,10 +55,10 @@ FL_TYPE_TEST_SETUP_CLEANUP("Allocation", RegionAllocationTestCase,
 
     FL_ASSERT_EQ_PTR(top + reserved, (void *)region->end_reserved);
     FL_ASSERT_EQ_PTR(top + committed, (void *)region->end_committed);
-    FL_ASSERT_EQ_SIZE_T(reserved, REGION_BYTES_RESERVED(region));
-    FL_ASSERT_EQ_UINT32(granularity, region->granularity);
-    FL_ASSERT_EQ_UINT32(page_size, region->page_size);
-    FL_ASSERT_EQ_SIZE_T(committed, REGION_BYTES_COMMITTED(region));
+    FL_ASSERT_EQ(reserved, REGION_BYTES_RESERVED(region));
+    FL_ASSERT_EQ(granularity, region->granularity);
+    FL_ASSERT_EQ(page_size, region->page_size);
+    FL_ASSERT_EQ(committed, REGION_BYTES_COMMITTED(region));
 }
 
 /**
@@ -78,12 +77,12 @@ FL_TYPE_TEST_SETUP_CLEANUP("Commit/Decommit", RegionAllocationTestCase,
             commit(region, i);
         }
         FL_CATCH(region_out_of_memory) {
-            FL_THROW_DETAILS_FILE_LINE(FL_REASON, "page size (%zu): %s", FL_FILE,
-                                       FL_LINE, i, FL_DETAILS);
+            FL_THROW_DETAILS_FILE_LINE(FL_REASON, "page size (%zu): %s", FL_FILE, FL_LINE,
+                                       i, FL_DETAILS);
         }
         FL_END_TRY;
 
-        FL_ASSERT_EQ_SIZE_T(i, (size_t)(region->end_committed - initial_top));
+        FL_ASSERT_EQ(i, (size_t)(region->end_committed - initial_top));
 
         decommit(region, i);
         FL_ASSERT_EQ_PTR((void *)initial_top, (void *)region->end_committed);
@@ -95,7 +94,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Commit/Decommit", RegionAllocationTestCase,
 static void setup_expand_shrink(FLTestCase *tc) {
     RegionAllocationTestCase *ratc = FL_CONTAINER_OF(tc, RegionAllocationTestCase, tc);
     ratc->region                   = new_region(0, 16);
-    FL_ASSERT_GE_SIZE_T(REGION_BYTES_RESERVED(ratc->region), sizeof(Region));
+    FL_ASSERT_GE(REGION_BYTES_RESERVED(ratc->region), sizeof(Region));
 }
 
 FL_TYPE_TEST_SETUP_CLEANUP("Expand/Shrink", RegionAllocationTestCase, test_expand_shrink,
@@ -108,8 +107,8 @@ FL_TYPE_TEST_SETUP_CLEANUP("Expand/Shrink", RegionAllocationTestCase, test_expan
     size_t      commit_size    = ALIGN_UP(to_commit, region->page_size);
 
     FL_ASSERT_TRUE(REGION_IS_RESERVED(region));
-    FL_ASSERT_GT_SIZE_T(to_commit, (size_t)0);
-    FL_ASSERT_LE_SIZE_T(to_commit, request);
+    FL_ASSERT_GT(to_commit, (size_t)0);
+    FL_ASSERT_LE(to_commit, request);
 
     size_t available = region_available_bytes(t->region);
     if (available < commit_size) {
@@ -118,12 +117,12 @@ FL_TYPE_TEST_SETUP_CLEANUP("Expand/Shrink", RegionAllocationTestCase, test_expan
     }
 
     region_extend(region, commit_size);
-    FL_ASSERT_EQ_SIZE_T((size_t)(16 * region->granularity - region->page_size),
-                        (size_t)(region->end_committed - committed));
+    FL_ASSERT_EQ((size_t)(16 * region->granularity - region->page_size),
+                 (size_t)(region->end_committed - committed));
 
     shrink(region, request, commit_size);
     FL_ASSERT_EQ_PTR((void *)committed, (void *)region->end_committed);
-    FL_ASSERT_EQ_SIZE_T(bytes_reserved, REGION_BYTES_RESERVED(region));
+    FL_ASSERT_EQ(bytes_reserved, REGION_BYTES_RESERVED(region));
 }
 
 // ---------------------------------------------------------------------------
@@ -144,10 +143,10 @@ FL_TYPE_TEST_SETUP_CLEANUP("Custom Multipliers", RegionAllocationTestCase,
     get_memory_info(&granularity, &page_size);
 
     // Applied granularity should be 2x system granularity
-    FL_ASSERT_EQ_UINT32(granularity * 2, region->granularity);
+    FL_ASSERT_EQ(granularity * 2, region->granularity);
 
     // Applied page size should be 2x system page size
-    FL_ASSERT_EQ_UINT32(page_size * 2, region->page_size);
+    FL_ASSERT_EQ(page_size * 2, region->page_size);
 
     // Reserved should be aligned to applied granularity
     FL_ASSERT_TRUE(REGION_BYTES_RESERVED(region) % region->granularity == 0);
@@ -304,11 +303,11 @@ FL_TYPE_TEST_SETUP_CLEANUP("Commit Preserves Reserved", RegionAllocationTestCase
 
     // Commit one page
     commit(region, page_size);
-    FL_ASSERT_EQ_SIZE_T(reserved_before, REGION_BYTES_RESERVED(region));
+    FL_ASSERT_EQ(reserved_before, REGION_BYTES_RESERVED(region));
 
     // Decommit it
     decommit(region, page_size);
-    FL_ASSERT_EQ_SIZE_T(reserved_before, REGION_BYTES_RESERVED(region));
+    FL_ASSERT_EQ(reserved_before, REGION_BYTES_RESERVED(region));
 }
 
 // ---------------------------------------------------------------------------
@@ -382,7 +381,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Extend Zero", RegionAllocationTestCase, test_extend_
 
     size_t committed = region_extend(region, 0);
 
-    FL_ASSERT_EQ_SIZE_T((size_t)0, committed);
+    FL_ASSERT_EQ((size_t)0, committed);
     FL_ASSERT_EQ_PTR((void *)committed_before, (void *)region->end_committed);
 }
 
@@ -393,9 +392,8 @@ FL_TYPE_TEST_SETUP_CLEANUP("Extend Zero", RegionAllocationTestCase, test_extend_
 FL_TYPE_TEST_SETUP_CLEANUP("Extend Beyond Available", RegionAllocationTestCase,
                            test_extend_beyond_available, setup_region_allocation,
                            cleanup_region_allocation) {
-    // Ask for more than the region reports it can reach. Deriving the request from
-    // the region keeps it out of reach on any address-space width, where a fixed
-    // constant large enough for 64-bit would truncate to something reachable on 32.
+    // Request more memory than the region says it has available to force the region to
+    // try to extend itself and fail.
     size_t beyond = region_available_bytes(t->region) + t->region->granularity;
 
     FL_TRY {
@@ -416,10 +414,10 @@ FL_TEST("Custom Multiplier One", test_custom_multiplier_one) {
     Region *r0 = new_custom_region(0, 0, 0, 0);
     Region *r1 = new_custom_region(0, 0, 1, 1);
 
-    FL_ASSERT_EQ_UINT32(r0->granularity, r1->granularity);
-    FL_ASSERT_EQ_UINT32(r0->page_size, r1->page_size);
-    FL_ASSERT_EQ_SIZE_T(REGION_BYTES_RESERVED(r0), REGION_BYTES_RESERVED(r1));
-    FL_ASSERT_EQ_SIZE_T(REGION_BYTES_COMMITTED(r0), REGION_BYTES_COMMITTED(r1));
+    FL_ASSERT_EQ(r0->granularity, r1->granularity);
+    FL_ASSERT_EQ(r0->page_size, r1->page_size);
+    FL_ASSERT_EQ(REGION_BYTES_RESERVED(r0), REGION_BYTES_RESERVED(r1));
+    FL_ASSERT_EQ(REGION_BYTES_COMMITTED(r0), REGION_BYTES_COMMITTED(r1));
 
     release_region(r1);
     release_region(r0);
@@ -470,11 +468,11 @@ FL_TEST("Large Initial Commit", test_large_initial_commit) {
     Region *region  = new_region(request, 0);
 
     // Committed should be at least request + REGION_ALIGNED_SIZE, page-aligned
-    FL_ASSERT_GE_SIZE_T(REGION_BYTES_COMMITTED(region),
-                        ALIGN_UP(request + REGION_ALIGNED_SIZE, region->page_size));
+    FL_ASSERT_GE(REGION_BYTES_COMMITTED(region),
+                 ALIGN_UP(request + REGION_ALIGNED_SIZE, region->page_size));
 
     // Reserved should be at least committed
-    FL_ASSERT_GE_SIZE_T(REGION_BYTES_RESERVED(region), REGION_BYTES_COMMITTED(region));
+    FL_ASSERT_GE(REGION_BYTES_RESERVED(region), REGION_BYTES_COMMITTED(region));
 
     release_region(region);
 }
@@ -493,8 +491,8 @@ FL_TEST("Release Then Re-allocate", test_release_reallocate) {
     // Allocate a new region - should succeed
     Region *region2 = new_region(0, 0);
     FL_ASSERT_TRUE(region2 != NULL);
-    FL_ASSERT_EQ_UINT32(granularity, region2->granularity);
-    FL_ASSERT_EQ_UINT32(page_size, region2->page_size);
+    FL_ASSERT_EQ(granularity, region2->granularity);
+    FL_ASSERT_EQ(page_size, region2->page_size);
 
     release_region(region2);
 }

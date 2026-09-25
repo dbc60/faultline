@@ -554,7 +554,7 @@ void arena_tree_dbg_display(Arena *arena, DigitalSearchTree *tc, char const *not
             CHUNK_IS_PREVIOUS_INUSE(ARENA_DST_TO_FREE_CHUNK(tc)) ? "true" : "false");
     fprintf(stderr, "\n");
 
-    FL_ASSERT_NEQ_SIZE_T(sz, foot);
+    FL_ASSERT_NEQ(sz, foot);
 
     static FL_THREAD_LOCAL int level;
     if (level == 0) {

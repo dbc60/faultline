@@ -193,14 +193,14 @@ FL_TYPE_TEST_SETUP_CLEANUP("Arena And Fault Service Compatibility", CompatTestCa
 FL_TEST("Memory Service Layout", memory_service_layout) {
     // All members are pointers, so the struct is pointer-sized throughout and
     // these hold on both x86 and x64.
-    FL_ASSERT_EQ_SIZE_T(sizeof(FLMemoryService), 6 * sizeof(void *));
+    FL_ASSERT_EQ(sizeof(FLMemoryService), 6 * sizeof(void *));
 
-    FL_ASSERT_EQ_SIZE_T(offsetof(FLMemoryService, ctx), 0 * sizeof(void *));
-    FL_ASSERT_EQ_SIZE_T(offsetof(FLMemoryService, fl_aligned_alloc), 1 * sizeof(void *));
-    FL_ASSERT_EQ_SIZE_T(offsetof(FLMemoryService, fl_calloc), 2 * sizeof(void *));
-    FL_ASSERT_EQ_SIZE_T(offsetof(FLMemoryService, fl_free), 3 * sizeof(void *));
-    FL_ASSERT_EQ_SIZE_T(offsetof(FLMemoryService, fl_malloc), 4 * sizeof(void *));
-    FL_ASSERT_EQ_SIZE_T(offsetof(FLMemoryService, fl_realloc), 5 * sizeof(void *));
+    FL_ASSERT_EQ(offsetof(FLMemoryService, ctx), 0 * sizeof(void *));
+    FL_ASSERT_EQ(offsetof(FLMemoryService, fl_aligned_alloc), 1 * sizeof(void *));
+    FL_ASSERT_EQ(offsetof(FLMemoryService, fl_calloc), 2 * sizeof(void *));
+    FL_ASSERT_EQ(offsetof(FLMemoryService, fl_free), 3 * sizeof(void *));
+    FL_ASSERT_EQ(offsetof(FLMemoryService, fl_malloc), 4 * sizeof(void *));
+    FL_ASSERT_EQ(offsetof(FLMemoryService, fl_realloc), 5 * sizeof(void *));
 }
 
 // -- Tests: free_pointer -------------------------------------------------------
@@ -270,7 +270,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Arena Free Pointer Matches Free", ArenaServiceTestCa
     arena_free_pointer(arena, &b, __FILE__, __LINE__);
     FL_ASSERT_NULL(b);
 
-    FL_ASSERT_EQ_SIZE_T(arena_allocation_count(arena), after_free);
+    FL_ASSERT_EQ(arena_allocation_count(arena), after_free);
 }
 
 // -- Tests: realloc ------------------------------------------------------------
@@ -281,16 +281,16 @@ FL_TYPE_TEST_SETUP_CLEANUP("Arena Free Pointer Matches Free", ArenaServiceTestCa
 // committed, and that fault fails an otherwise clean test.
 FL_TYPE_TEST_SETUP_CLEANUP("Fault Realloc Accepts Null Pointer", MemServiceTestCase,
                            fault_realloc_accepts_null_pointer, flp_setup, flp_cleanup) {
-    FL_ASSERT_ZERO_INT64(fault_injector_get_invalid_address_count(&t->fi));
+    FL_ASSERT_ZERO(fault_injector_get_invalid_address_count(&t->fi));
 
     void *ptr = flp_fault_realloc(NULL, 64, __FILE__, __LINE__);
     FL_ASSERT_NOT_NULL(ptr);
-    FL_ASSERT_ZERO_INT64(fault_injector_get_invalid_address_count(&t->fi));
+    FL_ASSERT_ZERO(fault_injector_get_invalid_address_count(&t->fi));
 
     // The block was recorded as a live allocation, so releasing it is a clean
     // free rather than an invalid one.
     flp_fault_free(ptr, __FILE__, __LINE__);
-    FL_ASSERT_ZERO_INT64(fault_injector_get_invalid_address_count(&t->fi));
+    FL_ASSERT_ZERO(fault_injector_get_invalid_address_count(&t->fi));
 }
 
 // Resizing a real block keeps the accounting balanced whether the block moves or
@@ -303,10 +303,10 @@ FL_TYPE_TEST_SETUP_CLEANUP("Fault Realloc Tracks Resized Block", MemServiceTestC
 
     void *grown = flp_fault_realloc(ptr, 4096, __FILE__, __LINE__);
     FL_ASSERT_NOT_NULL(grown);
-    FL_ASSERT_ZERO_INT64(fault_injector_get_invalid_address_count(&t->fi));
+    FL_ASSERT_ZERO(fault_injector_get_invalid_address_count(&t->fi));
 
     flp_fault_free(grown, __FILE__, __LINE__);
-    FL_ASSERT_ZERO_INT64(fault_injector_get_invalid_address_count(&t->fi));
+    FL_ASSERT_ZERO(fault_injector_get_invalid_address_count(&t->fi));
 }
 
 // -- Cross-boundary injection --------------------------------------------------

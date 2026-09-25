@@ -113,8 +113,8 @@ static FL_PRINTF_FORMAT(2, 3) void out_printf(JUnitOut *out, char const *fmt, ..
     int needed = vsnprintf(tmp, sizeof tmp, fmt, args);
     va_end(args);
 
-    FL_ASSERT_GT_INT(needed, -1);
-    FL_ASSERT_LT_INT(needed, (int)sizeof tmp);
+    FL_ASSERT_GT(needed, -1);
+    FL_ASSERT_LT(needed, (int)sizeof tmp);
     out_write(out, tmp, (size_t)needed);
 }
 

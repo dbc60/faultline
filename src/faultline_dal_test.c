@@ -454,7 +454,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Record Round Trips", TestDal, dal_record_round_trips
 
     t->db            = faultline_init_database(t->path);
     i64 const run_id = faultline_run_record(t->db, &fctx);
-    FL_ASSERT_GT_INT((int)run_id, 0);
+    FL_ASSERT_GT((int)run_id, 0);
 
     char sql[512];
     char actual[160];
@@ -516,7 +516,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Duplicate Case Name Rolls Back", TestDal,
     FL_END_TRY;
 
     FL_ASSERT_TRUE(caught);
-    FL_ASSERT_EQ_INT(0, dal_test_query_int(t->db,
+    FL_ASSERT_EQ(0, dal_test_query_int(t->db,
                                            "SELECT (SELECT count(*) FROM suites)"
                                            " + (SELECT count(*) FROM runs)"
                                            " + (SELECT count(*) FROM cases)"
@@ -576,21 +576,21 @@ FL_TYPE_TEST_SETUP_CLEANUP("Baseline Set On First Sighting", TestDal,
     dal_test_add_summary(&fctx, 1, FL_PASS);
     i64 const second = faultline_run_record(t->db, &fctx);
 
-    FL_ASSERT_GT_INT((int)second, (int)first);
-    FL_ASSERT_EQ_INT((int)first, dal_test_query_int(t->db,
+    FL_ASSERT_GT((int)second, (int)first);
+    FL_ASSERT_EQ((int)first, dal_test_query_int(t->db,
                                                     "SELECT baseline_run_id FROM cases"
                                                     " WHERE name = 'alpha';",
                                                     -1));
-    FL_ASSERT_EQ_INT((int)second, dal_test_query_int(t->db,
+    FL_ASSERT_EQ((int)second, dal_test_query_int(t->db,
                                                      "SELECT baseline_run_id FROM cases"
                                                      " WHERE name = 'beta';",
                                                      -1));
-    FL_ASSERT_EQ_INT(2, dal_test_query_int(t->db,
+    FL_ASSERT_EQ(2, dal_test_query_int(t->db,
                                            "SELECT count(*) FROM cases"
                                            " WHERE baseline_set_at IS NOT NULL;",
                                            -1));
-    FL_ASSERT_EQ_INT(1, dal_test_query_int(t->db, "SELECT count(*) FROM suites;", -1));
-    FL_ASSERT_EQ_INT(0, dal_test_query_int(t->db,
+    FL_ASSERT_EQ(1, dal_test_query_int(t->db, "SELECT count(*) FROM suites;", -1));
+    FL_ASSERT_EQ(0, dal_test_query_int(t->db,
                                            "SELECT count(*) FROM runs"
                                            " WHERE started_at < '2000';",
                                            -1));
@@ -608,15 +608,15 @@ FL_TYPE_TEST_SETUP_CLEANUP("Deleting A Run Cascades", TestDal, dal_run_delete_ca
 
     t->db            = faultline_init_database(t->path);
     i64 const run_id = faultline_run_record(t->db, &fctx);
-    FL_ASSERT_EQ_INT(1, dal_test_query_int(t->db, "SELECT count(*) FROM faults;", -1));
+    FL_ASSERT_EQ(1, dal_test_query_int(t->db, "SELECT count(*) FROM faults;", -1));
 
     char sql[64];
     snprintf(sql, sizeof sql, "DELETE FROM runs WHERE id = %lld;", (long long)run_id);
     dal_test_exec(t->db, sql);
 
-    FL_ASSERT_EQ_INT(0, dal_test_query_int(t->db, "SELECT count(*) FROM results;", -1));
-    FL_ASSERT_EQ_INT(0, dal_test_query_int(t->db, "SELECT count(*) FROM faults;", -1));
-    FL_ASSERT_EQ_INT(1, dal_test_query_int(t->db,
+    FL_ASSERT_EQ(0, dal_test_query_int(t->db, "SELECT count(*) FROM results;", -1));
+    FL_ASSERT_EQ(0, dal_test_query_int(t->db, "SELECT count(*) FROM faults;", -1));
+    FL_ASSERT_EQ(1, dal_test_query_int(t->db,
                                            "SELECT count(*) FROM cases"
                                            " WHERE baseline_run_id IS NULL;",
                                            -1));
@@ -642,25 +642,25 @@ FL_TYPE_TEST_SETUP_CLEANUP("Run List Newest First", TestDal, dal_run_list_newest
 
     DalRunCollector all = {0};
     faultline_run_list(t->db, NULL, 0, dal_collect_run, &all);
-    FL_ASSERT_EQ_INT(3, all.count);
-    FL_ASSERT_EQ_INT((int)third, (int)all.ids[0]);
-    FL_ASSERT_EQ_INT((int)second, (int)all.ids[1]);
-    FL_ASSERT_EQ_INT((int)first, (int)all.ids[2]);
+    FL_ASSERT_EQ(3, all.count);
+    FL_ASSERT_EQ((int)third, (int)all.ids[0]);
+    FL_ASSERT_EQ((int)second, (int)all.ids[1]);
+    FL_ASSERT_EQ((int)first, (int)all.ids[2]);
     FL_ASSERT_STR_EQ("OtherSuite", all.suites[1]);
-    FL_ASSERT_EQ_INT(2, (int)all.cases_run[0]);
-    FL_ASSERT_EQ_INT(1, (int)all.passed[0]);
+    FL_ASSERT_EQ(2, (int)all.cases_run[0]);
+    FL_ASSERT_EQ(1, (int)all.passed[0]);
 
     DalRunCollector suite_only = {0};
     faultline_run_list(t->db, "DalSuite", 0, dal_collect_run, &suite_only);
-    FL_ASSERT_EQ_INT(2, suite_only.count);
+    FL_ASSERT_EQ(2, suite_only.count);
 
     DalRunCollector limited = {0};
     faultline_run_list(t->db, NULL, 2, dal_collect_run, &limited);
-    FL_ASSERT_EQ_INT(2, limited.count);
+    FL_ASSERT_EQ(2, limited.count);
 
     DalRunCollector stopped = {.stop_after = 1};
     faultline_run_list(t->db, NULL, 0, dal_collect_run, &stopped);
-    FL_ASSERT_EQ_INT(1, stopped.count);
+    FL_ASSERT_EQ(1, stopped.count);
 }
 
 // Finding a run visits it once, and an unknown id visits nothing. The run's results come
@@ -684,22 +684,22 @@ FL_TYPE_TEST_SETUP_CLEANUP("Run Find And Results", TestDal, dal_run_find_results
 
     DalRunCollector found = {0};
     FL_ASSERT_TRUE(faultline_run_find(t->db, run_id, dal_collect_run, &found));
-    FL_ASSERT_EQ_INT(1, found.count);
-    FL_ASSERT_EQ_INT((int)run_id, (int)found.ids[0]);
+    FL_ASSERT_EQ(1, found.count);
+    FL_ASSERT_EQ((int)run_id, (int)found.ids[0]);
 
     DalRunCollector missing = {0};
     FL_ASSERT_FALSE(faultline_run_find(t->db, run_id + 1, dal_collect_run, &missing));
-    FL_ASSERT_EQ_INT(0, missing.count);
+    FL_ASSERT_EQ(0, missing.count);
 
     DalResultCollector results = {0};
     faultline_result_list(t->db, run_id, dal_collect_result, &results);
-    FL_ASSERT_EQ_INT(2, results.count);
+    FL_ASSERT_EQ(2, results.count);
     FL_ASSERT_STR_EQ("alpha", results.names[0]);
     FL_ASSERT_FALSE(results.has_file[0]);
     FL_ASSERT_STR_EQ("beta", results.names[1]);
-    FL_ASSERT_EQ_INT(FL_FAIL, results.codes[1]);
+    FL_ASSERT_EQ(FL_FAIL, results.codes[1]);
     FL_ASSERT_STR_EQ("alloc.c", results.files[1]);
-    FL_ASSERT_EQ_INT(10, results.lines[1]);
+    FL_ASSERT_EQ(10, results.lines[1]);
 }
 
 // Two runs of a suite that start in the same second: the latest is the one with the
@@ -726,14 +726,14 @@ FL_TYPE_TEST_SETUP_CLEANUP("Latest Failures By Run Id", TestDal,
     DalFailureCollector latest = {0};
     faultline_failure_list(t->db, NULL, 0, FL_FAILURES_LATEST, dal_collect_failure,
                            &latest);
-    FL_ASSERT_EQ_INT(0, latest.count);
+    FL_ASSERT_EQ(0, latest.count);
 
     DalFailureCollector all = {0};
     faultline_failure_list(t->db, NULL, 0, FL_FAILURES_ALL, dal_collect_failure, &all);
-    FL_ASSERT_EQ_INT(1, all.count);
-    FL_ASSERT_EQ_INT((int)failed_run, (int)all.run_ids[0]);
+    FL_ASSERT_EQ(1, all.count);
+    FL_ASSERT_EQ((int)failed_run, (int)all.run_ids[0]);
     FL_ASSERT_STR_EQ("free.c", all.files[0]);
-    FL_ASSERT_EQ_INT(DAL_TEST_RESOURCE, (int)all.resources[0]);
+    FL_ASSERT_EQ(DAL_TEST_RESOURCE, (int)all.resources[0]);
 }
 
 // Suites come most recently run first, with totals over their runs. Finding an unknown
@@ -750,10 +750,10 @@ FL_TYPE_TEST_SETUP_CLEANUP("Suites By Latest Run", TestDal, dal_suite_list_find,
 
     DalSuiteCollector suites = {0};
     faultline_suite_list(t->db, 0, dal_collect_suite, &suites);
-    FL_ASSERT_EQ_INT(2, suites.count);
+    FL_ASSERT_EQ(2, suites.count);
     FL_ASSERT_STR_EQ("DalSuite", suites.names[0]);
-    FL_ASSERT_EQ_INT(2, (int)suites.runs[0]);
-    FL_ASSERT_EQ_INT(2, (int)suites.cases[0]);
+    FL_ASSERT_EQ(2, (int)suites.runs[0]);
+    FL_ASSERT_EQ(2, (int)suites.cases[0]);
     FL_ASSERT_STR_EQ("OtherSuite", suites.names[1]);
 
     // DalSuite's pass rates are 1.0 and 0.5, its fault sites 2 and 1 + 3, and one of its
@@ -762,14 +762,14 @@ FL_TYPE_TEST_SETUP_CLEANUP("Suites By Latest Run", TestDal, dal_suite_list_find,
     FL_ASSERT_TRUE(faultline_suite_find(t->db, "DalSuite", dal_collect_suite, &found));
     FL_ASSERT_STR_EQ("2024-01-02T10:00:00Z", found.first_runs[0]);
     FL_ASSERT_STR_EQ("2024-01-03T10:00:00Z", found.last_runs[0]);
-    FL_ASSERT_EQ_INT(750, (int)(found.pass_rates[0] * 1000.0 + 0.5));
-    FL_ASSERT_EQ_INT(6, (int)found.fault_sites[0]);
-    FL_ASSERT_EQ_INT(1, (int)found.failures[0]);
+    FL_ASSERT_EQ(750, (int)(found.pass_rates[0] * 1000.0 + 0.5));
+    FL_ASSERT_EQ(6, (int)found.fault_sites[0]);
+    FL_ASSERT_EQ(1, (int)found.failures[0]);
 
     DalSuiteCollector missing = {0};
     FL_ASSERT_FALSE(
         faultline_suite_find(t->db, "NoSuchSuite", dal_collect_suite, &missing));
-    FL_ASSERT_EQ_INT(0, missing.count);
+    FL_ASSERT_EQ(0, missing.count);
 }
 
 // A case's baseline stays at its first run while its latest values follow the most
@@ -787,12 +787,12 @@ FL_TYPE_TEST_SETUP_CLEANUP("Case History", TestDal, dal_case_history, setup_dal_
 
     DalCaseCollector cases = {0};
     faultline_case_list(t->db, NULL, 0, dal_collect_case, &cases);
-    FL_ASSERT_EQ_INT(1, cases.count);
-    FL_ASSERT_EQ_INT(3, (int)cases.appearances[0]);
-    FL_ASSERT_EQ_INT(1, (int)cases.failures[0]);
+    FL_ASSERT_EQ(1, cases.count);
+    FL_ASSERT_EQ(3, (int)cases.appearances[0]);
+    FL_ASSERT_EQ(1, (int)cases.failures[0]);
     FL_ASSERT_TRUE(cases.has_baseline[0]);
-    FL_ASSERT_EQ_INT(10, (int)cases.baseline_sites[0]);
-    FL_ASSERT_EQ_INT(5, (int)cases.last_sites[0]);
+    FL_ASSERT_EQ(10, (int)cases.baseline_sites[0]);
+    FL_ASSERT_EQ(5, (int)cases.last_sites[0]);
 }
 
 // Every case starts at 10 fault sites and 1 second. The next run drops coverage, doubles
@@ -818,7 +818,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Regressions Classified", TestDal, dal_regressions_cl
     DalRegressionCollector c = {0};
     faultline_regression_list(t->db, "ClassSuite", 0, dal_test_threshold_pct,
                               dal_collect_regression, &c);
-    FL_ASSERT_EQ_INT(3, c.count);
+    FL_ASSERT_EQ(3, c.count);
 
     int const cov  = dal_regression_index(&c, "cov_only");
     int const rt   = dal_regression_index(&c, "rt_only");
@@ -830,13 +830,13 @@ FL_TYPE_TEST_SETUP_CLEANUP("Regressions Classified", TestDal, dal_regressions_cl
     FL_ASSERT_TRUE(c.coverage[cov] && !c.runtime[cov]);
     FL_ASSERT_TRUE(!c.coverage[rt] && c.runtime[rt]);
     FL_ASSERT_TRUE(c.coverage[both] && c.runtime[both]);
-    FL_ASSERT_EQ_INT(10, (int)c.baseline_sites[cov]);
-    FL_ASSERT_EQ_INT(7, (int)c.last_sites[cov]);
+    FL_ASSERT_EQ(10, (int)c.baseline_sites[cov]);
+    FL_ASSERT_EQ(7, (int)c.last_sites[cov]);
 
     DalRegressionCollector empty = {0};
     faultline_regression_list(t->db, "NoSuchSuite", 0, dal_test_threshold_pct,
                               dal_collect_regression, &empty);
-    FL_ASSERT_EQ_INT(0, empty.count);
+    FL_ASSERT_EQ(0, empty.count);
 }
 
 // Resetting a baseline to the latest run clears the case's regression. Filters that match
@@ -853,21 +853,21 @@ FL_TYPE_TEST_SETUP_CLEANUP("Baseline Reset", TestDal, dal_baseline_reset, setup_
     DalRegressionCollector before = {0};
     faultline_regression_list(t->db, "DalSuite", 0, dal_test_threshold_pct,
                               dal_collect_regression, &before);
-    FL_ASSERT_EQ_INT(1, before.count);
+    FL_ASSERT_EQ(1, before.count);
 
-    FL_ASSERT_EQ_INT(0, (int)faultline_baseline_reset(t->db, "OtherSuite", NULL));
-    FL_ASSERT_EQ_INT(0, (int)faultline_baseline_reset(t->db, NULL, "no_such_case"));
-    FL_ASSERT_EQ_INT(1, (int)faultline_baseline_reset(t->db, "DalSuite", "alpha"));
+    FL_ASSERT_EQ(0, (int)faultline_baseline_reset(t->db, "OtherSuite", NULL));
+    FL_ASSERT_EQ(0, (int)faultline_baseline_reset(t->db, NULL, "no_such_case"));
+    FL_ASSERT_EQ(1, (int)faultline_baseline_reset(t->db, "DalSuite", "alpha"));
 
     DalRegressionCollector after = {0};
     faultline_regression_list(t->db, "DalSuite", 0, dal_test_threshold_pct,
                               dal_collect_regression, &after);
-    FL_ASSERT_EQ_INT(0, after.count);
+    FL_ASSERT_EQ(0, after.count);
 
     DalCaseCollector cases = {0};
     faultline_case_list(t->db, "DalSuite", 0, dal_collect_case, &cases);
-    FL_ASSERT_EQ_INT(1, cases.count);
-    FL_ASSERT_EQ_INT(7, (int)cases.baseline_sites[0]);
+    FL_ASSERT_EQ(1, cases.count);
+    FL_ASSERT_EQ(7, (int)cases.baseline_sites[0]);
 }
 
 // One suite over three days. January 1 has two runs, so its pass rate is the mean of 0.8
@@ -898,31 +898,31 @@ FL_TYPE_TEST_SETUP_CLEANUP("Trends By Day", TestDal, dal_trends_by_day, setup_da
 
     DalTrendCollector c = {0};
     faultline_trend_list(t->db, "OutcomeSuite", 0, dal_collect_trend, &c);
-    FL_ASSERT_EQ_INT(3, c.count);
+    FL_ASSERT_EQ(3, c.count);
 
     // Newest day first.
     FL_ASSERT_STR_EQ("2024-01-03", c.days[0]);
     FL_ASSERT_STR_EQ("2024-01-02", c.days[1]);
     FL_ASSERT_STR_EQ("2024-01-01", c.days[2]);
 
-    FL_ASSERT_EQ_INT(2, c.runs[2]);
-    FL_ASSERT_EQ_INT(900, c.pass_milli[2]);
-    FL_ASSERT_EQ_INT(1, c.failures[2]);
+    FL_ASSERT_EQ(2, c.runs[2]);
+    FL_ASSERT_EQ(900, c.pass_milli[2]);
+    FL_ASSERT_EQ(1, c.failures[2]);
     FL_ASSERT_FALSE(c.has_previous[2]);
 
     FL_ASSERT_TRUE(c.has_previous[1]);
-    FL_ASSERT_EQ_INT(400, c.pass_milli[1]);
-    FL_ASSERT_EQ_INT(900, c.previous_pass_milli[1]);
-    FL_ASSERT_EQ_INT(3, c.failures[1]);
-    FL_ASSERT_EQ_INT(1, c.previous_failures[1]);
+    FL_ASSERT_EQ(400, c.pass_milli[1]);
+    FL_ASSERT_EQ(900, c.previous_pass_milli[1]);
+    FL_ASSERT_EQ(3, c.failures[1]);
+    FL_ASSERT_EQ(1, c.previous_failures[1]);
 
     FL_ASSERT_TRUE(c.has_previous[0]);
-    FL_ASSERT_EQ_INT(1000, c.pass_milli[0]);
-    FL_ASSERT_EQ_INT(400, c.previous_pass_milli[0]);
+    FL_ASSERT_EQ(1000, c.pass_milli[0]);
+    FL_ASSERT_EQ(400, c.previous_pass_milli[0]);
 
     DalTrendCollector empty = {0};
     faultline_trend_list(t->db, "NoSuchSuite", 0, dal_collect_trend, &empty);
-    FL_ASSERT_EQ_INT(0, empty.count);
+    FL_ASSERT_EQ(0, empty.count);
 }
 
 // alloc.c:10 records three faults across both cases and free.c:20 records one, so
@@ -951,19 +951,19 @@ FL_TYPE_TEST_SETUP_CLEANUP("Hotspots Ranked", TestDal, dal_hotspots_ranked, setu
 
     DalHotspotCollector c = {0};
     faultline_hotspot_list(t->db, "DalSuite", 0, dal_collect_hotspot, &c);
-    FL_ASSERT_EQ_INT(2, c.count);
+    FL_ASSERT_EQ(2, c.count);
 
     FL_ASSERT_STR_EQ("alloc.c", c.files[0]);
-    FL_ASSERT_EQ_INT(10, c.lines[0]);
-    FL_ASSERT_EQ_INT(3, (int)c.faults[0]);
-    FL_ASSERT_EQ_INT(2, (int)c.cases[0]);
+    FL_ASSERT_EQ(10, c.lines[0]);
+    FL_ASSERT_EQ(3, (int)c.faults[0]);
+    FL_ASSERT_EQ(2, (int)c.cases[0]);
 
     FL_ASSERT_STR_EQ("free.c", c.files[1]);
-    FL_ASSERT_EQ_INT(20, c.lines[1]);
-    FL_ASSERT_EQ_INT(1, (int)c.faults[1]);
-    FL_ASSERT_EQ_INT(1, (int)c.cases[1]);
+    FL_ASSERT_EQ(20, c.lines[1]);
+    FL_ASSERT_EQ(1, (int)c.faults[1]);
+    FL_ASSERT_EQ(1, (int)c.cases[1]);
 
     DalHotspotCollector empty = {0};
     faultline_hotspot_list(t->db, "NoSuchSuite", 0, dal_collect_hotspot, &empty);
-    FL_ASSERT_EQ_INT(0, empty.count);
+    FL_ASSERT_EQ(0, empty.count);
 }

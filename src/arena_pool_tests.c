@@ -51,10 +51,10 @@ FL_TYPE_TEST_SETUP_CLEANUP("Roundtrip", TestPool, test_pool_roundtrip, setup_poo
 
     Arena *owner = arena_owner(mem);
     FL_ASSERT_NOT_NULL(owner);
-    FL_ASSERT_EQ_SIZE_T(arena_allocation_count(owner), 1);
+    FL_ASSERT_EQ(arena_allocation_count(owner), 1);
 
     ARENA_POOL_FREE_THROW(t->pool, mem);
-    FL_ASSERT_EQ_SIZE_T(arena_allocation_count(owner), 0);
+    FL_ASSERT_EQ(arena_allocation_count(owner), 0);
 
     // The same thread keeps the same shard.
     void *again = ARENA_POOL_MALLOC_THROW(t->pool, 64);
@@ -66,7 +66,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Calloc zeroes", TestPool, test_pool_calloc, setup_po
                            cleanup_pool) {
     unsigned char *mem = (unsigned char *)ARENA_POOL_CALLOC_THROW(t->pool, 8, 8);
     for (size_t i = 0; i < 64; i++) {
-        FL_ASSERT_EQ_SIZE_T((size_t)mem[i], 0);
+        FL_ASSERT_EQ((size_t)mem[i], 0);
     }
     ARENA_POOL_FREE_THROW(t->pool, mem);
 }
@@ -78,7 +78,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Realloc preserves", TestPool, test_pool_realloc, set
 
     char *grown = (char *)ARENA_POOL_REALLOC_THROW(t->pool, mem, 4096);
     for (size_t i = 0; i < 32; i++) {
-        FL_ASSERT_EQ_SIZE_T((size_t)(unsigned char)grown[i], 0x5C);
+        FL_ASSERT_EQ((size_t)(unsigned char)grown[i], 0x5C);
     }
     ARENA_POOL_FREE_THROW(t->pool, grown);
 }
@@ -112,21 +112,21 @@ FL_TYPE_TEST_SETUP_CLEANUP("Remote free + absorb", TestPool, test_pool_remote_fr
     }
 
     Arena *owner = arena_owner(rfa.blocks[0]);
-    FL_ASSERT_EQ_SIZE_T(arena_allocation_count(owner), POOL_TEST_BLOCKS);
+    FL_ASSERT_EQ(arena_allocation_count(owner), POOL_TEST_BLOCKS);
 
     thrd_t worker;
-    FL_ASSERT_EQ_SIZE_T((size_t)thrd_create(&worker, remote_free_worker, &rfa),
+    FL_ASSERT_EQ((size_t)thrd_create(&worker, remote_free_worker, &rfa),
                         (size_t)thrd_success);
     int res = -1;
     thrd_join(worker, &res);
-    FL_ASSERT_EQ_SIZE_T((size_t)res, 0);
+    FL_ASSERT_EQ((size_t)res, 0);
 
     // The queued blocks are reclaimed by this thread's next allocation.
     void *mem = ARENA_POOL_MALLOC_THROW(t->pool, 64);
     FL_ASSERT_EQ_PTR(arena_owner(mem), owner);
-    FL_ASSERT_EQ_SIZE_T(arena_allocation_count(owner), 1);
+    FL_ASSERT_EQ(arena_allocation_count(owner), 1);
     ARENA_POOL_FREE_THROW(t->pool, mem);
-    FL_ASSERT_EQ_SIZE_T(arena_allocation_count(owner), 0);
+    FL_ASSERT_EQ(arena_allocation_count(owner), 0);
 }
 
 typedef struct AdoptArg {
@@ -161,22 +161,22 @@ FL_TYPE_TEST_SETUP_CLEANUP("Orphan + adopt", TestPool, test_pool_adoption, setup
     first.pool = t->pool;
 
     thrd_t worker;
-    FL_ASSERT_EQ_SIZE_T((size_t)thrd_create(&worker, adopt_first_worker, &first),
+    FL_ASSERT_EQ((size_t)thrd_create(&worker, adopt_first_worker, &first),
                         (size_t)thrd_success);
     int res = -1;
     thrd_join(worker, &res);
-    FL_ASSERT_EQ_SIZE_T((size_t)res, 0);
+    FL_ASSERT_EQ((size_t)res, 0);
     FL_ASSERT_NOT_NULL(first.owner);
 
     AdoptArg second = first;
-    FL_ASSERT_EQ_SIZE_T((size_t)thrd_create(&worker, adopt_second_worker, &second),
+    FL_ASSERT_EQ((size_t)thrd_create(&worker, adopt_second_worker, &second),
                         (size_t)thrd_success);
     thrd_join(worker, &res);
-    FL_ASSERT_EQ_SIZE_T((size_t)res, 0);
+    FL_ASSERT_EQ((size_t)res, 0);
 
     // The second thread adopted the orphaned shard rather than creating one.
     FL_ASSERT_EQ_PTR(second.owner, first.owner);
-    FL_ASSERT_EQ_SIZE_T(second.leftover, 0);
+    FL_ASSERT_EQ(second.leftover, 0);
 }
 
 typedef struct DistinctArg {
@@ -211,13 +211,13 @@ FL_TYPE_TEST_SETUP_CLEANUP("Concurrent threads get distinct shards", TestPool,
         args[i].pool    = t->pool;
         args[i].arrived = &arrived;
         args[i].owner   = NULL;
-        FL_ASSERT_EQ_SIZE_T((size_t)thrd_create(&workers[i], distinct_worker, &args[i]),
+        FL_ASSERT_EQ((size_t)thrd_create(&workers[i], distinct_worker, &args[i]),
                             (size_t)thrd_success);
     }
     for (size_t i = 0; i < 2; i++) {
         int res = -1;
         thrd_join(workers[i], &res);
-        FL_ASSERT_EQ_SIZE_T((size_t)res, 0);
+        FL_ASSERT_EQ((size_t)res, 0);
     }
 
     FL_ASSERT_NOT_NULL(args[0].owner);

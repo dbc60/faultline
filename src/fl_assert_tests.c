@@ -150,38 +150,38 @@ FL_TEST("FL_ASSERT_FALSE throws fl_unexpected_failure for non-zero",
 }
 
 // ============================================================
-// FL_ASSERT_ZERO_* - pass: value is zero; fail: value is non-zero
+// FL_ASSERT_ZERO - pass: value is zero; fail: value is non-zero
 // Each variant is tested with the matching C type so -Wformat catches mismatches.
 // ============================================================
 
-FL_TEST("FL_ASSERT_ZERO_* passes for zero values of all types", test_zero_pass) {
-    FL_ASSERT_ZERO_CHAR((char)0);
-    FL_ASSERT_ZERO_SCHAR((signed char)0);
-    FL_ASSERT_ZERO_UCHAR((unsigned char)0);
-    FL_ASSERT_ZERO_INT((int)0);
-    FL_ASSERT_ZERO_SINT((signed int)0);
-    FL_ASSERT_ZERO_INT8((int8_t)0);
-    FL_ASSERT_ZERO_INT16((int16_t)0);
-    FL_ASSERT_ZERO_INT32((int32_t)0);
-    FL_ASSERT_ZERO_INT64((int64_t)0);
-    FL_ASSERT_ZERO_SIZE_T((size_t)0);
-    FL_ASSERT_ZERO_INTPTR((intptr_t)0);
-    FL_ASSERT_ZERO_PTRDIFF((ptrdiff_t)0);
-    FL_ASSERT_ZERO_UINT((unsigned int)0);
-    FL_ASSERT_ZERO_UINT8((uint8_t)0);
-    FL_ASSERT_ZERO_UINT16((uint16_t)0);
-    FL_ASSERT_ZERO_UINT32((uint32_t)0);
-    FL_ASSERT_ZERO_UINT64((uint64_t)0);
-    FL_ASSERT_ZERO_UINTPTR((uintptr_t)0);
+FL_TEST("FL_ASSERT_ZERO passes for zero values of all types", test_zero_pass) {
+    FL_ASSERT_ZERO((char)0);
+    FL_ASSERT_ZERO((signed char)0);
+    FL_ASSERT_ZERO((unsigned char)0);
+    FL_ASSERT_ZERO((int)0);
+    FL_ASSERT_ZERO((signed int)0);
+    FL_ASSERT_ZERO((int8_t)0);
+    FL_ASSERT_ZERO((int16_t)0);
+    FL_ASSERT_ZERO((int32_t)0);
+    FL_ASSERT_ZERO((int64_t)0);
+    FL_ASSERT_ZERO((size_t)0);
+    FL_ASSERT_ZERO((intptr_t)0);
+    FL_ASSERT_ZERO((ptrdiff_t)0);
+    FL_ASSERT_ZERO((unsigned int)0);
+    FL_ASSERT_ZERO((uint8_t)0);
+    FL_ASSERT_ZERO((uint16_t)0);
+    FL_ASSERT_ZERO((uint32_t)0);
+    FL_ASSERT_ZERO((uint64_t)0);
+    FL_ASSERT_ZERO((uintptr_t)0);
 }
 
-FL_TEST("FL_ASSERT_ZERO_* throws fl_invalid_value for non-zero values of all types",
+FL_TEST("FL_ASSERT_ZERO throws fl_invalid_value for non-zero values of all types",
         test_zero_fail) {
     bool volatile caught;
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_ZERO_INT((int)1);
+        FL_ASSERT_ZERO((int)1);
     }
     FL_CATCH(fl_invalid_value) {
         caught = true;
@@ -191,7 +191,7 @@ FL_TEST("FL_ASSERT_ZERO_* throws fl_invalid_value for non-zero values of all typ
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_ZERO_CHAR((char)1);
+        FL_ASSERT_ZERO((char)1);
     }
     FL_CATCH(fl_invalid_value) {
         caught = true;
@@ -201,7 +201,7 @@ FL_TEST("FL_ASSERT_ZERO_* throws fl_invalid_value for non-zero values of all typ
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_ZERO_SCHAR((signed char)1);
+        FL_ASSERT_ZERO((signed char)1);
     }
     FL_CATCH(fl_invalid_value) {
         caught = true;
@@ -211,7 +211,7 @@ FL_TEST("FL_ASSERT_ZERO_* throws fl_invalid_value for non-zero values of all typ
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_ZERO_SINT((signed int)1);
+        FL_ASSERT_ZERO((signed int)1);
     }
     FL_CATCH(fl_invalid_value) {
         caught = true;
@@ -221,7 +221,7 @@ FL_TEST("FL_ASSERT_ZERO_* throws fl_invalid_value for non-zero values of all typ
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_ZERO_INT8((int8_t)1);
+        FL_ASSERT_ZERO((int8_t)1);
     }
     FL_CATCH(fl_invalid_value) {
         caught = true;
@@ -231,7 +231,7 @@ FL_TEST("FL_ASSERT_ZERO_* throws fl_invalid_value for non-zero values of all typ
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_ZERO_INT16((int16_t)1);
+        FL_ASSERT_ZERO((int16_t)1);
     }
     FL_CATCH(fl_invalid_value) {
         caught = true;
@@ -241,7 +241,7 @@ FL_TEST("FL_ASSERT_ZERO_* throws fl_invalid_value for non-zero values of all typ
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_ZERO_INT32((int32_t)1);
+        FL_ASSERT_ZERO((int32_t)1);
     }
     FL_CATCH(fl_invalid_value) {
         caught = true;
@@ -251,7 +251,7 @@ FL_TEST("FL_ASSERT_ZERO_* throws fl_invalid_value for non-zero values of all typ
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_ZERO_INT64((int64_t)1);
+        FL_ASSERT_ZERO((int64_t)1);
     }
     FL_CATCH(fl_invalid_value) {
         caught = true;
@@ -261,7 +261,7 @@ FL_TEST("FL_ASSERT_ZERO_* throws fl_invalid_value for non-zero values of all typ
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_ZERO_SIZE_T((size_t)1);
+        FL_ASSERT_ZERO((size_t)1);
     }
     FL_CATCH(fl_invalid_value) {
         caught = true;
@@ -271,7 +271,7 @@ FL_TEST("FL_ASSERT_ZERO_* throws fl_invalid_value for non-zero values of all typ
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_ZERO_PTRDIFF((ptrdiff_t)1);
+        FL_ASSERT_ZERO((ptrdiff_t)1);
     }
     FL_CATCH(fl_invalid_value) {
         caught = true;
@@ -281,7 +281,7 @@ FL_TEST("FL_ASSERT_ZERO_* throws fl_invalid_value for non-zero values of all typ
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_ZERO_UINT((unsigned int)1);
+        FL_ASSERT_ZERO((unsigned int)1);
     }
     FL_CATCH(fl_invalid_value) {
         caught = true;
@@ -291,7 +291,7 @@ FL_TEST("FL_ASSERT_ZERO_* throws fl_invalid_value for non-zero values of all typ
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_ZERO_UINT16((uint16_t)1);
+        FL_ASSERT_ZERO((uint16_t)1);
     }
     FL_CATCH(fl_invalid_value) {
         caught = true;
@@ -301,7 +301,7 @@ FL_TEST("FL_ASSERT_ZERO_* throws fl_invalid_value for non-zero values of all typ
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_ZERO_UINT32((uint32_t)1);
+        FL_ASSERT_ZERO((uint32_t)1);
     }
     FL_CATCH(fl_invalid_value) {
         caught = true;
@@ -311,7 +311,7 @@ FL_TEST("FL_ASSERT_ZERO_* throws fl_invalid_value for non-zero values of all typ
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_ZERO_UINT64((uint64_t)1);
+        FL_ASSERT_ZERO((uint64_t)1);
     }
     FL_CATCH(fl_invalid_value) {
         caught = true;
@@ -321,7 +321,7 @@ FL_TEST("FL_ASSERT_ZERO_* throws fl_invalid_value for non-zero values of all typ
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_ZERO_UINTPTR((uintptr_t)1);
+        FL_ASSERT_ZERO((uintptr_t)1);
     }
     FL_CATCH(fl_invalid_value) {
         caught = true;
@@ -331,38 +331,38 @@ FL_TEST("FL_ASSERT_ZERO_* throws fl_invalid_value for non-zero values of all typ
 }
 
 // ============================================================
-// FL_ASSERT_NON_ZERO_* - pass: value is non-zero; fail: value is zero
+// FL_ASSERT_NON_ZERO - pass: value is non-zero; fail: value is zero
 // ============================================================
 
-FL_TEST("FL_ASSERT_NON_ZERO_* passes for non-zero values of all types",
+FL_TEST("FL_ASSERT_NON_ZERO passes for non-zero values of all types",
         test_non_zero_pass) {
-    FL_ASSERT_NON_ZERO_CHAR((char)1);
-    FL_ASSERT_NON_ZERO_SCHAR((signed char)1);
-    FL_ASSERT_NON_ZERO_UCHAR((unsigned char)1);
-    FL_ASSERT_NON_ZERO_INT((int)1);
-    FL_ASSERT_NON_ZERO_SINT((signed int)1);
-    FL_ASSERT_NON_ZERO_INT8((int8_t)1);
-    FL_ASSERT_NON_ZERO_INT16((int16_t)1);
-    FL_ASSERT_NON_ZERO_INT32((int32_t)1);
-    FL_ASSERT_NON_ZERO_INT64((int64_t)1);
-    FL_ASSERT_NON_ZERO_SIZE_T((size_t)1);
-    FL_ASSERT_NON_ZERO_INTPTR((intptr_t)1);
-    FL_ASSERT_NON_ZERO_PTRDIFF((ptrdiff_t)1);
-    FL_ASSERT_NON_ZERO_UINT((unsigned int)1);
-    FL_ASSERT_NON_ZERO_UINT8((uint8_t)1);
-    FL_ASSERT_NON_ZERO_UINT16((uint16_t)1);
-    FL_ASSERT_NON_ZERO_UINT32((uint32_t)1);
-    FL_ASSERT_NON_ZERO_UINT64((uint64_t)1);
-    FL_ASSERT_NON_ZERO_UINTPTR((uintptr_t)1);
+    FL_ASSERT_NON_ZERO((char)1);
+    FL_ASSERT_NON_ZERO((signed char)1);
+    FL_ASSERT_NON_ZERO((unsigned char)1);
+    FL_ASSERT_NON_ZERO((int)1);
+    FL_ASSERT_NON_ZERO((signed int)1);
+    FL_ASSERT_NON_ZERO((int8_t)1);
+    FL_ASSERT_NON_ZERO((int16_t)1);
+    FL_ASSERT_NON_ZERO((int32_t)1);
+    FL_ASSERT_NON_ZERO((int64_t)1);
+    FL_ASSERT_NON_ZERO((size_t)1);
+    FL_ASSERT_NON_ZERO((intptr_t)1);
+    FL_ASSERT_NON_ZERO((ptrdiff_t)1);
+    FL_ASSERT_NON_ZERO((unsigned int)1);
+    FL_ASSERT_NON_ZERO((uint8_t)1);
+    FL_ASSERT_NON_ZERO((uint16_t)1);
+    FL_ASSERT_NON_ZERO((uint32_t)1);
+    FL_ASSERT_NON_ZERO((uint64_t)1);
+    FL_ASSERT_NON_ZERO((uintptr_t)1);
 }
 
-FL_TEST("FL_ASSERT_NON_ZERO_* throws fl_invalid_value for zero values of all types",
+FL_TEST("FL_ASSERT_NON_ZERO throws fl_invalid_value for zero values of all types",
         test_non_zero_fail) {
     bool volatile caught;
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_NON_ZERO_INT((int)0);
+        FL_ASSERT_NON_ZERO((int)0);
     }
     FL_CATCH(fl_invalid_value) {
         caught = true;
@@ -372,7 +372,7 @@ FL_TEST("FL_ASSERT_NON_ZERO_* throws fl_invalid_value for zero values of all typ
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_NON_ZERO_CHAR((char)0);
+        FL_ASSERT_NON_ZERO((char)0);
     }
     FL_CATCH(fl_invalid_value) {
         caught = true;
@@ -382,7 +382,7 @@ FL_TEST("FL_ASSERT_NON_ZERO_* throws fl_invalid_value for zero values of all typ
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_NON_ZERO_INT8((int8_t)0);
+        FL_ASSERT_NON_ZERO((int8_t)0);
     }
     FL_CATCH(fl_invalid_value) {
         caught = true;
@@ -392,7 +392,7 @@ FL_TEST("FL_ASSERT_NON_ZERO_* throws fl_invalid_value for zero values of all typ
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_NON_ZERO_INT16((int16_t)0);
+        FL_ASSERT_NON_ZERO((int16_t)0);
     }
     FL_CATCH(fl_invalid_value) {
         caught = true;
@@ -402,7 +402,7 @@ FL_TEST("FL_ASSERT_NON_ZERO_* throws fl_invalid_value for zero values of all typ
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_NON_ZERO_INT32((int32_t)0);
+        FL_ASSERT_NON_ZERO((int32_t)0);
     }
     FL_CATCH(fl_invalid_value) {
         caught = true;
@@ -412,7 +412,7 @@ FL_TEST("FL_ASSERT_NON_ZERO_* throws fl_invalid_value for zero values of all typ
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_NON_ZERO_INT64((int64_t)0);
+        FL_ASSERT_NON_ZERO((int64_t)0);
     }
     FL_CATCH(fl_invalid_value) {
         caught = true;
@@ -422,7 +422,7 @@ FL_TEST("FL_ASSERT_NON_ZERO_* throws fl_invalid_value for zero values of all typ
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_NON_ZERO_SIZE_T((size_t)0);
+        FL_ASSERT_NON_ZERO((size_t)0);
     }
     FL_CATCH(fl_invalid_value) {
         caught = true;
@@ -432,7 +432,7 @@ FL_TEST("FL_ASSERT_NON_ZERO_* throws fl_invalid_value for zero values of all typ
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_NON_ZERO_PTRDIFF((ptrdiff_t)0);
+        FL_ASSERT_NON_ZERO((ptrdiff_t)0);
     }
     FL_CATCH(fl_invalid_value) {
         caught = true;
@@ -442,7 +442,7 @@ FL_TEST("FL_ASSERT_NON_ZERO_* throws fl_invalid_value for zero values of all typ
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_NON_ZERO_UINT((unsigned int)0);
+        FL_ASSERT_NON_ZERO((unsigned int)0);
     }
     FL_CATCH(fl_invalid_value) {
         caught = true;
@@ -452,7 +452,7 @@ FL_TEST("FL_ASSERT_NON_ZERO_* throws fl_invalid_value for zero values of all typ
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_NON_ZERO_UINT16((uint16_t)0);
+        FL_ASSERT_NON_ZERO((uint16_t)0);
     }
     FL_CATCH(fl_invalid_value) {
         caught = true;
@@ -462,7 +462,7 @@ FL_TEST("FL_ASSERT_NON_ZERO_* throws fl_invalid_value for zero values of all typ
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_NON_ZERO_UINT32((uint32_t)0);
+        FL_ASSERT_NON_ZERO((uint32_t)0);
     }
     FL_CATCH(fl_invalid_value) {
         caught = true;
@@ -472,7 +472,7 @@ FL_TEST("FL_ASSERT_NON_ZERO_* throws fl_invalid_value for zero values of all typ
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_NON_ZERO_UINT64((uint64_t)0);
+        FL_ASSERT_NON_ZERO((uint64_t)0);
     }
     FL_CATCH(fl_invalid_value) {
         caught = true;
@@ -482,7 +482,7 @@ FL_TEST("FL_ASSERT_NON_ZERO_* throws fl_invalid_value for zero values of all typ
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_NON_ZERO_UINTPTR((uintptr_t)0);
+        FL_ASSERT_NON_ZERO((uintptr_t)0);
     }
     FL_CATCH(fl_invalid_value) {
         caught = true;
@@ -497,14 +497,14 @@ FL_TEST("FL_ASSERT_NON_ZERO_* throws fl_invalid_value for zero values of all typ
 // ============================================================
 
 FL_TEST("FL_ASSERT_*_CHAR passes for correct int relationships", test_binop_char_pass) {
-    FL_ASSERT_EQ_CHAR(1, 1);
-    FL_ASSERT_NEQ_CHAR(1, 2);
-    FL_ASSERT_LT_CHAR(1, 2);
-    FL_ASSERT_LE_CHAR(1, 1);
-    FL_ASSERT_LE_CHAR(1, 2);
-    FL_ASSERT_GT_CHAR(2, 1);
-    FL_ASSERT_GE_CHAR(1, 1);
-    FL_ASSERT_GE_CHAR(2, 1);
+    FL_ASSERT_EQ(1, 1);
+    FL_ASSERT_NEQ(1, 2);
+    FL_ASSERT_LT(1, 2);
+    FL_ASSERT_LE(1, 1);
+    FL_ASSERT_LE(1, 2);
+    FL_ASSERT_GT(2, 1);
+    FL_ASSERT_GE(1, 1);
+    FL_ASSERT_GE(2, 1);
 }
 
 FL_TEST("FL_ASSERT_*_CHAR throws fl_unexpected_failure for violated int relationships",
@@ -513,7 +513,7 @@ FL_TEST("FL_ASSERT_*_CHAR throws fl_unexpected_failure for violated int relation
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_EQ_CHAR(1, 2);
+        FL_ASSERT_EQ(1, 2);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -523,7 +523,7 @@ FL_TEST("FL_ASSERT_*_CHAR throws fl_unexpected_failure for violated int relation
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_NEQ_CHAR(1, 1);
+        FL_ASSERT_NEQ(1, 1);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -533,7 +533,7 @@ FL_TEST("FL_ASSERT_*_CHAR throws fl_unexpected_failure for violated int relation
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_LT_CHAR(2, 1);
+        FL_ASSERT_LT(2, 1);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -543,7 +543,7 @@ FL_TEST("FL_ASSERT_*_CHAR throws fl_unexpected_failure for violated int relation
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_LE_CHAR(2, 1);
+        FL_ASSERT_LE(2, 1);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -553,7 +553,7 @@ FL_TEST("FL_ASSERT_*_CHAR throws fl_unexpected_failure for violated int relation
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_GT_CHAR(1, 2);
+        FL_ASSERT_GT(1, 2);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -563,7 +563,7 @@ FL_TEST("FL_ASSERT_*_CHAR throws fl_unexpected_failure for violated int relation
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_GE_CHAR(1, 2);
+        FL_ASSERT_GE(1, 2);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -578,14 +578,14 @@ FL_TEST("FL_ASSERT_*_CHAR throws fl_unexpected_failure for violated int relation
 // ============================================================
 
 FL_TEST("FL_ASSERT_*_INT passes for correct int relationships", test_binop_int_pass) {
-    FL_ASSERT_EQ_INT(1, 1);
-    FL_ASSERT_NEQ_INT(1, 2);
-    FL_ASSERT_LT_INT(1, 2);
-    FL_ASSERT_LE_INT(1, 1);
-    FL_ASSERT_LE_INT(1, 2);
-    FL_ASSERT_GT_INT(2, 1);
-    FL_ASSERT_GE_INT(1, 1);
-    FL_ASSERT_GE_INT(2, 1);
+    FL_ASSERT_EQ(1, 1);
+    FL_ASSERT_NEQ(1, 2);
+    FL_ASSERT_LT(1, 2);
+    FL_ASSERT_LE(1, 1);
+    FL_ASSERT_LE(1, 2);
+    FL_ASSERT_GT(2, 1);
+    FL_ASSERT_GE(1, 1);
+    FL_ASSERT_GE(2, 1);
 }
 
 FL_TEST("FL_ASSERT_*_INT throws fl_unexpected_failure for violated int relationships",
@@ -594,7 +594,7 @@ FL_TEST("FL_ASSERT_*_INT throws fl_unexpected_failure for violated int relations
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_EQ_INT(1, 2);
+        FL_ASSERT_EQ(1, 2);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -604,7 +604,7 @@ FL_TEST("FL_ASSERT_*_INT throws fl_unexpected_failure for violated int relations
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_NEQ_INT(1, 1);
+        FL_ASSERT_NEQ(1, 1);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -614,7 +614,7 @@ FL_TEST("FL_ASSERT_*_INT throws fl_unexpected_failure for violated int relations
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_LT_INT(2, 1);
+        FL_ASSERT_LT(2, 1);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -624,7 +624,7 @@ FL_TEST("FL_ASSERT_*_INT throws fl_unexpected_failure for violated int relations
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_LE_INT(2, 1);
+        FL_ASSERT_LE(2, 1);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -634,7 +634,7 @@ FL_TEST("FL_ASSERT_*_INT throws fl_unexpected_failure for violated int relations
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_GT_INT(1, 2);
+        FL_ASSERT_GT(1, 2);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -644,7 +644,7 @@ FL_TEST("FL_ASSERT_*_INT throws fl_unexpected_failure for violated int relations
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_GE_INT(1, 2);
+        FL_ASSERT_GE(1, 2);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -660,14 +660,14 @@ FL_TEST("FL_ASSERT_*_INT throws fl_unexpected_failure for violated int relations
 
 FL_TEST("FL_ASSERT_*_SINT passes for correct signed int relationships",
         test_binop_sint_pass) {
-    FL_ASSERT_EQ_SINT(1, 1);
-    FL_ASSERT_NEQ_SINT(1, 2);
-    FL_ASSERT_LT_SINT(1, 2);
-    FL_ASSERT_LE_SINT(1, 1);
-    FL_ASSERT_LE_SINT(1, 2);
-    FL_ASSERT_GT_SINT(2, 1);
-    FL_ASSERT_GE_SINT(1, 1);
-    FL_ASSERT_GE_SINT(2, 1);
+    FL_ASSERT_EQ(1, 1);
+    FL_ASSERT_NEQ(1, 2);
+    FL_ASSERT_LT(1, 2);
+    FL_ASSERT_LE(1, 1);
+    FL_ASSERT_LE(1, 2);
+    FL_ASSERT_GT(2, 1);
+    FL_ASSERT_GE(1, 1);
+    FL_ASSERT_GE(2, 1);
 }
 
 FL_TEST("FL_ASSERT_*_SINT throws fl_unexpected_failure for violated signed int "
@@ -677,7 +677,7 @@ FL_TEST("FL_ASSERT_*_SINT throws fl_unexpected_failure for violated signed int "
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_EQ_SINT(1, 2);
+        FL_ASSERT_EQ(1, 2);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -687,7 +687,7 @@ FL_TEST("FL_ASSERT_*_SINT throws fl_unexpected_failure for violated signed int "
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_NEQ_SINT(1, 1);
+        FL_ASSERT_NEQ(1, 1);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -697,7 +697,7 @@ FL_TEST("FL_ASSERT_*_SINT throws fl_unexpected_failure for violated signed int "
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_LT_SINT(2, 1);
+        FL_ASSERT_LT(2, 1);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -707,7 +707,7 @@ FL_TEST("FL_ASSERT_*_SINT throws fl_unexpected_failure for violated signed int "
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_LE_SINT(2, 1);
+        FL_ASSERT_LE(2, 1);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -717,7 +717,7 @@ FL_TEST("FL_ASSERT_*_SINT throws fl_unexpected_failure for violated signed int "
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_GT_SINT(1, 2);
+        FL_ASSERT_GT(1, 2);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -727,7 +727,7 @@ FL_TEST("FL_ASSERT_*_SINT throws fl_unexpected_failure for violated signed int "
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_GE_SINT(1, 2);
+        FL_ASSERT_GE(1, 2);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -742,14 +742,14 @@ FL_TEST("FL_ASSERT_*_SINT throws fl_unexpected_failure for violated signed int "
 
 FL_TEST("FL_ASSERT_*_INT8 passes for correct int16_t relationships",
         test_binop_int8_pass) {
-    FL_ASSERT_EQ_INT8((int8_t)1, (int8_t)1);
-    FL_ASSERT_NEQ_INT8((int8_t)1, (int8_t)2);
-    FL_ASSERT_LT_INT8((int8_t)1, (int8_t)2);
-    FL_ASSERT_LE_INT8((int8_t)1, (int8_t)1);
-    FL_ASSERT_LE_INT8((int8_t)1, (int8_t)2);
-    FL_ASSERT_GT_INT8((int8_t)2, (int8_t)1);
-    FL_ASSERT_GE_INT8((int8_t)1, (int8_t)1);
-    FL_ASSERT_GE_INT8((int8_t)2, (int8_t)1);
+    FL_ASSERT_EQ((int8_t)1, (int8_t)1);
+    FL_ASSERT_NEQ((int8_t)1, (int8_t)2);
+    FL_ASSERT_LT((int8_t)1, (int8_t)2);
+    FL_ASSERT_LE((int8_t)1, (int8_t)1);
+    FL_ASSERT_LE((int8_t)1, (int8_t)2);
+    FL_ASSERT_GT((int8_t)2, (int8_t)1);
+    FL_ASSERT_GE((int8_t)1, (int8_t)1);
+    FL_ASSERT_GE((int8_t)2, (int8_t)1);
 }
 
 FL_TEST(
@@ -759,7 +759,7 @@ FL_TEST(
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_EQ_INT8((int8_t)1, (int8_t)2);
+        FL_ASSERT_EQ((int8_t)1, (int8_t)2);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -769,7 +769,7 @@ FL_TEST(
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_NEQ_INT8((int8_t)1, (int8_t)1);
+        FL_ASSERT_NEQ((int8_t)1, (int8_t)1);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -779,7 +779,7 @@ FL_TEST(
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_LT_INT8((int8_t)2, (int8_t)1);
+        FL_ASSERT_LT((int8_t)2, (int8_t)1);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -789,7 +789,7 @@ FL_TEST(
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_LE_INT8((int8_t)2, (int8_t)1);
+        FL_ASSERT_LE((int8_t)2, (int8_t)1);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -799,7 +799,7 @@ FL_TEST(
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_GT_INT8((int8_t)1, (int8_t)2);
+        FL_ASSERT_GT((int8_t)1, (int8_t)2);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -809,7 +809,7 @@ FL_TEST(
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_GE_INT8((int8_t)1, (int8_t)2);
+        FL_ASSERT_GE((int8_t)1, (int8_t)2);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -824,14 +824,14 @@ FL_TEST(
 
 FL_TEST("FL_ASSERT_*_INT16 passes for correct int16_t relationships",
         test_binop_int16_pass) {
-    FL_ASSERT_EQ_INT16((int16_t)1, (int16_t)1);
-    FL_ASSERT_NEQ_INT16((int16_t)1, (int16_t)2);
-    FL_ASSERT_LT_INT16((int16_t)1, (int16_t)2);
-    FL_ASSERT_LE_INT16((int16_t)1, (int16_t)1);
-    FL_ASSERT_LE_INT16((int16_t)1, (int16_t)2);
-    FL_ASSERT_GT_INT16((int16_t)2, (int16_t)1);
-    FL_ASSERT_GE_INT16((int16_t)1, (int16_t)1);
-    FL_ASSERT_GE_INT16((int16_t)2, (int16_t)1);
+    FL_ASSERT_EQ((int16_t)1, (int16_t)1);
+    FL_ASSERT_NEQ((int16_t)1, (int16_t)2);
+    FL_ASSERT_LT((int16_t)1, (int16_t)2);
+    FL_ASSERT_LE((int16_t)1, (int16_t)1);
+    FL_ASSERT_LE((int16_t)1, (int16_t)2);
+    FL_ASSERT_GT((int16_t)2, (int16_t)1);
+    FL_ASSERT_GE((int16_t)1, (int16_t)1);
+    FL_ASSERT_GE((int16_t)2, (int16_t)1);
 }
 
 FL_TEST(
@@ -841,7 +841,7 @@ FL_TEST(
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_EQ_INT16((int16_t)1, (int16_t)2);
+        FL_ASSERT_EQ((int16_t)1, (int16_t)2);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -851,7 +851,7 @@ FL_TEST(
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_NEQ_INT16((int16_t)1, (int16_t)1);
+        FL_ASSERT_NEQ((int16_t)1, (int16_t)1);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -861,7 +861,7 @@ FL_TEST(
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_LT_INT16((int16_t)2, (int16_t)1);
+        FL_ASSERT_LT((int16_t)2, (int16_t)1);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -871,7 +871,7 @@ FL_TEST(
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_LE_INT16((int16_t)2, (int16_t)1);
+        FL_ASSERT_LE((int16_t)2, (int16_t)1);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -881,7 +881,7 @@ FL_TEST(
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_GT_INT16((int16_t)1, (int16_t)2);
+        FL_ASSERT_GT((int16_t)1, (int16_t)2);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -891,7 +891,7 @@ FL_TEST(
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_GE_INT16((int16_t)1, (int16_t)2);
+        FL_ASSERT_GE((int16_t)1, (int16_t)2);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -906,14 +906,14 @@ FL_TEST(
 
 FL_TEST("FL_ASSERT_*_INT32 passes for correct int32_t relationships",
         test_binop_int32_pass) {
-    FL_ASSERT_EQ_INT32((int32_t)1, (int32_t)1);
-    FL_ASSERT_NEQ_INT32((int32_t)1, (int32_t)2);
-    FL_ASSERT_LT_INT32((int32_t)1, (int32_t)2);
-    FL_ASSERT_LE_INT32((int32_t)1, (int32_t)1);
-    FL_ASSERT_LE_INT32((int32_t)1, (int32_t)2);
-    FL_ASSERT_GT_INT32((int32_t)2, (int32_t)1);
-    FL_ASSERT_GE_INT32((int32_t)1, (int32_t)1);
-    FL_ASSERT_GE_INT32((int32_t)2, (int32_t)1);
+    FL_ASSERT_EQ((int32_t)1, (int32_t)1);
+    FL_ASSERT_NEQ((int32_t)1, (int32_t)2);
+    FL_ASSERT_LT((int32_t)1, (int32_t)2);
+    FL_ASSERT_LE((int32_t)1, (int32_t)1);
+    FL_ASSERT_LE((int32_t)1, (int32_t)2);
+    FL_ASSERT_GT((int32_t)2, (int32_t)1);
+    FL_ASSERT_GE((int32_t)1, (int32_t)1);
+    FL_ASSERT_GE((int32_t)2, (int32_t)1);
 }
 
 FL_TEST(
@@ -923,7 +923,7 @@ FL_TEST(
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_EQ_INT32((int32_t)1, (int32_t)2);
+        FL_ASSERT_EQ((int32_t)1, (int32_t)2);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -933,7 +933,7 @@ FL_TEST(
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_NEQ_INT32((int32_t)1, (int32_t)1);
+        FL_ASSERT_NEQ((int32_t)1, (int32_t)1);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -943,7 +943,7 @@ FL_TEST(
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_LT_INT32((int32_t)2, (int32_t)1);
+        FL_ASSERT_LT((int32_t)2, (int32_t)1);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -953,7 +953,7 @@ FL_TEST(
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_LE_INT32((int32_t)2, (int32_t)1);
+        FL_ASSERT_LE((int32_t)2, (int32_t)1);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -963,7 +963,7 @@ FL_TEST(
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_GT_INT32((int32_t)1, (int32_t)2);
+        FL_ASSERT_GT((int32_t)1, (int32_t)2);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -973,7 +973,7 @@ FL_TEST(
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_GE_INT32((int32_t)1, (int32_t)2);
+        FL_ASSERT_GE((int32_t)1, (int32_t)2);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -989,14 +989,14 @@ FL_TEST(
 
 FL_TEST("FL_ASSERT_*_UINT passes for correct unsigned int relationships",
         test_binop_uint_pass) {
-    FL_ASSERT_EQ_UINT(1u, 1u);
-    FL_ASSERT_NEQ_UINT(1u, 2u);
-    FL_ASSERT_LT_UINT(1u, 2u);
-    FL_ASSERT_LE_UINT(1u, 1u);
-    FL_ASSERT_LE_UINT(1u, 2u);
-    FL_ASSERT_GT_UINT(2u, 1u);
-    FL_ASSERT_GE_UINT(1u, 1u);
-    FL_ASSERT_GE_UINT(2u, 1u);
+    FL_ASSERT_EQ(1u, 1u);
+    FL_ASSERT_NEQ(1u, 2u);
+    FL_ASSERT_LT(1u, 2u);
+    FL_ASSERT_LE(1u, 1u);
+    FL_ASSERT_LE(1u, 2u);
+    FL_ASSERT_GT(2u, 1u);
+    FL_ASSERT_GE(1u, 1u);
+    FL_ASSERT_GE(2u, 1u);
 }
 
 FL_TEST("FL_ASSERT_*_UINT throws fl_unexpected_failure for violated uint relationships",
@@ -1005,7 +1005,7 @@ FL_TEST("FL_ASSERT_*_UINT throws fl_unexpected_failure for violated uint relatio
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_EQ_UINT(1u, 2u);
+        FL_ASSERT_EQ(1u, 2u);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1015,7 +1015,7 @@ FL_TEST("FL_ASSERT_*_UINT throws fl_unexpected_failure for violated uint relatio
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_NEQ_UINT(1u, 1u);
+        FL_ASSERT_NEQ(1u, 1u);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1025,7 +1025,7 @@ FL_TEST("FL_ASSERT_*_UINT throws fl_unexpected_failure for violated uint relatio
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_LT_UINT(2u, 1u);
+        FL_ASSERT_LT(2u, 1u);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1035,7 +1035,7 @@ FL_TEST("FL_ASSERT_*_UINT throws fl_unexpected_failure for violated uint relatio
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_LE_UINT(2u, 1u);
+        FL_ASSERT_LE(2u, 1u);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1045,7 +1045,7 @@ FL_TEST("FL_ASSERT_*_UINT throws fl_unexpected_failure for violated uint relatio
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_GT_UINT(1u, 2u);
+        FL_ASSERT_GT(1u, 2u);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1055,7 +1055,7 @@ FL_TEST("FL_ASSERT_*_UINT throws fl_unexpected_failure for violated uint relatio
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_GE_UINT(1u, 2u);
+        FL_ASSERT_GE(1u, 2u);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1071,14 +1071,14 @@ FL_TEST("FL_ASSERT_*_UINT throws fl_unexpected_failure for violated uint relatio
 
 FL_TEST("FL_ASSERT_*_UCHAR passes for correct unsigned char relationships",
         test_binop_uchar_pass) {
-    FL_ASSERT_EQ_UCHAR(1u, 1u);
-    FL_ASSERT_NEQ_UCHAR(1u, 2u);
-    FL_ASSERT_LT_UCHAR(1u, 2u);
-    FL_ASSERT_LE_UCHAR(1u, 1u);
-    FL_ASSERT_LE_UCHAR(1u, 2u);
-    FL_ASSERT_GT_UCHAR(2u, 1u);
-    FL_ASSERT_GE_UCHAR(1u, 1u);
-    FL_ASSERT_GE_UCHAR(2u, 1u);
+    FL_ASSERT_EQ(1u, 1u);
+    FL_ASSERT_NEQ(1u, 2u);
+    FL_ASSERT_LT(1u, 2u);
+    FL_ASSERT_LE(1u, 1u);
+    FL_ASSERT_LE(1u, 2u);
+    FL_ASSERT_GT(2u, 1u);
+    FL_ASSERT_GE(1u, 1u);
+    FL_ASSERT_GE(2u, 1u);
 }
 
 FL_TEST(
@@ -1088,7 +1088,7 @@ FL_TEST(
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_EQ_UCHAR(1u, 2u);
+        FL_ASSERT_EQ(1u, 2u);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1098,7 +1098,7 @@ FL_TEST(
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_NEQ_UCHAR(1u, 1u);
+        FL_ASSERT_NEQ(1u, 1u);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1108,7 +1108,7 @@ FL_TEST(
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_LT_UCHAR(2u, 1u);
+        FL_ASSERT_LT(2u, 1u);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1118,7 +1118,7 @@ FL_TEST(
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_LE_UCHAR(2u, 1u);
+        FL_ASSERT_LE(2u, 1u);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1128,7 +1128,7 @@ FL_TEST(
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_GT_UCHAR(1u, 2u);
+        FL_ASSERT_GT(1u, 2u);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1138,7 +1138,7 @@ FL_TEST(
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_GE_UCHAR(1u, 2u);
+        FL_ASSERT_GE(1u, 2u);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1153,14 +1153,14 @@ FL_TEST(
 
 FL_TEST("FL_ASSERT_*_UINT8 passes for correct uint8_t relationships",
         test_binop_uint8_pass) {
-    FL_ASSERT_EQ_UINT8((uint8_t)1, (uint8_t)1);
-    FL_ASSERT_NEQ_UINT8((uint8_t)1, (uint8_t)2);
-    FL_ASSERT_LT_UINT8((uint8_t)1, (uint8_t)2);
-    FL_ASSERT_LE_UINT8((uint8_t)1, (uint8_t)1);
-    FL_ASSERT_LE_UINT8((uint8_t)1, (uint8_t)2);
-    FL_ASSERT_GT_UINT8((uint8_t)2, (uint8_t)1);
-    FL_ASSERT_GE_UINT8((uint8_t)1, (uint8_t)1);
-    FL_ASSERT_GE_UINT8((uint8_t)2, (uint8_t)1);
+    FL_ASSERT_EQ((uint8_t)1, (uint8_t)1);
+    FL_ASSERT_NEQ((uint8_t)1, (uint8_t)2);
+    FL_ASSERT_LT((uint8_t)1, (uint8_t)2);
+    FL_ASSERT_LE((uint8_t)1, (uint8_t)1);
+    FL_ASSERT_LE((uint8_t)1, (uint8_t)2);
+    FL_ASSERT_GT((uint8_t)2, (uint8_t)1);
+    FL_ASSERT_GE((uint8_t)1, (uint8_t)1);
+    FL_ASSERT_GE((uint8_t)2, (uint8_t)1);
 }
 
 FL_TEST("FL_ASSERT_*_UINT8 throws fl_unexpected_failure for violated uint8_t "
@@ -1170,7 +1170,7 @@ FL_TEST("FL_ASSERT_*_UINT8 throws fl_unexpected_failure for violated uint8_t "
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_EQ_UINT8((uint8_t)1, (uint8_t)2);
+        FL_ASSERT_EQ((uint8_t)1, (uint8_t)2);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1180,7 +1180,7 @@ FL_TEST("FL_ASSERT_*_UINT8 throws fl_unexpected_failure for violated uint8_t "
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_NEQ_UINT8((uint8_t)1, (uint8_t)1);
+        FL_ASSERT_NEQ((uint8_t)1, (uint8_t)1);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1190,7 +1190,7 @@ FL_TEST("FL_ASSERT_*_UINT8 throws fl_unexpected_failure for violated uint8_t "
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_LT_UINT8((uint8_t)2, (uint8_t)1);
+        FL_ASSERT_LT((uint8_t)2, (uint8_t)1);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1200,7 +1200,7 @@ FL_TEST("FL_ASSERT_*_UINT8 throws fl_unexpected_failure for violated uint8_t "
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_LE_UINT8((uint8_t)2, (uint8_t)1);
+        FL_ASSERT_LE((uint8_t)2, (uint8_t)1);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1210,7 +1210,7 @@ FL_TEST("FL_ASSERT_*_UINT8 throws fl_unexpected_failure for violated uint8_t "
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_GT_UINT8((uint8_t)1, (uint8_t)2);
+        FL_ASSERT_GT((uint8_t)1, (uint8_t)2);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1220,7 +1220,7 @@ FL_TEST("FL_ASSERT_*_UINT8 throws fl_unexpected_failure for violated uint8_t "
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_GE_UINT8((uint8_t)1, (uint8_t)2);
+        FL_ASSERT_GE((uint8_t)1, (uint8_t)2);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1235,14 +1235,14 @@ FL_TEST("FL_ASSERT_*_UINT8 throws fl_unexpected_failure for violated uint8_t "
 
 FL_TEST("FL_ASSERT_*_UINT16 passes for correct uint16_t relationships",
         test_binop_uint16_pass) {
-    FL_ASSERT_EQ_UINT16((uint16_t)1, (uint16_t)1);
-    FL_ASSERT_NEQ_UINT16((uint16_t)1, (uint16_t)2);
-    FL_ASSERT_LT_UINT16((uint16_t)1, (uint16_t)2);
-    FL_ASSERT_LE_UINT16((uint16_t)1, (uint16_t)1);
-    FL_ASSERT_LE_UINT16((uint16_t)1, (uint16_t)2);
-    FL_ASSERT_GT_UINT16((uint16_t)2, (uint16_t)1);
-    FL_ASSERT_GE_UINT16((uint16_t)1, (uint16_t)1);
-    FL_ASSERT_GE_UINT16((uint16_t)2, (uint16_t)1);
+    FL_ASSERT_EQ((uint16_t)1, (uint16_t)1);
+    FL_ASSERT_NEQ((uint16_t)1, (uint16_t)2);
+    FL_ASSERT_LT((uint16_t)1, (uint16_t)2);
+    FL_ASSERT_LE((uint16_t)1, (uint16_t)1);
+    FL_ASSERT_LE((uint16_t)1, (uint16_t)2);
+    FL_ASSERT_GT((uint16_t)2, (uint16_t)1);
+    FL_ASSERT_GE((uint16_t)1, (uint16_t)1);
+    FL_ASSERT_GE((uint16_t)2, (uint16_t)1);
 }
 
 FL_TEST("FL_ASSERT_*_UINT16 throws fl_unexpected_failure for violated uint16_t "
@@ -1252,7 +1252,7 @@ FL_TEST("FL_ASSERT_*_UINT16 throws fl_unexpected_failure for violated uint16_t "
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_EQ_UINT16((uint16_t)1, (uint16_t)2);
+        FL_ASSERT_EQ((uint16_t)1, (uint16_t)2);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1262,7 +1262,7 @@ FL_TEST("FL_ASSERT_*_UINT16 throws fl_unexpected_failure for violated uint16_t "
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_NEQ_UINT16((uint16_t)1, (uint16_t)1);
+        FL_ASSERT_NEQ((uint16_t)1, (uint16_t)1);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1272,7 +1272,7 @@ FL_TEST("FL_ASSERT_*_UINT16 throws fl_unexpected_failure for violated uint16_t "
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_LT_UINT16((uint16_t)2, (uint16_t)1);
+        FL_ASSERT_LT((uint16_t)2, (uint16_t)1);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1282,7 +1282,7 @@ FL_TEST("FL_ASSERT_*_UINT16 throws fl_unexpected_failure for violated uint16_t "
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_LE_UINT16((uint16_t)2, (uint16_t)1);
+        FL_ASSERT_LE((uint16_t)2, (uint16_t)1);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1292,7 +1292,7 @@ FL_TEST("FL_ASSERT_*_UINT16 throws fl_unexpected_failure for violated uint16_t "
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_GT_UINT16((uint16_t)1, (uint16_t)2);
+        FL_ASSERT_GT((uint16_t)1, (uint16_t)2);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1302,7 +1302,7 @@ FL_TEST("FL_ASSERT_*_UINT16 throws fl_unexpected_failure for violated uint16_t "
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_GE_UINT16((uint16_t)1, (uint16_t)2);
+        FL_ASSERT_GE((uint16_t)1, (uint16_t)2);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1317,12 +1317,12 @@ FL_TEST("FL_ASSERT_*_UINT16 throws fl_unexpected_failure for violated uint16_t "
 
 FL_TEST("FL_ASSERT_*_SIZE_T passes for correct size_t relationships",
         test_binop_size_t_pass) {
-    FL_ASSERT_EQ_SIZE_T((size_t)1, (size_t)1);
-    FL_ASSERT_NEQ_SIZE_T((size_t)1, (size_t)2);
-    FL_ASSERT_LT_SIZE_T((size_t)1, (size_t)2);
-    FL_ASSERT_LE_SIZE_T((size_t)1, (size_t)1);
-    FL_ASSERT_GT_SIZE_T((size_t)2, (size_t)1);
-    FL_ASSERT_GE_SIZE_T((size_t)1, (size_t)1);
+    FL_ASSERT_EQ((size_t)1, (size_t)1);
+    FL_ASSERT_NEQ((size_t)1, (size_t)2);
+    FL_ASSERT_LT((size_t)1, (size_t)2);
+    FL_ASSERT_LE((size_t)1, (size_t)1);
+    FL_ASSERT_GT((size_t)2, (size_t)1);
+    FL_ASSERT_GE((size_t)1, (size_t)1);
 }
 
 FL_TEST(
@@ -1332,7 +1332,7 @@ FL_TEST(
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_EQ_SIZE_T((size_t)1, (size_t)2);
+        FL_ASSERT_EQ((size_t)1, (size_t)2);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1342,7 +1342,7 @@ FL_TEST(
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_NEQ_SIZE_T((size_t)1, (size_t)1);
+        FL_ASSERT_NEQ((size_t)1, (size_t)1);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1352,7 +1352,7 @@ FL_TEST(
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_LT_SIZE_T((size_t)2, (size_t)1);
+        FL_ASSERT_LT((size_t)2, (size_t)1);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1362,7 +1362,7 @@ FL_TEST(
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_LE_SIZE_T((size_t)2, (size_t)1);
+        FL_ASSERT_LE((size_t)2, (size_t)1);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1372,7 +1372,7 @@ FL_TEST(
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_GT_SIZE_T((size_t)1, (size_t)2);
+        FL_ASSERT_GT((size_t)1, (size_t)2);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1382,7 +1382,7 @@ FL_TEST(
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_GE_SIZE_T((size_t)1, (size_t)2);
+        FL_ASSERT_GE((size_t)1, (size_t)2);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1397,12 +1397,12 @@ FL_TEST(
 
 FL_TEST("FL_ASSERT_*_PTRDIFF passes for correct ptrdiff_t relationships",
         test_binop_ptrdiff_pass) {
-    FL_ASSERT_EQ_PTRDIFF((ptrdiff_t)1, (ptrdiff_t)1);
-    FL_ASSERT_NEQ_PTRDIFF((ptrdiff_t)1, (ptrdiff_t)2);
-    FL_ASSERT_LT_PTRDIFF((ptrdiff_t)1, (ptrdiff_t)2);
-    FL_ASSERT_LE_PTRDIFF((ptrdiff_t)1, (ptrdiff_t)1);
-    FL_ASSERT_GT_PTRDIFF((ptrdiff_t)2, (ptrdiff_t)1);
-    FL_ASSERT_GE_PTRDIFF((ptrdiff_t)1, (ptrdiff_t)1);
+    FL_ASSERT_EQ((ptrdiff_t)1, (ptrdiff_t)1);
+    FL_ASSERT_NEQ((ptrdiff_t)1, (ptrdiff_t)2);
+    FL_ASSERT_LT((ptrdiff_t)1, (ptrdiff_t)2);
+    FL_ASSERT_LE((ptrdiff_t)1, (ptrdiff_t)1);
+    FL_ASSERT_GT((ptrdiff_t)2, (ptrdiff_t)1);
+    FL_ASSERT_GE((ptrdiff_t)1, (ptrdiff_t)1);
 }
 
 FL_TEST("FL_ASSERT_*_PTRDIFF throws fl_unexpected_failure for violated ptrdiff_t "
@@ -1412,7 +1412,7 @@ FL_TEST("FL_ASSERT_*_PTRDIFF throws fl_unexpected_failure for violated ptrdiff_t
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_EQ_PTRDIFF((ptrdiff_t)1, (ptrdiff_t)2);
+        FL_ASSERT_EQ((ptrdiff_t)1, (ptrdiff_t)2);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1422,7 +1422,7 @@ FL_TEST("FL_ASSERT_*_PTRDIFF throws fl_unexpected_failure for violated ptrdiff_t
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_NEQ_PTRDIFF((ptrdiff_t)1, (ptrdiff_t)1);
+        FL_ASSERT_NEQ((ptrdiff_t)1, (ptrdiff_t)1);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1432,7 +1432,7 @@ FL_TEST("FL_ASSERT_*_PTRDIFF throws fl_unexpected_failure for violated ptrdiff_t
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_LT_PTRDIFF((ptrdiff_t)2, (ptrdiff_t)1);
+        FL_ASSERT_LT((ptrdiff_t)2, (ptrdiff_t)1);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1442,7 +1442,7 @@ FL_TEST("FL_ASSERT_*_PTRDIFF throws fl_unexpected_failure for violated ptrdiff_t
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_LE_PTRDIFF((ptrdiff_t)2, (ptrdiff_t)1);
+        FL_ASSERT_LE((ptrdiff_t)2, (ptrdiff_t)1);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1452,7 +1452,7 @@ FL_TEST("FL_ASSERT_*_PTRDIFF throws fl_unexpected_failure for violated ptrdiff_t
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_GT_PTRDIFF((ptrdiff_t)1, (ptrdiff_t)2);
+        FL_ASSERT_GT((ptrdiff_t)1, (ptrdiff_t)2);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1462,7 +1462,7 @@ FL_TEST("FL_ASSERT_*_PTRDIFF throws fl_unexpected_failure for violated ptrdiff_t
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_GE_PTRDIFF((ptrdiff_t)1, (ptrdiff_t)2);
+        FL_ASSERT_GE((ptrdiff_t)1, (ptrdiff_t)2);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1477,12 +1477,12 @@ FL_TEST("FL_ASSERT_*_PTRDIFF throws fl_unexpected_failure for violated ptrdiff_t
 
 FL_TEST("FL_ASSERT_*_UINT32 passes for correct uint32_t relationships",
         test_binop_uint32_pass) {
-    FL_ASSERT_EQ_UINT32((uint32_t)1, (uint32_t)1);
-    FL_ASSERT_NEQ_UINT32((uint32_t)1, (uint32_t)2);
-    FL_ASSERT_LT_UINT32((uint32_t)1, (uint32_t)2);
-    FL_ASSERT_LE_UINT32((uint32_t)1, (uint32_t)1);
-    FL_ASSERT_GT_UINT32((uint32_t)2, (uint32_t)1);
-    FL_ASSERT_GE_UINT32((uint32_t)1, (uint32_t)1);
+    FL_ASSERT_EQ((uint32_t)1, (uint32_t)1);
+    FL_ASSERT_NEQ((uint32_t)1, (uint32_t)2);
+    FL_ASSERT_LT((uint32_t)1, (uint32_t)2);
+    FL_ASSERT_LE((uint32_t)1, (uint32_t)1);
+    FL_ASSERT_GT((uint32_t)2, (uint32_t)1);
+    FL_ASSERT_GE((uint32_t)1, (uint32_t)1);
 }
 
 FL_TEST("FL_ASSERT_*_UINT32 throws fl_unexpected_failure for violated uint32_t "
@@ -1492,7 +1492,7 @@ FL_TEST("FL_ASSERT_*_UINT32 throws fl_unexpected_failure for violated uint32_t "
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_EQ_UINT32((uint32_t)1, (uint32_t)2);
+        FL_ASSERT_EQ((uint32_t)1, (uint32_t)2);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1502,7 +1502,7 @@ FL_TEST("FL_ASSERT_*_UINT32 throws fl_unexpected_failure for violated uint32_t "
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_NEQ_UINT32((uint32_t)1, (uint32_t)1);
+        FL_ASSERT_NEQ((uint32_t)1, (uint32_t)1);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1512,7 +1512,7 @@ FL_TEST("FL_ASSERT_*_UINT32 throws fl_unexpected_failure for violated uint32_t "
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_LT_UINT32((uint32_t)2, (uint32_t)1);
+        FL_ASSERT_LT((uint32_t)2, (uint32_t)1);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1522,7 +1522,7 @@ FL_TEST("FL_ASSERT_*_UINT32 throws fl_unexpected_failure for violated uint32_t "
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_LE_UINT32((uint32_t)2, (uint32_t)1);
+        FL_ASSERT_LE((uint32_t)2, (uint32_t)1);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1532,7 +1532,7 @@ FL_TEST("FL_ASSERT_*_UINT32 throws fl_unexpected_failure for violated uint32_t "
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_GT_UINT32((uint32_t)1, (uint32_t)2);
+        FL_ASSERT_GT((uint32_t)1, (uint32_t)2);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1542,7 +1542,7 @@ FL_TEST("FL_ASSERT_*_UINT32 throws fl_unexpected_failure for violated uint32_t "
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_GE_UINT32((uint32_t)1, (uint32_t)2);
+        FL_ASSERT_GE((uint32_t)1, (uint32_t)2);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1557,14 +1557,14 @@ FL_TEST("FL_ASSERT_*_UINT32 throws fl_unexpected_failure for violated uint32_t "
 
 FL_TEST("FL_ASSERT_*_UINT64 passes for correct uint64_t relationships",
         test_binop_uint64_pass) {
-    FL_ASSERT_EQ_UINT64((uint64_t)1, (uint64_t)1);
-    FL_ASSERT_NEQ_UINT64((uint64_t)1, (uint64_t)2);
-    FL_ASSERT_LT_UINT64((uint64_t)1, (uint64_t)2);
-    FL_ASSERT_LE_UINT64((uint64_t)1, (uint64_t)1);
-    FL_ASSERT_LE_UINT64((uint64_t)1, (uint64_t)2);
-    FL_ASSERT_GT_UINT64((uint64_t)2, (uint64_t)1);
-    FL_ASSERT_GE_UINT64((uint64_t)1, (uint64_t)1);
-    FL_ASSERT_GE_UINT64((uint64_t)2, (uint64_t)1);
+    FL_ASSERT_EQ((uint64_t)1, (uint64_t)1);
+    FL_ASSERT_NEQ((uint64_t)1, (uint64_t)2);
+    FL_ASSERT_LT((uint64_t)1, (uint64_t)2);
+    FL_ASSERT_LE((uint64_t)1, (uint64_t)1);
+    FL_ASSERT_LE((uint64_t)1, (uint64_t)2);
+    FL_ASSERT_GT((uint64_t)2, (uint64_t)1);
+    FL_ASSERT_GE((uint64_t)1, (uint64_t)1);
+    FL_ASSERT_GE((uint64_t)2, (uint64_t)1);
 }
 
 FL_TEST("FL_ASSERT_*_UINT64 throws fl_unexpected_failure for violated uint64_t "
@@ -1574,7 +1574,7 @@ FL_TEST("FL_ASSERT_*_UINT64 throws fl_unexpected_failure for violated uint64_t "
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_EQ_UINT64((uint64_t)1, (uint64_t)2);
+        FL_ASSERT_EQ((uint64_t)1, (uint64_t)2);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1584,7 +1584,7 @@ FL_TEST("FL_ASSERT_*_UINT64 throws fl_unexpected_failure for violated uint64_t "
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_NEQ_UINT64((uint64_t)1, (uint64_t)1);
+        FL_ASSERT_NEQ((uint64_t)1, (uint64_t)1);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1594,7 +1594,7 @@ FL_TEST("FL_ASSERT_*_UINT64 throws fl_unexpected_failure for violated uint64_t "
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_LT_UINT64((uint64_t)2, (uint64_t)1);
+        FL_ASSERT_LT((uint64_t)2, (uint64_t)1);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1604,7 +1604,7 @@ FL_TEST("FL_ASSERT_*_UINT64 throws fl_unexpected_failure for violated uint64_t "
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_LE_UINT64((uint64_t)2, (uint64_t)1);
+        FL_ASSERT_LE((uint64_t)2, (uint64_t)1);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1614,7 +1614,7 @@ FL_TEST("FL_ASSERT_*_UINT64 throws fl_unexpected_failure for violated uint64_t "
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_GT_UINT64((uint64_t)1, (uint64_t)2);
+        FL_ASSERT_GT((uint64_t)1, (uint64_t)2);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1624,7 +1624,7 @@ FL_TEST("FL_ASSERT_*_UINT64 throws fl_unexpected_failure for violated uint64_t "
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_GE_UINT64((uint64_t)1, (uint64_t)2);
+        FL_ASSERT_GE((uint64_t)1, (uint64_t)2);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1639,12 +1639,12 @@ FL_TEST("FL_ASSERT_*_UINT64 throws fl_unexpected_failure for violated uint64_t "
 
 FL_TEST("FL_ASSERT_*_INT64 passes for correct int64_t relationships",
         test_binop_int64_pass) {
-    FL_ASSERT_EQ_INT64((int64_t)1, (int64_t)1);
-    FL_ASSERT_NEQ_INT64((int64_t)1, (int64_t)2);
-    FL_ASSERT_LT_INT64((int64_t)1, (int64_t)2);
-    FL_ASSERT_LE_INT64((int64_t)1, (int64_t)1);
-    FL_ASSERT_GT_INT64((int64_t)2, (int64_t)1);
-    FL_ASSERT_GE_INT64((int64_t)1, (int64_t)1);
+    FL_ASSERT_EQ((int64_t)1, (int64_t)1);
+    FL_ASSERT_NEQ((int64_t)1, (int64_t)2);
+    FL_ASSERT_LT((int64_t)1, (int64_t)2);
+    FL_ASSERT_LE((int64_t)1, (int64_t)1);
+    FL_ASSERT_GT((int64_t)2, (int64_t)1);
+    FL_ASSERT_GE((int64_t)1, (int64_t)1);
 }
 
 FL_TEST(
@@ -1654,7 +1654,7 @@ FL_TEST(
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_EQ_INT64((int64_t)1, (int64_t)2);
+        FL_ASSERT_EQ((int64_t)1, (int64_t)2);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1664,7 +1664,7 @@ FL_TEST(
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_NEQ_INT64((int64_t)1, (int64_t)1);
+        FL_ASSERT_NEQ((int64_t)1, (int64_t)1);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1674,7 +1674,7 @@ FL_TEST(
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_LT_INT64((int64_t)2, (int64_t)1);
+        FL_ASSERT_LT((int64_t)2, (int64_t)1);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1684,7 +1684,7 @@ FL_TEST(
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_LE_INT64((int64_t)2, (int64_t)1);
+        FL_ASSERT_LE((int64_t)2, (int64_t)1);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1694,7 +1694,7 @@ FL_TEST(
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_GT_INT64((int64_t)1, (int64_t)2);
+        FL_ASSERT_GT((int64_t)1, (int64_t)2);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1704,7 +1704,7 @@ FL_TEST(
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_GE_INT64((int64_t)1, (int64_t)2);
+        FL_ASSERT_GE((int64_t)1, (int64_t)2);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1719,12 +1719,12 @@ FL_TEST(
 
 FL_TEST("FL_ASSERT_*_INTPTR passes for correct intptr_t relationships",
         test_binop_intptr_pass) {
-    FL_ASSERT_EQ_INTPTR((intptr_t)1, (intptr_t)1);
-    FL_ASSERT_NEQ_INTPTR((intptr_t)1, (intptr_t)2);
-    FL_ASSERT_LT_INTPTR((intptr_t)1, (intptr_t)2);
-    FL_ASSERT_LE_INTPTR((intptr_t)1, (intptr_t)1);
-    FL_ASSERT_GT_INTPTR((intptr_t)2, (intptr_t)1);
-    FL_ASSERT_GE_INTPTR((intptr_t)1, (intptr_t)1);
+    FL_ASSERT_EQ((intptr_t)1, (intptr_t)1);
+    FL_ASSERT_NEQ((intptr_t)1, (intptr_t)2);
+    FL_ASSERT_LT((intptr_t)1, (intptr_t)2);
+    FL_ASSERT_LE((intptr_t)1, (intptr_t)1);
+    FL_ASSERT_GT((intptr_t)2, (intptr_t)1);
+    FL_ASSERT_GE((intptr_t)1, (intptr_t)1);
 }
 
 FL_TEST("FL_ASSERT_*_INTPTR throws fl_unexpected_failure for violated intptr_t "
@@ -1734,7 +1734,7 @@ FL_TEST("FL_ASSERT_*_INTPTR throws fl_unexpected_failure for violated intptr_t "
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_EQ_INTPTR((intptr_t)1, (intptr_t)2);
+        FL_ASSERT_EQ((intptr_t)1, (intptr_t)2);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1744,7 +1744,7 @@ FL_TEST("FL_ASSERT_*_INTPTR throws fl_unexpected_failure for violated intptr_t "
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_NEQ_INTPTR((intptr_t)1, (intptr_t)1);
+        FL_ASSERT_NEQ((intptr_t)1, (intptr_t)1);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1754,7 +1754,7 @@ FL_TEST("FL_ASSERT_*_INTPTR throws fl_unexpected_failure for violated intptr_t "
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_LT_INTPTR((intptr_t)2, (intptr_t)1);
+        FL_ASSERT_LT((intptr_t)2, (intptr_t)1);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1764,7 +1764,7 @@ FL_TEST("FL_ASSERT_*_INTPTR throws fl_unexpected_failure for violated intptr_t "
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_LE_INTPTR((intptr_t)2, (intptr_t)1);
+        FL_ASSERT_LE((intptr_t)2, (intptr_t)1);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1774,7 +1774,7 @@ FL_TEST("FL_ASSERT_*_INTPTR throws fl_unexpected_failure for violated intptr_t "
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_GT_INTPTR((intptr_t)1, (intptr_t)2);
+        FL_ASSERT_GT((intptr_t)1, (intptr_t)2);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1784,7 +1784,7 @@ FL_TEST("FL_ASSERT_*_INTPTR throws fl_unexpected_failure for violated intptr_t "
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_GE_INTPTR((intptr_t)1, (intptr_t)2);
+        FL_ASSERT_GE((intptr_t)1, (intptr_t)2);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1799,12 +1799,12 @@ FL_TEST("FL_ASSERT_*_INTPTR throws fl_unexpected_failure for violated intptr_t "
 
 FL_TEST("FL_ASSERT_*_UINTPTR passes for correct uintptr_t relationships",
         test_binop_uintptr_pass) {
-    FL_ASSERT_EQ_UINTPTR((uintptr_t)1, (uintptr_t)1);
-    FL_ASSERT_NEQ_UINTPTR((uintptr_t)1, (uintptr_t)2);
-    FL_ASSERT_LT_UINTPTR((uintptr_t)1, (uintptr_t)2);
-    FL_ASSERT_LE_UINTPTR((uintptr_t)1, (uintptr_t)1);
-    FL_ASSERT_GT_UINTPTR((uintptr_t)2, (uintptr_t)1);
-    FL_ASSERT_GE_UINTPTR((uintptr_t)1, (uintptr_t)1);
+    FL_ASSERT_EQ((uintptr_t)1, (uintptr_t)1);
+    FL_ASSERT_NEQ((uintptr_t)1, (uintptr_t)2);
+    FL_ASSERT_LT((uintptr_t)1, (uintptr_t)2);
+    FL_ASSERT_LE((uintptr_t)1, (uintptr_t)1);
+    FL_ASSERT_GT((uintptr_t)2, (uintptr_t)1);
+    FL_ASSERT_GE((uintptr_t)1, (uintptr_t)1);
 }
 
 FL_TEST("FL_ASSERT_*_UINTPTR throws fl_unexpected_failure for violated uintptr_t "
@@ -1814,7 +1814,7 @@ FL_TEST("FL_ASSERT_*_UINTPTR throws fl_unexpected_failure for violated uintptr_t
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_EQ_UINTPTR((uintptr_t)1, (uintptr_t)2);
+        FL_ASSERT_EQ((uintptr_t)1, (uintptr_t)2);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1824,7 +1824,7 @@ FL_TEST("FL_ASSERT_*_UINTPTR throws fl_unexpected_failure for violated uintptr_t
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_NEQ_UINTPTR((uintptr_t)1, (uintptr_t)1);
+        FL_ASSERT_NEQ((uintptr_t)1, (uintptr_t)1);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1834,7 +1834,7 @@ FL_TEST("FL_ASSERT_*_UINTPTR throws fl_unexpected_failure for violated uintptr_t
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_LT_UINTPTR((uintptr_t)2, (uintptr_t)1);
+        FL_ASSERT_LT((uintptr_t)2, (uintptr_t)1);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1844,7 +1844,7 @@ FL_TEST("FL_ASSERT_*_UINTPTR throws fl_unexpected_failure for violated uintptr_t
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_LE_UINTPTR((uintptr_t)2, (uintptr_t)1);
+        FL_ASSERT_LE((uintptr_t)2, (uintptr_t)1);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1854,7 +1854,7 @@ FL_TEST("FL_ASSERT_*_UINTPTR throws fl_unexpected_failure for violated uintptr_t
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_GT_UINTPTR((uintptr_t)1, (uintptr_t)2);
+        FL_ASSERT_GT((uintptr_t)1, (uintptr_t)2);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;
@@ -1864,7 +1864,7 @@ FL_TEST("FL_ASSERT_*_UINTPTR throws fl_unexpected_failure for violated uintptr_t
 
     caught = false;
     FL_TRY {
-        FL_ASSERT_GE_UINTPTR((uintptr_t)1, (uintptr_t)2);
+        FL_ASSERT_GE((uintptr_t)1, (uintptr_t)2);
     }
     FL_CATCH(fl_unexpected_failure) {
         caught = true;

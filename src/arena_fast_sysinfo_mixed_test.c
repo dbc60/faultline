@@ -70,7 +70,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Fast Node Populated on Split", ArenaFastMixedTest,
 
     // Initially fast node should be empty
     FL_ASSERT_NULL(arena->fast);
-    FL_ASSERT_EQ_SIZE_T((size_t)0, arena->fast_size);
+    FL_ASSERT_EQ((size_t)0, arena->fast_size);
 
     // Allocate two chunks of size that maps to a specific small bin.
     // Use a request of 128 bytes - large enough to split later.
@@ -91,7 +91,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Fast Node Populated on Split", ArenaFastMixedTest,
 
     // Fast node should now be populated with the remainder from splitting A's chunk
     FL_ASSERT_NOT_NULL(arena->fast);
-    FL_ASSERT_GT_SIZE_T(arena->fast_size, (size_t)0);
+    FL_ASSERT_GT(arena->fast_size, (size_t)0);
 
     FL_UNUSED(mem_b);
     FL_UNUSED(mem_c);
@@ -125,7 +125,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Fast Node Consumed", ArenaFastMixedTest, fast_node_c
     // Fast node should be consumed (NULL) or reduced
     // If the request exactly matches, fast should be NULL
     FL_ASSERT_NULL(arena->fast);
-    FL_ASSERT_EQ_SIZE_T((size_t)0, arena->fast_size);
+    FL_ASSERT_EQ((size_t)0, arena->fast_size);
 
     FL_UNUSED(mem_b);
     FL_UNUSED(mem_c);
@@ -170,7 +170,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Fast Node Replaced", ArenaFastMixedTest, fast_node_r
     FL_ASSERT_TRUE(arena->fast != old_fast || arena->fast_size != old_fast_size);
 
     // The new fast node's size should reflect the remainder of the 256-byte split
-    FL_ASSERT_GT_SIZE_T(arena->fast_size, (size_t)0);
+    FL_ASSERT_GT(arena->fast_size, (size_t)0);
 
     FL_UNUSED(mem_b);
     FL_UNUSED(mem_c);
@@ -207,7 +207,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Fast Node Too Small", ArenaFastMixedTest,
     // The fast node may have been displaced or may still be there (if allocated
     // from top), but the allocation itself must succeed.
     // Count: mem_a freed (-1), mem_b (1), mem_c (1), mem_d (1) = 3
-    FL_ASSERT_EQ_SIZE_T((size_t)3, arena_allocation_count(arena));
+    FL_ASSERT_EQ((size_t)3, arena_allocation_count(arena));
 
     FL_UNUSED(mem_b);
     FL_UNUSED(mem_c);
@@ -227,10 +227,10 @@ FL_TEST("Page Size Nonzero Power of Two", page_size_nonzero_power_of_two) {
     size_t page_size = arena_page_size();
 
     // Must be nonzero
-    FL_ASSERT_GT_SIZE_T(page_size, (size_t)0);
+    FL_ASSERT_GT(page_size, (size_t)0);
 
     // Must be a power of 2: (n & (n - 1)) == 0
-    FL_ASSERT_EQ_SIZE_T((size_t)0, page_size & (page_size - 1));
+    FL_ASSERT_EQ((size_t)0, page_size & (page_size - 1));
 }
 
 // ============================================================================
@@ -243,13 +243,13 @@ FL_TEST("Granularity Nonzero Power of Two", granularity_nonzero_power_of_two) {
     size_t page_size   = arena_page_size();
 
     // Must be nonzero
-    FL_ASSERT_GT_SIZE_T(granularity, (size_t)0);
+    FL_ASSERT_GT(granularity, (size_t)0);
 
     // Must be a power of 2
-    FL_ASSERT_EQ_SIZE_T((size_t)0, granularity & (granularity - 1));
+    FL_ASSERT_EQ((size_t)0, granularity & (granularity - 1));
 
     // Must be >= page_size
-    FL_ASSERT_GE_SIZE_T(granularity, page_size);
+    FL_ASSERT_GE(granularity, page_size);
 }
 
 // ============================================================================
@@ -268,29 +268,29 @@ FL_TYPE_TEST_SETUP_CLEANUP("Interleaved Small Large", ArenaFastMixedTest,
     Arena *arena = t->arena;
 
     void *small1 = arena_malloc_throw(arena, 32, __FILE__, __LINE__);
-    FL_ASSERT_EQ_SIZE_T((size_t)1, arena_allocation_count(arena));
+    FL_ASSERT_EQ((size_t)1, arena_allocation_count(arena));
 
     void *large1 = arena_malloc_throw(arena, 2048, __FILE__, __LINE__);
-    FL_ASSERT_EQ_SIZE_T((size_t)2, arena_allocation_count(arena));
+    FL_ASSERT_EQ((size_t)2, arena_allocation_count(arena));
 
     void *small2 = arena_malloc_throw(arena, 64, __FILE__, __LINE__);
-    FL_ASSERT_EQ_SIZE_T((size_t)3, arena_allocation_count(arena));
+    FL_ASSERT_EQ((size_t)3, arena_allocation_count(arena));
 
     void *large2 = arena_malloc_throw(arena, 4096, __FILE__, __LINE__);
-    FL_ASSERT_EQ_SIZE_T((size_t)4, arena_allocation_count(arena));
+    FL_ASSERT_EQ((size_t)4, arena_allocation_count(arena));
 
     // Free in non-LIFO order: large1, small1, large2, small2
     arena_free_throw(arena, large1, __FILE__, __LINE__);
-    FL_ASSERT_EQ_SIZE_T((size_t)3, arena_allocation_count(arena));
+    FL_ASSERT_EQ((size_t)3, arena_allocation_count(arena));
 
     arena_free_throw(arena, small1, __FILE__, __LINE__);
-    FL_ASSERT_EQ_SIZE_T((size_t)2, arena_allocation_count(arena));
+    FL_ASSERT_EQ((size_t)2, arena_allocation_count(arena));
 
     arena_free_throw(arena, large2, __FILE__, __LINE__);
-    FL_ASSERT_EQ_SIZE_T((size_t)1, arena_allocation_count(arena));
+    FL_ASSERT_EQ((size_t)1, arena_allocation_count(arena));
 
     arena_free_throw(arena, small2, __FILE__, __LINE__);
-    FL_ASSERT_EQ_SIZE_T((size_t)0, arena_allocation_count(arena));
+    FL_ASSERT_EQ((size_t)0, arena_allocation_count(arena));
 }
 
 // ============================================================================
@@ -313,7 +313,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Reuse Freed Chunks", ArenaFastMixedTest, reuse_freed
     for (int i = 0; i < N; i++) {
         ptrs[i] = arena_malloc_throw(arena, 64, __FILE__, __LINE__);
     }
-    FL_ASSERT_EQ_SIZE_T((size_t)N, arena_allocation_count(arena));
+    FL_ASSERT_EQ((size_t)N, arena_allocation_count(arena));
 
     // Record top size after the first batch of allocations
     size_t top_size_after_first_batch = CHUNK_SIZE(arena->top);
@@ -323,19 +323,19 @@ FL_TYPE_TEST_SETUP_CLEANUP("Reuse Freed Chunks", ArenaFastMixedTest, reuse_freed
     for (int i = 0; i < N; i++) {
         arena_free_throw(arena, ptrs[i], __FILE__, __LINE__);
     }
-    FL_ASSERT_EQ_SIZE_T((size_t)0, arena_allocation_count(arena));
+    FL_ASSERT_EQ((size_t)0, arena_allocation_count(arena));
 
     // Second batch: allocate N more of the same size
     for (int i = 0; i < N; i++) {
         ptrs[i] = arena_malloc_throw(arena, 64, __FILE__, __LINE__);
     }
-    FL_ASSERT_EQ_SIZE_T((size_t)N, arena_allocation_count(arena));
+    FL_ASSERT_EQ((size_t)N, arena_allocation_count(arena));
 
     // Most of the second batch should come from bins (reusing freed chunks),
     // not from top. Top may shrink by at most one chunk (the one that had
     // merged into top during freeing), so it should be no smaller than it
     // was after the first batch.
-    FL_ASSERT_GE_SIZE_T(CHUNK_SIZE(arena->top), top_size_after_first_batch);
+    FL_ASSERT_GE(CHUNK_SIZE(arena->top), top_size_after_first_batch);
 }
 
 // ============================================================================
@@ -356,7 +356,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Fragmentation and Coalesce", ArenaFastMixedTest,
     void *mem_c = arena_malloc_throw(arena, 64, __FILE__, __LINE__);
     void *mem_d = arena_malloc_throw(arena, 64, __FILE__, __LINE__); // guard
 
-    FL_ASSERT_EQ_SIZE_T((size_t)4, arena_allocation_count(arena));
+    FL_ASSERT_EQ((size_t)4, arena_allocation_count(arena));
 
     Chunk *chunk_a = CHUNK_FROM_MEMORY(mem_a);
     Chunk *chunk_c = CHUNK_FROM_MEMORY(mem_c);
@@ -367,12 +367,12 @@ FL_TYPE_TEST_SETUP_CLEANUP("Fragmentation and Coalesce", ArenaFastMixedTest,
     // Free A and C - creates two free fragments with B in-use between them
     arena_free_throw(arena, mem_a, __FILE__, __LINE__);
     arena_free_throw(arena, mem_c, __FILE__, __LINE__);
-    FL_ASSERT_EQ_SIZE_T((size_t)2, arena_allocation_count(arena));
+    FL_ASSERT_EQ((size_t)2, arena_allocation_count(arena));
 
     // Free B - should trigger forward merge with C. Backward merge with A
     // depends on whether the PINUSE bug has been fixed.
     arena_free_throw(arena, mem_b, __FILE__, __LINE__);
-    FL_ASSERT_EQ_SIZE_T((size_t)1, arena_allocation_count(arena));
+    FL_ASSERT_EQ((size_t)1, arena_allocation_count(arena));
 
     // After freeing B, at minimum B should merge forward with C.
     // Check that we can allocate a chunk of size B+C combined payload,

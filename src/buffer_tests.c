@@ -54,8 +54,8 @@ FL_TYPE_TEST_SETUP_CLEANUP("new", TestWithArena, test_new, setup_with_arena,
                            cleanup_with_arena) {
     Buffer *buf = new_buffer(t->arena, BUFFER_CAPACITY, ELEMENT_SIZE);
     FL_ASSERT_NOT_NULL(buf);
-    FL_ASSERT_ZERO_SIZE_T(buffer_count(buf));
-    FL_ASSERT_EQ_SIZE_T(buf->element_size, ELEMENT_SIZE);
+    FL_ASSERT_ZERO(buffer_count(buf));
+    FL_ASSERT_EQ(buf->element_size, ELEMENT_SIZE);
     FL_ASSERT_TRUE(buf->capacity == BUFFER_CAPACITY);
     destroy_buffer(buf);
 }
@@ -66,11 +66,11 @@ FL_TYPE_TEST_SETUP_CLEANUP("increase capacity", TestWithArena, test_increase_cap
     init_buffer(&buf, t->arena, 0, ELEMENT_SIZE);
     // A small request is clamped to the fixed minimum-capacity floor.
     increase_capacity(&buf, 1);
-    FL_ASSERT_EQ_SIZE_T(buf.capacity, (size_t)BUFFER_MIN_CAPACITY);
+    FL_ASSERT_EQ(buf.capacity, (size_t)BUFFER_MIN_CAPACITY);
     FL_ASSERT_NOT_NULL(buf.mem);
     // 1.5x geometric growth exceeds the requested two extra elements.
     increase_capacity(&buf, 2);
-    FL_ASSERT_EQ_SIZE_T(buf.capacity,
+    FL_ASSERT_EQ(buf.capacity,
                         (size_t)(BUFFER_MIN_CAPACITY + BUFFER_MIN_CAPACITY / 2));
     FL_ASSERT_NOT_NULL(buf.mem);
     ARENA_FREE_THROW(t->arena, buf.mem);
@@ -96,11 +96,11 @@ static void cleanup_buf(FLTestCase *fltc) {
 }
 
 FL_TYPE_TEST_SETUP_CLEANUP("count", TestArray, test_count, setup_buf, cleanup_buf) {
-    FL_ASSERT_ZERO_SIZE_T(buffer_count(t->buf));
+    FL_ASSERT_ZERO(buffer_count(t->buf));
 }
 
 FL_TYPE_TEST_SETUP_CLEANUP("size", TestArray, test_size, setup_buf, cleanup_buf) {
-    FL_ASSERT_EQ_SIZE_T(t->buf->element_size, ELEMENT_SIZE);
+    FL_ASSERT_EQ(t->buf->element_size, ELEMENT_SIZE);
 }
 
 FL_TYPE_TEST_SETUP_CLEANUP("capacity", TestArray, test_capacity, setup_buf,
@@ -113,8 +113,8 @@ FL_TYPE_TEST_SETUP_CLEANUP("put", TestArray, test_put, setup_buf, cleanup_buf) {
     int *p     = (int *)buffer_put(t->buf, &value);
 
     FL_ASSERT_NOT_NULL(p);
-    FL_ASSERT_EQ_SIZE_T(buffer_count(t->buf), SIZE_T_ONE);
-    FL_ASSERT_EQ_INT(*p, value);
+    FL_ASSERT_EQ(buffer_count(t->buf), SIZE_T_ONE);
+    FL_ASSERT_EQ(*p, value);
 }
 
 FL_TYPE_TEST_SETUP_CLEANUP("put grow", TestArray, test_put_grow, setup_buf,
@@ -125,8 +125,8 @@ FL_TYPE_TEST_SETUP_CLEANUP("put grow", TestArray, test_put_grow, setup_buf,
     for (size_t i = 0; i < BUFFER_CAPACITY; i++) {
         p = (int *)buffer_put(t->buf, &value);
         FL_ASSERT_NOT_NULL(p);
-        FL_ASSERT_EQ_SIZE_T(buffer_count(t->buf), i + 1);
-        FL_ASSERT_EQ_INT(*p, value);
+        FL_ASSERT_EQ(buffer_count(t->buf), i + 1);
+        FL_ASSERT_EQ(*p, value);
         FL_ASSERT_TRUE(t->buf->capacity == BUFFER_CAPACITY);
     }
 
@@ -143,12 +143,12 @@ FL_TYPE_TEST_SETUP_CLEANUP("get", TestArray, test_get, setup_buf, cleanup_buf) {
     int *p     = (int *)buffer_put(t->buf, &value);
 
     FL_ASSERT_NOT_NULL(p);
-    FL_ASSERT_EQ_SIZE_T(buffer_count(t->buf), SIZE_T_ONE);
-    FL_ASSERT_EQ_INT(*p, value);
+    FL_ASSERT_EQ(buffer_count(t->buf), SIZE_T_ONE);
+    FL_ASSERT_EQ(*p, value);
     int *q = (int *)buffer_get(t->buf, 0);
     FL_ASSERT_NOT_NULL(q);
     FL_ASSERT_EQ_PTR(q, p);
-    FL_ASSERT_EQ_INT(*q, value);
+    FL_ASSERT_EQ(*q, value);
 }
 
 FL_TYPE_TEST_SETUP_CLEANUP("get grow", TestArray, test_get_grow, setup_buf,
@@ -157,8 +157,8 @@ FL_TYPE_TEST_SETUP_CLEANUP("get grow", TestArray, test_get_grow, setup_buf,
     for (size_t i = 0; i < BUFFER_CAPACITY; i++) {
         int *p = (int *)buffer_put(t->buf, &value);
         FL_ASSERT_NOT_NULL(p);
-        FL_ASSERT_EQ_SIZE_T(buffer_count(t->buf), i + 1);
-        FL_ASSERT_EQ_INT(*p, value);
+        FL_ASSERT_EQ(buffer_count(t->buf), i + 1);
+        FL_ASSERT_EQ(*p, value);
     }
     int *p = (int *)buffer_put(t->buf, &value);
     FL_ASSERT_NOT_NULL(p);
@@ -167,7 +167,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("get grow", TestArray, test_get_grow, setup_buf,
     int *q = (int *)buffer_get(t->buf, BUFFER_CAPACITY);
     FL_ASSERT_NOT_NULL(q);
     FL_ASSERT_EQ_PTR(q, p);
-    FL_ASSERT_EQ_INT(*q, value);
+    FL_ASSERT_EQ(*q, value);
 }
 
 // --- new_buffer with zero capacity ---
@@ -175,9 +175,9 @@ FL_TYPE_TEST_SETUP_CLEANUP("new zero capacity", TestWithArena, test_new_zero_cap
                            setup_with_arena, cleanup_with_arena) {
     Buffer *buf = new_buffer(t->arena, 0, ELEMENT_SIZE);
     FL_ASSERT_NOT_NULL(buf);
-    FL_ASSERT_ZERO_SIZE_T(buffer_count(buf));
-    FL_ASSERT_EQ_SIZE_T(buf->element_size, ELEMENT_SIZE);
-    FL_ASSERT_ZERO_SIZE_T(buf->capacity);
+    FL_ASSERT_ZERO(buffer_count(buf));
+    FL_ASSERT_EQ(buf->element_size, ELEMENT_SIZE);
+    FL_ASSERT_ZERO(buf->capacity);
     FL_ASSERT_NULL(buf->mem);
     destroy_buffer(buf);
 }
@@ -191,8 +191,8 @@ FL_TYPE_TEST_SETUP_CLEANUP("init", TestWithArena, test_init, setup_with_arena,
 
     FL_ASSERT_TRUE(buffer_is_initialized(buf));
     FL_ASSERT_TRUE(buf->capacity == BUFFER_CAPACITY);
-    FL_ASSERT_EQ_SIZE_T(buf->element_size, ELEMENT_SIZE);
-    FL_ASSERT_ZERO_SIZE_T(buf->count);
+    FL_ASSERT_EQ(buf->element_size, ELEMENT_SIZE);
+    FL_ASSERT_ZERO(buf->count);
 
     ARENA_FREE_THROW(t->arena, buf->mem);
 }
@@ -204,13 +204,13 @@ FL_TYPE_TEST_SETUP_CLEANUP("put from zero capacity", TestWithArena,
                            cleanup_with_arena) {
     Buffer *buf = new_buffer(t->arena, 0, ELEMENT_SIZE);
     FL_ASSERT_NULL(buf->mem);
-    FL_ASSERT_ZERO_SIZE_T(buf->capacity);
+    FL_ASSERT_ZERO(buf->capacity);
 
     int  value = 42;
     int *p     = (int *)buffer_put(buf, &value);
     FL_ASSERT_NOT_NULL(p);
-    FL_ASSERT_EQ_INT(*p, value);
-    FL_ASSERT_EQ_SIZE_T(buffer_count(buf), SIZE_T_ONE);
+    FL_ASSERT_EQ(*p, value);
+    FL_ASSERT_EQ(buffer_count(buf), SIZE_T_ONE);
     FL_ASSERT_DETAILS(buf->capacity == BUFFER_MIN_CAPACITY,
                       "capacity should be %d, but is %zu", BUFFER_MIN_CAPACITY,
                       buf->capacity);
@@ -224,12 +224,12 @@ FL_TYPE_TEST_SETUP_CLEANUP("allocate next free slot", TestArray,
                            test_allocate_next_free_slot, setup_buf, cleanup_buf) {
     int *slot = (int *)buffer_allocate_next_free_slot(t->buf);
     FL_ASSERT_NOT_NULL(slot);
-    FL_ASSERT_EQ_SIZE_T(buffer_count(t->buf), SIZE_T_ONE);
+    FL_ASSERT_EQ(buffer_count(t->buf), SIZE_T_ONE);
 
     *slot    = 99;
     int *at0 = (int *)buffer_get(t->buf, 0);
     FL_ASSERT_EQ_PTR(at0, slot);
-    FL_ASSERT_EQ_INT(*at0, 99);
+    FL_ASSERT_EQ(*at0, 99);
 }
 
 FL_TYPE_TEST_SETUP_CLEANUP("allocate next free slot grow", TestArray,
@@ -238,13 +238,13 @@ FL_TYPE_TEST_SETUP_CLEANUP("allocate next free slot grow", TestArray,
         int *slot = (int *)buffer_allocate_next_free_slot(t->buf);
         FL_ASSERT_NOT_NULL(slot);
     }
-    FL_ASSERT_EQ_SIZE_T(buffer_count(t->buf), (size_t)BUFFER_CAPACITY);
-    FL_ASSERT_EQ_SIZE_T(t->buf->capacity, (size_t)BUFFER_CAPACITY);
+    FL_ASSERT_EQ(buffer_count(t->buf), (size_t)BUFFER_CAPACITY);
+    FL_ASSERT_EQ(t->buf->capacity, (size_t)BUFFER_CAPACITY);
 
     int *slot = (int *)buffer_allocate_next_free_slot(t->buf);
     FL_ASSERT_NOT_NULL(slot);
-    FL_ASSERT_EQ_SIZE_T(buffer_count(t->buf), (size_t)BUFFER_CAPACITY + 1);
-    FL_ASSERT_EQ_SIZE_T(t->buf->capacity,
+    FL_ASSERT_EQ(buffer_count(t->buf), (size_t)BUFFER_CAPACITY + 1);
+    FL_ASSERT_EQ(t->buf->capacity,
                         (size_t)(BUFFER_CAPACITY + BUFFER_CAPACITY / 2));
 }
 
@@ -255,17 +255,17 @@ FL_TYPE_TEST_SETUP_CLEANUP("clear", TestArray, test_clear, setup_buf, cleanup_bu
 
     buffer_put(t->buf, &value);
     buffer_put(t->buf, &value);
-    FL_ASSERT_EQ_SIZE_T(buffer_count(t->buf), (size_t)2);
+    FL_ASSERT_EQ(buffer_count(t->buf), (size_t)2);
 
     buffer_clear(t->buf);
-    FL_ASSERT_ZERO_SIZE_T(buffer_count(t->buf));
-    FL_ASSERT_EQ_SIZE_T(t->buf->capacity, (size_t)BUFFER_CAPACITY);
+    FL_ASSERT_ZERO(buffer_count(t->buf));
+    FL_ASSERT_EQ(t->buf->capacity, (size_t)BUFFER_CAPACITY);
     FL_ASSERT_NOT_NULL(t->buf->mem);
 
     // Buffer is usable again after clearing.
     int *p = (int *)buffer_put(t->buf, &value);
     FL_ASSERT_NOT_NULL(p);
-    FL_ASSERT_EQ_SIZE_T(buffer_count(t->buf), SIZE_T_ONE);
+    FL_ASSERT_EQ(buffer_count(t->buf), SIZE_T_ONE);
 }
 
 // --- buffer_clear_and_release ---
@@ -276,11 +276,11 @@ FL_TYPE_TEST_SETUP_CLEANUP("clear and release", TestArray, test_clear_and_releas
 
     buffer_put(t->buf, &value);
     buffer_put(t->buf, &value);
-    FL_ASSERT_EQ_SIZE_T(buffer_count(t->buf), SIZE_T_TWO);
+    FL_ASSERT_EQ(buffer_count(t->buf), SIZE_T_TWO);
 
     buffer_clear_and_release(t->buf);
-    FL_ASSERT_ZERO_SIZE_T(buffer_count(t->buf));
-    FL_ASSERT_ZERO_SIZE_T(t->buf->capacity);
+    FL_ASSERT_ZERO(buffer_count(t->buf));
+    FL_ASSERT_ZERO(t->buf->capacity);
     FL_ASSERT_NULL(t->buf->mem);
 }
 
@@ -295,16 +295,16 @@ FL_TYPE_TEST_SETUP_CLEANUP("copy sufficient capacity", TestWithArena,
     for (int i = 0; i < 5; i++) {
         buffer_put(src, &i);
     }
-    FL_ASSERT_EQ_SIZE_T(buffer_count(src), (size_t)5);
+    FL_ASSERT_EQ(buffer_count(src), (size_t)5);
 
     size_t copied = buffer_copy(dst, src);
-    FL_ASSERT_EQ_SIZE_T(copied, (size_t)5);
-    FL_ASSERT_EQ_SIZE_T(buffer_count(dst), (size_t)5);
-    FL_ASSERT_EQ_SIZE_T(dst->capacity, (size_t)BUFFER_CAPACITY); // no growth needed
+    FL_ASSERT_EQ(copied, (size_t)5);
+    FL_ASSERT_EQ(buffer_count(dst), (size_t)5);
+    FL_ASSERT_EQ(dst->capacity, (size_t)BUFFER_CAPACITY); // no growth needed
 
     for (size_t i = 0; i < 5; i++) {
         int *p = (int *)buffer_get(dst, i);
-        FL_ASSERT_EQ_INT((int)i, *p);
+        FL_ASSERT_EQ((int)i, *p);
     }
 
     destroy_buffer(src);
@@ -322,13 +322,13 @@ FL_TYPE_TEST_SETUP_CLEANUP("copy grow", TestWithArena, test_copy_grow, setup_wit
     }
 
     size_t copied = buffer_copy(dst, src);
-    FL_ASSERT_EQ_SIZE_T(copied, (size_t)5);
-    FL_ASSERT_EQ_SIZE_T(buffer_count(dst), (size_t)5);
-    FL_ASSERT_GE_SIZE_T(dst->capacity, (size_t)5);
+    FL_ASSERT_EQ(copied, (size_t)5);
+    FL_ASSERT_EQ(buffer_count(dst), (size_t)5);
+    FL_ASSERT_GE(dst->capacity, (size_t)5);
 
     for (size_t i = 0; i < 5; i++) {
         int *p = (int *)buffer_get(dst, i);
-        FL_ASSERT_EQ_INT((int)i, *p);
+        FL_ASSERT_EQ((int)i, *p);
     }
 
     destroy_buffer(src);
@@ -343,12 +343,12 @@ FL_TYPE_TEST_SETUP_CLEANUP("copy from empty", TestWithArena, test_copy_from_empt
     for (int i = 0; i < 3; i++) {
         buffer_put(dst, &i);
     }
-    FL_ASSERT_EQ_SIZE_T(buffer_count(dst), (size_t)3);
-    FL_ASSERT_ZERO_SIZE_T(buffer_count(src));
+    FL_ASSERT_EQ(buffer_count(dst), (size_t)3);
+    FL_ASSERT_ZERO(buffer_count(src));
 
     size_t copied = buffer_copy(dst, src);
-    FL_ASSERT_ZERO_SIZE_T(copied);
-    FL_ASSERT_EQ_SIZE_T(buffer_count(dst), (size_t)3); // unchanged
+    FL_ASSERT_ZERO(copied);
+    FL_ASSERT_EQ(buffer_count(dst), (size_t)3); // unchanged
 
     destroy_buffer(src);
     destroy_buffer(dst);
@@ -391,10 +391,10 @@ FL_TYPE_TEST_SETUP_CLEANUP("put double grow", TestArray, test_put_double_grow, s
     for (size_t i = 0; i < target; i++) {
         int *p = (int *)buffer_put(t->buf, &value);
         FL_ASSERT_NOT_NULL(p);
-        FL_ASSERT_EQ_INT(*p, value);
+        FL_ASSERT_EQ(*p, value);
     }
 
-    FL_ASSERT_EQ_SIZE_T(buffer_count(t->buf), target);
+    FL_ASSERT_EQ(buffer_count(t->buf), target);
     FL_ASSERT_DETAILS(t->buf->capacity == second_grown,
                       "capacity should be %zu, but is %zu", second_grown,
                       t->buf->capacity);
@@ -472,22 +472,22 @@ FL_TYPE_TEST_SETUP_CLEANUP("copy into nonempty dst", TestWithArena,
     buffer_put(dst, &val);
     val = 30;
     buffer_put(dst, &val);
-    FL_ASSERT_EQ_SIZE_T(buffer_count(dst), (size_t)3);
+    FL_ASSERT_EQ(buffer_count(dst), (size_t)3);
 
     for (int i = 0; i < 5; i++) {
         buffer_put(src, &i);
     }
-    FL_ASSERT_EQ_SIZE_T(buffer_count(src), (size_t)5);
+    FL_ASSERT_EQ(buffer_count(src), (size_t)5);
 
     size_t copied = buffer_copy(dst, src);
-    FL_ASSERT_EQ_SIZE_T(copied, (size_t)5);
-    FL_ASSERT_EQ_SIZE_T(buffer_count(dst), (size_t)8);
+    FL_ASSERT_EQ(copied, (size_t)5);
+    FL_ASSERT_EQ(buffer_count(dst), (size_t)8);
 
-    FL_ASSERT_EQ_INT(10, *(int *)buffer_get(dst, 0));
-    FL_ASSERT_EQ_INT(20, *(int *)buffer_get(dst, 1));
-    FL_ASSERT_EQ_INT(30, *(int *)buffer_get(dst, 2));
+    FL_ASSERT_EQ(10, *(int *)buffer_get(dst, 0));
+    FL_ASSERT_EQ(20, *(int *)buffer_get(dst, 1));
+    FL_ASSERT_EQ(30, *(int *)buffer_get(dst, 2));
     for (int i = 0; i < 5; i++) {
-        FL_ASSERT_EQ_INT(i, *(int *)buffer_get(dst, (size_t)(3 + i)));
+        FL_ASSERT_EQ(i, *(int *)buffer_get(dst, (size_t)(3 + i)));
     }
 
     destroy_buffer(src);
@@ -502,12 +502,12 @@ FL_TYPE_TEST_SETUP_CLEANUP("clear and release empty", TestWithArena,
     Buffer *buf = new_buffer(t->arena, 0, ELEMENT_SIZE);
 
     FL_ASSERT_NULL(buf->mem);
-    FL_ASSERT_ZERO_SIZE_T(buf->capacity);
+    FL_ASSERT_ZERO(buf->capacity);
 
     buffer_clear_and_release(buf); // must not crash: mem is NULL, nothing to free
     FL_ASSERT_NULL(buf->mem);
-    FL_ASSERT_ZERO_SIZE_T(buf->count);
-    FL_ASSERT_ZERO_SIZE_T(buf->capacity);
+    FL_ASSERT_ZERO(buf->count);
+    FL_ASSERT_ZERO(buf->capacity);
 
     destroy_buffer(buf);
 }
@@ -519,21 +519,21 @@ FL_TYPE_TEST_SETUP_CLEANUP("typed buffer", TestWithArena, test_typed_buffer,
     intBuffer *buf = new_int_buffer(t->arena, BUFFER_CAPACITY);
 
     FL_ASSERT_NOT_NULL(buf);
-    FL_ASSERT_ZERO_SIZE_T(int_buffer_count(buf));
-    FL_ASSERT_EQ_SIZE_T(buf->capacity, (size_t)BUFFER_CAPACITY);
+    FL_ASSERT_ZERO(int_buffer_count(buf));
+    FL_ASSERT_EQ(buf->capacity, (size_t)BUFFER_CAPACITY);
 
     int  val = 42;
     int *p   = int_buffer_put(buf, &val);
     FL_ASSERT_NOT_NULL(p);
-    FL_ASSERT_EQ_INT(*p, val);
-    FL_ASSERT_EQ_SIZE_T(int_buffer_count(buf), (size_t)1);
+    FL_ASSERT_EQ(*p, val);
+    FL_ASSERT_EQ(int_buffer_count(buf), (size_t)1);
 
     int *q = int_buffer_get(buf, 0);
     FL_ASSERT_EQ_PTR(q, p);
-    FL_ASSERT_EQ_INT(*q, val);
+    FL_ASSERT_EQ(*q, val);
 
     int_buffer_clear(buf);
-    FL_ASSERT_ZERO_SIZE_T(int_buffer_count(buf));
+    FL_ASSERT_ZERO(int_buffer_count(buf));
 
     destroy_int_buffer(buf);
 }

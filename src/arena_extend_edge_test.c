@@ -101,10 +101,10 @@ FL_TYPE_TEST_SETUP_CLEANUP("Extend Within Reserved", ArenaExtendEdgeTest,
     }
 
     // Extend happened within reserved space
-    FL_ASSERT_GT_SIZE_T(arena_footprint(arena), initial_footprint);
+    FL_ASSERT_GT(arena_footprint(arena), initial_footprint);
 
     // Available reserved bytes should have decreased
-    FL_ASSERT_LT_SIZE_T(region_available_bytes(MEM_TO_REGION(arena)), initial_available);
+    FL_ASSERT_LT(region_available_bytes(MEM_TO_REGION(arena)), initial_available);
 
     // No new region node was needed - region list still empty
     FL_ASSERT_TRUE(DLIST_IS_EMPTY(&arena->region_list));
@@ -171,13 +171,13 @@ FL_TYPE_TEST_SETUP_CLEANUP("Extend Updates Footprint", ArenaExtendEdgeTest,
     }
 
     // Footprint increased
-    FL_ASSERT_GT_SIZE_T(arena_footprint(arena), initial_footprint);
+    FL_ASSERT_GT(arena_footprint(arena), initial_footprint);
 
     // Max footprint tracks the peak and is >= current footprint
-    FL_ASSERT_GE_SIZE_T(arena_max_footprint(arena), arena_footprint(arena));
+    FL_ASSERT_GE(arena_max_footprint(arena), arena_footprint(arena));
 
     // Max footprint is at least as large as the initial max
-    FL_ASSERT_GE_SIZE_T(arena_max_footprint(arena), initial_max_footprint);
+    FL_ASSERT_GE(arena_max_footprint(arena), initial_max_footprint);
 }
 
 // ============================================================================
@@ -198,10 +198,10 @@ FL_TYPE_TEST_SETUP_CLEANUP("Allocate Zero Bytes", ArenaExtendEdgeTest,
     FL_ASSERT_NOT_NULL(mem);
 
     // Should have a valid allocation
-    FL_ASSERT_EQ_SIZE_T((size_t)1, arena_allocation_count(arena));
+    FL_ASSERT_EQ((size_t)1, arena_allocation_count(arena));
 
     // The chunk backing this allocation should be at least CHUNK_MIN_SIZE
-    FL_ASSERT_GE_SIZE_T(ARENA_ALLOCATION_SIZE_THROW(arena, mem), CHUNK_MIN_SIZE);
+    FL_ASSERT_GE(ARENA_ALLOCATION_SIZE_THROW(arena, mem), CHUNK_MIN_SIZE);
 }
 
 // ============================================================================
@@ -218,10 +218,10 @@ FL_TYPE_TEST_SETUP_CLEANUP("Allocate One Byte", ArenaExtendEdgeTest, allocate_on
 
     // Chunk must be at least CHUNK_MIN_SIZE
     size_t alloc_size = ARENA_ALLOCATION_SIZE_THROW(arena, mem);
-    FL_ASSERT_GE_SIZE_T(alloc_size, CHUNK_MIN_SIZE);
+    FL_ASSERT_GE(alloc_size, CHUNK_MIN_SIZE);
 
     // Chunk must be aligned
-    FL_ASSERT_EQ_SIZE_T((size_t)0, alloc_size & CHUNK_ALIGNMENT_MASK);
+    FL_ASSERT_EQ((size_t)0, alloc_size & CHUNK_ALIGNMENT_MASK);
 }
 
 // ============================================================================
@@ -241,7 +241,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Allocate Boundary Small/Large", ArenaExtendEdgeTest,
     size_t small_size = ARENA_ALLOCATION_SIZE_THROW(arena, small_mem);
 
     // Should be a small chunk
-    FL_ASSERT_GE_SIZE_T(small_size, CHUNK_SIZE_FROM_REQUEST(ARENA_MAX_SMALL_REQUEST));
+    FL_ASSERT_GE(small_size, CHUNK_SIZE_FROM_REQUEST(ARENA_MAX_SMALL_REQUEST));
     FL_ASSERT_TRUE(ARENA_IS_SIZE_SMALL(small_size));
 
     // Allocate one byte beyond the small boundary
@@ -250,7 +250,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Allocate Boundary Small/Large", ArenaExtendEdgeTest,
     size_t large_size = ARENA_ALLOCATION_SIZE_THROW(arena, large_mem);
 
     // Should be a large chunk
-    FL_ASSERT_GE_SIZE_T(large_size, (size_t)ARENA_MIN_LARGE_CHUNK);
+    FL_ASSERT_GE(large_size, (size_t)ARENA_MIN_LARGE_CHUNK);
 }
 
 // ============================================================================
@@ -303,11 +303,11 @@ FL_TYPE_TEST_SETUP_CLEANUP("Allocate Exact Top Size", ArenaExtendEdgeTest,
     arena_malloc_throw(arena, request, __FILE__, __LINE__);
 
     // Top should now point to the sentinel (size == CHUNK_SENTINEL_SIZE)
-    FL_ASSERT_EQ_SIZE_T(CHUNK_SENTINEL_SIZE, CHUNK_SIZE(arena->top));
+    FL_ASSERT_EQ(CHUNK_SENTINEL_SIZE, CHUNK_SIZE(arena->top));
 
     // Next allocation should trigger extend, increasing the footprint
     arena_malloc_throw(arena, 1, __FILE__, __LINE__);
-    FL_ASSERT_GT_SIZE_T(arena_footprint(arena), footprint_before);
+    FL_ASSERT_GT(arena_footprint(arena), footprint_before);
 }
 
 // ============================================================================
@@ -346,7 +346,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Release: Free Adjacent to Exhausted Top",
 
     // Top should now be the sentinel (exhausted): size == CHUNK_SENTINEL_SIZE
     // and CHUNK_CURRENT_INUSE_FLAG is set.
-    FL_ASSERT_EQ_SIZE_T(CHUNK_SENTINEL_SIZE, CHUNK_SIZE(arena->top));
+    FL_ASSERT_EQ(CHUNK_SENTINEL_SIZE, CHUNK_SIZE(arena->top));
 
     // Free the chunk adjacent to the sentinel. Before the fix, this cleared
     // sentinel->PREV_INUSE and left arena->top corrupted.

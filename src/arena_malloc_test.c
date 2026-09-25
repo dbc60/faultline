@@ -234,7 +234,7 @@ FL_TEST("Merge Backward", merge_backward) {
 
     arena_free(arena, b, __FILE__, __LINE__);
     size_t chunk_size = CHUNK_SIZE_FROM_REQUEST(4096);
-    FL_ASSERT_EQ_SIZE_T(CHUNK_SIZE((Chunk *)dst_a), 3 * chunk_size); // all three merged
+    FL_ASSERT_EQ(CHUNK_SIZE((Chunk *)dst_a), 3 * chunk_size); // all three merged
     FL_ASSERT_TRUE(DST_IS_ROOT(dst_a));                              // back in a bin
     FL_ASSERT_TRUE(DST_IS_LEAF(dst_a));       // only chunk of this size
     FL_ASSERT_TRUE(!DST_HAS_SIBLINGS(dst_a)); // no same-size neighbors
@@ -265,11 +265,11 @@ FL_TEST("Merge Forward", merge_forward) {
     arena_free(arena, b, __FILE__, __LINE__); // b merges forward with c (a sibling)
 
     size_t chunk_size = CHUNK_SIZE_FROM_REQUEST(4096);
-    FL_ASSERT_EQ_SIZE_T(CHUNK_SIZE((Chunk *)dst_b), 2 * chunk_size); // b+c merged
+    FL_ASSERT_EQ(CHUNK_SIZE((Chunk *)dst_b), 2 * chunk_size); // b+c merged
     FL_ASSERT_TRUE(DST_IS_ROOT(dst_b));
     FL_ASSERT_TRUE(DST_IS_LEAF(dst_b));
     FL_ASSERT_TRUE(!DST_HAS_SIBLINGS(dst_b));
-    FL_ASSERT_EQ_SIZE_T(CHUNK_SIZE((Chunk *)dst_p), chunk_size); // p untouched
+    FL_ASSERT_EQ(CHUNK_SIZE((Chunk *)dst_p), chunk_size); // p untouched
     FL_ASSERT_TRUE(DST_IS_ROOT(dst_p));
     FL_ASSERT_TRUE(DST_IS_LEAF(dst_p));
     FL_ASSERT_TRUE(!DST_HAS_SIBLINGS(dst_p));

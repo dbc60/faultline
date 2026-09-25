@@ -211,8 +211,8 @@ FL_TEST("Finally Block", finally_block) {
     }
     FL_END_TRY;
 
-    FL_ASSERT_EQ_INT(catch_called, 1);
-    FL_ASSERT_EQ_INT(finally_called, 2);
+    FL_ASSERT_EQ(catch_called, 1);
+    FL_ASSERT_EQ(finally_called, 2);
 }
 
 //
@@ -225,7 +225,7 @@ FL_TEST("No Throw Path", test_no_throw_path) {
         entered = 1;
     }
     FL_END_TRY;
-    FL_ASSERT_EQ_INT(entered, 1);
+    FL_ASSERT_EQ(entered, 1);
 }
 
 FL_TEST("Catch Preserves Metadata", test_catch_preserves_metadata) {
@@ -251,7 +251,7 @@ FL_TEST("Finally Without Exception", test_finally_without_exception) {
         finally_called = 1;
     }
     FL_END_TRY;
-    FL_ASSERT_EQ_INT(finally_called, 1);
+    FL_ASSERT_EQ(finally_called, 1);
 }
 
 FL_TEST("Finally With Unhandled Exception", test_finally_with_unhandled) {
@@ -272,7 +272,7 @@ FL_TEST("Finally With Unhandled Exception", test_finally_with_unhandled) {
         ; // caught after the finally block above ran
     }
     FL_END_TRY;
-    FL_ASSERT_EQ_INT(finally_called, 1);
+    FL_ASSERT_EQ(finally_called, 1);
 }
 
 FL_TEST("Multiple Catch Clauses", test_multiple_catch_clauses) {
@@ -287,7 +287,7 @@ FL_TEST("Multiple Catch Clauses", test_multiple_catch_clauses) {
         caught_b = 1;
     }
     FL_END_TRY;
-    FL_ASSERT_EQ_INT(caught_b, 1);
+    FL_ASSERT_EQ(caught_b, 1);
 }
 
 FL_TEST("Throw Details Format Args", test_throw_details_format_args) {
@@ -337,8 +337,8 @@ FL_TEST("Catch All Rethrow", test_catch_all_rethrow) {
         cleanup_ran = 100; // must not execute
     }
     FL_END_TRY;
-    FL_ASSERT_EQ_INT(no_throw_ran, 1);
-    FL_ASSERT_EQ_INT(cleanup_ran, 0);
+    FL_ASSERT_EQ(no_throw_ran, 1);
+    FL_ASSERT_EQ(cleanup_ran, 0);
 
     // Exception: the block runs, then FL_END_TRY rethrows with metadata intact.
     FL_TRY {
@@ -357,8 +357,8 @@ FL_TEST("Catch All Rethrow", test_catch_all_rethrow) {
         FL_ASSERT_TRUE(strstr(FL_DETAILS, "catch-all-rethrow detail") != NULL);
     }
     FL_END_TRY;
-    FL_ASSERT_EQ_INT(cleanup_ran, 1);
-    FL_ASSERT_EQ_INT(caught, 1);
+    FL_ASSERT_EQ(cleanup_ran, 1);
+    FL_ASSERT_EQ(caught, 1);
 }
 
 FL_SUITE_BEGIN(ts)

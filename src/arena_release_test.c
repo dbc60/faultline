@@ -60,7 +60,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Release: No Merge", ArenaReleaseTest, release_no_mer
     void *mem_c = arena_malloc_throw(arena, 16, __FILE__, __LINE__);
     void *mem_d = arena_malloc_throw(arena, 16, __FILE__, __LINE__); // guard
 
-    FL_ASSERT_EQ_SIZE_T((size_t)4, arena->allocations);
+    FL_ASSERT_EQ((size_t)4, arena->allocations);
 
     Chunk *chunk_a = CHUNK_FROM_MEMORY(mem_a);
     Chunk *chunk_b = CHUNK_FROM_MEMORY(mem_b);
@@ -78,7 +78,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Release: No Merge", ArenaReleaseTest, release_no_mer
     // Release C: neighbors B and D are still in-use, so no merge
     arena_free_throw(arena, mem_c, __FILE__, __LINE__);
 
-    FL_ASSERT_EQ_SIZE_T((size_t)3, arena->allocations);
+    FL_ASSERT_EQ((size_t)3, arena->allocations);
     FL_ASSERT_FALSE(CHUNK_IS_INUSE(chunk_c));
     FL_ASSERT_TRUE(CHUNK_IS_INUSE(chunk_b));
     FL_ASSERT_TRUE(CHUNK_IS_INUSE(chunk_d));
@@ -107,7 +107,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Release: Forward Merge Top", ArenaReleaseTest,
     void  *mem_a   = arena_malloc_throw(arena, 16, __FILE__, __LINE__);
     Chunk *chunk_a = CHUNK_FROM_MEMORY(mem_a);
 
-    FL_ASSERT_EQ_SIZE_T((size_t)1, arena->allocations);
+    FL_ASSERT_EQ((size_t)1, arena->allocations);
     FL_ASSERT_TRUE(CHUNK_IS_INUSE(chunk_a));
 
     // Next chunk after A should be top
@@ -116,11 +116,11 @@ FL_TYPE_TEST_SETUP_CLEANUP("Release: Forward Merge Top", ArenaReleaseTest,
     // Release A -> should merge forward into top
     arena_free_throw(arena, mem_a, __FILE__, __LINE__);
 
-    FL_ASSERT_EQ_SIZE_T((size_t)0, arena->allocations);
+    FL_ASSERT_EQ((size_t)0, arena->allocations);
     // Top should have moved back to A's position
     FL_ASSERT_EQ_PTR((void *)chunk_a, (void *)arena->top);
     // Top size should be restored
-    FL_ASSERT_EQ_SIZE_T(original_top_size, CHUNK_SIZE(arena->top));
+    FL_ASSERT_EQ(original_top_size, CHUNK_SIZE(arena->top));
 }
 
 // ============================================================================
@@ -160,7 +160,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Release: Forward Merge Fast", ArenaReleaseTest,
 
     // Now there should be a fast node (the remainder from splitting B)
     FL_ASSERT_NOT_NULL(arena->fast);
-    FL_ASSERT_GT_SIZE_T(arena->fast_size, (size_t)0);
+    FL_ASSERT_GT(arena->fast_size, (size_t)0);
 
     FreeChunk *fast      = arena->fast;
     size_t     fast_size = arena->fast_size;
@@ -177,7 +177,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Release: Forward Merge Fast", ArenaReleaseTest,
     // After merge, fast should point to D's position (merged chunk)
     FL_ASSERT_EQ_PTR((void *)chunk_d, (void *)arena->fast);
     // Fast size should be D's size + old fast size
-    FL_ASSERT_EQ_SIZE_T(d_size + fast_size, arena->fast_size);
+    FL_ASSERT_EQ(d_size + fast_size, arena->fast_size);
 
     // Cleanup
     arena_free_throw(arena, mem_a, __FILE__, __LINE__);
@@ -213,17 +213,17 @@ FL_TYPE_TEST_SETUP_CLEANUP("Release: Forward Merge Small Bin", ArenaReleaseTest,
 
     u32 c_idx = ARENA_SMALL_INDEX(c_size);
     FL_ASSERT_TRUE(ARENA_SMALL_MAP_IS_MARKED(arena, c_idx) != 0);
-    FL_ASSERT_EQ_SIZE_T((size_t)3, arena->allocations);
+    FL_ASSERT_EQ((size_t)3, arena->allocations);
 
     // Release B -> should forward merge with C
     // B's next (C) is free and in a small bin, so C gets unlinked and merged
     arena_free_throw(arena, mem_b, __FILE__, __LINE__);
 
-    FL_ASSERT_EQ_SIZE_T((size_t)2, arena->allocations);
+    FL_ASSERT_EQ((size_t)2, arena->allocations);
 
     // The merged chunk should have size b_size + c_size
     FreeChunk *merged = (FreeChunk *)chunk_b;
-    FL_ASSERT_EQ_SIZE_T(b_size + c_size, CHUNK_SIZE(merged));
+    FL_ASSERT_EQ(b_size + c_size, CHUNK_SIZE(merged));
     FL_ASSERT_FALSE(CHUNK_IS_INUSE(merged));
 
     // Cleanup
@@ -254,13 +254,13 @@ FL_TYPE_TEST_SETUP_CLEANUP("Release: Forward Merge Large Bin", ArenaReleaseTest,
     size_t a_size = CHUNK_SIZE(chunk_a);
     size_t b_size = CHUNK_SIZE(chunk_b);
 
-    FL_ASSERT_GE_SIZE_T(b_size, (size_t)ARENA_MIN_LARGE_CHUNK);
-    FL_ASSERT_EQ_SIZE_T((size_t)3, arena->allocations);
+    FL_ASSERT_GE(b_size, (size_t)ARENA_MIN_LARGE_CHUNK);
+    FL_ASSERT_EQ((size_t)3, arena->allocations);
 
     // Release B -> goes to a large bin (neighbors A and C are in-use)
     arena_free_throw(arena, mem_b, __FILE__, __LINE__);
 
-    FL_ASSERT_EQ_SIZE_T((size_t)2, arena->allocations);
+    FL_ASSERT_EQ((size_t)2, arena->allocations);
     FL_ASSERT_TRUE(arena->large_map != 0);
 
     // Record B's large bin index before releasing A
@@ -272,11 +272,11 @@ FL_TYPE_TEST_SETUP_CLEANUP("Release: Forward Merge Large Bin", ArenaReleaseTest,
     // This tests the forward-merge-with-large-bin path at arena.c lines 897-899
     arena_free_throw(arena, mem_a, __FILE__, __LINE__);
 
-    FL_ASSERT_EQ_SIZE_T((size_t)1, arena->allocations);
+    FL_ASSERT_EQ((size_t)1, arena->allocations);
 
     // The merged chunk should have size a_size + b_size
     FreeChunk *merged = (FreeChunk *)chunk_a;
-    FL_ASSERT_EQ_SIZE_T(a_size + b_size, CHUNK_SIZE(merged));
+    FL_ASSERT_EQ(a_size + b_size, CHUNK_SIZE(merged));
     FL_ASSERT_FALSE(CHUNK_IS_INUSE(merged));
 
     // The large bin should point to the merged chunk (at chunk_a's address),
@@ -351,7 +351,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Release: Backward Merge Fast", ArenaReleaseTest,
     } else {
         // Merged chunk stayed as the fast node.
         FL_ASSERT_EQ_PTR((void *)fast, (void *)arena->fast);
-        FL_ASSERT_EQ_SIZE_T(merged_size, arena->fast_size);
+        FL_ASSERT_EQ(merged_size, arena->fast_size);
     }
 
     // Cleanup
@@ -390,7 +390,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Release: Backward Merge Small Bin", ArenaReleaseTest
 
     // If backward merge worked, A and B should be merged
     FreeChunk *merged = (FreeChunk *)chunk_a;
-    FL_ASSERT_EQ_SIZE_T(a_size + b_size, CHUNK_SIZE(merged));
+    FL_ASSERT_EQ(a_size + b_size, CHUNK_SIZE(merged));
     FL_ASSERT_FALSE(CHUNK_IS_INUSE(merged));
 
     // Cleanup
@@ -419,7 +419,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Release: Backward Merge Large Bin", ArenaReleaseTest
     size_t a_size = CHUNK_SIZE(chunk_a);
     size_t b_size = CHUNK_SIZE(chunk_b);
 
-    FL_ASSERT_GE_SIZE_T(a_size, (size_t)ARENA_MIN_LARGE_CHUNK);
+    FL_ASSERT_GE(a_size, (size_t)ARENA_MIN_LARGE_CHUNK);
 
     // Release A -> goes to large bin (B is in-use, and base is before A)
     arena_free_throw(arena, mem_a, __FILE__, __LINE__);
@@ -431,7 +431,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Release: Backward Merge Large Bin", ArenaReleaseTest
 
     // If backward merge worked, A and B should be merged
     FreeChunk *merged = (FreeChunk *)chunk_a;
-    FL_ASSERT_EQ_SIZE_T(a_size + b_size, CHUNK_SIZE(merged));
+    FL_ASSERT_EQ(a_size + b_size, CHUNK_SIZE(merged));
     FL_ASSERT_FALSE(CHUNK_IS_INUSE(merged));
 
     // Cleanup
@@ -471,7 +471,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Release: Merge Both", ArenaReleaseTest, release_merg
 
     // If both merges worked, the combined chunk starts at A and covers A+B+C
     FreeChunk *merged = (FreeChunk *)chunk_a;
-    FL_ASSERT_EQ_SIZE_T(a_size + b_size + c_size, CHUNK_SIZE(merged));
+    FL_ASSERT_EQ(a_size + b_size + c_size, CHUNK_SIZE(merged));
     FL_ASSERT_FALSE(CHUNK_IS_INUSE(merged));
 
     // Cleanup
@@ -508,9 +508,9 @@ FL_TYPE_TEST_SETUP_CLEANUP("Release: Merge Both to Top", ArenaReleaseTest,
     // Release B -> should merge backward with A AND forward with top
     arena_free_throw(arena, mem_b, __FILE__, __LINE__);
 
-    FL_ASSERT_EQ_SIZE_T((size_t)0, arena->allocations);
+    FL_ASSERT_EQ((size_t)0, arena->allocations);
 
     // If both merges worked, top should be back at A's position with original size
     FL_ASSERT_EQ_PTR((void *)chunk_a, (void *)arena->top);
-    FL_ASSERT_EQ_SIZE_T(original_top_size, CHUNK_SIZE(arena->top));
+    FL_ASSERT_EQ(original_top_size, CHUNK_SIZE(arena->top));
 }

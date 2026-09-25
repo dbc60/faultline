@@ -127,7 +127,7 @@ static FILE *scratch_in(WbCliTest *t) {
 // Seek a scratch stream back to the start. Use fseek rather than rewind, because fseek
 // returns an error code satisfying static code analysis, it can be immediately detected.
 static void rewind_scratch(FILE *stream) {
-    FL_ASSERT_EQ_INT(fseek(stream, 0, SEEK_SET), 0);
+    FL_ASSERT_EQ(fseek(stream, 0, SEEK_SET), 0);
 }
 
 // Read everything written to one of the fixture's streams back into t->capture.
@@ -178,7 +178,7 @@ static WB_RUN_FN(record_run) {
 FL_TYPE_TEST_SETUP_CLEANUP("Tokenize splits on whitespace", WbCliTest, tokenize_splits,
                            setup_cli, cleanup_cli) {
     int const argc = split(t, "module   enable\tmagic");
-    FL_ASSERT_EQ_INT(argc, 3);
+    FL_ASSERT_EQ(argc, 3);
     FL_ASSERT_STR_EQ(t->argv[0], "module");
     FL_ASSERT_STR_EQ(t->argv[1], "enable");
     FL_ASSERT_STR_EQ(t->argv[2], "magic");
@@ -187,14 +187,14 @@ FL_TYPE_TEST_SETUP_CLEANUP("Tokenize splits on whitespace", WbCliTest, tokenize_
 FL_TYPE_TEST_SETUP_CLEANUP("Tokenize keeps a quoted run together", WbCliTest,
                            tokenize_quotes, setup_cli, cleanup_cli) {
     int const argc = split(t, "project create \"A drowned city\"");
-    FL_ASSERT_EQ_INT(argc, 3);
+    FL_ASSERT_EQ(argc, 3);
     FL_ASSERT_STR_EQ(t->argv[2], "A drowned city");
 }
 
 FL_TYPE_TEST_SETUP_CLEANUP("Tokenize honours escapes inside quotes", WbCliTest,
                            tokenize_escapes, setup_cli, cleanup_cli) {
     int const argc = split(t, "create \"say \\\"hello\\\" now\"");
-    FL_ASSERT_EQ_INT(argc, 2);
+    FL_ASSERT_EQ(argc, 2);
     FL_ASSERT_STR_EQ(t->argv[1], "say \"hello\" now");
 }
 
@@ -202,26 +202,26 @@ FL_TYPE_TEST_SETUP_CLEANUP("Tokenize joins a quote to its neighbours", WbCliTest
                            tokenize_adjacent_quote, setup_cli, cleanup_cli) {
     // Shell habit: --name="two words" is one argument, quotes and all.
     int const argc = split(t, "--name=\"two words\"");
-    FL_ASSERT_EQ_INT(argc, 1);
+    FL_ASSERT_EQ(argc, 1);
     FL_ASSERT_STR_EQ(t->argv[0], "--name=two words");
 }
 
 FL_TYPE_TEST_SETUP_CLEANUP("Tokenize accepts an empty quoted argument", WbCliTest,
                            tokenize_empty_quotes, setup_cli, cleanup_cli) {
     int const argc = split(t, "create \"\"");
-    FL_ASSERT_EQ_INT(argc, 2);
+    FL_ASSERT_EQ(argc, 2);
     FL_ASSERT_STR_EQ(t->argv[1], "");
 }
 
 FL_TYPE_TEST_SETUP_CLEANUP("Tokenize returns nothing for blank input", WbCliTest,
                            tokenize_blank, setup_cli, cleanup_cli) {
-    FL_ASSERT_EQ_INT(split(t, ""), 0);
-    FL_ASSERT_EQ_INT(split(t, "   \t  "), 0);
+    FL_ASSERT_EQ(split(t, ""), 0);
+    FL_ASSERT_EQ(split(t, "   \t  "), 0);
 }
 
 FL_TYPE_TEST_SETUP_CLEANUP("Tokenize rejects an unterminated quote", WbCliTest,
                            tokenize_unterminated, setup_cli, cleanup_cli) {
-    FL_ASSERT_EQ_INT(split(t, "create \"never closed"), WB_TOKENIZE_UNTERMINATED_QUOTE);
+    FL_ASSERT_EQ(split(t, "create \"never closed"), WB_TOKENIZE_UNTERMINATED_QUOTE);
 }
 
 FL_TYPE_TEST_SETUP_CLEANUP("Tokenize reports overflow rather than truncating", WbCliTest,
@@ -229,7 +229,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Tokenize reports overflow rather than truncating", W
     // Four words for three slots: return an error, don't clip the count to three.
     char     *argv[3];
     int const argc = wb_tokenize(line_of(t, "one two three four"), argv, 3);
-    FL_ASSERT_EQ_INT(argc, WB_TOKENIZE_TOO_MANY_ARGS);
+    FL_ASSERT_EQ(argc, WB_TOKENIZE_TOO_MANY_ARGS);
 }
 
 // ---------------------------------------------------------------------------
@@ -244,21 +244,21 @@ FL_TEST("A number is the whole token or it is not a number", parse_i64_whole_tok
     i64 value = 0;
 
     FL_ASSERT_TRUE(wb_parse_i64("42", &value));
-    FL_ASSERT_EQ_INT((int)value, 42);
+    FL_ASSERT_EQ((int)value, 42);
     FL_ASSERT_TRUE(wb_parse_i64("-7", &value));
-    FL_ASSERT_EQ_INT((int)value, -7);
+    FL_ASSERT_EQ((int)value, -7);
 
     // Each of these leaves the last good value in place.
     FL_ASSERT_FALSE(wb_parse_i64("", &value));
     FL_ASSERT_FALSE(wb_parse_i64("7 ", &value));
     FL_ASSERT_FALSE(wb_parse_i64("12x", &value));
     FL_ASSERT_FALSE(wb_parse_i64("seven", &value));
-    FL_ASSERT_EQ_INT((int)value, -7);
+    FL_ASSERT_EQ((int)value, -7);
 
     // Too big for an i64: strtoll would hand back LLONG_MAX and say nothing.
     FL_ASSERT_FALSE(wb_parse_i64("99999999999999999999", &value));
     FL_ASSERT_FALSE(wb_parse_i64("-99999999999999999999", &value));
-    FL_ASSERT_EQ_INT((int)value, -7);
+    FL_ASSERT_EQ((int)value, -7);
 }
 
 // ---------------------------------------------------------------------------
@@ -277,10 +277,10 @@ FL_TYPE_TEST_SETUP_CLEANUP("A line longer than the initial buffer still arrives 
 
     WBLineBuffer *lb = &t->line_buf;
     FL_ASSERT_TRUE(wb_line_read(lb, in));
-    FL_ASSERT_EQ_SIZE_T(lb->length, (size_t)1000);
+    FL_ASSERT_EQ(lb->length, (size_t)1000);
     FL_ASSERT_TRUE(lb->capacity > (size_t)1000);
-    FL_ASSERT_EQ_CHAR(lb->data[999], 'x');
-    FL_ASSERT_EQ_CHAR(lb->data[1000], 0);
+    FL_ASSERT_EQ(lb->data[999], 'x');
+    FL_ASSERT_EQ(lb->data[1000], 0);
 
     wb_line_free(lb);
     FL_ASSERT_TRUE(lb->data == NULL);
@@ -337,8 +337,8 @@ FL_TYPE_TEST_SETUP_CLEANUP("A command's name is its use up to the first space", 
 
     size_t      length = 0;
     char const *name   = wb_command_name(&tree.leaf, &length);
-    FL_ASSERT_EQ_SIZE_T(length, (size_t)6);
-    FL_ASSERT_EQ_INT(strncmp(name, "enable", 6), 0);
+    FL_ASSERT_EQ(length, (size_t)6);
+    FL_ASSERT_EQ(strncmp(name, "enable", 6), 0);
     FL_ASSERT_TRUE(wb_command_name_is(&tree.leaf, "enable"));
     // A prefix is not the name: "ena" must not resolve to "enable".
     FL_ASSERT_FALSE(wb_command_name_is(&tree.leaf, "ena"));
@@ -355,7 +355,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Find walks as deep as the words go", WbCliTest,
     int        consumed = 0;
     WBCommand *found    = wb_command_find(&tree.root, argc, t->argv, &consumed);
     FL_ASSERT_TRUE(found == &tree.leaf);
-    FL_ASSERT_EQ_INT(consumed, 2); // "magic" is an argument, not part of the path
+    FL_ASSERT_EQ(consumed, 2); // "magic" is an argument, not part of the path
 }
 
 FL_TYPE_TEST_SETUP_CLEANUP("Find stops at an unknown word", WbCliTest, find_stops_unknown,
@@ -367,7 +367,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Find stops at an unknown word", WbCliTest, find_stop
     int        consumed = 0;
     WBCommand *found    = wb_command_find(&tree.root, argc, t->argv, &consumed);
     FL_ASSERT_TRUE(found == &tree.root);
-    FL_ASSERT_EQ_INT(consumed, 0);
+    FL_ASSERT_EQ(consumed, 0);
 }
 
 FL_TYPE_TEST_SETUP_CLEANUP("Find stops at the first flag", WbCliTest, find_stops_at_flag,
@@ -379,7 +379,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Find stops at the first flag", WbCliTest, find_stops
     int        consumed = 0;
     WBCommand *found    = wb_command_find(&tree.root, argc, t->argv, &consumed);
     FL_ASSERT_TRUE(found == &tree.group);
-    FL_ASSERT_EQ_INT(consumed, 1);
+    FL_ASSERT_EQ(consumed, 1);
 }
 
 // ---------------------------------------------------------------------------
@@ -445,13 +445,13 @@ FL_TYPE_TEST_SETUP_CLEANUP("Every accepted flag form parses", WbCliTest, flag_fo
     int const argc   = split(t, "create --description=inline -c 42 -f rest");
     int const status = wb_command_execute(&tree.root, &t->io, argc, t->argv, t);
 
-    FL_ASSERT_EQ_INT(status, WB_CLI_OK);
+    FL_ASSERT_EQ(status, WB_CLI_OK);
     FL_ASSERT_TRUE(t->ran);
     FL_ASSERT_STR_EQ(wb_flag_string(&tree.leaf, "description"), "inline");
-    FL_ASSERT_EQ_INT64(wb_flag_i64(&tree.leaf, "count"), (i64)42);
+    FL_ASSERT_EQ(wb_flag_i64(&tree.leaf, "count"), (i64)42);
     FL_ASSERT_TRUE(wb_flag_bool(&tree.leaf, "force"));
     // Only the non-flag word survives as an argument.
-    FL_ASSERT_EQ_INT(t->seen_argc, 1);
+    FL_ASSERT_EQ(t->seen_argc, 1);
     FL_ASSERT_STR_EQ(t->seen_argv[0], "rest");
 }
 
@@ -463,7 +463,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("A separated value and an explicit bool parse", WbCli
     int const argc   = split(t, "create --description \"two words\" --force=false");
     int const status = wb_command_execute(&tree.root, &t->io, argc, t->argv, t);
 
-    FL_ASSERT_EQ_INT(status, WB_CLI_OK);
+    FL_ASSERT_EQ(status, WB_CLI_OK);
     FL_ASSERT_STR_EQ(wb_flag_string(&tree.leaf, "description"), "two words");
     FL_ASSERT_FALSE(wb_flag_bool(&tree.leaf, "force"));
 }
@@ -476,8 +476,8 @@ FL_TYPE_TEST_SETUP_CLEANUP("An unset flag keeps its default and reports it", WbC
     int const argc   = split(t, "create");
     int const status = wb_command_execute(&tree.root, &t->io, argc, t->argv, t);
 
-    FL_ASSERT_EQ_INT(status, WB_CLI_OK);
-    FL_ASSERT_EQ_INT64(wb_flag_i64(&tree.leaf, "count"), (i64)7);
+    FL_ASSERT_EQ(status, WB_CLI_OK);
+    FL_ASSERT_EQ(wb_flag_i64(&tree.leaf, "count"), (i64)7);
     FL_ASSERT_FALSE(wb_flag_changed(&tree.leaf, "count"));
 }
 
@@ -490,8 +490,8 @@ FL_TYPE_TEST_SETUP_CLEANUP("A persistent flag reaches a child", WbCliTest,
     int const argc   = split(t, "create -p 3");
     int const status = wb_command_execute(&tree.root, &t->io, argc, t->argv, t);
 
-    FL_ASSERT_EQ_INT(status, WB_CLI_OK);
-    FL_ASSERT_EQ_INT64(wb_flag_i64(&tree.leaf, "project"), (i64)3);
+    FL_ASSERT_EQ(status, WB_CLI_OK);
+    FL_ASSERT_EQ(wb_flag_i64(&tree.leaf, "project"), (i64)3);
     FL_ASSERT_TRUE(wb_flag_changed(&tree.leaf, "project"));
 }
 
@@ -503,14 +503,14 @@ FL_TYPE_TEST_SETUP_CLEANUP("A second run does not inherit the first run's flags"
     build_flag_tree(&tree);
 
     int argc = split(t, "create -d first -c 99 -f");
-    FL_ASSERT_EQ_INT(wb_command_execute(&tree.root, &t->io, argc, t->argv, t), WB_CLI_OK);
+    FL_ASSERT_EQ(wb_command_execute(&tree.root, &t->io, argc, t->argv, t), WB_CLI_OK);
     FL_ASSERT_STR_EQ(wb_flag_string(&tree.leaf, "description"), "first");
 
     argc = split(t, "create");
-    FL_ASSERT_EQ_INT(wb_command_execute(&tree.root, &t->io, argc, t->argv, t), WB_CLI_OK);
+    FL_ASSERT_EQ(wb_command_execute(&tree.root, &t->io, argc, t->argv, t), WB_CLI_OK);
 
     FL_ASSERT_TRUE(wb_flag_string(&tree.leaf, "description") == NULL);
-    FL_ASSERT_EQ_INT64(wb_flag_i64(&tree.leaf, "count"), (i64)7);
+    FL_ASSERT_EQ(wb_flag_i64(&tree.leaf, "count"), (i64)7);
     FL_ASSERT_FALSE(wb_flag_bool(&tree.leaf, "force"));
     FL_ASSERT_FALSE(wb_flag_changed(&tree.leaf, "description"));
 }
@@ -523,8 +523,8 @@ FL_TYPE_TEST_SETUP_CLEANUP("Everything after -- is an argument", WbCliTest,
     int const argc   = split(t, "create -- --description notaflag");
     int const status = wb_command_execute(&tree.root, &t->io, argc, t->argv, t);
 
-    FL_ASSERT_EQ_INT(status, WB_CLI_OK);
-    FL_ASSERT_EQ_INT(t->seen_argc, 2);
+    FL_ASSERT_EQ(status, WB_CLI_OK);
+    FL_ASSERT_EQ(t->seen_argc, 2);
     FL_ASSERT_STR_EQ(t->seen_argv[0], "--description");
     FL_ASSERT_FALSE(wb_flag_changed(&tree.leaf, "description"));
 }
@@ -537,7 +537,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("An unknown flag is rejected", WbCliTest,
     int const argc   = split(t, "create --nosuchflag");
     int const status = wb_command_execute(&tree.root, &t->io, argc, t->argv, t);
 
-    FL_ASSERT_EQ_INT(status, WB_CLI_USAGE);
+    FL_ASSERT_EQ(status, WB_CLI_USAGE);
     FL_ASSERT_FALSE(t->ran);
     FL_ASSERT_TRUE(strstr(captured(t, t->io.err), "unknown flag") != NULL);
 }
@@ -550,7 +550,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("A flag missing its value is rejected", WbCliTest,
     int const argc   = split(t, "create --description");
     int const status = wb_command_execute(&tree.root, &t->io, argc, t->argv, t);
 
-    FL_ASSERT_EQ_INT(status, WB_CLI_USAGE);
+    FL_ASSERT_EQ(status, WB_CLI_USAGE);
     FL_ASSERT_FALSE(t->ran);
     FL_ASSERT_TRUE(strstr(captured(t, t->io.err), "needs a value") != NULL);
 }
@@ -563,7 +563,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("A non-numeric integer flag is rejected", WbCliTest,
     int const argc   = split(t, "create --count seven");
     int const status = wb_command_execute(&tree.root, &t->io, argc, t->argv, t);
 
-    FL_ASSERT_EQ_INT(status, WB_CLI_USAGE);
+    FL_ASSERT_EQ(status, WB_CLI_USAGE);
     FL_ASSERT_FALSE(t->ran);
     FL_ASSERT_TRUE(strstr(captured(t, t->io.err), "invalid integer") != NULL);
 }
@@ -579,7 +579,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("A flag value too large for i64 is rejected", WbCliTe
     int const argc   = split(t, "create --count 99999999999999999999");
     int const status = wb_command_execute(&tree.root, &t->io, argc, t->argv, t);
 
-    FL_ASSERT_EQ_INT(status, WB_CLI_USAGE);
+    FL_ASSERT_EQ(status, WB_CLI_USAGE);
     FL_ASSERT_FALSE(t->ran);
     FL_ASSERT_TRUE(strstr(captured(t, t->io.err), "invalid integer") != NULL);
 }
@@ -613,7 +613,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Too few arguments is a usage error", WbCliTest, args
     int const argc   = split(t, "module enable");
     int const status = wb_command_execute(&tree.root, &t->io, argc, t->argv, t);
 
-    FL_ASSERT_EQ_INT(status, WB_CLI_USAGE);
+    FL_ASSERT_EQ(status, WB_CLI_USAGE);
     FL_ASSERT_FALSE(t->ran);
     FL_ASSERT_TRUE(strstr(captured(t, t->io.err), "at least 1 argument") != NULL);
 }
@@ -626,7 +626,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Too many arguments is a usage error", WbCliTest,
     int const argc   = split(t, "module enable magic extra");
     int const status = wb_command_execute(&tree.root, &t->io, argc, t->argv, t);
 
-    FL_ASSERT_EQ_INT(status, WB_CLI_USAGE);
+    FL_ASSERT_EQ(status, WB_CLI_USAGE);
     FL_ASSERT_FALSE(t->ran);
     FL_ASSERT_TRUE(strstr(captured(t, t->io.err), "at most 1 argument") != NULL);
 }
@@ -640,7 +640,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("A zero-initialized command accepts no arguments", Wb
     int const argc   = split(t, "list unexpected");
     int const status = wb_command_execute(&root, &t->io, argc, t->argv, t);
 
-    FL_ASSERT_EQ_INT(status, WB_CLI_USAGE);
+    FL_ASSERT_EQ(status, WB_CLI_USAGE);
     FL_ASSERT_FALSE(t->ran);
 }
 
@@ -650,7 +650,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("The run function receives the user pointer", WbCliTe
     build_tree(&tree);
 
     int const argc = split(t, "module enable magic");
-    FL_ASSERT_EQ_INT(wb_command_execute(&tree.root, &t->io, argc, t->argv, t), WB_CLI_OK);
+    FL_ASSERT_EQ(wb_command_execute(&tree.root, &t->io, argc, t->argv, t), WB_CLI_OK);
     FL_ASSERT_TRUE(t->ran);
     FL_ASSERT_EQ_PTR(t->seen_user, (void *)t);
     FL_ASSERT_STR_EQ(t->seen_argv[0], "magic");
@@ -668,7 +668,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("A group with a stray word reports an unknown command
     int const argc   = split(t, "module wobble");
     int const status = wb_command_execute(&tree.root, &t->io, argc, t->argv, t);
 
-    FL_ASSERT_EQ_INT(status, WB_CLI_USAGE);
+    FL_ASSERT_EQ(status, WB_CLI_USAGE);
     char const *err = captured(t, t->io.err);
     FL_ASSERT_TRUE(strstr(err, "unknown command") != NULL);
     FL_ASSERT_TRUE(strstr(err, "wobble") != NULL);
@@ -682,7 +682,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("A bare group prints its help", WbCliTest, group_prin
     int const argc   = split(t, "module");
     int const status = wb_command_execute(&tree.root, &t->io, argc, t->argv, t);
 
-    FL_ASSERT_EQ_INT(status, WB_CLI_OK);
+    FL_ASSERT_EQ(status, WB_CLI_OK);
     char const *out = captured(t, t->io.out);
     FL_ASSERT_TRUE(strstr(out, "Available Commands:") != NULL);
     FL_ASSERT_TRUE(strstr(out, "enable") != NULL);
@@ -698,7 +698,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("--help prints help instead of running", WbCliTest,
     int const argc   = split(t, "module enable --help");
     int const status = wb_command_execute(&tree.root, &t->io, argc, t->argv, t);
 
-    FL_ASSERT_EQ_INT(status, WB_CLI_OK);
+    FL_ASSERT_EQ(status, WB_CLI_OK);
     FL_ASSERT_FALSE(t->ran);
     FL_ASSERT_TRUE(strstr(captured(t, t->io.out), "wb module enable <code>") != NULL);
 }
@@ -709,7 +709,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("-h is the same as --help", WbCliTest, help_shorthand
     build_tree(&tree);
 
     int const argc = split(t, "module enable -h");
-    FL_ASSERT_EQ_INT(wb_command_execute(&tree.root, &t->io, argc, t->argv, t), WB_CLI_OK);
+    FL_ASSERT_EQ(wb_command_execute(&tree.root, &t->io, argc, t->argv, t), WB_CLI_OK);
     FL_ASSERT_FALSE(t->ran);
     FL_ASSERT_TRUE(strstr(captured(t, t->io.out), "Usage:") != NULL);
 }
@@ -745,9 +745,8 @@ FL_TYPE_TEST_SETUP_CLEANUP("Help omits a hidden command", WbCliTest, help_hides_
     FL_ASSERT_TRUE(strstr(out, "shown") != NULL);
     FL_ASSERT_TRUE(strstr(out, "secret") == NULL);
 
-    // Hidden, but still reachable.
     int const argc = split(t, "secret");
-    FL_ASSERT_EQ_INT(wb_command_execute(&root, &t->io, argc, t->argv, t), WB_CLI_OK);
+    FL_ASSERT_EQ(wb_command_execute(&root, &t->io, argc, t->argv, t), WB_CLI_OK);
     FL_ASSERT_TRUE(t->ran);
 }
 

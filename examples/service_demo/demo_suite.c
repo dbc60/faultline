@@ -88,10 +88,10 @@ FL_SPEC_EXPORT int demo_run(void) {
  * @brief Throws a shared reason and catches it at this export, the boundary the
  * driver calls through.
  *
- * Nothing unwinds out of a module: the DLL's environment stack is its own, so an
- * escaping throw would abort here rather than reach the driver. An export that can
- * throw contains it and reports the outcome in its return value instead. Returns 0
- * when the throw was caught, 1 when it never happened.
+ * Nothing unwinds out of a module: the DLL's environment stack is its own, so an escaping
+ * throw would abort here rather than escape to the driver. An export that can throw
+ * contains it and reports the outcome in its return value instead. Returns 0 when the
+ * throw was caught, 1 when it never happened.
  */
 FL_SPEC_EXPORT int demo_throw_at_boundary(void) {
     int volatile caught = 1;

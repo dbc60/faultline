@@ -168,7 +168,7 @@ static void test_db_expect_objects(sqlite3 *db, char const *type,
         }
     }
 
-    FL_ASSERT_EQ_INT((int)count, test_db_object_count(db, type));
+    FL_ASSERT_EQ((int)count, test_db_object_count(db, type));
 }
 
 // Stamp user_version on a file without applying any schema.
@@ -191,7 +191,7 @@ static int test_db_version(char const *path) {
 // Assert that a refused file kept its version, gained no schema v1 table, and was not
 // switched to WAL.
 static void test_db_expect_untouched(char const *path, int version) {
-    FL_ASSERT_EQ_INT(version, test_db_version(path));
+    FL_ASSERT_EQ(version, test_db_version(path));
 
     sqlite3   *db         = test_db_open_raw(path);
     bool const has_suites = test_db_object_exists(db, "table", "suites");
@@ -249,7 +249,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Fresh Database Is Stamped", TestSchema,
     t->db = faultline_init_database(t->path);
 
     FL_ASSERT_NOT_NULL(t->db);
-    FL_ASSERT_EQ_INT(FL_SCHEMA_VERSION,
+    FL_ASSERT_EQ(FL_SCHEMA_VERSION,
                      test_db_query_int(t->db, "PRAGMA user_version;", -1));
 }
 
@@ -264,9 +264,9 @@ FL_TYPE_TEST_SETUP_CLEANUP("Reopen Is Idempotent", TestSchema,
 
     t->db = faultline_init_database(t->path);
 
-    FL_ASSERT_EQ_INT(FL_SCHEMA_VERSION,
+    FL_ASSERT_EQ(FL_SCHEMA_VERSION,
                      test_db_query_int(t->db, "PRAGMA user_version;", -1));
-    FL_ASSERT_EQ_INT(objects,
+    FL_ASSERT_EQ(objects,
                      test_db_query_int(t->db, "SELECT count(*) FROM sqlite_master;", -1));
 }
 
@@ -311,13 +311,13 @@ FL_TYPE_TEST_SETUP_CLEANUP("Foreign Keys Are Enforced", TestSchema,
                            cleanup_schema_db) {
     t->db = faultline_init_database(t->path);
 
-    FL_ASSERT_EQ_INT(1, test_db_query_int(t->db, "PRAGMA foreign_keys;", -1));
+    FL_ASSERT_EQ(1, test_db_query_int(t->db, "PRAGMA foreign_keys;", -1));
 
     int const rc = test_db_exec_rc(t->db,
                                    "INSERT INTO runs (suite_id, started_at, completed_at,"
                                    " case_count) VALUES (999, 'x', 'x', 0);");
-    FL_ASSERT_EQ_INT(SQLITE_CONSTRAINT, rc);
-    FL_ASSERT_EQ_INT(SQLITE_CONSTRAINT_FOREIGNKEY, sqlite3_extended_errcode(t->db));
+    FL_ASSERT_EQ(SQLITE_CONSTRAINT, rc);
+    FL_ASSERT_EQ(SQLITE_CONSTRAINT_FOREIGNKEY, sqlite3_extended_errcode(t->db));
 }
 
 // The schema's CHECK ranges are written as numbers. These inserts tie the numbers to the
@@ -329,34 +329,34 @@ FL_TYPE_TEST_SETUP_CLEANUP("Checks Match Enums", TestSchema, schema_checks_match
                         "INSERT INTO cases (suite_id, name) VALUES (1, 'c');");
 
     // The last value of each enum is accepted.
-    FL_ASSERT_EQ_INT(SQLITE_OK,
+    FL_ASSERT_EQ(SQLITE_OK,
                      test_db_insert_result(t->db, FL_BAD_STATE, FL_INVALID_FREE_FAILURE,
                                            FL_INJECTION_PHASE));
 
     // One past it is not.
-    FL_ASSERT_EQ_INT(SQLITE_CONSTRAINT,
+    FL_ASSERT_EQ(SQLITE_CONSTRAINT,
                      test_db_insert_result(t->db, FL_BAD_STATE + 1, FL_TEST_FAILURE,
                                            FL_DISCOVERY_PHASE));
-    FL_ASSERT_EQ_INT(SQLITE_CONSTRAINT,
+    FL_ASSERT_EQ(SQLITE_CONSTRAINT,
                      test_db_insert_result(t->db, FL_FAIL, FL_INVALID_FREE_FAILURE + 1,
                                            FL_DISCOVERY_PHASE));
-    FL_ASSERT_EQ_INT(SQLITE_CONSTRAINT,
+    FL_ASSERT_EQ(SQLITE_CONSTRAINT,
                      test_db_insert_result(t->db, FL_FAIL, FL_TEST_FAILURE,
                                            FL_INJECTION_PHASE + 1));
 
     // A result records a phase exactly when it records a failure.
-    FL_ASSERT_EQ_INT(SQLITE_CONSTRAINT,
+    FL_ASSERT_EQ(SQLITE_CONSTRAINT,
                      test_db_insert_result(t->db, FL_PASS, FL_FAILURE_NONE,
                                            FL_DISCOVERY_PHASE));
-    FL_ASSERT_EQ_INT(SQLITE_CONSTRAINT,
+    FL_ASSERT_EQ(SQLITE_CONSTRAINT,
                      test_db_insert_result(t->db, FL_FAIL, FL_TEST_FAILURE,
                                            TEST_DB_NO_PHASE));
-    FL_ASSERT_EQ_INT(SQLITE_OK, test_db_insert_result(t->db, FL_PASS, FL_FAILURE_NONE,
+    FL_ASSERT_EQ(SQLITE_OK, test_db_insert_result(t->db, FL_PASS, FL_FAILURE_NONE,
                                                       TEST_DB_NO_PHASE));
 
     // A fault's result code has the same range.
-    FL_ASSERT_EQ_INT(SQLITE_OK, test_db_insert_fault(t->db, FL_BAD_STATE));
-    FL_ASSERT_EQ_INT(SQLITE_CONSTRAINT, test_db_insert_fault(t->db, FL_BAD_STATE + 1));
+    FL_ASSERT_EQ(SQLITE_OK, test_db_insert_fault(t->db, FL_BAD_STATE));
+    FL_ASSERT_EQ(SQLITE_CONSTRAINT, test_db_insert_fault(t->db, FL_BAD_STATE + 1));
 }
 
 // Opening switches the file to WAL.
@@ -438,12 +438,12 @@ FL_TYPE_TEST_SETUP_CLEANUP("Failed Schema Rolls Back", TestSchema,
     FL_END_TRY;
 
     FL_ASSERT_TRUE(caught);
-    FL_ASSERT_EQ_INT(0, test_db_version(t->path));
+    FL_ASSERT_EQ(0, test_db_version(t->path));
 
     sqlite3  *inspect = test_db_open_raw(t->path);
     int const tables  = test_db_object_count(inspect, "table");
     sqlite3_close_v2(inspect);
-    FL_ASSERT_EQ_INT(0, tables);
+    FL_ASSERT_EQ(0, tables);
 }
 
 //////////////////////

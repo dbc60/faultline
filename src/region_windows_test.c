@@ -43,7 +43,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Successful Reservation", RegionAllocationTestCase,
     get_memory_info(&expected_reserved, 0);
     VirtualQuery(region, &mem_info, sizeof mem_info);
     FL_ASSERT_EQ_PTR(region, mem_info.BaseAddress);
-    FL_ASSERT_EQ_SIZE_T((size_t)expected_reserved, REGION_BYTES_RESERVED(region));
+    FL_ASSERT_EQ((size_t)expected_reserved, REGION_BYTES_RESERVED(region));
 }
 
 FL_TYPE_TEST_SETUP_CLEANUP("Large Reservation", RegionAllocationTestCase,
@@ -68,11 +68,11 @@ FL_TYPE_TEST_SETUP_CLEANUP("Large Reservation", RegionAllocationTestCase,
 
     VirtualQuery(region, &mem_info, sizeof mem_info);
     FL_ASSERT_EQ_PTR(region, mem_info.BaseAddress);
-    FL_ASSERT_EQ_UINT32(granularity, region->granularity);
+    FL_ASSERT_EQ(granularity, region->granularity);
 
     size_t committed_bytes = region->end_committed - (char *)region;
-    FL_ASSERT_GE_SIZE_T(committed_bytes, mem_info.RegionSize);
-    FL_ASSERT_GT_SIZE_T(REGION_BYTES_RESERVED(region), (size_t)0);
+    FL_ASSERT_GE(committed_bytes, mem_info.RegionSize);
+    FL_ASSERT_GT(REGION_BYTES_RESERVED(region), (size_t)0);
 }
 
 // ---------------------------------------------------------------------------
@@ -94,11 +94,11 @@ FL_TYPE_TEST_SETUP_CLEANUP("Available Bytes", RegionAllocationTestCase,
     size_t page_size            = region->page_size;
 
     // Available bytes must be at least the reserved-but-uncommitted portion
-    FL_ASSERT_GE_SIZE_T(available, reserved_uncommitted);
+    FL_ASSERT_GE(available, reserved_uncommitted);
 
     // After committing one page, available should decrease by exactly one page
     commit(region, page_size);
-    FL_ASSERT_EQ_SIZE_T(available - page_size, region_available_bytes(region));
+    FL_ASSERT_EQ(available - page_size, region_available_bytes(region));
 
     // Restore
     decommit(region, page_size);
@@ -156,7 +156,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Available After Full Commit", RegionAllocationTestCa
     if (mbi.State == MEM_FREE && mbi.BaseAddress == region->end_reserved) {
         expected = mbi.RegionSize;
     }
-    FL_ASSERT_EQ_SIZE_T(expected, available);
+    FL_ASSERT_EQ(expected, available);
 
     // Restore
     if (uncommitted > 0) {

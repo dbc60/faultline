@@ -190,7 +190,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Next/Index/More", TestDriverData, next_index, set_up
 
     // verify next() advances the index to 1
     t->next(&t->context);
-    FL_ASSERT_EQ_SIZE_T(t->get_index(&t->context), (size_t)1);
+    FL_ASSERT_EQ(t->get_index(&t->context), (size_t)1);
 
     // verify more() returns true
     FL_ASSERT_TRUE(t->more(&t->context));
@@ -230,7 +230,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Case Index", TestDriverData, case_index, set_up_cont
 
     // The second test case should have an index of 1
     index = t->get_index(&t->context);
-    FL_ASSERT_EQ_SIZE_T(index, (size_t)1);
+    FL_ASSERT_EQ(index, (size_t)1);
 }
 
 FL_TYPE_TEST_SETUP_CLEANUP("Test the Driver", TestDriverData, test, set_up_test_context,
@@ -247,10 +247,10 @@ FL_TYPE_TEST_SETUP_CLEANUP("Test the Driver", TestDriverData, test, set_up_test_
     t->next(&t->context);
     t->test(&t->context);
 
-    FL_ASSERT_EQ_SIZE_T(t->get_pass_count(&t->context), (size_t)1);
-    FL_ASSERT_EQ_SIZE_T(t->get_fail_count(&t->context), (size_t)1);
+    FL_ASSERT_EQ(t->get_pass_count(&t->context), (size_t)1);
+    FL_ASSERT_EQ(t->get_fail_count(&t->context), (size_t)1);
     FL_ASSERT_TRUE(t->get_failed_set_up_count(&t->context) == 0);
-    FL_ASSERT_EQ_SIZE_T(t->context.results_count, (size_t)1);
+    FL_ASSERT_EQ(t->context.results_count, (size_t)1);
 }
 
 FL_TYPE_TEST_SETUP_CLEANUP("Results", TestDriverData, results, set_up_test_context,

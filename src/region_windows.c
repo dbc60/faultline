@@ -141,7 +141,7 @@ size_t commit(Region *region, size_t to_commit) {
                       commit_address, end_committed, to_commit);
 
     /* address must be on a page boundary */
-    FL_ASSERT_ZERO_SIZE_T((size_t)commit_address % region->page_size);
+    FL_ASSERT_ZERO((size_t)commit_address % region->page_size);
 
     /* Adjust the regions commit top */
     atomic_fetch_add(&region->end_committed, (ptrdiff_t)to_commit);

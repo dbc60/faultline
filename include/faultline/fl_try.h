@@ -378,16 +378,16 @@ static inline FL_MAYBE_UNUSED void fl_cxx_capture_foreign(FLExceptionFrame &env,
  *   FL_END_TRY;
  *
  * Unlike FL_CATCH_ALL, the exception is not marked handled, so no explicit FL_RETHROW is
- * needed (or allowed) at the end of the block. This matters for more than brevity:
- * FL_RETHROW expands to a throw-hook call the optimizer can prove noreturn, so a catch
- * block ending in it makes FL_END_TRY's epilogue statically unreachable and trips C4702
- * under /WX in whole-program (unity/LTCG) release builds. Here the rethrow happens
- * inside FL_END_TRY's runtime conditional, which both success and failure paths reach,
- * so nothing is provably unreachable.
+ * needed (or allowed) at the end of the block. This matters because FL_RETHROW expands to
+ * a throw-hook call the optimizer can prove noreturn, so a catch block ending in it makes
+ * FL_END_TRY's code statically unreachable and trips C4702 under /WX in whole-program
+ * release builds (i.e, unity/LTCG). Here the rethrow happens inside FL_END_TRY's runtime
+ * conditional, which both success and failure paths will execute, so FL_END_TRY does not
+ * ever include dead code.
  *
- * To swallow the exception after all (e.g. only rethrow unexpected failures), use
- * FL_CATCH_ALL with an explicit conditional FL_RETHROW instead; the fall-through path
- * keeps the epilogue reachable there.
+ * To swallow the exception (e.g. only rethrow unexpected failures), use FL_CATCH_ALL with
+ * an explicit conditional FL_RETHROW instead; the fall-through path ensures that the code
+ * in FL_TRY_END is not dead code.
  */
 #define FL_CATCH_ALL_RETHROW           \
     if (fl_env_.state == FL_ENTERED) { \

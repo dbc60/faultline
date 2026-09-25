@@ -56,7 +56,7 @@ static void write_file(char const *path, void const *data, size_t len) {
     FL_ASSERT_NOT_NULL(f);
     size_t n = flp_file_write(f, data, len, 0);
     flp_file_close(f);
-    FL_ASSERT_EQ_SIZE_T(n, len);
+    FL_ASSERT_EQ(n, len);
 }
 
 // ---------------------------------------------------------------------------
@@ -91,14 +91,14 @@ FL_TEST("Driver Injects File Service", driver_injects_file_service) {
     FL_ASSERT_NOT_NULL(f);
     size_t wn = g_fla_file_service.write(f, msg, sizeof msg - 1, 0);
     g_fla_file_service.close(f);
-    FL_ASSERT_EQ_SIZE_T(wn, sizeof msg - 1);
+    FL_ASSERT_EQ(wn, sizeof msg - 1);
 
     f = g_fla_file_service.open(path, FL_FILE_READ);
     FL_ASSERT_NOT_NULL(f);
     char   buf[16] = {0};
     size_t rn      = g_fla_file_service.read(f, buf, sizeof msg - 1, 0);
     g_fla_file_service.close(f);
-    FL_ASSERT_EQ_SIZE_T(rn, sizeof msg - 1);
+    FL_ASSERT_EQ(rn, sizeof msg - 1);
     FL_ASSERT_TRUE(memcmp(buf, msg, sizeof msg - 1) == 0);
 
     delete_path(path);
@@ -135,7 +135,7 @@ FL_TEST("Write Then Read Round Trip", write_then_read_round_trip) {
     size_t n       = flp_file_read(f, buf, sizeof msg - 1, 0);
     flp_file_close(f);
 
-    FL_ASSERT_EQ_SIZE_T(n, sizeof msg - 1);
+    FL_ASSERT_EQ(n, sizeof msg - 1);
     FL_ASSERT_TRUE(memcmp(buf, msg, sizeof msg - 1) == 0);
 
     delete_path(path);
@@ -155,7 +155,7 @@ FL_TEST("Positional Read", positional_read) {
     size_t n      = flp_file_read(f, buf, 3, 2); // expect "CDE"
     flp_file_close(f);
 
-    FL_ASSERT_EQ_SIZE_T(n, (size_t)3);
+    FL_ASSERT_EQ(n, (size_t)3);
     FL_ASSERT_TRUE(memcmp(buf, "CDE", 3) == 0);
 
     delete_path(path);
@@ -169,8 +169,8 @@ FL_TEST("Positional Write", positional_write) {
 
     FLFile *f = flp_file_open(path, FL_FILE_WRITE);
     FL_ASSERT_NOT_NULL(f);
-    FL_ASSERT_EQ_SIZE_T(flp_file_write(f, "AAAA", 4, 0), (size_t)4);
-    FL_ASSERT_EQ_SIZE_T(flp_file_write(f, "BB", 2, 4), (size_t)2);
+    FL_ASSERT_EQ(flp_file_write(f, "AAAA", 4, 0), (size_t)4);
+    FL_ASSERT_EQ(flp_file_write(f, "BB", 2, 4), (size_t)2);
     flp_file_close(f);
 
     f = flp_file_open(path, FL_FILE_READ);
@@ -179,7 +179,7 @@ FL_TEST("Positional Write", positional_write) {
     size_t n      = flp_file_read(f, buf, 6, 0);
     flp_file_close(f);
 
-    FL_ASSERT_EQ_SIZE_T(n, (size_t)6);
+    FL_ASSERT_EQ(n, (size_t)6);
     FL_ASSERT_TRUE(memcmp(buf, "AAAABB", 6) == 0);
 
     delete_path(path);
@@ -219,7 +219,7 @@ FL_TEST("Utf8 Path Round Trip", utf8_path_round_trip) {
     size_t n       = flp_file_read(f, buf, sizeof msg - 1, 0);
     flp_file_close(f);
 
-    FL_ASSERT_EQ_SIZE_T(n, sizeof msg - 1);
+    FL_ASSERT_EQ(n, sizeof msg - 1);
     FL_ASSERT_TRUE(memcmp(buf, msg, sizeof msg - 1) == 0);
 
     delete_path(path);
@@ -255,11 +255,11 @@ FL_TEST("Long Path Round Trip", long_path_round_trip) {
         wpos += swprintf(wdir + wpos, sizeof wdir / sizeof wdir[0] - (size_t)wpos,
                          L"\\%hs", seg);
         if (!CreateDirectoryW(wdir, NULL)) {
-            FL_ASSERT_EQ_UINT32(GetLastError(), (DWORD)ERROR_ALREADY_EXISTS);
+            FL_ASSERT_EQ(GetLastError(), (DWORD)ERROR_ALREADY_EXISTS);
         }
     }
     snprintf(rel + rel_len, sizeof rel - rel_len, "long.tmp");
-    FL_ASSERT_GT_SIZE_T(strlen(rel), (size_t)MAX_PATH);
+    FL_ASSERT_GT(strlen(rel), (size_t)MAX_PATH);
 
     char const msg[] = "long path";
     write_file(rel, msg, sizeof msg - 1);
@@ -270,7 +270,7 @@ FL_TEST("Long Path Round Trip", long_path_round_trip) {
     size_t n       = flp_file_read(f, buf, sizeof msg - 1, 0);
     flp_file_close(f);
 
-    FL_ASSERT_EQ_SIZE_T(n, sizeof msg - 1);
+    FL_ASSERT_EQ(n, sizeof msg - 1);
     FL_ASSERT_TRUE(memcmp(buf, msg, sizeof msg - 1) == 0);
 
     // Remove the file, then the directory chain, deepest first.

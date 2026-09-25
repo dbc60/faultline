@@ -222,7 +222,7 @@ static int cli_test_run(CliTest *t, char const *text) {
 // Everything the case's commands have written to `stream`.
 static char const *cli_test_output(CliTest *t, FILE *stream) {
     fflush(stream);
-    FL_ASSERT_EQ_INT(fseek(stream, 0, SEEK_SET), 0);
+    FL_ASSERT_EQ(fseek(stream, 0, SEEK_SET), 0);
 
     // A short read is the end of a scratch file this fixture flushed a moment ago.
     // NOLINTNEXTLINE(clang-analyzer-unix.Errno)
@@ -230,7 +230,7 @@ static char const *cli_test_output(CliTest *t, FILE *stream) {
     t->capture[read]  = '\0';
 
     // Back to the end, so the next command appends to what is there.
-    FL_ASSERT_EQ_INT(fseek(stream, 0, SEEK_END), 0);
+    FL_ASSERT_EQ(fseek(stream, 0, SEEK_END), 0);
     return t->capture;
 }
 
@@ -254,7 +254,7 @@ static int cli_test_count(char const *haystack, char const *needle) {
 
 FL_TYPE_TEST_SETUP_CLEANUP("No arguments prints the root help", CliTest, cli_no_args_help,
                            setup_cli_cmd, cleanup_cli_cmd) {
-    FL_ASSERT_EQ_INT(cli_test_run(t, ""), WB_CLI_OK);
+    FL_ASSERT_EQ(cli_test_run(t, ""), WB_CLI_OK);
 
     char const *out = cli_test_output(t, t->session.io.out);
     FL_ASSERT_TRUE(strstr(out, "Usage:") != NULL);
@@ -267,16 +267,16 @@ FL_TYPE_TEST_SETUP_CLEANUP("Result list shows runs newest first, up to its limit
     cli_test_record(t, CLI_TEST_JAN1_0900, cli_both_pass);
     cli_test_record(t, CLI_TEST_JAN2_1000, cli_beta_fails);
 
-    FL_ASSERT_EQ_INT(cli_test_run(t, "result list"), WB_CLI_OK);
+    FL_ASSERT_EQ(cli_test_run(t, "result list"), WB_CLI_OK);
     char const *out    = cli_test_output(t, t->session.io.out);
     char const *newest = strstr(out, "2024-01-02");
     char const *oldest = strstr(out, "2024-01-01");
     FL_ASSERT_TRUE(newest != NULL && oldest != NULL && newest < oldest);
-    FL_ASSERT_EQ_INT(cli_test_count(out, "CliSuite"), 2);
+    FL_ASSERT_EQ(cli_test_count(out, "CliSuite"), 2);
 
     // One more row across both commands' output.
-    FL_ASSERT_EQ_INT(cli_test_run(t, "result list -n 1"), WB_CLI_OK);
-    FL_ASSERT_EQ_INT(cli_test_count(cli_test_output(t, t->session.io.out), "CliSuite"),
+    FL_ASSERT_EQ(cli_test_run(t, "result list -n 1"), WB_CLI_OK);
+    FL_ASSERT_EQ(cli_test_count(cli_test_output(t, t->session.io.out), "CliSuite"),
                      3);
 }
 
@@ -286,7 +286,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Result show prints each case's result", CliTest,
 
     char line[CLI_TEST_LINE_MAX];
     snprintf(line, sizeof line, "result show %lld", (long long)run_id);
-    FL_ASSERT_EQ_INT(cli_test_run(t, line), WB_CLI_OK);
+    FL_ASSERT_EQ(cli_test_run(t, line), WB_CLI_OK);
 
     char const *out = cli_test_output(t, t->session.io.out);
     FL_ASSERT_TRUE(strstr(out, "alpha") != NULL);
@@ -296,7 +296,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Result show prints each case's result", CliTest,
 
 FL_TYPE_TEST_SETUP_CLEANUP("Result show refuses an id that is not a number", CliTest,
                            cli_result_show_bad_id, setup_cli_cmd, cleanup_cli_cmd) {
-    FL_ASSERT_EQ_INT(cli_test_run(t, "result show abc"), WB_CLI_USAGE);
+    FL_ASSERT_EQ(cli_test_run(t, "result show abc"), WB_CLI_USAGE);
     FL_ASSERT_TRUE(strstr(cli_test_output(t, t->session.io.err),
                           "\"abc\" is not a run id")
                    != NULL);
@@ -304,7 +304,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Result show refuses an id that is not a number", Cli
 
 FL_TYPE_TEST_SETUP_CLEANUP("Result show reports a run that does not exist", CliTest,
                            cli_result_show_missing, setup_cli_cmd, cleanup_cli_cmd) {
-    FL_ASSERT_EQ_INT(cli_test_run(t, "result show 999"), WB_CLI_ERROR);
+    FL_ASSERT_EQ(cli_test_run(t, "result show 999"), WB_CLI_ERROR);
     FL_ASSERT_TRUE(strstr(cli_test_output(t, t->session.io.err), "no run has id 999")
                    != NULL);
 }
@@ -313,7 +313,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Failure list shows the latest run's faults", CliTest
                            cli_failure_list, setup_cli_cmd, cleanup_cli_cmd) {
     cli_test_record(t, CLI_TEST_JAN1_0900, cli_beta_fails);
 
-    FL_ASSERT_EQ_INT(cli_test_run(t, "failure list"), WB_CLI_OK);
+    FL_ASSERT_EQ(cli_test_run(t, "failure list"), WB_CLI_OK);
     char const *out = cli_test_output(t, t->session.io.out);
     FL_ASSERT_TRUE(strstr(out, "beta") != NULL);
     FL_ASSERT_TRUE(strstr(out, CLI_TEST_FAULT_LOCATION) != NULL);
@@ -324,7 +324,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Trend list shows each day with runs", CliTest, cli_t
     cli_test_record(t, CLI_TEST_JAN1_0900, cli_both_pass);
     cli_test_record(t, CLI_TEST_JAN2_1000, cli_beta_fails);
 
-    FL_ASSERT_EQ_INT(cli_test_run(t, "trend list"), WB_CLI_OK);
+    FL_ASSERT_EQ(cli_test_run(t, "trend list"), WB_CLI_OK);
     char const *out = cli_test_output(t, t->session.io.out);
     FL_ASSERT_TRUE(strstr(out, "2024-01-01") != NULL);
     FL_ASSERT_TRUE(strstr(out, "2024-01-02") != NULL);
@@ -334,10 +334,10 @@ FL_TYPE_TEST_SETUP_CLEANUP("Suite list names the suite, and suite show adds its 
                            CliTest, cli_suite_list_show, setup_cli_cmd, cleanup_cli_cmd) {
     cli_test_record(t, CLI_TEST_JAN1_0900, cli_both_pass);
 
-    FL_ASSERT_EQ_INT(cli_test_run(t, "suite list"), WB_CLI_OK);
+    FL_ASSERT_EQ(cli_test_run(t, "suite list"), WB_CLI_OK);
     FL_ASSERT_TRUE(strstr(cli_test_output(t, t->session.io.out), "CliSuite") != NULL);
 
-    FL_ASSERT_EQ_INT(cli_test_run(t, "suite show CliSuite -v"), WB_CLI_OK);
+    FL_ASSERT_EQ(cli_test_run(t, "suite show CliSuite -v"), WB_CLI_OK);
     char const *out = cli_test_output(t, t->session.io.out);
     FL_ASSERT_TRUE(strstr(out, "=== Suite Summary: CliSuite ===") != NULL);
     FL_ASSERT_TRUE(strstr(out, "=== Test Cases ===") != NULL);
@@ -346,7 +346,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Suite list names the suite, and suite show adds its 
 
 FL_TYPE_TEST_SETUP_CLEANUP("Suite show reports a suite that does not exist", CliTest,
                            cli_suite_show_missing, setup_cli_cmd, cleanup_cli_cmd) {
-    FL_ASSERT_EQ_INT(cli_test_run(t, "suite show NoSuchSuite"), WB_CLI_ERROR);
+    FL_ASSERT_EQ(cli_test_run(t, "suite show NoSuchSuite"), WB_CLI_ERROR);
     FL_ASSERT_TRUE(strstr(cli_test_output(t, t->session.io.err),
                           "no suite is named \"NoSuchSuite\"")
                    != NULL);
@@ -356,7 +356,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Case list shows each case", CliTest, cli_case_list,
                            setup_cli_cmd, cleanup_cli_cmd) {
     cli_test_record(t, CLI_TEST_JAN1_0900, cli_beta_fails);
 
-    FL_ASSERT_EQ_INT(cli_test_run(t, "case list -v"), WB_CLI_OK);
+    FL_ASSERT_EQ(cli_test_run(t, "case list -v"), WB_CLI_OK);
     char const *out = cli_test_output(t, t->session.io.out);
     FL_ASSERT_TRUE(strstr(out, "alpha") != NULL);
     FL_ASSERT_TRUE(strstr(out, "beta") != NULL);
@@ -367,16 +367,16 @@ FL_TYPE_TEST_SETUP_CLEANUP("Baseline reset clears a regression", CliTest,
     cli_test_record(t, CLI_TEST_JAN1_0900, cli_both_pass);
     cli_test_record(t, CLI_TEST_JAN2_1000, cli_alpha_drops);
 
-    FL_ASSERT_EQ_INT(cli_test_run(t, "regression list"), WB_CLI_OK);
+    FL_ASSERT_EQ(cli_test_run(t, "regression list"), WB_CLI_OK);
     FL_ASSERT_TRUE(strstr(cli_test_output(t, t->session.io.out), "COVERAGE") != NULL);
 
-    FL_ASSERT_EQ_INT(cli_test_run(t, "baseline reset -s CliSuite -c alpha"), WB_CLI_OK);
+    FL_ASSERT_EQ(cli_test_run(t, "baseline reset -s CliSuite -c alpha"), WB_CLI_OK);
     FL_ASSERT_TRUE(strstr(cli_test_output(t, t->session.io.out), "Reset 1 baseline to")
                    != NULL);
 
     // Only the list after the reset finds nothing.
-    FL_ASSERT_EQ_INT(cli_test_run(t, "regression list"), WB_CLI_OK);
-    FL_ASSERT_EQ_INT(cli_test_count(cli_test_output(t, t->session.io.out),
+    FL_ASSERT_EQ(cli_test_run(t, "regression list"), WB_CLI_OK);
+    FL_ASSERT_EQ(cli_test_count(cli_test_output(t, t->session.io.out),
                                     "(no regressions)"),
                      1);
 }
@@ -385,14 +385,14 @@ FL_TYPE_TEST_SETUP_CLEANUP("Hotspot list names the fault's location", CliTest,
                            cli_hotspot_list, setup_cli_cmd, cleanup_cli_cmd) {
     cli_test_record(t, CLI_TEST_JAN1_0900, cli_beta_fails);
 
-    FL_ASSERT_EQ_INT(cli_test_run(t, "hotspot list"), WB_CLI_OK);
+    FL_ASSERT_EQ(cli_test_run(t, "hotspot list"), WB_CLI_OK);
     FL_ASSERT_TRUE(strstr(cli_test_output(t, t->session.io.out), CLI_TEST_FAULT_LOCATION)
                    != NULL);
 }
 
 FL_TYPE_TEST_SETUP_CLEANUP("A report refuses to run with --no-db", CliTest,
                            cli_no_db_refused, setup_cli_cmd, cleanup_cli_cmd) {
-    FL_ASSERT_EQ_INT(cli_test_run(t, "result list --no-db"), WB_CLI_ERROR);
+    FL_ASSERT_EQ(cli_test_run(t, "result list --no-db"), WB_CLI_ERROR);
     FL_ASSERT_TRUE(strstr(cli_test_output(t, t->session.io.err),
                           "\"faultline result list\" needs the results database")
                    != NULL);
@@ -400,7 +400,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("A report refuses to run with --no-db", CliTest,
 
 FL_TYPE_TEST_SETUP_CLEANUP("An undeclared flag is a usage error", CliTest,
                            cli_unknown_flag, setup_cli_cmd, cleanup_cli_cmd) {
-    FL_ASSERT_EQ_INT(cli_test_run(t, "result list --format json"), WB_CLI_USAGE);
+    FL_ASSERT_EQ(cli_test_run(t, "result list --format json"), WB_CLI_USAGE);
     FL_ASSERT_TRUE(strstr(cli_test_output(t, t->session.io.err),
                           "unknown flag \"--format\"")
                    != NULL);
@@ -408,7 +408,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("An undeclared flag is a usage error", CliTest,
 
 FL_TYPE_TEST_SETUP_CLEANUP("show is not a command", CliTest, cli_show_unknown,
                            setup_cli_cmd, cleanup_cli_cmd) {
-    FL_ASSERT_EQ_INT(cli_test_run(t, "show results"), WB_CLI_USAGE);
+    FL_ASSERT_EQ(cli_test_run(t, "show results"), WB_CLI_USAGE);
     FL_ASSERT_TRUE(strstr(cli_test_output(t, t->session.io.err),
                           "unknown command \"show\"")
                    != NULL);
@@ -416,7 +416,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("show is not a command", CliTest, cli_show_unknown,
 
 FL_TYPE_TEST_SETUP_CLEANUP("help prints a command's usage line", CliTest,
                            cli_help_command, setup_cli_cmd, cleanup_cli_cmd) {
-    FL_ASSERT_EQ_INT(cli_test_run(t, "help suite show"), WB_CLI_OK);
+    FL_ASSERT_EQ(cli_test_run(t, "help suite show"), WB_CLI_OK);
     FL_ASSERT_TRUE(strstr(cli_test_output(t, t->session.io.out),
                           "faultline suite show <name> [flags]")
                    != NULL);
@@ -424,7 +424,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("help prints a command's usage line", CliTest,
 
 FL_TYPE_TEST_SETUP_CLEANUP("run needs at least one suite", CliTest, cli_run_needs_suite,
                            setup_cli_cmd, cleanup_cli_cmd) {
-    FL_ASSERT_EQ_INT(cli_test_run(t, "run"), WB_CLI_USAGE);
+    FL_ASSERT_EQ(cli_test_run(t, "run"), WB_CLI_USAGE);
     FL_ASSERT_TRUE(strstr(cli_test_output(t, t->session.io.err),
                           "needs at least 1 argument")
                    != NULL);
@@ -432,7 +432,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("run needs at least one suite", CliTest, cli_run_need
 
 FL_TYPE_TEST_SETUP_CLEANUP("version prints the version", CliTest, cli_version,
                            setup_cli_cmd, cleanup_cli_cmd) {
-    FL_ASSERT_EQ_INT(cli_test_run(t, "version"), WB_CLI_OK);
+    FL_ASSERT_EQ(cli_test_run(t, "version"), WB_CLI_OK);
     FL_ASSERT_TRUE(strstr(cli_test_output(t, t->session.io.out), "FaultLine version")
                    != NULL);
 }

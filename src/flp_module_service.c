@@ -56,7 +56,7 @@ FL_MODULE_LOAD_FN(flp_load_module) {
 
     HMODULE m = LoadLibraryA(path);
     if (m == NULL) {
-        // The caller cannot reach GetLastError, so record the OS detail here;
+        // The caller cannot use the result of GetLastError, so record the OS detail here;
         // the caller decides what the failure means.
         LOG_ERROR(module, "Failed to load \"%s\", error=%lu", path, GetLastError());
     }
