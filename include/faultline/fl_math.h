@@ -32,11 +32,12 @@
 extern "C" {
 #endif
 
-#define SUM_OVER_SCALED_RANGE(LO, HI, SCALE, SZ)                           \
-    do {                                                                   \
-        u32 SR = (u32)((HI) - (LO)) / (SCALE) + 1;                         \
-        (SZ)   = (SR % 2) ? (((LO) + ((HI) - (SCALE))) * (SR >> 1)) + (HI) \
-                          : ((LO) + (HI)) * (SR >> 1);                     \
+#define SUM_OVER_SCALED_RANGE(LO, HI, SCALE, SZ)                               \
+    do {                                                                       \
+        u32 scaled_range_ = (u32)((HI) - (LO)) / (SCALE) + 1;                  \
+        (SZ) = (scaled_range_ % 2)                                             \
+                   ? (((LO) + ((HI) - (SCALE))) * (scaled_range_ >> 1)) + (HI) \
+                   : ((LO) + (HI)) * (scaled_range_ >> 1);                     \
     } while (0)
 
 /**

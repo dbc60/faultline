@@ -414,34 +414,36 @@ FL_THROW_EXCEPTION_FN(fl_throw_assertion);
     } while (0)
 
 // String comparisons
-#define FL_ASSERT_STR_EQ(V1, V2)                                                   \
-    do {                                                                           \
-        const char *_e = (V1);                                                     \
-        const char *_a = (V2);                                                     \
-        if (!_e || !_a || strcmp(_e, _a) != 0) {                                   \
-            FL_ASSERT_IMPL("Expected: \"%s\". Actual: \"%s\"", _e ? _e : "(null)", \
-                           _a ? _a : "(null)");                                    \
-        }                                                                          \
-    } while (0)
-
-#define FL_ASSERT_STR_NEQ(V1, V2)                                         \
-    do {                                                                  \
-        const char *_e = (V1);                                            \
-        const char *_a = (V2);                                            \
-        if (!_e || !_a || strcmp(_e, _a) == 0) {                          \
-            FL_ASSERT_IMPL("Expected: different strings. Actual: \"%s\"", \
-                           _a ? _a : "(null)");                           \
-        }                                                                 \
-    } while (0)
-
-#define FL_ASSERT_STR_CONTAINS(haystack, needle)                                     \
+#define FL_ASSERT_STR_EQ(V1, V2)                                                     \
     do {                                                                             \
-        const char *_h = (haystack);                                                 \
-        const char *_n = (needle);                                                   \
-        if (!_h || !_n || strstr(_h, _n) == NULL) {                                  \
-            FL_ASSERT_IMPL("Expected: \"%s\" to contain \"%s\"", _h ? _h : "(null)", \
-                           _n ? _n : "(null)");                                      \
+        const char *fl_expected_ = (V1);                                             \
+        const char *fl_actual_   = (V2);                                             \
+        if (!fl_expected_ || !fl_actual_ || strcmp(fl_expected_, fl_actual_) != 0) { \
+            FL_ASSERT_IMPL("Expected: \"%s\". Actual: \"%s\"",                       \
+                           fl_expected_ ? fl_expected_ : "(null)",                   \
+                           fl_actual_ ? fl_actual_ : "(null)");                      \
         }                                                                            \
+    } while (0)
+
+#define FL_ASSERT_STR_NEQ(V1, V2)                                                    \
+    do {                                                                             \
+        const char *fl_expected_ = (V1);                                             \
+        const char *fl_actual_   = (V2);                                             \
+        if (!fl_expected_ || !fl_actual_ || strcmp(fl_expected_, fl_actual_) == 0) { \
+            FL_ASSERT_IMPL("Expected: different strings. Actual: \"%s\"",            \
+                           fl_actual_ ? fl_actual_ : "(null)");                      \
+        }                                                                            \
+    } while (0)
+
+#define FL_ASSERT_STR_CONTAINS(haystack, needle)                                        \
+    do {                                                                                \
+        const char *fl_haystack_ = (haystack);                                          \
+        const char *fl_needle_   = (needle);                                            \
+        if (!fl_haystack_ || !fl_needle_ || strstr(fl_haystack_, fl_needle_) == NULL) { \
+            FL_ASSERT_IMPL("Expected: \"%s\" to contain \"%s\"",                        \
+                           fl_haystack_ ? fl_haystack_ : "(null)",                      \
+                           fl_needle_ ? fl_needle_ : "(null)");                         \
+        }                                                                               \
     } while (0)
 
 // Memory comparison

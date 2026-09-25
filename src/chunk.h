@@ -131,7 +131,7 @@
 #define FREE_CHUNK_FROM_SIBLINGS(S) FL_CONTAINER_OF(S, FreeChunk, siblings)
 #define FREE_CHUNK_TO_SIBLINGS(CH)  (&(CH)->siblings)
 
-#define CHUNK_VALIDATE(CH, SIZE)                                \
+#define CHUNK_ASSERT_VALID(CH, SIZE)                            \
     do {                                                        \
         FL_ASSERT_NOT_NULL(CH);                                 \
         size_t ch_size_ = CHUNK_SIZE(CH);                       \
@@ -151,11 +151,11 @@
  * CHUNK_SENTINEL_SIZE bytes less than all available space.
  *
  */
-#define CHUNK_SET_SENTINEL(TOP)                \
-    do {                                       \
-        Chunk *SENTINEL = CHUNK_NEXT(TOP);     \
-        SENTINEL->size  = CHUNK_SENTINEL_SIZE; \
-        CHUNK_SET_INUSE(SENTINEL);             \
+#define CHUNK_SET_SENTINEL(TOP)                 \
+    do {                                        \
+        Chunk *sentinel_ = CHUNK_NEXT(TOP);     \
+        sentinel_->size  = CHUNK_SENTINEL_SIZE; \
+        CHUNK_SET_INUSE(sentinel_);             \
     } while (0)
 
 /**

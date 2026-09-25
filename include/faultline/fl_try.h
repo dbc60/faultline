@@ -33,7 +33,13 @@
 #define FL_EXC_POP()     fl_pop()
 #endif // FL_EXC_BACKEND_CXX
 
-#define FL_EXC_THROW(reason, details, file, line) fl_throw(reason, details, file, line)
+// Wrapped as a statement rather than left a bare call expression, so every macro
+// built on it -- FL_THROW, FL_THROW_FILE_LINE, FL_RETHROW -- is a statement too and
+// cannot be spliced into an expression.
+#define FL_EXC_THROW(reason, details, file, line) \
+    do {                                          \
+        fl_throw(reason, details, file, line);    \
+    } while (0)
 
 // FL_TRY relies on {0}-initialization of FLExceptionEnvironment (or, under
 // FL_EXC_BACKEND_CXX, FLExceptionFrame) leaving state == FL_ENTERED on setjmp's first

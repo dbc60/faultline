@@ -38,11 +38,11 @@
  * @param X is a 32-bit value.
  * @param I set to the zero-based index of the least-significant set bit (1 bit) in X.
  */
-#define COMPUTE_LSB2IDX32(X, I)                    \
-    do {                                           \
-        unsigned long J;                           \
-        u08           ok = _BitScanForward(&J, X); \
-        I                = ok ? (u32)J : 0;        \
+#define COMPUTE_LSB2IDX32(X, I)                           \
+    do {                                                  \
+        unsigned long fl_bits_;                           \
+        u08           ok = _BitScanForward(&fl_bits_, X); \
+        I                = ok ? (u32)fl_bits_ : 0;        \
     } while (0)
 
 /**
@@ -54,11 +54,11 @@
  * @param X is a 64-bit value.
  * @param I set to the zero-based index of the least-significant set bit (1 bit) in X.
  */
-#define COMPUTE_LSB2IDX64(X, I)                       \
-    do {                                              \
-        u32 J;                                        \
-        u08 ok = fl_bit_scan_forward64(&J, (u64)(X)); \
-        I      = ok ? J : 0;                          \
+#define COMPUTE_LSB2IDX64(X, I)                              \
+    do {                                                     \
+        u32 fl_bits_;                                        \
+        u08 ok = fl_bit_scan_forward64(&fl_bits_, (u64)(X)); \
+        I      = ok ? fl_bits_ : 0;                          \
     } while (0)
 
 /**
@@ -70,11 +70,11 @@
  * @param X is a 32-bit value.
  * @param I set to the zero-based index of the most-significant set bit (1 bit) in X.
  */
-#define COMPUTE_MSB2IDX32(X, I)                    \
-    do {                                           \
-        unsigned long J;                           \
-        u08           ok = _BitScanReverse(&J, X); \
-        I                = ok ? (u32)J : 0;        \
+#define COMPUTE_MSB2IDX32(X, I)                           \
+    do {                                                  \
+        unsigned long fl_bits_;                           \
+        u08           ok = _BitScanReverse(&fl_bits_, X); \
+        I                = ok ? (u32)fl_bits_ : 0;        \
     } while (0)
 
 /**
@@ -86,11 +86,11 @@
  * @param X is a 64-bit value.
  * @param I set to the zero-based index of the most-significant set bit (1 bit) in X.
  */
-#define COMPUTE_MSB2IDX64(X, I)                       \
-    do {                                              \
-        u32 J;                                        \
-        u08 ok = fl_bit_scan_reverse64(&J, (u64)(X)); \
-        I      = ok ? J : 0;                          \
+#define COMPUTE_MSB2IDX64(X, I)                              \
+    do {                                                     \
+        u32 fl_bits_;                                        \
+        u08 ok = fl_bit_scan_reverse64(&fl_bits_, (u64)(X)); \
+        I      = ok ? fl_bits_ : 0;                          \
     } while (0)
 
 /**

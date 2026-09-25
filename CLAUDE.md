@@ -336,6 +336,26 @@ above (which also covers the separate **core/platform** portability axis):
 - `FLP_*` - Platform-provider macros (e.g., `FLP_INIT_LOG_SERVICE_FN`)
 - `FLA_*` - Consumer-accessor macros (e.g., `FLA_SET_LOG_SERVICE_FN`)
 
+**A macro that can exit non-locally must say so in its name.** `FL_THROW*`,
+`FL_ASSERT*`, `FL_FAIL`, `FL_RETHROW` and `ARENA_RTCHECK*` all throw, and so does
+anything built on them, so one grep finds every hidden exit:
+
+```
+grep -rE 'FL_ASSERT|FL_THROW|FL_FAIL|FL_RETHROW|_ASSERT_|RTCHECK' src include app
+```
+
+A name that reads as a predicate (`..._VALID`) or as a plain action (`..._VALIDATE`)
+hides the exit; `ARENA_ASSERT_ADDRESS` and `CHUNK_ASSERT_VALID` are the shapes to
+follow. `fl_throw` and `fl_throw_assertion` carry `FL_NORETURN`, so the compiler and
+`/analyze` know it too.
+
+**Never jump out of an `FL_TRY` body.** A `return` or `goto` that leaves the region
+skips the environment pop, and a `break` or `continue` written directly in a clause
+body binds to `FL_TRY`'s own `while (0)` instead of an enclosing loop. Either
+leaves a dead frame on the thread's exception stack. Hoist the exit past
+`FL_END_TRY`, as `fl_run_case_impl` does. `tools/check_try_jumps.py` enforces this
+and runs from `build\cmd\faultline_analyze.cmd`.
+
 ## Additional Project Structure
 
 ### Special Directories

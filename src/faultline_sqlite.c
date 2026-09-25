@@ -273,7 +273,6 @@ sqlite3 *faultline_init_database(char const *db_path) {
         sqlite3_close_v2(db);
         LOG_ERROR(faultline_db, "%s", details);
         FL_THROW_DETAILS(faultline_db_create_failed, "sqlite3: %s", details);
-        return NULL;
     }
     LOG_DEBUG(faultline_db, "Database opened successfully");
 

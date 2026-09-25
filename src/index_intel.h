@@ -29,10 +29,10 @@
  * @param X is a 32-bit value.
  * @param I set to the zero-based index of the least-significant set bit (1 bit) in X.
  */
-#define COMPUTE_LSB2IDX32(X, I)                    \
-    do {                                           \
-        u32 J = (X);                               \
-        I     = J ? (u32)_bit_scan_forward(J) : 0; \
+#define COMPUTE_LSB2IDX32(X, I)                                         \
+    do {                                                                \
+        u32 fl_bits_ = (X);                                             \
+        I            = fl_bits_ ? (u32)_bit_scan_forward(fl_bits_) : 0; \
     } while (0)
 
 /**
@@ -46,38 +46,38 @@
  * @param X is a 64-bit value.
  * @param I set to the zero-based index of the least-significant set bit (1 bit) in X.
  */
-#define COMPUTE_LSB2IDX64(X, I)         \
-    do {                                \
-        u64 J = (X);                    \
-        if (J == 0) {                   \
-            I = 0;                      \
-        } else {                        \
-            u32 N = 0;                  \
-            if (!(J & 0xFFFFFFFFull)) { \
-                N += 32;                \
-                J >>= 32;               \
-            }                           \
-            if (!(J & 0xFFFF)) {        \
-                N += 16;                \
-                J >>= 16;               \
-            }                           \
-            if (!(J & 0xFF)) {          \
-                N += 8;                 \
-                J >>= 8;                \
-            }                           \
-            if (!(J & 0xF)) {           \
-                N += 4;                 \
-                J >>= 4;                \
-            }                           \
-            if (!(J & 0x3)) {           \
-                N += 2;                 \
-                J >>= 2;                \
-            }                           \
-            if (!(J & 0x1)) {           \
-                N += 1;                 \
-            }                           \
-            I = N;                      \
-        }                               \
+#define COMPUTE_LSB2IDX64(X, I)                \
+    do {                                       \
+        u64 fl_bits_ = (X);                    \
+        if (fl_bits_ == 0) {                   \
+            I = 0;                             \
+        } else {                               \
+            u32 fl_index_ = 0;                 \
+            if (!(fl_bits_ & 0xFFFFFFFFull)) { \
+                fl_index_ += 32;               \
+                fl_bits_ >>= 32;               \
+            }                                  \
+            if (!(fl_bits_ & 0xFFFF)) {        \
+                fl_index_ += 16;               \
+                fl_bits_ >>= 16;               \
+            }                                  \
+            if (!(fl_bits_ & 0xFF)) {          \
+                fl_index_ += 8;                \
+                fl_bits_ >>= 8;                \
+            }                                  \
+            if (!(fl_bits_ & 0xF)) {           \
+                fl_index_ += 4;                \
+                fl_bits_ >>= 4;                \
+            }                                  \
+            if (!(fl_bits_ & 0x3)) {           \
+                fl_index_ += 2;                \
+                fl_bits_ >>= 2;                \
+            }                                  \
+            if (!(fl_bits_ & 0x1)) {           \
+                fl_index_ += 1;                \
+            }                                  \
+            I = fl_index_;                     \
+        }                                      \
     } while (0)
 
 /**
@@ -89,10 +89,10 @@
  * @param X is a 32-bit value.
  * @param I set to the zero-based index of the most-significant set bit (1 bit) in X.
  */
-#define COMPUTE_MSB2IDX32(X, I)                    \
-    do {                                           \
-        u32 J = (X);                               \
-        I     = J ? (u32)_bit_scan_reverse(J) : 0; \
+#define COMPUTE_MSB2IDX32(X, I)                                         \
+    do {                                                                \
+        u32 fl_bits_ = (X);                                             \
+        I            = fl_bits_ ? (u32)_bit_scan_reverse(fl_bits_) : 0; \
     } while (0)
 
 /**
@@ -106,38 +106,38 @@
  * @param X is a 64-bit value.
  * @param I set to the zero-based index of the most-significant set bit (1 bit) in X.
  */
-#define COMPUTE_MSB2IDX64(X, I)              \
-    do {                                     \
-        u64 J = (X);                         \
-        if (J == 0) {                        \
-            I = 0;                           \
-        } else {                             \
-            u32 N = 0;                       \
-            if (J & 0xFFFFFFFF00000000ull) { \
-                N += 32;                     \
-                J >>= 32;                    \
-            }                                \
-            if (J & 0xFFFF0000) {            \
-                N += 16;                     \
-                J >>= 16;                    \
-            }                                \
-            if (J & 0xFF00) {                \
-                N += 8;                      \
-                J >>= 8;                     \
-            }                                \
-            if (J & 0xF0) {                  \
-                N += 4;                      \
-                J >>= 4;                     \
-            }                                \
-            if (J & 0xC) {                   \
-                N += 2;                      \
-                J >>= 2;                     \
-            }                                \
-            if (J & 0x2) {                   \
-                N += 1;                      \
-            }                                \
-            I = N;                           \
-        }                                    \
+#define COMPUTE_MSB2IDX64(X, I)                     \
+    do {                                            \
+        u64 fl_bits_ = (X);                         \
+        if (fl_bits_ == 0) {                        \
+            I = 0;                                  \
+        } else {                                    \
+            u32 fl_index_ = 0;                      \
+            if (fl_bits_ & 0xFFFFFFFF00000000ull) { \
+                fl_index_ += 32;                    \
+                fl_bits_ >>= 32;                    \
+            }                                       \
+            if (fl_bits_ & 0xFFFF0000) {            \
+                fl_index_ += 16;                    \
+                fl_bits_ >>= 16;                    \
+            }                                       \
+            if (fl_bits_ & 0xFF00) {                \
+                fl_index_ += 8;                     \
+                fl_bits_ >>= 8;                     \
+            }                                       \
+            if (fl_bits_ & 0xF0) {                  \
+                fl_index_ += 4;                     \
+                fl_bits_ >>= 4;                     \
+            }                                       \
+            if (fl_bits_ & 0xC) {                   \
+                fl_index_ += 2;                     \
+                fl_bits_ >>= 2;                     \
+            }                                       \
+            if (fl_bits_ & 0x2) {                   \
+                fl_index_ += 1;                     \
+            }                                       \
+            I = fl_index_;                          \
+        }                                           \
     } while (0)
 
 /**

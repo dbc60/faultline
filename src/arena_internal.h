@@ -172,17 +172,23 @@ extern "C" {
 #define ARENA_LARGE_MAP_IS_MARKED(AR, I) (((AR)->large_map & IDX_TO_BIT64(I)) != 0)
 
 /**
- * @brief A rough determination of whether an address is contained within one of this
+ * @brief Throw fl_invalid_address unless the address is contained within one of this
  * arena's regions.
  *
- * @param arena the arena in which addr should exist.
- * @param addr the address to test.
- * @return true if addr is contained in one of this arena's regions and false otherwise.
+ * The test is rough: it bounds the address against the regions, which is not an
+ * ownership test. A pointer into the middle of a block lies inside a region just as a
+ * real allocation does.
+ *
+ * @param AR the arena in which ADDR should exist.
+ * @param ADDR the address to test.
+ * @param FILE the source file to report, so the throw names the caller's location.
+ * @param LINE the source line to report.
  */
-#define ARENA_ADDRESS_VALID(AR, ADDR, FILE, LINE)               \
+#define ARENA_ASSERT_ADDRESS(AR, ADDR, FILE, LINE)              \
     do {                                                        \
-        if (!arena_address_ok(AR, ADDR))                        \
+        if (!arena_address_ok(AR, ADDR)) {                      \
             FL_THROW_FILE_LINE(fl_invalid_address, FILE, LINE); \
+        }                                                       \
     } while (0)
 
 /**

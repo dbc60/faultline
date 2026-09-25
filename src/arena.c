@@ -97,28 +97,43 @@ static int change_mparam(int param_number, int value) {
  * Synchronized arenas exist only when FL_ARENA_SYNCHRONIZED is defined.
  * Without it, new_shared_arena is not compiled, every arena is
  * unsynchronized, and the guard collapses to a direct call so the entry
- * points carry no per-call flag test at all.
+ * points carry no per-call flag test at all. That collapse is why CALL is
+ * written twice below rather than hoisted: sharing one copy would put the
+ * FL_TRY frame on the unsynchronized path too, and an empty FL_TRY frame
+ * costs about as much as a 64-byte malloc/free pair (arena_bench).
+ *
+ * CALL runs between this FL_TRY's setjmp and any longjmp out of it, so a
+ * local it assigns is indeterminate afterwards (C11 7.13.2.1p3). The entry
+ * points below read their result only after FL_END_TRY, which the throw path
+ * never reaches -- FL_CATCH_ALL_RETHROW leaves the exception pending and
+ * FL_END_TRY rethrows it. A caller that instead wants to catch here and read
+ * the result has to declare it volatile.
  */
 #ifdef FL_ARENA_SYNCHRONIZED
-#define ARENA_GUARDED_CALL(AR, CALL)          \
-    do {                                      \
-        if (!(AR)->synchronized) {            \
-            CALL;                             \
-        } else {                              \
-            fl_lock_acquire(&(AR)->lock);     \
-            FL_TRY {                          \
-                CALL;                         \
-            }                                 \
-            FL_CATCH_ALL_RETHROW {            \
-                fl_lock_release(&(AR)->lock); \
-            }                                 \
-            FL_END_TRY;                       \
-            fl_lock_release(&(AR)->lock);     \
-        }                                     \
+#define ARENA_GUARDED_CALL(AR, CALL)              \
+    do {                                          \
+        Arena *guarded_ = (AR);                   \
+        if (!guarded_->synchronized) {            \
+            CALL;                                 \
+        } else {                                  \
+            fl_lock_acquire(&guarded_->lock);     \
+            FL_TRY {                              \
+                CALL;                             \
+            }                                     \
+            FL_CATCH_ALL_RETHROW {                \
+                fl_lock_release(&guarded_->lock); \
+            }                                     \
+            FL_END_TRY;                           \
+            fl_lock_release(&guarded_->lock);     \
+        }                                         \
     } while (0)
 #else
+// FL_UNUSED keeps AR named on this path too. Without it a misspelled arena
+// argument compiles clean in every build that leaves FL_ARENA_SYNCHRONIZED
+// undefined, which is every build but arena_bench's synchronized variant.
 #define ARENA_GUARDED_CALL(AR, CALL) \
     do {                             \
+        FL_UNUSED(AR);               \
         CALL;                        \
     } while (0)
 #endif
@@ -1126,7 +1141,7 @@ static void *arena_malloc_impl(Arena *arena, size_t request, char const *file,
     } else {
         mem = CHUNK_TO_MEMORY(ch);
     }
-    CHUNK_VALIDATE(ch, size);
+    CHUNK_ASSERT_VALID(ch, size);
     ch->owner = arena;
     ARENA_STAT_INC(arena, allocations);
     return mem;
@@ -1237,7 +1252,7 @@ static size_t arena_allocation_size_impl(Arena *arena, void *mem, char const *fi
     // region just as a real allocation does. The owner backpointer distinguishes
     // one arena's blocks from another's exactly, and is stable for as long as
     // the block is in use.
-    ARENA_ADDRESS_VALID(arena, ch, file, line);
+    ARENA_ASSERT_ADDRESS(arena, ch, file, line);
     if (ch->owner != arena) {
         FL_THROW_DETAILS_FILE_LINE(fl_invalid_address,
                                    "0x%p is not an allocation from arena 0x%p", file,

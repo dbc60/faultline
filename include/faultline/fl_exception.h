@@ -15,7 +15,7 @@
  * code, and fl_try.h calls these three directly.
  */
 #include <faultline/fl_exception_types.h> // FLExceptionEnvironment, FLExceptionReason
-#include <faultline/fl_macros.h>          // FL_STR
+#include <faultline/fl_macros.h>          // FL_STR, FL_NORETURN
 #include <stddef.h>                       // size_t
 
 #if defined(__cplusplus)
@@ -74,8 +74,9 @@ extern FLExceptionReason fl_foreign_exception;
  */
 #define FL_PUSH_EXCEPTION_FN(name) void name(FLExceptionEnvironment *env)
 #define FL_POP_EXCEPTION_FN(name)  void name(void)
-#define FL_THROW_EXCEPTION_FN(name) \
-    void name(FLExceptionReason reason, char const *details, char const *file, int line)
+#define FL_THROW_EXCEPTION_FN(name)                                      \
+    FL_NORETURN void name(FLExceptionReason reason, char const *details, \
+                          char const *file, int line)
 
 /**
  * @brief Push an FLExceptionEnvironment on to this image's stack. FL_TRY does this.

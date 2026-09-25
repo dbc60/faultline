@@ -93,6 +93,26 @@ extern "C" {
 #endif
 
 /**
+ * @brief Mark a function that never returns to its caller.
+ *
+ * Applies to the throw path: both fl_throw backends leave through a longjmp or a
+ * C++ throw, so control never reaches the call site's next statement. Without the
+ * attribute every FL_ASSERT_* and FL_THROW_* site looks like it can fall through,
+ * so neither the compiler, /analyze, nor a reader hovering the symbol learns what
+ * the macro hides.
+ *
+ * MSVC accepts __declspec(noreturn) in both C and C++ modes; _Noreturn is the C11
+ * keyword for the other C compilers, and [[noreturn]] the C++ attribute.
+ */
+#if defined(__cplusplus)
+#define FL_NORETURN [[noreturn]]
+#elif defined(_MSC_VER)
+#define FL_NORETURN __declspec(noreturn)
+#else
+#define FL_NORETURN _Noreturn
+#endif
+
+/**
  * @brief Mark a variadic function as taking a printf-style format string.
  *
  * @param fmt_index the 1-based position of the format parameter.

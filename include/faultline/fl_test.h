@@ -152,9 +152,6 @@ typedef struct FLTestSuite FLTestSuite;
     };                                                                                \
     static void TEST(void)
 
-// helper macro for defining test suites
-#define FL_PTR(X) (&(X).tc)
-
 #define FL_TEST_SUITE_NAME(SUITE) SUITE##_ts
 
 #define FL_TEST_SUITE(NAME, SUITE)                                       \
@@ -188,9 +185,6 @@ typedef struct FLTestSuite FLTestSuite;
     FL_SPEC_EXPORT FL_RUN_CASE_FN(fl_run_case) {                         \
         return fl_run_case_impl(&SUITE##_ts, index, out, out_size);      \
     }
-
-// a macro to define a common field for test-case structs to embed a FLTestCase.
-#define FL_EMBED_CASE FLTestCase fltc
 
 // Auto-register test cases in a suite
 #define FL_SUITE_BEGIN(NAME)      static FLTestCase *NAME##_cases[] = {

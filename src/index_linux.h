@@ -26,10 +26,10 @@
  * @param X is a 32-bit value.
  * @param I set to the zero-based index of the least-significant set bit (1 bit) in X.
  */
-#define COMPUTE_LSB2IDX32(X, I)                              \
-    do {                                                     \
-        u32 J = (X);                                         \
-        I     = J ? (u32)__builtin_ctz((unsigned int)J) : 0; \
+#define COMPUTE_LSB2IDX32(X, I)                                                   \
+    do {                                                                          \
+        u32 fl_bits_ = (X);                                                       \
+        I            = fl_bits_ ? (u32)__builtin_ctz((unsigned int)fl_bits_) : 0; \
     } while (0)
 
 /**
@@ -41,10 +41,10 @@
  * @param X is a 64-bit value.
  * @param I set to the zero-based index of the least-significant set bit (1 bit) in X.
  */
-#define COMPUTE_LSB2IDX64(X, I)                                      \
-    do {                                                             \
-        u64 J = (X);                                                 \
-        I     = J ? (u32)__builtin_ctzll((unsigned long long)J) : 0; \
+#define COMPUTE_LSB2IDX64(X, I)                                                           \
+    do {                                                                                  \
+        u64 fl_bits_ = (X);                                                               \
+        I            = fl_bits_ ? (u32)__builtin_ctzll((unsigned long long)fl_bits_) : 0; \
     } while (0)
 
 /**
@@ -56,10 +56,10 @@
  * @param X is a 32-bit value.
  * @param I set to the zero-based index of the most-significant set bit (1 bit) in X.
  */
-#define COMPUTE_MSB2IDX32(X, I)                                     \
-    do {                                                            \
-        u32 J = (X);                                                \
-        I     = J ? (u32)(31 - __builtin_clz((unsigned int)J)) : 0; \
+#define COMPUTE_MSB2IDX32(X, I)                                                          \
+    do {                                                                                 \
+        u32 fl_bits_ = (X);                                                              \
+        I            = fl_bits_ ? (u32)(31 - __builtin_clz((unsigned int)fl_bits_)) : 0; \
     } while (0)
 
 /**
@@ -71,10 +71,10 @@
  * @param X is a 64-bit value.
  * @param I set to the zero-based index of the most-significant set bit (1 bit) in X.
  */
-#define COMPUTE_MSB2IDX64(X, I)                                             \
-    do {                                                                    \
-        u64 J = (X);                                                        \
-        I     = J ? (u32)(63 - __builtin_clzll((unsigned long long)J)) : 0; \
+#define COMPUTE_MSB2IDX64(X, I)                                                       \
+    do {                                                                              \
+        u64 fl_bits_ = (X);                                                           \
+        I = fl_bits_ ? (u32)(63 - __builtin_clzll((unsigned long long)fl_bits_)) : 0; \
     } while (0)
 
 /**

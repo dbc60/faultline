@@ -38,6 +38,20 @@ IF ERRORLEVEL 1 EXIT /B 1
 :: when build is set, so ANALYZE_FLAGS would be empty here as well.
 IF %build% EQU 0 GOTO :SUCCESS
 
+:: A jump out of an FL_TRY body skips the environment pop that FL_TRY's push pairs
+:: with, leaving a dangling frame on the thread's exception stack. cl cannot see it:
+:: the macros expand to valid C either way. This pass reports it, and unlike the cl
+:: passes below it fails the build, because every finding is a defect rather than a
+:: suggestion. Skipped with a note where no Python is installed, so the analysis
+:: pass still runs on a machine that has none.
+WHERE python >NUL 2>&1
+IF ERRORLEVEL 1 (
+    ECHO check_try_jumps: skipped, python not found on PATH
+) ELSE (
+    python "%DIR_REPO%\tools\check_try_jumps.py" "%DIR_REPO%"
+    IF ERRORLEVEL 1 GOTO :ERROR
+)
+
 :: cl output capture, named per script inside this configuration's obj directory
 SET "TEMP_OUT=%DIR_OUT_OBJ%\%~n0_cl_out.tmp"
 
