@@ -24,7 +24,7 @@
 
         exceptions = @{
             Title   = 'Exception Module Distribution'
-            Version = '0.5.0'
+            Version = '0.5.1'
             Depends = ''
 
             Src = @(
@@ -43,7 +43,7 @@
 
         fault_memory_service = @{
             Title   = 'Standalone Fault-Injecting Memory Service Distribution'
-            Version = '0.4.0'
+            Version = '0.4.1'
             Depends = ''
 
             Src = @(
@@ -140,7 +140,7 @@
 
         file_service = @{
             Title   = 'File Service Distribution'
-            Version = '0.1.1'
+            Version = '0.1.2'
             Depends = 'memory_service'
 
             Src = @(
@@ -163,7 +163,7 @@
 
         log_service = @{
             Title   = 'Log Service Distribution'
-            Version = '0.5.0'
+            Version = '0.5.1'
             Depends = 'stream_service'
 
             Src = @(
@@ -193,7 +193,7 @@
 
         memory_service = @{
             Title   = 'Standalone Memory Service Distribution (no fault injection)'
-            Version = '0.4.0'
+            Version = '0.4.1'
             Depends = ''
 
             Src = @(
@@ -267,7 +267,7 @@
 
         stream_service = @{
             Title   = 'Stream Service Distribution'
-            Version = '0.1.1'
+            Version = '0.1.2'
             Depends = 'memory_service'
 
             Src = @(
@@ -289,7 +289,7 @@
 
         test_framework = @{
             Title   = 'Test Framework Distribution'
-            Version = '0.4.0'
+            Version = '0.4.1'
             Depends = 'exceptions timer_service'
 
             Inc = @(
