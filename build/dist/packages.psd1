@@ -15,12 +15,38 @@
 #   Inc     - files from include\faultline\ -> dist\<name>\include\faultline\
 #   Top     - files from include\        -> dist\<name>\include\
 #   Fnv     - files from third_party\fnv\ -> dist\<name>\src\fnv\
+#   Cmd     - files from build\cmd\      -> dist\<name>\build\cmd\
+#   Tpl     - files from build\dist\templates\ -> dist\<name>\build\cmd\
+#
+# A package of only Cmd and Tpl files is imported into the consumer's repository
+# root rather than its vendored tree, because setup.cmd locates the repository two
+# directories above itself.
 #
 # A package that ships private headers (any .h under Src) is reported to the
 # caller with src\ as a second include path.
 #
 @{
     Packages = @{
+
+        build_scripts = @{
+            Title   = 'MSVC Build Scripts Distribution'
+            Version = '0.1.0'
+            Depends = ''
+
+            Cmd = @(
+                'options.cmd'
+                'shell.cmd'
+                'setup.cmd'
+                'config.cmd'
+                'build_test_dll.cmd'
+            )
+
+            # The consumer copies this to project.cmd. Shipping project.cmd itself
+            # would overwrite the consumer's settings on every update.
+            Tpl = @(
+                'project_template.cmd'
+            )
+        }
 
         exceptions = @{
             Title   = 'Exception Module Distribution'

@@ -28,7 +28,8 @@ SETLOCAL ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 ::              allocator requires.
 ::  verbose:    Display details of steps during the build process.
 ::  trace:      Display the values of these options.
-::  timed:      Enable timing metrics collection with ctime.
+::  timed:      Enable timing metrics collection with ctime. Ignored, with a
+::              warning, when ctime.exe is not on PATH.
 ::  analyze:    Run MSVC code analysis (/analyze) over the first-party translation
 ::              units. A separate pass after the build; findings are reported but
 ::              do not fail it. all.cmd runs the repository's analyze script.
@@ -94,6 +95,19 @@ set "val=%val:!=^!%"
 exit /b
 
 :endArgs
+:: timed needs ctime.exe on PATH. Without it, build untimed. Every build script calls
+:: this one, so the warning prints once per command line rather than once per script.
+if %timed% EQU 1 (
+    where ctime.exe >NUL 2>&1
+    if errorlevel 1 (
+        if not defined _FL_CTIME_WARNED (
+            ECHO OPTIONS.CMD WARNING: timed needs ctime.exe on PATH; building untimed 1>&2
+        )
+        SET _FL_CTIME_WARNED=1
+        SET timed=0
+    )
+)
+
 if %trace% EQU 1 (
     ECHO OPTIONS.CMD: options SET
     FOR %%O in (%options%) DO FOR /f "tokens=1,* delims=:" %%A in ("%%O") DO (
@@ -119,6 +133,7 @@ ENDLOCAL & (
     SET "verbose=%verbose%"
     SET "trace=%trace%"
     SET "timed=%timed%"
+    SET "_FL_CTIME_WARNED=%_FL_CTIME_WARNED%"
     SET "analyze=%analyze%"
     SET "cxx=%cxx%"
 )

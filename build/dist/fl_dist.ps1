@@ -11,12 +11,14 @@
   not to any script.
 
   Sources are copied verbatim, so a file in a package is byte-identical to its
-  original in the repository. Four roots feed a package:
+  original in the repository. Six roots feed a package:
 
       Src -> src\                  becomes dist\<name>\src\
       Inc -> include\faultline\    becomes dist\<name>\include\faultline\
       Top -> include\              becomes dist\<name>\include\
       Fnv -> third_party\fnv\      becomes dist\<name>\src\fnv\
+      Cmd -> build\cmd\            becomes dist\<name>\build\cmd\
+      Tpl -> build\dist\templates\ becomes dist\<name>\build\cmd\
 
   Every listed file is resolved before anything is removed, so a package that
   names a file that does not exist fails without leaving a half-collected tree
@@ -136,8 +138,11 @@ $roots = @{
     Inc = @{ From = (Join-Path $repo "include\faultline");  To = "include\faultline" }
     Top = @{ From = (Join-Path $repo "include");            To = "include" }
     Fnv = @{ From = (Join-Path $repo "third_party\fnv");    To = "src\fnv" }
+    Cmd = @{ From = (Join-Path $repo "build\cmd");          To = "build\cmd" }
+    Tpl = @{ From = (Join-Path $repo "build\dist\templates"); To = "build\cmd" }
 }
-$buckets = @("Src", "Inc", "Top", "Fnv")
+$buckets = @("Src", "Inc", "Top", "Fnv", "Cmd", "Tpl")
+$codeBuckets = @("Src", "Inc", "Top", "Fnv")
 
 $failed = 0
 
@@ -189,7 +194,7 @@ foreach ($name in $selected) {
     # Wipe the collected trees so the package reflects exactly the current file
     # set. manifest.txt is deliberately left in place: fl_emit_manifest.ps1 reads
     # it to tell an unchanged package from a changed one.
-    foreach ($sub in @("src", "include")) {
+    foreach ($sub in @("src", "include", "build")) {
         $subPath = Join-Path $dist $sub
         if (Test-Path -LiteralPath $subPath) {
             Remove-Item -LiteralPath $subPath -Recurse -Force
@@ -233,6 +238,21 @@ foreach ($name in $selected) {
     if ($p.Depends) {
         Write-Host "  Depends on            : $($p.Depends) (import it first)"
     }
+
+    # A package with no source or header buckets holds build scripts, which go to
+    # the consumer's repository root instead of its vendored tree.
+    $hasCode = $false
+    foreach ($bucket in $codeBuckets) {
+        if ($p.ContainsKey($bucket)) { $hasCode = $true }
+    }
+    if (-not $hasCode) {
+        Write-Host "  Import into           : the consumer's repository root (-Into <repo>)"
+        if ($p.ContainsKey("Tpl")) {
+            Write-Host "  Then copy             : build\cmd\*_template.cmd to the name without _template, and edit it"
+        }
+        continue
+    }
+
     if ($privateHeaders) {
         Write-Host "  Consumer include paths:"
         Write-Host "    dist\$name\include   (public headers)"

@@ -147,6 +147,11 @@ SET DIR_TEST=%DIR_REPO%\test
 
 :: Repository-specific settings, which config.cmd reads. Called after the directories
 :: above are set, so project.cmd can build paths from them or reassign the layout ones.
+IF NOT EXIST "!DIR_CMD!\project.cmd" (
+    ECHO SETUP.CMD ERROR: !DIR_CMD!\project.cmd not found. Copy project_template.cmd 1>&2
+    ECHO to project.cmd and edit it. 1>&2
+    EXIT /B 1
+)
 CALL !DIR_CMD!\project.cmd
 
 :: config.cmd exits non-zero when it cannot pick a flag set for the target platform.

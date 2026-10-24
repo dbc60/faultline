@@ -77,6 +77,7 @@ TITLE %_BTDLL_NAME%
 
 CALL %_BTDLL_DIR%\options.cmd %_BTDLL_ARGS%
 CALL %_BTDLL_DIR%\setup.cmd %_BTDLL_ARGS%
+IF ERRORLEVEL 1 EXIT /B 1
 
 :: cl output capture, named per test DLL inside this configuration's obj directory
 SET "TEMP_OUT=%DIR_OUT_OBJ%\%_BTDLL_DLL%_cl_out.tmp"

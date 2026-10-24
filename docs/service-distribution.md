@@ -23,6 +23,7 @@ The current set of services:
 - **stream service**: `build\cmd\stream_service_dist.cmd` (append-only file writes plus a console/stdout/stderr accessor; depends on the arena-backed `memory_service` package)
 - **timer and stopwatch service**: `build\cmd\timer_service_dist.cmd` (depends on the `exceptions` package)
 - **test framework**: `build\cmd\test_framework_dist.cmd` (header-only `fl_test.h` — the `FL_TEST` / `FL_SUITE_*` / `FL_GET_TEST_SUITE` declarations a test-suite DLL publishes its cases through so the driver can exercise them; depends on the `exceptions` package)
+- **MSVC build scripts** (not a service): `build\cmd\build_scripts_dist.cmd`. Imported into the consumer's repository root, not its vendored tree; see [Building with the imported build scripts](#building-with-the-imported-build-scripts)
 
 This is the set of steps for exporting the services to another project. It focus on the memory and file services, exporting them to `<project>\third_party\faultline`, but it can be applied to the other services and your own target folder. Every step is covered in detail later in this guide; the per-service build wiring is covered in the [[Service Integration Guide]].
 
@@ -87,7 +88,7 @@ owner stops shipping them.
 | `build/cmd/*_dist.cmd`            | Collect one service's files into `dist\<pkg>\` and emit its manifest |
 | `build/dist/fl_emit_manifest.ps1` | Hash every file in a package dir and write `manifest.txt`            |
 
-The eight packages:
+The nine packages:
 
 | Build script                    | Package dir                 | Service name           | Depends on          | Notes                                                         |
 | ------------------------------- | --------------------------- | ---------------------- | ------------------- | ------------------------------------------------------------- |
@@ -99,6 +100,7 @@ The eight packages:
 | `file_service_dist.cmd`         | `dist\file_service`         | `file_service`         | `memory_service`    | Positional file service, both sides, plus the `fl_file.h` selector and the async contract sketch. The provider allocates through `FL_MALLOC`, supplied by `memory_service`. |
 | `stream_service_dist.cmd`       | `dist\stream_service`       | `stream_service`       | `memory_service`    | Append-only file writes plus a console (stdout/stderr) accessor, both sides, plus the `fl_stream.h` selector. `write` takes no offset. Bundles its own copy of `fl_file_types.h` (the shared `FLFile` vocabulary), same as `file_service`. |
 | `test_framework_dist.cmd`       | `dist\test_framework`       | `test_framework`       | `exceptions`        | Test-declaration header (`fl_test.h`), header-only: the `FL_TEST` / `FL_SUITE_*` / `FL_GET_TEST_SUITE` macro family and the `fl_get_test_suite` export the driver enumerates a suite through. |
+| `build_scripts_dist.cmd`        | `dist\build_scripts`        | `build_scripts`        | —                   | `options.cmd`, `shell.cmd`, `setup.cmd`, `config.cmd`, `build_test_dll.cmd`, and `project_template.cmd` under `build\cmd\`. Import with `-Into <repo>`. |
 
 `exceptions`, `memory_service`, and `fault_memory_service` are **self-contained** (they bundle the shared sources they need; reference counting makes the overlap safe). `log_service`, `timer_service`, `file_service`, and `stream_service` instead declare dependencies: import the dependency into the same tree first, or the importer refuses (see below).
 
@@ -265,6 +267,25 @@ For the `fault_memory_service` package, compile `<root>\src\fnv\FNV64.c` along w
 A worked, runnable example of every rule above — build mode, include paths, and the `region_windows.c` exclusion — lives in `build\dist\selftest\` (see [Validating the packages](#validating-the-packages)).
 
 See the [Service Integration Guide](service-integration-guide.md) for exactly which headers to include, which sources each side compiles, the required exports, and the injection order once the source is in place.
+
+## Building with the imported build scripts
+
+The `build_scripts` package ships the MSVC scripts a consumer builds its suite DLLs with. `setup.cmd` locates the repository two directories above itself, so import the package into the repository root:
+
+```
+build\dist\fl_import.ps1 -From dist\build_scripts -Into <project>
+```
+
+This writes `<project>\build\cmd\` and a `<project>\faultline.lock` of its own. Copy `build\cmd\project_template.cmd` to `build\cmd\project.cmd` once and edit it: it names the imported tree (`DIR_FL`), the FaultLine sources `--fl-core` links (`FL_CORE_SOURCES`), the include paths, and the prebuilt `faultline.exe` that runs the suites. The package never ships `project.cmd`, so an update leaves it alone. `setup.cmd` stops with an error while it is missing.
+
+Each suite then needs a one-line script, for example `build\cmd\my_suite.cmd`:
+
+```
+@ECHO OFF
+CALL "%~dp0build_test_dll.cmd" "My Suite" "my_suite" "my_suite_tests.c" "my_suite_tests" "" --fl-core %*
+```
+
+`build\cmd\my_suite.cmd test` compiles `src\my_suite_tests.c` with the `FL_CORE_SOURCES` into `my_suite_tests.dll` and runs it through the driver.
 
 ## Validating the packages
 
