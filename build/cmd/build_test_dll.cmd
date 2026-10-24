@@ -137,10 +137,7 @@ IF %build% EQU 1 (
 
 if %test% EQU 1 (
     IF NOT EXIST "%FL_TEST_DRIVER%" (
-        IF "%FL_TEST_DRIVER_SCRIPT%"=="" (
-            ECHO BUILD_TEST_DLL.CMD ERROR: test driver "%FL_TEST_DRIVER%" not found 1>&2
-            GOTO :_btdll_error
-        )
+        IF "%FL_TEST_DRIVER_SCRIPT%"=="" GOTO :_btdll_no_driver
         call %_BTDLL_DIR%\%FL_TEST_DRIVER_SCRIPT% !args!
         if errorlevel 1 (
             GOTO :_btdll_error
@@ -163,6 +160,19 @@ if %test% EQU 1 (
     popd
 )
 GOTO :_btdll_success
+
+:: No driver and no script to build one: either nothing set FL_TEST_DRIVER, or it
+:: names a file that does not exist.
+:_btdll_no_driver
+IF "%FL_TEST_DRIVER%"=="" (
+    ECHO BUILD_TEST_DLL.CMD ERROR: faultline.exe is not on PATH and FL_TEST_DRIVER is 1>&2
+    ECHO not set. Add faultline.exe's directory to PATH, or set FL_TEST_DRIVER to its 1>&2
+    ECHO full path in build\cmd\project.cmd. 1>&2
+) ELSE (
+    ECHO BUILD_TEST_DLL.CMD ERROR: FL_TEST_DRIVER "!FL_TEST_DRIVER!" does not exist. 1>&2
+    ECHO Correct it in build\cmd\project.cmd. 1>&2
+)
+GOTO :_btdll_error
 
 :_btdll_error
 if %timed% EQU 1 (

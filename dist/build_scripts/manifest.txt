@@ -3,10 +3,10 @@
 name build_scripts
 version 0.1.0
 depends 
-generated 2026-10-24T14:56:49Z
-f build/cmd/build_test_dll.cmd 028212f5e47d624170fe85ce3124d8ab637d814677e2dd4a0a4e8b7ea710c680
+generated 2026-10-24T16:17:29Z
+f build/cmd/build_test_dll.cmd 27791b61e260eae105ba56bbd7afe838cc9cf6010dff9ff9429c52947881ea08
 f build/cmd/config.cmd c6e7cb6d413958a6e14b119538f6dce3b059d7882ffc1ed517bfff1ac0e09576
 f build/cmd/options.cmd 642b52b01bb12fc77871e8831aabd4dcd06068cf90806dfb3449cf8e01c4d461
-f build/cmd/project_template.cmd ab6ae6dff8d48cf9127719c5ccbce8c190af8645cecfd14b9733fffa109fbe56
+f build/cmd/project_template.cmd e43087eb27dd2784fdbce50e17f71b067d8f89a1e8f17a0b390cbfe6328dc0f4
 f build/cmd/setup.cmd ae5bfbaedf4a569c2125226c95d9aade1507186bf6e7de61fa117fc2e9010262
 f build/cmd/shell.cmd 039425977d310dfa050ce0d391e0a7ac5f5537a0d141a60da0445290941de0b8

@@ -276,7 +276,7 @@ The `build_scripts` package ships the MSVC scripts a consumer builds its suite D
 build\dist\fl_import.ps1 -From dist\build_scripts -Into <project>
 ```
 
-This writes `<project>\build\cmd\` and a `<project>\faultline.lock` of its own. Copy `build\cmd\project_template.cmd` to `build\cmd\project.cmd` once and edit it: it names the imported tree (`DIR_FL`), the FaultLine sources `--fl-core` links (`FL_CORE_SOURCES`), the include paths, and the prebuilt `faultline.exe` that runs the suites. The package never ships `project.cmd`, so an update leaves it alone. `setup.cmd` stops with an error while it is missing.
+This writes `<project>\build\cmd\` and a `<project>\faultline.lock` of its own. Copy `build\cmd\project_template.cmd` to `build\cmd\project.cmd` once and edit it: it names the imported tree (`DIR_FL`), the FaultLine sources `--fl-core` links (`FL_CORE_SOURCES`), the include paths, and the prebuilt `faultline.exe` that runs the suites (by default the first one on `PATH`). The package never ships `project.cmd`, so an update leaves it alone. `setup.cmd` stops with an error while it is missing.
 
 Each suite then needs a one-line script, for example `build\cmd\my_suite.cmd`:
 

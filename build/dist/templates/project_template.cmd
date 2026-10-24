@@ -25,8 +25,10 @@ SET PROJECT_INCLUDES=/I%DIR_FL%\include /I%DIR_FL%\src /I%DIR_INCLUDE% /I%DIR_SR
 SET PROJECT_COMPILER_FLAGS=
 
 :: The prebuilt FaultLine driver that runs each suite. It must come from the same
-:: toolchain as the suites, or it skips them as incompatible.
-SET FL_TEST_DRIVER=C:\path\to\faultline.exe
+:: toolchain as the suites, or it skips them as incompatible. The default is the
+:: first faultline.exe on PATH, or empty when there is none. Set a full path to
+:: use another, e.g. SET FL_TEST_DRIVER=C:\tools\faultline\faultline.exe
+FOR %%I IN (faultline.exe) DO SET "FL_TEST_DRIVER=%%~$PATH:I"
 SET FL_TEST_DRIVER_SCRIPT=
 
 :: Each suite's build script is one line, e.g. build\cmd\my_suite.cmd:
