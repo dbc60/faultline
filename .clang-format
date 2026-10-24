@@ -80,7 +80,7 @@ AlwaysBreakBeforeMultilineStrings: false
 AttributeMacros:
   - __capability
 BinPackArguments: true
-BinPackParameters: true
+BinPackParameters: BinPack
 BitFieldColonSpacing: Both
 BraceWrapping:
   AfterCaseLabel:  false
@@ -211,7 +211,7 @@ PointerAlignment: Right
 PPIndentWidth:   -1
 QualifierAlignment: Right
 ReferenceAlignment: Pointer
-ReflowComments:  true
+ReflowComments:  Always
 RemoveBracesLLVM: false
 RemoveParentheses: Leave
 RemoveSemicolon: false
