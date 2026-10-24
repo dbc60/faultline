@@ -4,11 +4,11 @@ SETLOCAL ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 :: See LICENSE.txt for copyright and licensing information about this file.
 ::
 :: build_test_dll.cmd - Shared helper: compile one test DLL and optionally run
-::   it with faultline.exe. Called by individual component scripts; not
-::   intended to be invoked directly.
+::   it with project.cmd's FL_TEST_DRIVER. Called by individual component
+::   scripts; not intended to be invoked directly.
 ::
 :: Usage:
-::   CALL build_test_dll.cmd <name> <ctm> <src> <dll> <extra> [build options...]
+::   CALL build_test_dll.cmd <name> <ctm> <src> <dll> <extra> [flags...] [build options...]
 ::
 :: Parameters:
 ::   %1  Display name for progress messages (e.g. "Arena")
@@ -18,6 +18,17 @@ SETLOCAL ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 ::   %5  Extra compiler flags, or "" for none (e.g. "/wd4456")
 ::   %6+ Build options forwarded verbatim to options.cmd / setup.cmd
 ::       (build, debug, release, clean, cleanall, test, verbose, timed, ...)
+::
+:: Flags, accepted anywhere after %5:
+::   --extra-src SRC  Extra source under src\ compiled and linked with the main
+::                    source; may be repeated
+::   --fl-core        Link FaultLine's FL_CORE_SOURCES (config.cmd), for a suite
+::                    that does not #include them itself
+::
+:: Compiler includes and flags come from project.cmd's PROJECT_INCLUDES and
+:: PROJECT_COMPILER_FLAGS. With test, the suite runs from the output bin directory
+:: through FL_TEST_DRIVER, built first by FL_TEST_DRIVER_SCRIPT when one is named
+:: and the driver is missing.
 
 SET "_BTDLL_DIR=%~dp0"
 SET "_BTDLL_DIR=%_BTDLL_DIR:~0,-1%"
@@ -32,12 +43,32 @@ SHIFT
 SHIFT
 SHIFT
 
-:: Collect remaining args (build options) into _BTDLL_ARGS.
+:: Collect the flags into _BTDLL_EXTRA_SRCS and _BTDLL_FL_CORE, and the remaining
+:: args (build options) into _BTDLL_ARGS.
 :: Note: %* is not updated by SHIFT in batch, so we collect manually.
 SET "_BTDLL_ARGS="
+SET "_BTDLL_EXTRA_SRCS="
+SET _BTDLL_FL_CORE=0
 :_btdll_collect
 IF "%~1"=="" GOTO :_btdll_done
+IF /I "%~1"=="--fl-core" GOTO :_btdll_fl_core
+IF /I "%~1"=="--extra-src" GOTO :_btdll_extra_src
 SET "_BTDLL_ARGS=%_BTDLL_ARGS% %~1"
+SHIFT
+GOTO :_btdll_collect
+
+:_btdll_fl_core
+SET _BTDLL_FL_CORE=1
+SHIFT
+GOTO :_btdll_collect
+
+:_btdll_extra_src
+IF "%~2"=="" (
+    ECHO BUILD_TEST_DLL.CMD ERROR: --extra-src needs a source file 1>&2
+    EXIT /B 1
+)
+SET "_BTDLL_EXTRA_SRCS=%_BTDLL_EXTRA_SRCS% %~2"
+SHIFT
 SHIFT
 GOTO :_btdll_collect
 :_btdll_done
@@ -78,12 +109,18 @@ if %timed% EQU 1 (
 SET "_BTDLL_FLAGS=%CommonCompilerFlagsFinal%"
 IF %cxx% EQU 1 SET "_BTDLL_FLAGS=%CommonCompilerFlagsFinalCXX%"
 
+:: Sources compiled and linked with the main source: --extra-src files, then
+:: FL_CORE_SOURCES for --fl-core. All take the main source's dialect.
+SET "_BTDLL_LINK_SRCS="
+FOR %%S IN (%_BTDLL_EXTRA_SRCS%) DO SET "_BTDLL_LINK_SRCS=!_BTDLL_LINK_SRCS! %DIR_REPO%\src\%%S"
+IF %_BTDLL_FL_CORE% EQU 1 SET "_BTDLL_LINK_SRCS=!_BTDLL_LINK_SRCS! %FL_CORE_SOURCES%"
+
 IF %build% EQU 1 (
     if %verbose% EQU 1 (
         ECHO Build the %_BTDLL_NAME% test suite
     )
-    cl %_BTDLL_FLAGS% %_BTDLL_EXTRA% /I%DIR_INCLUDE% /I%DIR_THIRD_PARTY% ^
-    /I%DIR_REPO%\src /DDLL_BUILD %DIR_REPO%\src\%_BTDLL_SRC% ^
+    cl %_BTDLL_FLAGS% %PROJECT_COMPILER_FLAGS% %_BTDLL_EXTRA% %PROJECT_INCLUDES% ^
+    /DDLL_BUILD %DIR_REPO%\src\%_BTDLL_SRC% %_BTDLL_LINK_SRCS% ^
     /Fo:%DIR_OUT_OBJ%\ /Fd:%DIR_OUT_LIB%\%_BTDLL_DLL%.pdb ^
     /LD /link %CommonLinkerFlagsFinal% ^
     /OUT:%DIR_OUT_BIN%\%_BTDLL_DLL%.dll ^
@@ -98,8 +135,12 @@ IF %build% EQU 1 (
 )
 
 if %test% EQU 1 (
-    IF NOT EXIST "%DIR_OUT_BIN%\faultline.exe" (
-        call %_BTDLL_DIR%\faultline.cmd !args!
+    IF NOT EXIST "%FL_TEST_DRIVER%" (
+        IF "%FL_TEST_DRIVER_SCRIPT%"=="" (
+            ECHO BUILD_TEST_DLL.CMD ERROR: test driver "%FL_TEST_DRIVER%" not found 1>&2
+            GOTO :_btdll_error
+        )
+        call %_BTDLL_DIR%\%FL_TEST_DRIVER_SCRIPT% !args!
         if errorlevel 1 (
             GOTO :_btdll_error
         )
@@ -115,9 +156,9 @@ if %test% EQU 1 (
         ECHO Run the %_BTDLL_NAME% unit tests
     )
     pushd %DIR_OUT_BIN%
-    .\faultline.exe run %_BTDLL_DLL%.dll
-    .\faultline.exe result list --limit 1
-    .\faultline.exe failure list
+    "%FL_TEST_DRIVER%" run %_BTDLL_DLL%.dll
+    "%FL_TEST_DRIVER%" result list --limit 1
+    "%FL_TEST_DRIVER%" failure list
     popd
 )
 GOTO :_btdll_success

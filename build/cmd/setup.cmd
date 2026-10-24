@@ -124,18 +124,6 @@ if "%VSSOLUTION%"=="" (
     )
 )
 
-:: Repository-specific settings, which config.cmd reads
-CALL !DIR_CMD!\project.cmd
-
-:: config.cmd exits non-zero when it cannot pick a flag set for the target platform.
-:: Propagate that instead of falling through: the ENDLOCAL & ( SET ... ) block below ends
-:: on a successful SET, which would reset errorlevel to 0 and leave the caller running cl
-:: with an empty %CommonCompilerFlagsFinal% -- no /std:c17, /W4, /WX or /D_AMD64_.
-if %build% EQU 1 (
-    CALL !DIR_CMD!\config.cmd
-    IF ERRORLEVEL 1 EXIT /B 1
-)
-
 :: Build artifacts are written in the current repository to the path
 :: DIR_TARGET\Compiler\Platform\BuildType, where
 ::
@@ -153,6 +141,19 @@ SET DIR_OUT_LIB=!DIR_OUT_BUILD!\lib
 SET DIR_OUT_BIN=!DIR_OUT_BUILD!\bin
 SET DIR_OUT_INC=!DIR_OUT_BUILD!\inc
 SET DIR_INCLUDE=%DIR_REPO%\include
+
+:: Repository-specific settings, which config.cmd reads. Called after the directories
+:: above are set, so project.cmd can build paths from them.
+CALL !DIR_CMD!\project.cmd
+
+:: config.cmd exits non-zero when it cannot pick a flag set for the target platform.
+:: Propagate that instead of falling through: the ENDLOCAL & ( SET ... ) block below ends
+:: on a successful SET, which would reset errorlevel to 0 and leave the caller running cl
+:: with an empty %CommonCompilerFlagsFinal% -- no /std:c17, /W4, /WX or /D_AMD64_.
+if %build% EQU 1 (
+    CALL !DIR_CMD!\config.cmd
+    IF ERRORLEVEL 1 EXIT /B 1
+)
 
 if %trace% EQU 1 (
     ECHO SET_ENV.CMD: DIR_INCLUDE_PRIVATE   =!DIR_INCLUDE_PRIVATE!
@@ -217,6 +218,10 @@ ENDLOCAL & (
 
     REM Environment variables from project.cmd
     SET "DIR_FL=%DIR_FL%"
+    SET "PROJECT_INCLUDES=%PROJECT_INCLUDES%"
+    SET "PROJECT_COMPILER_FLAGS=%PROJECT_COMPILER_FLAGS%"
+    SET "FL_TEST_DRIVER=%FL_TEST_DRIVER%"
+    SET "FL_TEST_DRIVER_SCRIPT=%FL_TEST_DRIVER_SCRIPT%"
     SET "WIN32_PLATFORM_LIBS=%WIN32_PLATFORM_LIBS%"
     SET "WIN32_SUBSYSTEM=%WIN32_SUBSYSTEM%"
 
