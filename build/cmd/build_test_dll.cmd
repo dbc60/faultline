@@ -12,15 +12,15 @@ SETLOCAL ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 ::
 :: Parameters:
 ::   %1  Display name for progress messages (e.g. "Arena")
-::   %2  Stem for the ctime metrics\vs file   (e.g. "arena" -> metrics\vs/arena.ctm)
-::   %3  Source file under src\            (e.g. "arena_tests.c")
+::   %2  Stem for the ctime file in DIR_METRICS (e.g. "arena" -> arena.ctm)
+::   %3  Source file under DIR_SRC          (e.g. "arena_tests.c")
 ::   %4  Output DLL stem, without extension (e.g. "arena_tests")
 ::   %5  Extra compiler flags, or "" for none (e.g. "/wd4456")
 ::   %6+ Build options forwarded verbatim to options.cmd / setup.cmd
 ::       (build, debug, release, clean, cleanall, test, verbose, timed, ...)
 ::
 :: Flags, accepted anywhere after %5:
-::   --extra-src SRC  Extra source under src\ compiled and linked with the main
+::   --extra-src SRC  Extra source under DIR_SRC compiled and linked with the main
 ::                    source; may be repeated
 ::   --fl-core        Link FaultLine's FL_CORE_SOURCES (config.cmd), for a suite
 ::                    that does not #include them itself
@@ -99,10 +99,10 @@ for %%A in (%_BTDLL_ARGS%) do (
 )
 
 if %timed% EQU 1 (
-    if NOT EXIST metrics\vs (
-        md metrics\vs
+    if NOT EXIST "%DIR_METRICS%" (
+        md "%DIR_METRICS%"
     )
-    ctime.exe -begin "metrics\vs\%_BTDLL_CTM%.ctm"
+    ctime.exe -begin "%DIR_METRICS%\%_BTDLL_CTM%.ctm"
 )
 
 :: Build sources as C code by default. If cxx is 1, then build sources as C++.
@@ -112,7 +112,7 @@ IF %cxx% EQU 1 SET "_BTDLL_FLAGS=%CommonCompilerFlagsFinalCXX%"
 :: Sources compiled and linked with the main source: --extra-src files, then
 :: FL_CORE_SOURCES for --fl-core. All take the main source's dialect.
 SET "_BTDLL_LINK_SRCS="
-FOR %%S IN (%_BTDLL_EXTRA_SRCS%) DO SET "_BTDLL_LINK_SRCS=!_BTDLL_LINK_SRCS! %DIR_REPO%\src\%%S"
+FOR %%S IN (%_BTDLL_EXTRA_SRCS%) DO SET "_BTDLL_LINK_SRCS=!_BTDLL_LINK_SRCS! %DIR_SRC%\%%S"
 IF %_BTDLL_FL_CORE% EQU 1 SET "_BTDLL_LINK_SRCS=!_BTDLL_LINK_SRCS! %FL_CORE_SOURCES%"
 
 IF %build% EQU 1 (
@@ -120,7 +120,7 @@ IF %build% EQU 1 (
         ECHO Build the %_BTDLL_NAME% test suite
     )
     cl %_BTDLL_FLAGS% %PROJECT_COMPILER_FLAGS% %_BTDLL_EXTRA% %PROJECT_INCLUDES% ^
-    /DDLL_BUILD %DIR_REPO%\src\%_BTDLL_SRC% %_BTDLL_LINK_SRCS% ^
+    /DDLL_BUILD %DIR_SRC%\%_BTDLL_SRC% %_BTDLL_LINK_SRCS% ^
     /Fo:%DIR_OUT_OBJ%\ /Fd:%DIR_OUT_LIB%\%_BTDLL_DLL%.pdb ^
     /LD /link %CommonLinkerFlagsFinal% ^
     /OUT:%DIR_OUT_BIN%\%_BTDLL_DLL%.dll ^
@@ -148,7 +148,7 @@ if %test% EQU 1 (
 )
 
 if %timed% EQU 1 (
-    ctime.exe -end "metrics\vs\%_BTDLL_CTM%.ctm" %errorlevel%
+    ctime.exe -end "%DIR_METRICS%\%_BTDLL_CTM%.ctm" %errorlevel%
 )
 
 if %test% EQU 1 (
@@ -165,7 +165,7 @@ GOTO :_btdll_success
 
 :_btdll_error
 if %timed% EQU 1 (
-    ctime.exe -end "metrics\vs\%_BTDLL_CTM%.ctm" %errorlevel%
+    ctime.exe -end "%DIR_METRICS%\%_BTDLL_CTM%.ctm" %errorlevel%
 )
 EXIT /B 1
 

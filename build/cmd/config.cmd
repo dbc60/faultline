@@ -247,43 +247,11 @@ IF %release% EQU 1 (
     SET CommonLibrarianFlags=/nologo
 )
 
-:: FaultLine source files, grouped by which side of the platform/core split they
-:: belong to (see fl_macros.h's FL_DECL_SPEC), for a build script that compiles them as
-:: separate translation units rather than #including them into a unity build.
-:: project.cmd sets DIR_FL, the root of the FaultLine tree.
-::
-:: FL_PLATFORM_SOURCES: the flp_* platform-side implementations plus the core arena/
-:: region allocator they depend on. Only ever belongs to the platform driver (the .exe).
-:: FL_CORE_SOURCES: the fla_* core-side accessors plus the shared FLExceptionReason
-:: constants. Belongs to whichever binary uses the core libraries: the platform driver's
-:: own embedded bootstrap (built with /DFL_EMBEDDED) and the application DLL (built with
-:: /DDLL_BUILD).
-::
-:: fl_exception.c is in the core list, not the platform list, because exceptions are not
-:: a service: every image compiles that one file exactly once and calls fl_push/fl_pop/
-:: fl_throw directly. Each module getting its own copy of the reason strings is by
-:: design, because FaultLine treats a reason as an address token, so FL_CATCH matches by
-:: pointer within a module and cross-module catches must use FL_CATCH_STR (see fl_try.h).
-SET FL_PLATFORM_SOURCES=%DIR_FL%\src\flp_log_service.c ^
-    %DIR_FL%\src\flp_stream_service.c %DIR_FL%\src\flp_timer_service.c ^
-    %DIR_FL%\src\flp_file_service.c %DIR_FL%\src\flp_memory_service.c ^
-    %DIR_FL%\src\arena.c ^
-    %DIR_FL%\src\arena_malloc.c %DIR_FL%\src\arena_dbg.c %DIR_FL%\src\arena_pool.c ^
-    %DIR_FL%\src\digital_search_tree.c %DIR_FL%\src\region.c ^
-    %DIR_FL%\src\region_node.c %DIR_FL%\src\region_os.c %DIR_FL%\src\lock_os.c
-:: fla_timer_service.c: a suite's fl_run_case times the test body through the timer
-:: service, so a suite that omits it does not link.
-SET FL_CORE_SOURCES=%DIR_FL%\src\fla_log_service.c ^
-    %DIR_FL%\src\fla_memory_service.c %DIR_FL%\src\fla_file_service.c ^
-    %DIR_FL%\src\fla_timer_service.c %DIR_FL%\src\fl_exception.c
-
 if %trace% EQU 1 (
     ECHO CommonCompilerFlagsFinal = %CommonCompilerFlagsFinal%
     ECHO CommonCompilerFlagsFinalCXX = %CommonCompilerFlagsFinalCXX%
     ECHO CommonLinkerFlagsFinal = %CommonLinkerFlagsFinal%
     ECHO CommonLibrarianFlags = %CommonLibrarianFlags%
-    ECHO FL_PLATFORM_SOURCES = %FL_PLATFORM_SOURCES%
-    ECHO FL_CORE_SOURCES = %FL_CORE_SOURCES%
 )
 
 :: It seems that the minimum subsystem is 5.02 for 64-bit Windows XP. Both "/subsystem:windows,5.1" and
@@ -302,6 +270,4 @@ ENDLOCAL & (
     SET "CommonLibrarianFlags=%CommonLibrarianFlags%"
     SET "CommonCompilerFlagsBuildMFC=%CommonCompilerFlagsBuildMFC%"
     SET "ANALYZE_FLAGS=%ANALYZE_FLAGS%"
-    SET "FL_PLATFORM_SOURCES=%FL_PLATFORM_SOURCES%"
-    SET "FL_CORE_SOURCES=%FL_CORE_SOURCES%"
 )

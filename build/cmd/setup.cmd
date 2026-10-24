@@ -141,9 +141,12 @@ SET DIR_OUT_LIB=!DIR_OUT_BUILD!\lib
 SET DIR_OUT_BIN=!DIR_OUT_BUILD!\bin
 SET DIR_OUT_INC=!DIR_OUT_BUILD!\inc
 SET DIR_INCLUDE=%DIR_REPO%\include
+SET DIR_SRC=%DIR_REPO%\src
+SET DIR_METRICS=%DIR_REPO%\metrics\vs
+SET DIR_TEST=%DIR_REPO%\test
 
 :: Repository-specific settings, which config.cmd reads. Called after the directories
-:: above are set, so project.cmd can build paths from them.
+:: above are set, so project.cmd can build paths from them or reassign the layout ones.
 CALL !DIR_CMD!\project.cmd
 
 :: config.cmd exits non-zero when it cannot pick a flag set for the target platform.
@@ -169,9 +172,9 @@ if %trace% EQU 1 (
 :: Delete the build artifacts from all configurations of the VS build folder
 IF %cleanall% EQU 1 (
     if %verbose% EQU 1 (
-        IF EXIST %DIR_TARGET% ECHO Clean All: deleting directory: %DIR_TARGET%
+        IF EXIST %DIR_REPO%\%DIR_TARGET% ECHO Clean All: deleting directory: %DIR_REPO%\%DIR_TARGET%
     )
-    IF EXIST %DIR_TARGET% RD /S /Q %DIR_TARGET%
+    IF EXIST %DIR_REPO%\%DIR_TARGET% RD /S /Q %DIR_REPO%\%DIR_TARGET%
     SET VSSOLUTION=
 )
 
@@ -213,11 +216,11 @@ ENDLOCAL & (
     SET "CommonLibrarianFlags=%CommonLibrarianFlags%"
     SET "CommonCompilerFlagsBuildMFC=%CommonCompilerFlagsBuildMFC%"
     SET "ANALYZE_FLAGS=%ANALYZE_FLAGS%"
-    SET "FL_PLATFORM_SOURCES=%FL_PLATFORM_SOURCES%"
-    SET "FL_CORE_SOURCES=%FL_CORE_SOURCES%"
 
     REM Environment variables from project.cmd
     SET "DIR_FL=%DIR_FL%"
+    SET "FL_PLATFORM_SOURCES=%FL_PLATFORM_SOURCES%"
+    SET "FL_CORE_SOURCES=%FL_CORE_SOURCES%"
     SET "PROJECT_INCLUDES=%PROJECT_INCLUDES%"
     SET "PROJECT_COMPILER_FLAGS=%PROJECT_COMPILER_FLAGS%"
     SET "FL_TEST_DRIVER=%FL_TEST_DRIVER%"
@@ -246,6 +249,9 @@ ENDLOCAL & (
     SET "DIR_TARGET=%DIR_TARGET%"
     SET "BUILD_TYPE=%BUILD_TYPE%"
     SET "DIR_INCLUDE=%DIR_INCLUDE%"
+    SET "DIR_SRC=%DIR_SRC%"
+    SET "DIR_METRICS=%DIR_METRICS%"
+    SET "DIR_TEST=%DIR_TEST%"
     SET "DIR_THIRD_PARTY=%DIR_THIRD_PARTY%"
     SET "DIR_INCLUDE_PRIVATE=%DIR_INCLUDE_PRIVATE%"
     SET "DIR_OUT_OBJ=%DIR_OUT_OBJ%"

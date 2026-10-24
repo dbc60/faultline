@@ -15,10 +15,10 @@ IF ERRORLEVEL 1 EXIT /B 1
 IF %build% EQU 0 GOTO :SUCCESS
 
 if %timed% EQU 1 (
-    if NOT EXIST metrics\vs (
-        md metrics\vs
+    if NOT EXIST "%DIR_METRICS%" (
+        md "%DIR_METRICS%"
     )
-    ctime.exe -begin metrics\vs\all.ctm
+    ctime.exe -begin "%DIR_METRICS%\all.ctm"
 )
 
 set "args="
@@ -192,12 +192,12 @@ if %analyze% EQU 1 (
     )
 )
 
-IF NOT EXIST test MD test
-copy /y %DIR_OUT_BIN%\*.exe test\ > NUL
-copy /y %DIR_OUT_BIN%\*.dll test\ > NUL
+IF NOT EXIST "%DIR_TEST%" MD "%DIR_TEST%"
+copy /y %DIR_OUT_BIN%\*.exe "%DIR_TEST%\" > NUL
+copy /y %DIR_OUT_BIN%\*.dll "%DIR_TEST%\" > NUL
 
 if %timed% EQU 1 (
-    ctime.exe -end metrics\vs\all.ctm %errorlevel%
+    ctime.exe -end "%DIR_METRICS%\all.ctm" %errorlevel%
 )
 
 if %test% EQU 1 (
@@ -207,7 +207,7 @@ if %test% EQU 1 (
     TITLE Unit Tests
     set "JUNIT_OPT="
     if %junit% EQU 1 set "JUNIT_OPT=--junit-xml junit.xml"
-    pushd test
+    pushd "%DIR_TEST%"
     .\faultline.exe run !JUNIT_OPT! ^
         fl_exception_tests.dll ^
         but_tests.dll ^
@@ -269,7 +269,7 @@ GOTO :SUCCESS
 
 :ERROR
 if %timed% EQU 1 (
-    ctime.exe -end metrics\vs\all.ctm %errorlevel%
+    ctime.exe -end "%DIR_METRICS%\all.ctm" %errorlevel%
 )
 EXIT /B 1
 

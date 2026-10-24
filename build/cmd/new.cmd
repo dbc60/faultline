@@ -15,10 +15,10 @@ IF ERRORLEVEL 1 EXIT /B 1
 IF %build% EQU 0 GOTO :SUCCESS
 
 if %timed% EQU 1 (
-    if NOT EXIST metrics\vs (
-        md metrics\vs
+    if NOT EXIST "%DIR_METRICS%" (
+        md "%DIR_METRICS%"
     )
-    ctime.exe -begin metrics\vs\new.ctm
+    ctime.exe -begin "%DIR_METRICS%\new.ctm"
 )
 
 set "args="
@@ -126,11 +126,11 @@ if errorlevel 1 (
     GOTO :ERROR
 )
 
-copy /y %DIR_OUT_BIN%\*.exe test\ > NUL
-copy /y %DIR_OUT_BIN%\*.dll test\ > NUL
+copy /y %DIR_OUT_BIN%\*.exe "%DIR_TEST%\" > NUL
+copy /y %DIR_OUT_BIN%\*.dll "%DIR_TEST%\" > NUL
 
 if %timed% EQU 1 (
-    ctime.exe -end metrics\vs\new.ctm %errorlevel%
+    ctime.exe -end "%DIR_METRICS%\new.ctm" %errorlevel%
 )
 
 if %test% EQU 1 (
@@ -138,7 +138,7 @@ if %test% EQU 1 (
         ECHO "Run all unit tests"
     )
     TITLE Unit Tests
-    pushd test
+    pushd "%DIR_TEST%"
     .\but_driver.exe ^
         fl_exception_tests.dll ^
         but_tests.dll ^
@@ -171,7 +171,7 @@ GOTO :SUCCESS
 
 :ERROR
 if %timed% EQU 1 (
-    ctime.exe -end metrics\vs\new.ctm %errorlevel%
+    ctime.exe -end "%DIR_METRICS%\new.ctm" %errorlevel%
 )
 EXIT /B 1
 
