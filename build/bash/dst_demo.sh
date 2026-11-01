@@ -8,7 +8,11 @@
 # Usage:
 #   bash build/bash/dst_demo.sh [test]
 #
-# test runs dst_demo_check.mjs under Node after the build.
+# test runs the Node checks after the build. The page lands in
+# target/clang/wasm32/dst_demo_web and needs a web server, because browsers do not load
+# modules from file:// URLs:
+#
+#   python -m http.server -d target/clang/wasm32/dst_demo_web
 set -euo pipefail
 
 # WASI_SDK_PATH in the environment pins an install. Otherwise take the primary location.
@@ -24,6 +28,7 @@ fi
 DIR_REPO="$(cygpath -m "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)")"
 DIR_DEMO="$DIR_REPO/app/dst_demo"
 DIR_OUT="$DIR_REPO/target/clang/wasm32"
+DIR_WEB="$DIR_OUT/dst_demo_web"
 
 mkdir -p "$DIR_OUT"
 
@@ -36,6 +41,11 @@ mkdir -p "$DIR_OUT"
     -nostartfiles -Wl,--no-entry -Wl,--gc-sections -Wl,--strip-all \
     "$DIR_DEMO/dst_demo.c" -o "$DIR_OUT/dst_demo.wasm"
 
+# The page loads the module from its own directory.
+mkdir -p "$DIR_WEB"
+cp "$DIR_DEMO"/web/*.{html,css,js} "$DIR_OUT/dst_demo.wasm" "$DIR_WEB"
+
 if [[ "${1:-}" == "test" ]]; then
     node "$DIR_DEMO/dst_demo_check.mjs" "$DIR_OUT/dst_demo.wasm"
+    node "$DIR_DEMO/dst_demo_web_check.mjs" "$DIR_OUT/dst_demo.wasm"
 fi

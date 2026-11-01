@@ -1,0 +1,190 @@
+/* Scoped to .dst-demo so it can sit inside a blog theme. */
+.dst-demo {
+    --demo-bg: #ffffff;
+    --demo-text: #1c2024;
+    --demo-muted: #5f6872;
+    --demo-line: #aab2bb;
+    --demo-node: #eef1f4;
+    --demo-sibling: #d9dee4;
+    --demo-visit: #1d6fd1;
+    --demo-best: #1a8a52;
+    --demo-saved: #8a4fc7;
+    --demo-smallest: #b7791f;
+    --demo-target: #c9372c;
+    --demo-replacement: #c2571a;
+    --demo-result: #0c7c7c;
+
+    background: var(--demo-bg);
+    color: var(--demo-text);
+    font: 15px/1.45 system-ui, sans-serif;
+    padding: 12px 0;
+}
+
+@media (prefers-color-scheme: dark) {
+    .dst-demo {
+        --demo-bg: #16191d;
+        --demo-text: #e6e9ec;
+        --demo-muted: #9aa4ae;
+        --demo-line: #5a636d;
+        --demo-node: #272c32;
+        --demo-sibling: #3a4149;
+        --demo-visit: #5aa2f2;
+        --demo-best: #4cc38a;
+        --demo-saved: #b98cf0;
+        --demo-smallest: #e3b341;
+        --demo-target: #f2776c;
+        --demo-replacement: #f0935a;
+        --demo-result: #3fc1c1;
+    }
+}
+
+.dst-demo .controls,
+.dst-demo .transport {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.dst-demo input {
+    width: 6em;
+}
+
+.dst-demo .tree {
+    overflow-x: auto;
+}
+
+/* Below this width a key's label is too small to read, so the tree scrolls instead. */
+.dst-demo svg {
+    display: block;
+    min-width: 860px;
+    width: 100%;
+}
+
+.dst-demo .caption {
+    margin: 8px 0;
+    min-height: 3em;
+}
+
+.dst-demo .position,
+.dst-demo .hint {
+    color: var(--demo-muted);
+}
+
+.dst-demo .hint {
+    font-size: 13px;
+}
+
+.dst-demo svg line {
+    stroke: var(--demo-line);
+    stroke-width: 1.5;
+}
+
+.dst-demo svg text {
+    fill: var(--demo-text);
+    font-size: 13px;
+}
+
+.dst-demo svg .bit,
+.dst-demo svg .badge {
+    fill: var(--demo-muted);
+    font-size: 11px;
+}
+
+.dst-demo .node {
+    cursor: pointer;
+}
+
+.dst-demo .node rect {
+    fill: var(--demo-node);
+    stroke: var(--demo-line);
+    stroke-width: 1.5;
+}
+
+.dst-demo .node.sibling rect {
+    fill: var(--demo-sibling);
+}
+
+.dst-demo .node.sibling text {
+    fill: transparent;
+}
+
+.dst-demo .node:focus-visible {
+    outline: 2px solid var(--demo-visit);
+}
+
+/* Later rules win, so a node's outcome shows over the search state it also holds. */
+.dst-demo .node.saved rect {
+    stroke: var(--demo-saved);
+    stroke-dasharray: 4 3;
+    stroke-width: 2.5;
+}
+
+.dst-demo .node.smallest rect {
+    stroke: var(--demo-smallest);
+    stroke-dasharray: none;
+    stroke-width: 2.5;
+}
+
+.dst-demo .node.best rect {
+    stroke: var(--demo-best);
+    stroke-dasharray: none;
+    stroke-width: 3;
+}
+
+.dst-demo .node.visit rect {
+    fill: var(--demo-visit);
+}
+
+.dst-demo .node.ghost rect {
+    fill: var(--demo-bg);
+    stroke: var(--demo-visit);
+    stroke-dasharray: 4 3;
+}
+
+.dst-demo .node.target rect {
+    fill: var(--demo-target);
+}
+
+.dst-demo .node.replacement rect {
+    fill: var(--demo-replacement);
+}
+
+.dst-demo .node.result rect {
+    fill: var(--demo-result);
+}
+
+.dst-demo .node.visit:not(.ghost) > text:not(.badge),
+.dst-demo .node.target > text:not(.badge),
+.dst-demo .node.replacement > text:not(.badge),
+.dst-demo .node.result > text:not(.badge) {
+    fill: var(--demo-bg);
+}
+
+.dst-demo .legend {
+    display: flex;
+    flex-wrap: wrap;
+    font-size: 13px;
+    gap: 4px 14px;
+    list-style: none;
+    margin: 10px 0 0;
+    padding: 0;
+}
+
+.dst-demo .legend li::before {
+    background: var(--swatch);
+    border-radius: 2px;
+    content: "";
+    display: inline-block;
+    height: 10px;
+    margin-right: 5px;
+    width: 10px;
+}
+
+.dst-demo .legend .visit { --swatch: var(--demo-visit); }
+.dst-demo .legend .best { --swatch: var(--demo-best); }
+.dst-demo .legend .saved { --swatch: var(--demo-saved); }
+.dst-demo .legend .smallest { --swatch: var(--demo-smallest); }
+.dst-demo .legend .target { --swatch: var(--demo-target); }
+.dst-demo .legend .replacement { --swatch: var(--demo-replacement); }
+.dst-demo .legend .result { --swatch: var(--demo-result); }
