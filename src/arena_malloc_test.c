@@ -52,8 +52,8 @@ void setup_large_range(FLTestCase *btc) {
     tr->arena = new_arena(tr->hi, 0);
 }
 
-FL_TYPE_TEST_SETUP_CLEANUP("Allocate - Small Range", TestRequest,
-                           test_small_range_malloc, setup_small_range, cleanup) {
+FL_TYPE_TEST_SETUP_CLEANUP("Allocate - Small Range", TestRequest, test_small_range_malloc,
+                           setup_small_range, cleanup) {
     for (size_t req = t->lo; req < t->hi; req += CHUNK_ALIGNMENT) {
         void *mem = arena_malloc(t->arena, req, __FILE__, __LINE__);
         FL_ASSERT_NOT_NULL(mem);
@@ -153,15 +153,14 @@ FL_TYPE_TEST_SETUP_CLEANUP("In-Order Delete", TestRequest, test_in_order_delete,
         DListI64 *node = FL_CONTAINER_OF(DLIST_LAST(&head->link), DListI64, link);
 
         DLIST_REMOVE(&node->link);
-        FL_ASSERT_DETAILS(node->value == i, "Expected %lld. Actual %lld", i,
-                          node->value);
+        FL_ASSERT_DETAILS(node->value == i, "Expected %lld. Actual %lld", i, node->value);
         arena_free_throw(t->arena, node, __FILE__, __LINE__);
     }
 }
 
 // delete in the reverse order in which items were allocated
-FL_TYPE_TEST_SETUP_CLEANUP("Reverse-Order Delete", TestRequest,
-                           test_reverse_order_delete, setup_many, cleanup) {
+FL_TYPE_TEST_SETUP_CLEANUP("Reverse-Order Delete", TestRequest, test_reverse_order_delete,
+                           setup_many, cleanup) {
     DListI64 *head
         = (DListI64 *)arena_malloc_throw(t->arena, sizeof(*head), __FILE__, __LINE__);
 
@@ -191,8 +190,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Reverse-Order Delete", TestRequest,
     for (i64 i = (i64)t->hi - 1; i >= (i64)t->lo; i--) {
         DListI64 *node = FL_CONTAINER_OF(DLIST_FIRST(&head->link), DListI64, link);
         DLIST_REMOVE(&node->link);
-        FL_ASSERT_DETAILS(node->value == i, "Expected %lld. Actual %lld", i,
-                          node->value);
+        FL_ASSERT_DETAILS(node->value == i, "Expected %lld. Actual %lld", i, node->value);
 
         arena_free_throw(t->arena, node, __FILE__, __LINE__);
     }
@@ -235,9 +233,9 @@ FL_TEST("Merge Backward", merge_backward) {
     arena_free(arena, b, __FILE__, __LINE__);
     size_t chunk_size = CHUNK_SIZE_FROM_REQUEST(4096);
     FL_ASSERT_EQ(CHUNK_SIZE((Chunk *)dst_a), 3 * chunk_size); // all three merged
-    FL_ASSERT_TRUE(DST_IS_ROOT(dst_a));                              // back in a bin
-    FL_ASSERT_TRUE(DST_IS_LEAF(dst_a));       // only chunk of this size
-    FL_ASSERT_TRUE(!DST_HAS_SIBLINGS(dst_a)); // no same-size neighbors
+    FL_ASSERT_TRUE(DST_IS_ROOT(dst_a));                       // back in a bin
+    FL_ASSERT_TRUE(DST_IS_LEAF(dst_a));                       // only chunk of this size
+    FL_ASSERT_TRUE(!DST_HAS_SIBLINGS(dst_a));                 // no same-size neighbors
 
     arena_free(arena, top_blocker, __FILE__, __LINE__);
 }
@@ -295,12 +293,12 @@ FL_TEST("Merge Forward", merge_forward) {
 
 FL_TEST("Next Bin Provides Its Smallest Chunk", next_bin_smallest) {
     Arena *arena = new_arena(0, 0);
-    void  *root  = arena_malloc(arena, REQUEST_FOR_CHUNK(NEXT_BIN_ROOT_SIZE), __FILE__,
-                                __LINE__);
-    void  *guard_a = arena_malloc(arena, GUARD_REQUEST, __FILE__, __LINE__);
-    void  *left    = arena_malloc(arena, REQUEST_FOR_CHUNK(NEXT_BIN_LEFT_SIZE), __FILE__,
-                                  __LINE__);
-    void  *guard_b = arena_malloc(arena, GUARD_REQUEST, __FILE__, __LINE__);
+    void  *root
+        = arena_malloc(arena, REQUEST_FOR_CHUNK(NEXT_BIN_ROOT_SIZE), __FILE__, __LINE__);
+    void *guard_a = arena_malloc(arena, GUARD_REQUEST, __FILE__, __LINE__);
+    void *left
+        = arena_malloc(arena, REQUEST_FOR_CHUNK(NEXT_BIN_LEFT_SIZE), __FILE__, __LINE__);
+    void *guard_b = arena_malloc(arena, GUARD_REQUEST, __FILE__, __LINE__);
 
     arena_free(arena, root, __FILE__, __LINE__);
     arena_free(arena, left, __FILE__, __LINE__);
@@ -325,12 +323,12 @@ FL_TEST("Next Bin Provides Its Smallest Chunk", next_bin_smallest) {
 
 FL_TEST("Small Request Takes Smallest Large Chunk", small_request_smallest) {
     Arena *arena = new_arena(0, 0);
-    void  *root  = arena_malloc(arena, REQUEST_FOR_CHUNK(LARGE_BIN_ROOT_SIZE), __FILE__,
-                                __LINE__);
-    void  *guard_a = arena_malloc(arena, GUARD_REQUEST, __FILE__, __LINE__);
-    void  *left    = arena_malloc(arena, REQUEST_FOR_CHUNK(LARGE_BIN_LEFT_SIZE), __FILE__,
-                                  __LINE__);
-    void  *guard_b = arena_malloc(arena, GUARD_REQUEST, __FILE__, __LINE__);
+    void  *root
+        = arena_malloc(arena, REQUEST_FOR_CHUNK(LARGE_BIN_ROOT_SIZE), __FILE__, __LINE__);
+    void *guard_a = arena_malloc(arena, GUARD_REQUEST, __FILE__, __LINE__);
+    void *left
+        = arena_malloc(arena, REQUEST_FOR_CHUNK(LARGE_BIN_LEFT_SIZE), __FILE__, __LINE__);
+    void *guard_b = arena_malloc(arena, GUARD_REQUEST, __FILE__, __LINE__);
 
     arena_free(arena, root, __FILE__, __LINE__);
     arena_free(arena, left, __FILE__, __LINE__);
@@ -346,9 +344,9 @@ FL_TEST("Small Request Takes Smallest Large Chunk", small_request_smallest) {
 
 FL_TEST("Small Request From Large Bin Is Exact Size", small_request_exact_size) {
     Arena *arena = new_arena(0, 0);
-    void  *large = arena_malloc(arena, REQUEST_FOR_CHUNK(LARGE_BIN_LEFT_SIZE), __FILE__,
-                                __LINE__);
-    void  *guard = arena_malloc(arena, GUARD_REQUEST, __FILE__, __LINE__);
+    void  *large
+        = arena_malloc(arena, REQUEST_FOR_CHUNK(LARGE_BIN_LEFT_SIZE), __FILE__, __LINE__);
+    void *guard = arena_malloc(arena, GUARD_REQUEST, __FILE__, __LINE__);
 
     arena_free(arena, large, __FILE__, __LINE__);
 

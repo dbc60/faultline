@@ -48,7 +48,7 @@
  *
  * A macro that forced the shim on would therefore need a link-time guard: some
  * symbol that fails the build when fl_threads.c is absent from the link. Until
- * such a guard exists, no forcing macro is offered.
+ * such a guard exists, there is no macro to force the shim on.
  */
 #if defined(__STDC_NO_THREADS__) || !defined(__has_include)
 #define FL_THREADS_USE_SHIM 1

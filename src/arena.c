@@ -1052,8 +1052,7 @@ static void arena_free_pointer_impl(Arena *arena, void **ptr, char const *file,
     *ptr = 0;
 }
 
-static void *arena_malloc_impl(Arena *arena, size_t request, char const *file,
-                               int line) {
+static void *arena_malloc_impl(Arena *arena, size_t request, char const *file, int line) {
     size_t size = CHUNK_SIZE_FROM_REQUEST(request);
     Chunk *ch   = NULL;
 
@@ -1187,8 +1186,8 @@ Arena *arena_owner(void const *mem) {
 void *arena_aligned_alloc_throw(Arena *arena, size_t alignment, size_t size,
                                 char const *file, int line) {
     void *mem = NULL;
-    ARENA_GUARDED_CALL(arena, mem = arena_aligned_alloc_impl(arena, alignment, size,
-                                                             file, line));
+    ARENA_GUARDED_CALL(arena, mem = arena_aligned_alloc_impl(arena, alignment, size, file,
+                                                             line));
     return mem;
 }
 
