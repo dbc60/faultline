@@ -44,10 +44,15 @@ DigitalSearchTree *dst_smallest_node(DigitalSearchTree *root) {
     DigitalSearchTree *smallest = root;
     DigitalSearchTree *child    = dst_leftmost_child(root);
 
+    DST_TRACE(DST_TRACE_SMALLEST_VISIT, root, 0);
+    DST_TRACE(DST_TRACE_SMALLEST_BEST, root, 0);
+
     while (child != root) {
         root = child;
+        DST_TRACE(DST_TRACE_SMALLEST_VISIT, root, 0);
         if (CHUNK_SIZE(root) < CHUNK_SIZE(smallest)) {
             smallest = root;
+            DST_TRACE(DST_TRACE_SMALLEST_BEST, root, 0);
         }
 
         child = dst_leftmost_child(root);
@@ -69,10 +74,12 @@ void dst_insert(DigitalSearchTree *FL_RESTRICT root, DigitalSearchTree *FL_RESTR
         if (CHUNK_SIZE(root) == size) {
             // node and root are the same size, so make them siblings
             DLIST_INSERT_NEXT(&root->siblings, &node->siblings);
+            DST_TRACE(DST_TRACE_INSERT_SIBLING, root, 0);
         } else {
             // traverse to next subtree
             flag64 next = DST_NEXT_CHILD(size, left_shift);
             child       = root->child[next];
+            DST_TRACE(DST_TRACE_INSERT_VISIT, root, next);
 
             // node should NOT be in the tree already
             FL_ASSERT_NEQ_PTR(child, node);
@@ -81,6 +88,7 @@ void dst_insert(DigitalSearchTree *FL_RESTRICT root, DigitalSearchTree *FL_RESTR
                 // We found an unused child
                 root->child[next] = node;
                 node->parent      = root;
+                DST_TRACE(DST_TRACE_INSERT_ATTACH, root, next);
             }
         }
         left_shift++;

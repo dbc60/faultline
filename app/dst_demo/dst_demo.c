@@ -13,8 +13,16 @@
  *   root() -> id
  *   key(id), left(id), right(id), next_sibling(id)
  *
+ * Each add, remove or find also records its steps as frames, which a caller replays to
+ * animate the operation:
+ *
+ *   frame_count(), frames_dropped()
+ *   frame_event(i), frame_node(i), frame_detail(i)
+ *   event_count(), event_name(event)
+ *
  * See LICENSE.txt for copyright and licensing information about this file.
  */
+#define DST_TRACE_ENABLED
 #include "digital_search_tree.c"
 
 #include <faultline/fl_exception.h> // FL_THROW_EXCEPTION_FN, fl_internal_error
@@ -38,9 +46,34 @@
 /// rather than taken from the macro, which gives another value on a 32-bit target.
 #define DEMO_LEFT_SHIFT 55
 
+/// Far more steps than one operation takes on a tree of DEMO_CAPACITY nodes.
+#define DEMO_MAX_FRAMES 256
+
+typedef struct DemoFrame {
+    DSTTraceEvent event;
+    int           node;
+    int           detail;
+} DemoFrame;
+
 static DigitalSearchTree  s_pool[DEMO_CAPACITY];
 static bool               s_in_use[DEMO_CAPACITY];
 static DigitalSearchTree *s_root;
+static DemoFrame          s_frames[DEMO_MAX_FRAMES];
+static int                s_frame_count;
+static int                s_frame_limit = DEMO_MAX_FRAMES;
+static int                s_frames_dropped;
+
+/// Indexed by DSTTraceEvent. JavaScript reads these rather than repeating the enum.
+static char const *const s_event_names[] = {
+    "insert_visit",   "insert_attach", "insert_sibling",    "insert_root",
+    "find_visit",     "find_best",     "find_save",         "find_dead_end",
+    "smallest_visit", "smallest_best", "replace_from_tree", "replace_from_siblings",
+    "replace_take",   "remove_leaf",   "remove_sibling",
+};
+
+FL_STATIC_ASSERT(sizeof(s_event_names) / sizeof(s_event_names[0])
+                     == DST_TRACE_EVENT_COUNT,
+                 "s_event_names does not name every DSTTraceEvent");
 
 /* Assertions are the only source of throws here. Nothing catches them, so stop. */
 FLExceptionReason fl_internal_error = "internal error";
@@ -75,6 +108,27 @@ static int node_id(DigitalSearchTree const *node) {
     return node == NULL ? DEMO_NO_NODE : (int)(node - s_pool);
 }
 
+void dst_trace(DSTTraceEvent event, DigitalSearchTree const *node, size_t detail) {
+    if (s_frame_count >= s_frame_limit) {
+        s_frames_dropped++;
+        return;
+    }
+
+    s_frames[s_frame_count].event  = event;
+    s_frames[s_frame_count].node   = node_id(node);
+    s_frames[s_frame_count].detail = (int)detail;
+    s_frame_count++;
+}
+
+static void clear_frames(void) {
+    s_frame_count    = 0;
+    s_frames_dropped = 0;
+}
+
+static bool frame_in_range(int index) {
+    return index >= 0 && index < s_frame_count;
+}
+
 static bool id_in_use(int id) {
     return id >= 0 && id < DEMO_CAPACITY && s_in_use[id];
 }
@@ -107,7 +161,9 @@ DEMO_EXPORT("reset") void demo_reset(void) {
         s_in_use[id] = false;
     }
 
-    s_root = NULL;
+    s_root        = NULL;
+    s_frame_limit = DEMO_MAX_FRAMES;
+    clear_frames();
 }
 
 DEMO_EXPORT("capacity") int demo_capacity(void) {
@@ -122,6 +178,8 @@ DEMO_EXPORT("capacity") int demo_capacity(void) {
 DEMO_EXPORT("add") int demo_add(unsigned key) {
     int id = free_slot();
 
+    clear_frames();
+
     if (!key_is_valid(key) || id == DEMO_NO_NODE) {
         return DEMO_NO_NODE;
     }
@@ -131,6 +189,7 @@ DEMO_EXPORT("add") int demo_add(unsigned key) {
 
     if (s_root == NULL) {
         s_root = &s_pool[id];
+        DST_TRACE(DST_TRACE_INSERT_ROOT, s_root, 0);
     } else {
         dst_insert(s_root, &s_pool[id], DEMO_LEFT_SHIFT);
     }
@@ -147,6 +206,8 @@ DEMO_EXPORT("add") int demo_add(unsigned key) {
  * @return the id of the removed node, or DEMO_NO_NODE if the id is not in use.
  */
 DEMO_EXPORT("remove") int demo_remove(int id) {
+    clear_frames();
+
     if (!id_in_use(id)) {
         return DEMO_NO_NODE;
     }
@@ -155,6 +216,7 @@ DEMO_EXPORT("remove") int demo_remove(int id) {
 
     if (s_root != node && DST_IS_ROOT(node)) {
         DLIST_REMOVE(&node->siblings);
+        DST_TRACE(DST_TRACE_REMOVE_SIBLING, node, 0);
     } else {
         DigitalSearchTree *replacement = dst_remove_leftmost(node);
 
@@ -175,6 +237,8 @@ DEMO_EXPORT("remove") int demo_remove(int id) {
  * DEMO_NO_NODE if there is none or the key is invalid.
  */
 DEMO_EXPORT("find") int demo_find(unsigned key) {
+    clear_frames();
+
     if (s_root == NULL || !key_is_valid(key)) {
         return DEMO_NO_NODE;
     }
@@ -205,4 +269,41 @@ DEMO_EXPORT("next_sibling") int demo_next_sibling(int id) {
     }
 
     return node_id(DST_NEXT_SIBLING(&s_pool[id]));
+}
+
+DEMO_EXPORT("frame_count") int demo_frame_count(void) {
+    return s_frame_count;
+}
+
+/// The number of steps that did not fit. Nonzero means the frames are incomplete.
+DEMO_EXPORT("frames_dropped") int demo_frames_dropped(void) {
+    return s_frames_dropped;
+}
+
+DEMO_EXPORT("frame_event") int demo_frame_event(int index) {
+    return frame_in_range(index) ? (int)s_frames[index].event : DEMO_NO_NODE;
+}
+
+DEMO_EXPORT("frame_node") int demo_frame_node(int index) {
+    return frame_in_range(index) ? s_frames[index].node : DEMO_NO_NODE;
+}
+
+DEMO_EXPORT("frame_detail") int demo_frame_detail(int index) {
+    return frame_in_range(index) ? s_frames[index].detail : 0;
+}
+
+DEMO_EXPORT("event_count") int demo_event_count(void) {
+    return DST_TRACE_EVENT_COUNT;
+}
+
+/// The address of a NUL-terminated name in linear memory, or 0 for an unknown event.
+DEMO_EXPORT("event_name") char const *demo_event_name(int event) {
+    return event >= 0 && event < DST_TRACE_EVENT_COUNT ? s_event_names[event] : NULL;
+}
+
+/// Lower the frame limit, up to the next reset, so a test can fill the buffer.
+DEMO_EXPORT("set_frame_limit") void demo_set_frame_limit(int limit) {
+    if (limit >= 0 && limit <= DEMO_MAX_FRAMES) {
+        s_frame_limit = limit;
+    }
 }

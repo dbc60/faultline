@@ -19,6 +19,82 @@ const wasm = await WebAssembly.compile(readFileSync(process.argv[2]));
 assert.deepEqual(WebAssembly.Module.imports(wasm), [], 'a browser must load it with no imports');
 const { exports: demo } = await WebAssembly.instantiate(wasm);
 
+function readName(address) {
+    const memory = new Uint8Array(demo.memory.buffer);
+    let end = address;
+    while (memory[end] !== 0) {
+        end++;
+    }
+    return new TextDecoder().decode(memory.subarray(address, end));
+}
+
+const eventNames = Array.from({ length: demo.event_count() }, (_, i) => readName(demo.event_name(i)));
+const EVENT = Object.fromEntries(eventNames.map((name, i) => [name, i]));
+
+function readFrames() {
+    assert.equal(demo.frames_dropped(), 0, 'frames are complete');
+    return Array.from({ length: demo.frame_count() }, (_, i) => ({
+        event: demo.frame_event(i),
+        node: demo.frame_node(i),
+        detail: demo.frame_detail(i),
+    }));
+}
+
+const bitAt = (key, depth) => (key >> (FIRST_DECISION_BIT - depth)) & 1;
+
+// Each visit tests the bit for its depth, and the last frame says where the node went.
+function assertAddFrames(frames, key) {
+    const visits = frames.filter((frame) => frame.event === EVENT.insert_visit);
+    visits.forEach((frame, depth) => assert.equal(frame.detail, bitAt(key, depth), 'insert bit'));
+
+    const last = frames.at(-1);
+    assert.ok(
+        [EVENT.insert_attach, EVENT.insert_sibling, EVENT.insert_root].includes(last.event),
+        'an add ends by placing the node',
+    );
+    assert.equal(frames.length, visits.length + 1, 'one placement after the visits');
+
+    if (last.event === EVENT.insert_sibling) {
+        assert.equal(demo.key(last.node), key, 'a sibling shares its key');
+    }
+}
+
+// The bit-guided visits follow the key, and the last best fit is the result.
+function assertFindFrames(frames, key, found) {
+    const events = frames.map((frame) => frame.event);
+    const visits = frames.filter((frame) => frame.event === EVENT.find_visit);
+    visits.forEach((frame, depth) => assert.equal(frame.detail, bitAt(key, depth), 'find bit'));
+
+    const bests = frames.filter((frame) => frame.event === EVENT.find_best);
+    for (let i = 1; i < bests.length; i++) {
+        assert.ok(bests[i].detail < bests[i - 1].detail, 'each best fit leaves less');
+    }
+    assert.equal(bests.at(-1)?.node ?? NO_NODE, found, 'the last best fit is the result');
+
+    const firstWalk = events.indexOf(EVENT.smallest_visit);
+    if (firstWalk !== -1) {
+        assert.ok(events.includes(EVENT.find_dead_end), 'the walk follows a dead end');
+        assert.ok(events.includes(EVENT.find_save), 'the walk needs a saved subtree');
+        assert.ok(firstWalk > events.lastIndexOf(EVENT.find_visit), 'the walk ends bit-guided search');
+    }
+}
+
+// A removal ends with the node gone, either by itself or with a replacement taking over.
+function assertRemoveFrames(frames, id) {
+    const last = frames.at(-1);
+    assert.equal(last.node, id, 'the last frame names the removed node');
+    assert.ok(
+        [EVENT.replace_take, EVENT.remove_leaf, EVENT.remove_sibling].includes(last.event),
+        'a removal ends by clearing the node',
+    );
+
+    if (last.event === EVENT.replace_take) {
+        assert.equal(frames.length, 2, 'a replacement leaves one place and takes another');
+    } else {
+        assert.equal(frames.length, 1);
+    }
+}
+
 // Linear congruential generator, so a failure repeats.
 let seed = 12345;
 function random(limit) {
@@ -95,6 +171,24 @@ function checkKnownCases() {
     // Removing the root of a same-size stack promotes a sibling.
     assert.equal(demo.remove(demo.root()), 0);
     assert.notEqual(demo.root(), NO_NODE);
+
+    checkDroppedFrames();
+}
+
+// A full buffer is reported, and a later operation starts clean.
+function checkDroppedFrames() {
+    demo.reset();
+    [1024, 1488, 1296, 1424].forEach((key) => demo.add(key));
+
+    demo.set_frame_limit(1);
+    demo.find(1168);
+    assert.equal(demo.frame_count(), 1);
+    assert.ok(demo.frames_dropped() > 0, 'dropped frames are counted');
+
+    demo.reset();
+    demo.add(KEY_MIN);
+    assert.equal(demo.frames_dropped(), 0);
+    assert.equal(demo.frame_count(), 1);
 }
 
 function checkRandomOperations() {
@@ -111,10 +205,12 @@ function checkRandomOperations() {
             if (id !== NO_NODE) {
                 model.set(id, key);
                 counts.add++;
+                assertAddFrames(readFrames(), key);
             }
         } else if (roll < ADD_PERCENT + REMOVE_PERCENT && model.size > 0) {
             const id = [...model.keys()][random(model.size)];
             assert.equal(demo.remove(id), id);
+            assertRemoveFrames(readFrames(), id);
             model.delete(id);
             counts.remove++;
         } else {
@@ -122,6 +218,7 @@ function checkRandomOperations() {
             const found = demo.find(key);
             const expected = bestFit(model.values(), key);
             assert.equal(found === NO_NODE ? NO_NODE : demo.key(found), expected, `find ${key}`);
+            assertFindFrames(readFrames(), key, found);
             counts.find++;
         }
 

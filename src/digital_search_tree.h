@@ -42,6 +42,55 @@ typedef struct DigitalSearchTree {
     struct DigitalSearchTree *child[2]; // left and right children
 } DigitalSearchTree;
 
+#ifdef DST_TRACE_ENABLED
+/**
+ * @brief The steps of a tree operation, for a caller that animates them.
+ *
+ * Each event carries a node and a detail value. The detail is 0 unless listed here.
+ *
+ * - INSERT_VISIT: dst_insert tested the node. The detail is the child index selected.
+ * - INSERT_ATTACH: the new node became the node's child. The detail is its child index.
+ * - INSERT_SIBLING: the new node joined the node's list of same-size nodes.
+ * - INSERT_ROOT: the node became the root of an empty tree. The caller reports this.
+ * - FIND_VISIT: the search tested the node. The detail is the child index selected.
+ * - FIND_BEST: the node is the best fit so far. The detail is its remainder.
+ * - FIND_SAVE: the node's subtree is the deepest one not taken.
+ * - FIND_DEAD_END: the node has no child on the search path.
+ * - SMALLEST_VISIT: dst_smallest_node tested the node.
+ * - SMALLEST_BEST: the node is the smallest in its subtree so far.
+ * - REPLACE_FROM_TREE: the node, a leaf, left its position to replace another node.
+ * - REPLACE_FROM_SIBLINGS: the node left a list of same-size nodes to replace another.
+ * - REPLACE_TAKE: the most recent replacement took the node's position.
+ * - REMOVE_LEAF: the node left the tree, and nothing took its position.
+ * - REMOVE_SIBLING: the node left a list of same-size nodes. The caller reports this.
+ */
+typedef enum DSTTraceEvent {
+    DST_TRACE_INSERT_VISIT,
+    DST_TRACE_INSERT_ATTACH,
+    DST_TRACE_INSERT_SIBLING,
+    DST_TRACE_INSERT_ROOT,
+    DST_TRACE_FIND_VISIT,
+    DST_TRACE_FIND_BEST,
+    DST_TRACE_FIND_SAVE,
+    DST_TRACE_FIND_DEAD_END,
+    DST_TRACE_SMALLEST_VISIT,
+    DST_TRACE_SMALLEST_BEST,
+    DST_TRACE_REPLACE_FROM_TREE,
+    DST_TRACE_REPLACE_FROM_SIBLINGS,
+    DST_TRACE_REPLACE_TAKE,
+    DST_TRACE_REMOVE_LEAF,
+    DST_TRACE_REMOVE_SIBLING,
+    DST_TRACE_EVENT_COUNT
+} DSTTraceEvent;
+
+/// Supplied by the program that defines DST_TRACE_ENABLED.
+void dst_trace(DSTTraceEvent event, DigitalSearchTree const *node, size_t detail);
+
+#define DST_TRACE(EVENT, NODE, DETAIL) dst_trace((EVENT), (NODE), (DETAIL))
+#else
+#define DST_TRACE(EVENT, NODE, DETAIL) ((void)0)
+#endif
+
 #define DST_HAS_PARENT(T)   ((T)->parent != (T))
 #define DST_IS_ROOT(T)      ((T)->parent == (T))
 #define DST_IS_LEAF(T)      ((T)->child[0] == (T) && (T)->child[1] == (T))
@@ -179,9 +228,11 @@ static inline void dst_replace_node(DigitalSearchTree *node,
     if (DST_HAS_SIBLINGS(node)) {
         // remove node from the list of siblings
         FL_ASSERT_EQ_PTR(DST_NEXT_SIBLING(node), replacement);
+        DST_TRACE(DST_TRACE_REPLACE_FROM_SIBLINGS, replacement, 0);
         DLIST_REMOVE(&node->siblings);
     } else {
         // The replacement came from within the tree, because node has no siblings.
+        DST_TRACE(DST_TRACE_REPLACE_FROM_TREE, replacement, 0);
         parent = replacement->parent;
 
         // Detach the replacement from its parent.
@@ -228,6 +279,8 @@ static inline void dst_replace_node(DigitalSearchTree *node,
         node->child[1]->parent = replacement;
         node->child[1]         = node;
     }
+
+    DST_TRACE(DST_TRACE_REPLACE_TAKE, node, 0);
 }
 
 /**
@@ -278,6 +331,7 @@ static inline DigitalSearchTree *dst_remove_leftmost(DigitalSearchTree *dst) {
         dst_replace_node(dst, replacement);
     } else {
         // remove the leaf
+        DST_TRACE(DST_TRACE_REMOVE_LEAF, dst, 0);
         DigitalSearchTree *parent = dst->parent;
         if (DST_HAS_PARENT(dst)) {
             dst->parent = dst;
@@ -308,6 +362,7 @@ static inline DigitalSearchTree *dst_remove_rightmost(DigitalSearchTree *dst) {
         dst_replace_node(dst, replacement);
     } else {
         // remove the leaf
+        DST_TRACE(DST_TRACE_REMOVE_LEAF, dst, 0);
         DigitalSearchTree *parent = dst->parent;
         if (DST_HAS_PARENT(dst)) {
             dst->parent = dst;
@@ -348,12 +403,15 @@ dst_find_smallest_large_node(DigitalSearchTree *root, size_t size, flag64 left_s
     flag64             next              = DST_NEXT_CHILD(size, left_shift);
 
     do {
+        DST_TRACE(DST_TRACE_FIND_VISIT, root, next);
+
         size_t root_remainder_size = CHUNK_SIZE(root) - size;
         // If root is at least size bytes, set smallest to root and remainder_size to the
         // difference between root's size and the desired size.
         if (root_remainder_size < remainder_size) {
             smallest       = root;
             remainder_size = root_remainder_size;
+            DST_TRACE(DST_TRACE_FIND_BEST, root, remainder_size);
         }
 
         if (remainder_size != 0) {
@@ -364,10 +422,12 @@ dst_find_smallest_large_node(DigitalSearchTree *root, size_t size, flag64 left_s
                 // save unexplored right subtree in case we run into a deadend, so search
                 // can continue here.
                 rightmost_subtree = right_child;
+                DST_TRACE(DST_TRACE_FIND_SAVE, right_child, 0);
             }
 
             if (root == root->child[next]) {
                 // End of search down this path.
+                DST_TRACE(DST_TRACE_FIND_DEAD_END, root, 0);
                 root = NULL;
             } else {
                 root = root->child[next];
@@ -384,6 +444,7 @@ dst_find_smallest_large_node(DigitalSearchTree *root, size_t size, flag64 left_s
         DigitalSearchTree *candidate = dst_smallest_node(rightmost_subtree);
         if (CHUNK_SIZE(candidate) - size < remainder_size) {
             smallest = candidate;
+            DST_TRACE(DST_TRACE_FIND_BEST, candidate, CHUNK_SIZE(candidate) - size);
         }
     }
 
