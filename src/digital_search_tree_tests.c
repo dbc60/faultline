@@ -380,6 +380,60 @@ FL_TEST("Find No Match", test_find_no_match) {
 }
 
 // ---------------------------------------------------------------------------
+// Find smallest large node - best fit in the saved right subtree
+// ---------------------------------------------------------------------------
+
+/**
+ * Tree structure (bits 8 through 4 of each key shown):
+ *        root(1024)
+ *                 \
+ *               a(1488 11101)
+ *               /           \
+ *      b(1296 10001)    c(1424 11001)
+ *
+ * A search for 1168 (01001) ends at root, which has no left child, and resumes in the
+ * subtree at a. Every key there is larger than 1168, so the request's bits say nothing
+ * about which child holds the smallest: they lead right to c, while b is the best fit.
+ */
+FL_TEST("Find Best Fit In Saved Subtree", test_find_best_fit_saved_subtree) {
+    DigitalSearchTree root, a, b, c;
+    flag64            left_shift = TEST_LEFT_SHIFT(0);
+
+    dst_init(&root, 1024);
+    dst_init(&a, 1488);
+    dst_init(&b, 1296);
+    dst_init(&c, 1424);
+
+    dst_insert(&root, &a, left_shift);
+    dst_insert(&root, &b, left_shift);
+    dst_insert(&root, &c, left_shift);
+
+    DigitalSearchTree *found = dst_find_smallest_large_node(&root, 1168, left_shift);
+    FL_ASSERT_EQ_PTR(&b, found);
+}
+
+// ---------------------------------------------------------------------------
+// Smallest node - interior node on the left-preferring path
+// ---------------------------------------------------------------------------
+
+FL_TEST("Smallest Node", test_smallest_node) {
+    DigitalSearchTree root, a, b;
+    flag64            left_shift = TEST_LEFT_SHIFT(0);
+
+    // root(1520) -> left a(1040) -> right b(1168): a is interior and smallest.
+    dst_init(&root, 1520);
+    dst_init(&a, 1040);
+    dst_init(&b, 1168);
+    dst_insert(&root, &a, left_shift);
+    dst_insert(&root, &b, left_shift);
+    FL_ASSERT_EQ_PTR(&a, dst_smallest_node(&root));
+
+    // A single node is its own smallest.
+    dst_init(&b, 1168);
+    FL_ASSERT_EQ_PTR(&b, dst_smallest_node(&b));
+}
+
+// ---------------------------------------------------------------------------
 // 12. Insert sibling then remove node with children
 // ---------------------------------------------------------------------------
 
@@ -437,6 +491,8 @@ FL_SUITE_ADD(test_remove_rightmost_with_children)
 FL_SUITE_ADD(test_find_exact_match)
 FL_SUITE_ADD(test_find_best_fit)
 FL_SUITE_ADD(test_find_no_match)
+FL_SUITE_ADD(test_find_best_fit_saved_subtree)
+FL_SUITE_ADD(test_smallest_node)
 FL_SUITE_ADD(test_remove_sibling_inherits_children)
 FL_SUITE_END;
 

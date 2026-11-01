@@ -483,54 +483,50 @@ static Chunk *allocate_small_request_from_large_bin(Arena *arena, size_t request
     // get the index of the smallest large-bin that can satisfy the request
     COMPUTE_LSB2IDX64(least_bit, index);
     if (arena->large_bins[index] != NULL) {
-        root              = arena->large_bins[index];
-        flag64 left_shift = ARENA_LEFT_SHIFT(index);
+        root = arena->large_bins[index];
 
-        // look for the best-fit node (smallest remainder) in the bin
-        victim = dst_find_smallest_large_node(root, size, left_shift);
-        if (victim != NULL) {
-            ch = ARENA_DST_TO_FREE_CHUNK(victim);
-            // remove the large chunk from its bin
-            DigitalSearchTree *replacement = dst_remove_leftmost(victim);
-            if (victim == root) {
-                // we removed the root of the bin, so replacement is the new root
-                arena->large_bins[index] = replacement;
-                if (replacement == NULL) {
-                    ARENA_CLEAR_LARGE_MAP(arena, index);
-                }
+        // Every key in a large bin fits a small request, so the best fit is the smallest.
+        victim = dst_smallest_node(root);
+        ch     = ARENA_DST_TO_FREE_CHUNK(victim);
+        // remove the large chunk from its bin
+        DigitalSearchTree *replacement = dst_remove_leftmost(victim);
+        if (victim == root) {
+            // we removed the root of the bin, so replacement is the new root
+            arena->large_bins[index] = replacement;
+            if (replacement == NULL) {
+                ARENA_CLEAR_LARGE_MAP(arena, index);
             }
-            if (CHUNK_SIZE(ch) - size < CHUNK_MIN_SIZE) {
-                // The chunk is too small to split, so just mark it as in-use
-                free_chunk_set_inuse(ch);
-            } else {
-                // Split the chunk and put the remainder on the fast node.
-                FreeChunk *remainder = free_chunk_split(ch, size, file, line);
-                free_chunk_set_inuse(ch);
-                if (remainder != NULL) {
-                    if ((FreeChunk *)CHUNK_NEXT(remainder) == arena->top) {
-                        // merge with top
-                        arena->top = remainder;
-                        free_chunk_merge_next(remainder);
-                    } else {
-                        if (ARENA_IS_CHUNK_LARGE(remainder)) {
-                            dst_init_minimal(ARENA_CHUNK_TO_DST(remainder));
-                        }
-
-                        //  replace fast node
-                        if (arena->fast_size != 0) {
-                            if (ARENA_IS_SIZE_SMALL(arena->fast_size)) {
-                                insert_small_chunk(arena, arena->fast, file, line);
-                            } else {
-                                DigitalSearchTree *tree
-                                    = ARENA_CHUNK_TO_DST(arena->fast);
-                                dst_init_minimal(tree);
-                                insert_large_chunk(arena, tree, file, line);
-                            }
-                        }
-
-                        arena->fast      = remainder;
-                        arena->fast_size = CHUNK_SIZE(remainder);
+        }
+        if (CHUNK_SIZE(ch) - size < CHUNK_MIN_SIZE) {
+            // The chunk is too small to split, so just mark it as in-use
+            free_chunk_set_inuse(ch);
+        } else {
+            // Split the chunk and put the remainder on the fast node.
+            FreeChunk *remainder = free_chunk_split(ch, size, file, line);
+            free_chunk_set_inuse(ch);
+            if (remainder != NULL) {
+                if ((FreeChunk *)CHUNK_NEXT(remainder) == arena->top) {
+                    // merge with top
+                    arena->top = remainder;
+                    free_chunk_merge_next(remainder);
+                } else {
+                    if (ARENA_IS_CHUNK_LARGE(remainder)) {
+                        dst_init_minimal(ARENA_CHUNK_TO_DST(remainder));
                     }
+
+                    //  replace fast node
+                    if (arena->fast_size != 0) {
+                        if (ARENA_IS_SIZE_SMALL(arena->fast_size)) {
+                            insert_small_chunk(arena, arena->fast, file, line);
+                        } else {
+                            DigitalSearchTree *tree = ARENA_CHUNK_TO_DST(arena->fast);
+                            dst_init_minimal(tree);
+                            insert_large_chunk(arena, tree, file, line);
+                        }
+                    }
+
+                    arena->fast      = remainder;
+                    arena->fast_size = CHUNK_SIZE(remainder);
                 }
             }
         }
@@ -695,11 +691,10 @@ static Chunk *allocate_from_large_bin(Arena *arena, size_t request, char const *
             if (left_bits != 0) {
                 flag64 least_bit = BIT_LSB(left_bits);
                 COMPUTE_LSB2IDX64(least_bit, index);
-                bin        = ARENA_LARGE_BIN_AT(arena, index);
-                root       = *bin;
-                left_shift = ARENA_LEFT_SHIFT(index);
-                // We have a non-empty bin, so find the smallest node in that tree.
-                dst = dst_find_smallest_large_node(root, size, left_shift);
+                bin  = ARENA_LARGE_BIN_AT(arena, index);
+                root = *bin;
+                // Every key in a higher bin fits, so the best fit is the smallest.
+                dst = dst_smallest_node(root);
             }
         }
 
@@ -1085,7 +1080,7 @@ static void *arena_malloc_impl(Arena *arena, size_t request, char const *file,
             ch = allocate_from_next_nonempty_small_bin(arena, size, file, line);
         } else if (arena->large_map != 0) {
             // 4. No small bins and fast node is too small. Try a large free chunk.
-            ch = allocate_small_request_from_large_bin(arena, size, file, line);
+            ch = allocate_small_request_from_large_bin(arena, request, file, line);
         }
     } else {
         LOG_DEBUG("Arena", "large %zu, %s:%d", request, file, line);

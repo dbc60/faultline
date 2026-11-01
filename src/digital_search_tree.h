@@ -140,6 +140,18 @@ DigitalSearchTree *dst_leftmost_leaf(DigitalSearchTree *dst);
 DigitalSearchTree *dst_rightmost_leaf(DigitalSearchTree *dst);
 
 /**
+ * @brief Find the node with the smallest size in a tree or subtree.
+ *
+ * Keys in a left subtree are smaller than keys in its right sibling subtree, but a node
+ * can hold any key in its range, so the smallest key is on the path that prefers left
+ * children and may be at any depth on that path.
+ *
+ * @param root the root of the tree or subtree.
+ * @return DigitalSearchTree* the address of a node with the smallest size.
+ */
+DigitalSearchTree *dst_smallest_node(DigitalSearchTree *root);
+
+/**
  * @brief Insert a node into a digital search tree.
  *
  * If the node's size matches an existing node, it is added as a sibling. Otherwise it is
@@ -318,6 +330,9 @@ static inline DigitalSearchTree *dst_remove_rightmost(DigitalSearchTree *dst) {
  * dst_remove_leftmost(node) or dst_remove_rightmost(node) to remove the node from its
  * bin.
  *
+ * The size's bits select a path only within the size's own bin. To search a bin whose
+ * keys are all larger than the size, call dst_smallest_node instead.
+ *
  * @param root the root of a DST
  * @param size the desired size of a DST node to search for
  * @param left_shift the number of bits to left-shift the key to place the discriminator
@@ -352,10 +367,8 @@ dst_find_smallest_large_node(DigitalSearchTree *root, size_t size, flag64 left_s
             }
 
             if (root == root->child[next]) {
-                // End of search down this path. Continue from the unexplored right
-                // subtree, consuming it so we don't revisit it.
-                root              = rightmost_subtree;
-                rightmost_subtree = NULL;
+                // End of search down this path.
+                root = NULL;
             } else {
                 root = root->child[next];
             }
@@ -364,6 +377,15 @@ dst_find_smallest_large_node(DigitalSearchTree *root, size_t size, flag64 left_s
             next = DST_NEXT_CHILD(size, left_shift);
         }
     } while (remainder_size != 0 && root != NULL);
+
+    // Keys in the saved subtree differ from size at a bit where size has a 0, so the
+    // size's remaining bits don't select a path there. Take the subtree's smallest key.
+    if (remainder_size != 0 && rightmost_subtree != NULL) {
+        DigitalSearchTree *candidate = dst_smallest_node(rightmost_subtree);
+        if (CHUNK_SIZE(candidate) - size < remainder_size) {
+            smallest = candidate;
+        }
+    }
 
     return smallest;
 }

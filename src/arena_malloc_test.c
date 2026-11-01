@@ -277,3 +277,87 @@ FL_TEST("Merge Forward", merge_forward) {
     arena_free(arena, top_blocker, __FILE__, __LINE__);
     arena_free(arena, x, __FILE__, __LINE__);
 }
+
+/// A request that produces a chunk of exactly the given size.
+#define REQUEST_FOR_CHUNK(SIZE) ((SIZE) - CHUNK_ALIGNED_SIZE)
+
+/// Keeps freed chunks from merging with a neighbor or with top.
+#define GUARD_REQUEST 32
+
+/*
+ * A free tree with root ROOT_SIZE and a left child LEFT_SIZE, built by freeing the root
+ * first. Bit 8 is clear in LEFT_SIZE, so the left child is the smallest key, while a
+ * request with bit 8 set descends right and ends at the root.
+ */
+#define NEXT_BIN_ROOT_SIZE 2016
+#define NEXT_BIN_LEFT_SIZE 1600
+#define NEXT_BIN_CHUNK     1296 // bit 8 set, and one bin below the tree's keys
+
+FL_TEST("Next Bin Provides Its Smallest Chunk", next_bin_smallest) {
+    Arena *arena = new_arena(0, 0);
+    void  *root  = arena_malloc(arena, REQUEST_FOR_CHUNK(NEXT_BIN_ROOT_SIZE), __FILE__,
+                                __LINE__);
+    void  *guard_a = arena_malloc(arena, GUARD_REQUEST, __FILE__, __LINE__);
+    void  *left    = arena_malloc(arena, REQUEST_FOR_CHUNK(NEXT_BIN_LEFT_SIZE), __FILE__,
+                                  __LINE__);
+    void  *guard_b = arena_malloc(arena, GUARD_REQUEST, __FILE__, __LINE__);
+
+    arena_free(arena, root, __FILE__, __LINE__);
+    arena_free(arena, left, __FILE__, __LINE__);
+
+    void *found
+        = arena_malloc(arena, REQUEST_FOR_CHUNK(NEXT_BIN_CHUNK), __FILE__, __LINE__);
+    FL_ASSERT_EQ_PTR(left, found);
+
+    arena_free(arena, found, __FILE__, __LINE__);
+    arena_free(arena, guard_a, __FILE__, __LINE__);
+    arena_free(arena, guard_b, __FILE__, __LINE__);
+    release_arena(&arena);
+}
+
+/*
+ * The same shape in the lowest large bin. No small bin or fast node exists, so a small
+ * request takes a chunk from the bin, and every key there is larger than the request.
+ */
+#define LARGE_BIN_ROOT_SIZE 1520
+#define LARGE_BIN_LEFT_SIZE 1040
+#define SMALL_REQUEST       256 // bit 8 set in the chunk size
+
+FL_TEST("Small Request Takes Smallest Large Chunk", small_request_smallest) {
+    Arena *arena = new_arena(0, 0);
+    void  *root  = arena_malloc(arena, REQUEST_FOR_CHUNK(LARGE_BIN_ROOT_SIZE), __FILE__,
+                                __LINE__);
+    void  *guard_a = arena_malloc(arena, GUARD_REQUEST, __FILE__, __LINE__);
+    void  *left    = arena_malloc(arena, REQUEST_FOR_CHUNK(LARGE_BIN_LEFT_SIZE), __FILE__,
+                                  __LINE__);
+    void  *guard_b = arena_malloc(arena, GUARD_REQUEST, __FILE__, __LINE__);
+
+    arena_free(arena, root, __FILE__, __LINE__);
+    arena_free(arena, left, __FILE__, __LINE__);
+
+    void *found = arena_malloc(arena, SMALL_REQUEST, __FILE__, __LINE__);
+    FL_ASSERT_EQ_PTR(left, found);
+
+    arena_free(arena, found, __FILE__, __LINE__);
+    arena_free(arena, guard_a, __FILE__, __LINE__);
+    arena_free(arena, guard_b, __FILE__, __LINE__);
+    release_arena(&arena);
+}
+
+FL_TEST("Small Request From Large Bin Is Exact Size", small_request_exact_size) {
+    Arena *arena = new_arena(0, 0);
+    void  *large = arena_malloc(arena, REQUEST_FOR_CHUNK(LARGE_BIN_LEFT_SIZE), __FILE__,
+                                __LINE__);
+    void  *guard = arena_malloc(arena, GUARD_REQUEST, __FILE__, __LINE__);
+
+    arena_free(arena, large, __FILE__, __LINE__);
+
+    void *found = arena_malloc(arena, SMALL_REQUEST, __FILE__, __LINE__);
+    FL_ASSERT_EQ_PTR(large, found);
+    FL_ASSERT_EQ(CHUNK_SIZE(CHUNK_FROM_MEMORY(found)),
+                 CHUNK_SIZE_FROM_REQUEST(SMALL_REQUEST));
+
+    arena_free(arena, found, __FILE__, __LINE__);
+    arena_free(arena, guard, __FILE__, __LINE__);
+    release_arena(&arena);
+}

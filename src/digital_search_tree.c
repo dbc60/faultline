@@ -40,6 +40,22 @@ DigitalSearchTree *dst_rightmost_leaf(DigitalSearchTree *dst) {
     return child;
 }
 
+DigitalSearchTree *dst_smallest_node(DigitalSearchTree *root) {
+    DigitalSearchTree *smallest = root;
+    DigitalSearchTree *child    = dst_leftmost_child(root);
+
+    while (child != root) {
+        root = child;
+        if (CHUNK_SIZE(root) < CHUNK_SIZE(smallest)) {
+            smallest = root;
+        }
+
+        child = dst_leftmost_child(root);
+    }
+
+    return smallest;
+}
+
 void dst_insert(DigitalSearchTree *FL_RESTRICT root, DigitalSearchTree *FL_RESTRICT node,
                 flag64 left_shift) {
     DigitalSearchTree *child = root;
