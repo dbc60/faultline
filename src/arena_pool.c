@@ -24,6 +24,7 @@
 #include <faultline/fl_try.h>             // FL_TRY, FL_THROW
 #include "chunk.h"                        // CHUNK_PAYLOAD_SIZE
 #include "fl_lock.h"                      // FLLock
+#include "poison.h"                       // UNPOISON_BYTES
 
 #include "atomic.h" // FL_ATOMIC and the C11 atomic_* calls
 #include <stddef.h>
@@ -233,6 +234,10 @@ void *arena_pool_realloc_throw(ArenaPool *pool, void *mem, size_t size, char con
     Chunk *ch      = (Chunk *)((char *)mem - CHUNK_ALIGNED_SIZE);
     size_t payload = CHUNK_PAYLOAD_SIZE(ch);
     void  *fresh   = arena_malloc_throw(rec->arena, size, file, line);
+
+    // The copy can read past the old request, which the owner poisoned. The block is
+    // queued back to its owner right after, so the bytes need no protection.
+    UNPOISON_BYTES(mem, payload);
     (void)memcpy(fresh, mem, size < payload ? size : payload);
     arena_free_remote(owner, mem);
     return fresh;

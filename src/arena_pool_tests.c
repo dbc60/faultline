@@ -129,6 +129,53 @@ FL_TYPE_TEST_SETUP_CLEANUP("Remote free + absorb", TestPool, test_pool_remote_fr
     FL_ASSERT_EQ(arena_allocation_count(owner), 0);
 }
 
+enum {
+    POOL_REMOTE_REALLOC_REQUEST = 10,   ///< smaller than its payload, leaving a tail
+    POOL_REMOTE_REALLOC_GROWN   = 4096, ///< larger than the old payload
+    POOL_REMOTE_REALLOC_BYTE    = 0x3C,
+};
+
+typedef struct RemoteReallocArg {
+    ArenaPool *pool;
+    void      *block; ///< allocated by the test thread, reallocated by the worker
+    void      *grown; ///< set by the worker: the block realloc returned
+} RemoteReallocArg;
+
+static int remote_realloc_worker(void *arg) {
+    RemoteReallocArg *rra = (RemoteReallocArg *)arg;
+
+    // The block belongs to the test thread's shard, so realloc takes the remote path.
+    rra->grown = arena_pool_realloc_throw(rra->pool, rra->block, POOL_REMOTE_REALLOC_GROWN,
+                                          __FILE__, __LINE__);
+    return 0;
+}
+
+// Reallocate another shard's block to a larger size. The copy must read only the old
+// request: the payload past it is poisoned under ASan.
+FL_TYPE_TEST_SETUP_CLEANUP("Remote realloc copies the request", TestPool,
+                           test_pool_remote_realloc, setup_pool, cleanup_pool) {
+    RemoteReallocArg rra = {.pool = t->pool};
+    rra.block            = ARENA_POOL_MALLOC_THROW(t->pool, POOL_REMOTE_REALLOC_REQUEST);
+    memset(rra.block, POOL_REMOTE_REALLOC_BYTE, POOL_REMOTE_REALLOC_REQUEST);
+    Arena *owner = arena_owner(rra.block);
+
+    thrd_t worker;
+    FL_ASSERT_EQ((size_t)thrd_create(&worker, remote_realloc_worker, &rra),
+                 (size_t)thrd_success);
+    int res = -1;
+    thrd_join(worker, &res);
+    FL_ASSERT_EQ((size_t)res, 0);
+
+    unsigned char const *grown = (unsigned char const *)rra.grown;
+    FL_ASSERT_NOT_NULL(grown);
+    FL_ASSERT_NEQ_PTR(arena_owner(rra.grown), owner);
+    for (size_t i = 0; i < POOL_REMOTE_REALLOC_REQUEST; i++) {
+        FL_ASSERT_EQ((size_t)grown[i], (size_t)POOL_REMOTE_REALLOC_BYTE);
+    }
+
+    ARENA_POOL_FREE_THROW(t->pool, rra.grown);
+}
+
 typedef struct AdoptArg {
     ArenaPool *pool;
     Arena     *owner;    ///< set by the worker: its shard's arena
@@ -230,6 +277,7 @@ FL_SUITE_ADD_EMBEDDED(test_pool_roundtrip)
 FL_SUITE_ADD_EMBEDDED(test_pool_calloc)
 FL_SUITE_ADD_EMBEDDED(test_pool_realloc)
 FL_SUITE_ADD_EMBEDDED(test_pool_remote_free)
+FL_SUITE_ADD_EMBEDDED(test_pool_remote_realloc)
 FL_SUITE_ADD_EMBEDDED(test_pool_adoption)
 FL_SUITE_ADD_EMBEDDED(test_pool_distinct_shards)
 FL_SUITE_END;
