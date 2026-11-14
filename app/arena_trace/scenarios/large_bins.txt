@@ -1,0 +1,58 @@
+# How the arena's first large bin behaves. Every free chunk stays between 1024 and 1535
+# bytes, so each one lands in large bin 0 and matches the free-play tree.
+#
+# A request of N bytes needs a chunk of N + 16 bytes, rounded up to a multiple of 16.
+title Large bin: a digital search tree
+
+# Guards stay allocated so that a freed block has no free neighbor to merge with.
+quiet on
+b1280 = malloc 1264
+guard1 = malloc 16
+b1136 = malloc 1120
+guard2 = malloc 16
+b1424 = malloc 1408
+guard3 = malloc 16
+b1056 = malloc 1040
+guard4 = malloc 16
+b1200 = malloc 1184
+guard5 = malloc 16
+guard5b = malloc 16
+b1360 = malloc 1344
+guard6 = malloc 16
+b1488 = malloc 1472
+guard7 = malloc 16
+b1296 = malloc 1280
+guard8 = malloc 16
+c1280 = malloc 1264
+guard9 = malloc 16
+quiet off
+
+note The arena holds nine large blocks, with a small block after each one so that a freed block has no free neighbor. Each free below puts a chunk in large bin 0, which holds sizes 1024 to 1535.
+free b1280
+note Bit 8 of the size chooses a side at the root, and each level down tests the next lower bit.
+free b1136
+free b1424
+free b1056
+
+note The next four frees run without narration.
+quiet on
+free b1200
+free b1360
+free b1488
+free b1296
+quiet off
+
+note A second 1280-byte chunk has nowhere new to go, because the key is already in the tree.
+free c1280
+
+note An exact fit ends the search early, and a sibling can leave without changing the tree's shape.
+x1 = malloc 1264
+note With no sibling left, the root's position goes to the leftmost leaf. A descendant shares the bits that lead to a node, so it can take that node's position.
+x2 = malloc 1264
+
+note Now a request with no exact fit. The bits of 1216 lead to a dead end, so the best fit must come from the right subtree saved on the way down.
+x3 = malloc 1200
+
+note Freeing can reshape the tree too. The next block sits right after the free 1200-byte chunk, so the two merge: 1200 leaves the tree, and the larger chunk goes back in.
+free guard5
+note Select Continue in free play to add, remove and find on this tree, with the arena's tree code compiled to WebAssembly.

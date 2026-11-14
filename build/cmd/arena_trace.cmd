@@ -1,0 +1,59 @@
+@ECHO OFF
+SETLOCAL ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
+
+:: See LICENSE.txt for copyright and licensing information about this file.
+::
+:: Builds arena_trace.exe and writes a JSON trace for each scenario beside it.
+:: build\bash\arena_trace.sh is the script that feeds the demo page.
+SET PROJECT_NAME="Arena Trace"
+SET PROJECT_NAME=%PROJECT_NAME:"=%
+TITLE %PROJECT_NAME%
+
+SET DIR_CMD=%~dp0
+SET DIR_CMD=%DIR_CMD:~0,-1%
+SET DIR_LOCAL=%DIR_CMD%\local
+CALL %DIR_CMD%\options.cmd %*
+CALL %DIR_CMD%\setup.cmd %*
+
+:: cl output capture, named per script inside this configuration's obj directory
+SET "TEMP_OUT=%DIR_OUT_OBJ%\%~n0_cl_out.tmp"
+
+:: Always C. cxx selects the dialect of a test suite, and this is not one.
+SET "TRACE_FLAGS=%CommonCompilerFlagsFinal%"
+
+IF %build% EQU 1 (
+    IF %verbose% EQU 1 (
+        ECHO Build %PROJECT_NAME%
+    )
+    cl %TRACE_FLAGS% /wd4456 /I%DIR_INCLUDE% /I%DIR_THIRD_PARTY% ^
+    /I%DIR_REPO%\src /DFL_PLATFORM_BUILD ^
+    %DIR_REPO%\app\arena_trace\arena_trace_main.c /Fo:%DIR_OUT_OBJ%\ ^
+    /Fd:%DIR_OUT_BIN%\arena_trace.pdb /Fe:%DIR_OUT_BIN%\arena_trace.exe /link ^
+    %CommonLinkerFlagsFinal% /ENTRY:mainCRTStartup > "%TEMP_OUT%"
+    if errorlevel 1 (
+        type "%TEMP_OUT%"
+        del "%TEMP_OUT%"
+        echo failed to build the %PROJECT_NAME% Program
+        GOTO :ERROR
+    )
+    del "%TEMP_OUT%"
+)
+
+PUSHD "%DIR_OUT_BIN%"
+FOR %%S IN ("%DIR_REPO%\app\arena_trace\scenarios\*.txt") DO (
+    .\arena_trace.exe < "%%S" > "%%~nS.json"
+    if errorlevel 1 (
+        POPD
+        echo failed to trace %%S
+        GOTO :ERROR
+    )
+)
+POPD
+GOTO :SUCCESS
+
+:ERROR
+EXIT /B 1
+
+:SUCCESS
+ENDLOCAL
+EXIT /B 0
