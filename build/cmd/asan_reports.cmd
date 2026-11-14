@@ -81,8 +81,8 @@ SET "RC=!errorlevel!"
 POPD
 
 IF "!RC!"=="0" (
-    ECHO ASAN CANARY ERROR: the driver exited 0, so the %CANARY_KIND% in 1>&2
-    ECHO %CANARY_SRC% went undetected. The binaries are not instrumented, the ASan 1>&2
+    ECHO ASAN CANARY ERROR: the driver exited 0 on %CANARY_DLL%, so the %CANARY_KIND% 1>&2
+    ECHO in %CANARY_SRC% went undetected. The binaries are not instrumented, the ASan 1>&2
     ECHO runtime is not loaded, or the memory the canary reads is not poisoned. 1>&2
     GOTO :CANARY_FAIL
 )
@@ -99,7 +99,7 @@ IF ERRORLEVEL 1 GOTO :CANARY_WRONG_REPORT
 
 CALL :CLEAR
 DEL /Q "%DIR%\%CANARY_OUT%"
-ECHO ASan canary passed: %CANARY_KIND% in %CANARY_SRC% reported as expected
+ECHO ASan canary passed: %CANARY_DLL% reported a %CANARY_KIND% in %CANARY_SRC%
 EXIT /B 0
 
 :CANARY_WRONG_REPORT

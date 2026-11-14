@@ -67,7 +67,8 @@ extern "C" {
  * bins each cover a request range of 16 bytes each. If there are 61 bins, then the
  * maximum request that will fit into a small bin is 992
  */
-#define ARENA_MAX_SMALL_REQUEST (ARENA_MAX_SMALL_CHUNK - CHUNK_ALIGNED_SIZE)
+#define ARENA_MAX_SMALL_REQUEST \
+    (ARENA_MAX_SMALL_CHUNK - CHUNK_ALIGNED_SIZE - CHUNK_REDZONE_SIZE)
 
 #define ARENA_DEFAULT_TRIM_THRESHOLD ((size_t)2U * (size_t)MEBI(1))
 #define ARENA_ALIGNED_SIZE           ALIGN_UP(sizeof(Arena), TWO_SIZE_T_SIZES)

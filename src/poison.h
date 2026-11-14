@@ -21,6 +21,9 @@
  * See LICENSE.txt for copyright and licensing information about this file.
  */
 
+/// Bytes in one ASan granule, the smallest range whose poisoning ASan tracks exactly.
+#define POISON_GRANULE_SIZE 8
+
 #if defined(__SANITIZE_ADDRESS__)
 #include <sanitizer/asan_interface.h> // ASAN_POISON_MEMORY_REGION, ASAN_UNPOISON_...
 

@@ -228,15 +228,18 @@ if %test% EQU 1 (
     if %asan% EQU 1 set "DB_OPT=--db faultline_asan.sqlite"
     REM Prove ASan reports an error before trusting a clean run, then send the run's
     REM reports to files so a suite that redirects stderr cannot discard them. The
-    REM first canary overflows a CRT heap block; the second reads a freed arena block,
-    REM which ASan sees only through the arena's poisoning.
+    REM first canary overflows a CRT heap block; the others read freed arena memory
+    REM or bytes beside an allocated request, which ASan sees only through the arena's
+    REM poisoning.
     if %asan% EQU 1 (
         call %DIR_CMD%\asan_reports.cmd canary "%DIR_TEST%" "%DIR_TEST%\faultline.exe" ^
             asan_canary_tests.dll asan_canary_tests.c heap-buffer-overflow
         if errorlevel 1 GOTO :ERROR
-        call %DIR_CMD%\asan_reports.cmd canary "%DIR_TEST%" "%DIR_TEST%\faultline.exe" ^
-            asan_arena_canary_tests.dll asan_arena_canary_tests.c use-after-poison
-        if errorlevel 1 GOTO :ERROR
+        for %%C in (free_middle free_links free_footer overflow underflow) do (
+            call %DIR_CMD%\asan_reports.cmd canary "%DIR_TEST%" "%DIR_TEST%\faultline.exe" ^
+                asan_arena_canary_%%C_tests.dll asan_arena_canary_tests.c use-after-poison
+            if errorlevel 1 GOTO :ERROR
+        )
         call %DIR_CMD%\asan_reports.cmd env
         call %DIR_CMD%\asan_reports.cmd clear "%DIR_TEST%"
     )

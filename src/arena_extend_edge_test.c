@@ -296,7 +296,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Allocate Exact Top Size", ArenaExtendEdgeTest,
 
     // Get the current top size and compute a request that exactly consumes it
     size_t top_size = CHUNK_SIZE(arena->top);
-    size_t request  = top_size - CHUNK_ALIGNED_SIZE;
+    size_t request  = CHUNK_REQUEST_FROM_SIZE(top_size);
 
     size_t footprint_before = arena_footprint(arena);
 
@@ -339,7 +339,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Release: Free Adjacent to Exhausted Top",
 
     // Compute a request that exactly consumes the remaining top with no remainder.
     size_t top_size = CHUNK_SIZE(arena->top);
-    size_t request  = top_size - CHUNK_ALIGNED_SIZE;
+    size_t request  = CHUNK_REQUEST_FROM_SIZE(top_size);
 
     void  *mem_last   = arena_malloc_throw(arena, request, __FILE__, __LINE__);
     Chunk *chunk_last = CHUNK_FROM_MEMORY(mem_last);

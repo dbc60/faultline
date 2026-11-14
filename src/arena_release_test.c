@@ -139,21 +139,22 @@ FL_TYPE_TEST_SETUP_CLEANUP("Release: Forward Merge Fast", ArenaReleaseTest,
     // Step 1: Allocate three chunks from top to get in-use chunks.
     // A is a guard at the front.
     void *mem_a = arena_malloc_throw(arena, 16, __FILE__, __LINE__);
-    void *mem_b = arena_malloc_throw(arena, 48, __FILE__, __LINE__); // chunk size 64
+    void *mem_b = arena_malloc_throw(arena, CHUNK_REQUEST_FROM_SIZE(2 * CHUNK_MIN_SIZE),
+                                     __FILE__, __LINE__); // chunk 2 * CHUNK_MIN_SIZE
     void *mem_c = arena_malloc_throw(arena, 16, __FILE__, __LINE__); // guard after B
 
-    // Step 2: Release B to put it in a small bin (size 64, index 2)
+    // Step 2: Release B to put it in a small bin
     arena_free_throw(arena, mem_b, __FILE__, __LINE__);
 
     Chunk *chunk_b = CHUNK_FROM_MEMORY(mem_b);
     u32    b_idx   = ARENA_SMALL_INDEX(CHUNK_SIZE(chunk_b));
     FL_ASSERT_TRUE(ARENA_SMALL_MAP_IS_MARKED(arena, b_idx) != 0);
 
-    // Step 3: Allocate a size-16 request. The fast node is empty (size 0),
-    // so no exact fit for 32 (bin 0 is empty), no fast node, so it will go to
-    // allocate_from_next_nonempty_small_bin which splits B's bin (size 64) chunk
-    // into a 32-byte allocation + 32-byte fast node.
-    void *mem_d = arena_malloc_throw(arena, 16, __FILE__, __LINE__);
+    // Step 3: Allocate CHUNK_MIN_PAYLOAD bytes. The fast node is empty (size 0),
+    // so no exact fit for CHUNK_MIN_SIZE (bin 0 is empty), no fast node, so it will go
+    // to allocate_from_next_nonempty_small_bin which splits B's chunk into a
+    // CHUNK_MIN_SIZE allocation + CHUNK_MIN_SIZE fast node.
+    void *mem_d = arena_malloc_throw(arena, CHUNK_MIN_PAYLOAD, __FILE__, __LINE__);
 
     // mem_d should be at the same address as the old B
     FL_ASSERT_EQ_PTR(mem_b, mem_d);
@@ -315,15 +316,17 @@ FL_TYPE_TEST_SETUP_CLEANUP("Release: Backward Merge Fast", ArenaReleaseTest,
     // Step 1: Create a fast node by splitting a small-bin chunk.
     // Layout goal: guard | D(32) | fast(32) | C(32) | E(32,guard) | top
     void *mem_guard = arena_malloc_throw(arena, 16, __FILE__, __LINE__); // front guard
-    void *mem_b     = arena_malloc_throw(arena, 48, __FILE__, __LINE__); // chunk 64
+    void *mem_b     = arena_malloc_throw(arena, CHUNK_REQUEST_FROM_SIZE(2 * CHUNK_MIN_SIZE),
+                                         __FILE__, __LINE__); // chunk 2 * CHUNK_MIN_SIZE
     void *mem_c     = arena_malloc_throw(arena, 16, __FILE__, __LINE__); // after B
     void *mem_e     = arena_malloc_throw(arena, 16, __FILE__, __LINE__); // guard after C
 
     // Release B to put it into a small bin
     arena_free_throw(arena, mem_b, __FILE__, __LINE__);
 
-    // Allocate 16 bytes: splits B into 32 (returned) + 32 (fast node)
-    void *mem_d = arena_malloc_throw(arena, 16, __FILE__, __LINE__);
+    // Allocate CHUNK_MIN_PAYLOAD bytes: splits B into CHUNK_MIN_SIZE (returned) +
+    // CHUNK_MIN_SIZE (fast node)
+    void *mem_d = arena_malloc_throw(arena, CHUNK_MIN_PAYLOAD, __FILE__, __LINE__);
     FL_ASSERT_EQ_PTR(mem_b, mem_d);
 
     FL_ASSERT_NOT_NULL(arena->fast);

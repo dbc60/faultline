@@ -58,7 +58,6 @@
 #define CHUNK_ALIGNMENT_MASK (CHUNK_ALIGNMENT - 1)
 
 #define CHUNK_FOOTER_SIZE SIZE_T_SIZE
-#define CHUNK_MIN_SIZE    (ALIGN_UP(sizeof(FreeChunk), CHUNK_ALIGNMENT))
 
 /**
  * @brief The bytes at the start of a free chunk that hold allocator data: its size and
@@ -69,6 +68,35 @@
  * words. digital_search_tree.h checks that at compile time.
  */
 #define CHUNK_FREE_HEADER_SIZE (6 * SIZE_T_SIZE)
+
+/*
+ * CHUNK_ALIGNED_SIZE is the offset of the payload from the start of its chunk, and
+ * CHUNK_REDZONE_SIZE the bytes a chunk keeps after the largest request it serves.
+ *
+ * Without ASan a free chunk keeps its bookkeeping in bytes that are payload while the
+ * chunk is in use: the links at the start of the payload and the footer at its end.
+ *
+ * Under ASan each chunk keeps that bookkeeping outside the payload, so the arena can
+ * poison all of a freed payload and the bytes on either side of an allocated one. On a
+ * 64-bit target:
+ *
+ *           0      8       16         48                  48 + payload   size
+ *   in use: | size | owner | poisoned | payload           | redzone       |
+ *   free:   | size | links            | poisoned                 | footer |
+ *
+ * The redzone covers at least one whole granule, so ASan reports a read or write of the
+ * first byte past any request.
+ */
+#if defined(__SANITIZE_ADDRESS__)
+#define CHUNK_ALIGNED_SIZE ALIGN_UP(CHUNK_FREE_HEADER_SIZE, CHUNK_ALIGNMENT)
+#define CHUNK_REDZONE_SIZE ALIGN_UP(CHUNK_FOOTER_SIZE, POISON_GRANULE_SIZE)
+#define CHUNK_MIN_SIZE \
+    (CHUNK_ALIGNED_SIZE + ALIGN_UP(1 + CHUNK_REDZONE_SIZE, CHUNK_ALIGNMENT))
+#else
+#define CHUNK_ALIGNED_SIZE ALIGN_UP(sizeof(Chunk), CHUNK_ALIGNMENT)
+#define CHUNK_REDZONE_SIZE 0
+#define CHUNK_MIN_SIZE     (ALIGN_UP(sizeof(FreeChunk), CHUNK_ALIGNMENT))
+#endif
 
 #define CHUNK_IS_ALIGNED(CH)         (((size_t)(CH) & (CHUNK_ALIGNMENT_MASK)) == 0)
 #define CHUNK_SIZE(CH)               ((CH)->size & ~CHUNK_INUSE_FLAGS)
@@ -85,8 +113,6 @@
 // clear the previous in-use flag from the chunk
 #define CHUNK_CLEAR_PREVIOUS_INUSE(CH) ((CH)->size &= ~CHUNK_PREVIOUS_INUSE_FLAG)
 
-#define CHUNK_ALIGNED_SIZE ALIGN_UP(sizeof(Chunk), CHUNK_ALIGNMENT)
-
 /// the payload always starts CHUNK_ALIGNED_SIZE after the address of the chunk.
 #define CHUNK_TO_MEMORY(CH)    ((void *)(((char *)(CH)) + CHUNK_ALIGNED_SIZE))
 #define CHUNK_FROM_MEMORY(MEM) chunk_from_memory_validate((MEM), __FILE__, __LINE__)
@@ -100,17 +126,18 @@
  * large enough to contain this request to wrap around the values that are representable
  * by a 64-bit size_t.
  */
-#define CHUNK_MAX_REQUEST ALIGN_DOWN(MAX_SIZE_T - CHUNK_ALIGNED_SIZE, CHUNK_ALIGNMENT)
+#define CHUNK_MAX_REQUEST \
+    ALIGN_DOWN(MAX_SIZE_T - CHUNK_ALIGNED_SIZE - CHUNK_REDZONE_SIZE, CHUNK_ALIGNMENT)
 
 /**
  * @brief The minimum payload is the space used by a FreeChunk less the space for its
  * size field, because that must be preserved between allocations and frees.
  */
-#define CHUNK_MIN_PAYLOAD (CHUNK_MIN_SIZE - CHUNK_ALIGNED_SIZE)
+#define CHUNK_MIN_PAYLOAD (CHUNK_MIN_SIZE - CHUNK_ALIGNED_SIZE - CHUNK_REDZONE_SIZE)
 
-/// the payload is the space in a chunk after the header.
+/// the payload is the space in a chunk after the header, less its redzone.
 #define CHUNK_REQUEST_TO_PAYLOAD(REQ) \
-    ((REQ) <= CHUNK_MIN_PAYLOAD ? CHUNK_MIN_PAYLOAD : ALIGN_UP((REQ), CHUNK_ALIGNMENT))
+    (CHUNK_SIZE_FROM_REQUEST(REQ) - CHUNK_ALIGNED_SIZE - CHUNK_REDZONE_SIZE)
 
 /**
  * @brief Check if a request is so large that it would wrap around zero when padded and
@@ -123,12 +150,18 @@
     ((size_t)(COUNT) > (size_t)CHUNK_MAX_REQUEST / (size_t)(SIZE))
 
 /// The smallest size Chunk that is large enough to satisfy the request.
-#define CHUNK_SIZE_FROM_REQUEST(REQ)             \
-    ((REQ) <= CHUNK_MIN_PAYLOAD ? CHUNK_MIN_SIZE \
-                                : CHUNK_ALIGNED_SIZE + ALIGN_UP(REQ, CHUNK_ALIGNMENT))
+#define CHUNK_SIZE_FROM_REQUEST(REQ)                                        \
+    ((REQ) <= CHUNK_MIN_PAYLOAD                                             \
+         ? CHUNK_MIN_SIZE                                                   \
+         : CHUNK_ALIGNED_SIZE + ALIGN_UP((REQ) + CHUNK_REDZONE_SIZE, CHUNK_ALIGNMENT))
+
+/// The largest request a chunk of SIZE bytes serves, e.g. 48 for a 64-byte chunk
+/// without ASan.
+#define CHUNK_REQUEST_FROM_SIZE(SIZE) \
+    ((SIZE) - CHUNK_ALIGNED_SIZE - CHUNK_REDZONE_SIZE)
 
 // The maximum payload that this chunk can support
-#define CHUNK_PAYLOAD_SIZE(CH) (CHUNK_SIZE(CH) - CHUNK_ALIGNED_SIZE)
+#define CHUNK_PAYLOAD_SIZE(CH) (CHUNK_SIZE(CH) - CHUNK_ALIGNED_SIZE - CHUNK_REDZONE_SIZE)
 
 /**
  * @brief The address of the next chunk in committed memory.
@@ -231,6 +264,12 @@ FL_STATIC_ASSERT((CHUNK_ALIGNED_SIZE % CHUNK_ALIGNMENT) == 0,
                  "CHUNK_ALIGNED_SIZE must be a multiple of CHUNK_ALIGNMENT");
 FL_STATIC_ASSERT(sizeof(FreeChunk) <= CHUNK_FREE_HEADER_SIZE,
                  "a free chunk's bookkeeping must lie in its unpoisoned header");
+#if defined(__SANITIZE_ADDRESS__)
+FL_STATIC_ASSERT(CHUNK_MIN_SIZE >= CHUNK_ALIGNED_SIZE + CHUNK_REDZONE_SIZE,
+                 "a minimal chunk must hold the free-chunk header and the redzone");
+FL_STATIC_ASSERT(CHUNK_REDZONE_SIZE >= CHUNK_FOOTER_SIZE,
+                 "a free chunk's footer must lie in the redzone, outside the payload");
+#endif
 
 /**
  * @brief Return the size of the previous chunk in memory.
@@ -363,7 +402,7 @@ static inline void free_chunk_init_header(FreeChunk *ch, size_t size,
     // The actual footer is in the last 8 bytes of the chunk's memory block. Setting the
     // footer field is helpful for debugging even if it's not the actual footer.
     ch->footer = size;
-    if (size > CHUNK_MIN_SIZE) { // size > 32
+    if (size > sizeof(FreeChunk)) {
         size_t *footer = free_chunk_get_footer(ch);
         *footer        = size;
     }
@@ -398,7 +437,7 @@ static inline void free_chunk_init_simple(FreeChunk *ch) {
     CHUNK_SET_FREE(ch);
     DLIST_INIT(&ch->siblings);
     ch->footer = size;
-    if (size > CHUNK_MIN_SIZE) {
+    if (size > sizeof(FreeChunk)) {
         size_t *footer = free_chunk_get_footer(ch);
         *footer        = size;
     }
@@ -464,7 +503,7 @@ static inline FreeChunk *free_chunk_split(FreeChunk *ch, size_t new_size,
         // maintain the original in-use flags
         ch->size   = new_size | in_use;
         ch->footer = new_size;
-        if (new_size > CHUNK_MIN_SIZE) {
+        if (new_size > sizeof(FreeChunk)) {
             size_t *footer = free_chunk_get_footer(ch);
             *footer        = new_size;
         }
@@ -535,12 +574,29 @@ static inline void free_chunk_remove(FreeChunk *ch) {
 /**
  * @brief Mark a free chunk as in-use and set the next chunk's previous-inuse flag.
  *
- * The whole chunk becomes addressable. The caller poisons any bytes past the request.
+ * The whole chunk becomes addressable. The caller poisons the bytes that hold no caller
+ * data with chunk_poison_inuse.
  */
 static inline void free_chunk_set_inuse(FreeChunk *ch) {
     UNPOISON_BYTES(ch, CHUNK_SIZE(ch));
     CHUNK_SET_INUSE(ch);
     CHUNK_SET_PREVIOUS_INUSE(CHUNK_NEXT(ch));
+}
+
+/**
+ * @brief Poison the bytes of an in-use chunk that hold no caller data: the bytes between
+ * its Chunk fields and its payload, and the bytes from the end of the request to the end
+ * of the chunk. Without ASan the first range is empty, since the payload follows the
+ * Chunk fields.
+ *
+ * @param ch an in-use chunk whose size is set
+ * @param request the bytes the caller asked for
+ */
+static inline void chunk_poison_inuse(Chunk *ch, size_t request) {
+    char *mem = CHUNK_TO_MEMORY(ch);
+
+    POISON_BYTES((char *)ch + sizeof(Chunk), CHUNK_ALIGNED_SIZE - sizeof(Chunk));
+    POISON_BYTES(mem + request, CHUNK_SIZE(ch) - CHUNK_ALIGNED_SIZE - request);
 }
 
 /**

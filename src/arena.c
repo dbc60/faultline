@@ -27,7 +27,7 @@
 #include "digital_search_tree.h"            // for DigitalSearchTree, dst_init...
 #include "fl_lock.h"                        // for fl_lock_acquire, fl_lock_re...
 #include "index.h"                          // for INDEX_BY_VALUE64, COMPUTE_L...
-#include "poison.h"                         // for POISON_BYTES, UNPOISON_BYTES
+#include "poison.h"                         // for UNPOISON_BYTES
 #include "region.h"                         // for MEM_TO_REGION, REGION_BYTES...
 #include "region_node.h"                    // for RegionNode, new_region_node
 #include "win32_platform.h"                 // for get_memory_info
@@ -771,17 +771,21 @@ static void *arena_aligned_alloc_impl(Arena *arena, size_t alignment, size_t siz
     FL_ASSERT_DETAILS_FILE_LINE(!CHUNK_REQUEST_OUT_OF_RANGE(alignment),
                                 "alignment %zu exceeds maximum %zu", file, line,
                                 alignment, CHUNK_MAX_REQUEST);
+    // The gap before the aligned chunk becomes a free chunk, so it is 0 or at least
+    // CHUNK_MIN_SIZE, and less than alignment + CHUNK_MIN_SIZE. Under ASan
+    // CHUNK_MIN_SIZE can exceed alignment, e.g. 64 against 32.
+    size_t slack = alignment + MAX(alignment, CHUNK_MIN_SIZE);
     FL_ASSERT_DETAILS_FILE_LINE(
-        size <= CHUNK_MAX_REQUEST - 2 * alignment,
+        size <= CHUNK_MAX_REQUEST - slack,
         "allocation request %zu with alignment %zu exceeds maximum", file, line, size,
         alignment);
 
-    void     *raw          = arena_malloc_impl(arena, size + 2 * alignment, file, line);
+    void     *raw          = arena_malloc_impl(arena, size + slack, file, line);
     uintptr_t raw_addr     = (uintptr_t)raw;
     uintptr_t aligned_addr = ALIGN_UP(raw_addr, alignment);
     size_t    gap          = (size_t)(aligned_addr - raw_addr);
 
-    if (gap > 0 && gap < CHUNK_MIN_SIZE) {
+    while (gap > 0 && gap < CHUNK_MIN_SIZE) {
         aligned_addr += alignment;
         gap += alignment;
     }
@@ -798,6 +802,7 @@ static void *arena_aligned_alloc_impl(Arena *arena, size_t alignment, size_t siz
     Chunk *aligned_ch = (Chunk *)((char *)raw_ch + gap);
     aligned_ch->size  = (total_size - gap) | CHUNK_INUSE_FLAGS;
     aligned_ch->owner = arena;
+    chunk_poison_inuse(aligned_ch, size);
 
     arena_free_impl(arena, raw, file, line);
 
@@ -1140,9 +1145,9 @@ static void *arena_malloc_impl(Arena *arena, size_t request, char const *file, i
     ch->owner = arena;
     ARENA_STAT_INC(arena, allocations);
 
-    // Poison the payload past the request, so ASan reports an overflow that stays
-    // inside the chunk, e.g. a write to p[10] after a 10-byte request.
-    POISON_BYTES((char *)mem + request, CHUNK_PAYLOAD_SIZE(ch) - request);
+    // Poison the bytes around the request, so ASan reports an overflow or underflow,
+    // e.g. a write to p[10] after a 10-byte request.
+    chunk_poison_inuse(ch, request);
     return mem;
 }
 

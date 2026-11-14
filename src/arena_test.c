@@ -266,10 +266,12 @@ FL_TEST("Small Size to Index", test_chunk_size_to_index) {
                           ARENA_MAX_SMALL_CHUNK, ARENA_MAX_SMALL_REQUEST,
                           ARENA_SMALL_BIN_COUNT);
 
-        expected = req <= CHUNK_MIN_PAYLOAD
-                       ? 0
-                       : (u32)(ALIGN_UP(req, CHUNK_ALIGNMENT) / CHUNK_ALIGNMENT
-                               - CHUNK_MIN_PAYLOAD / CHUNK_ALIGNMENT);
+        expected
+            = req <= CHUNK_MIN_PAYLOAD
+                  ? 0
+                  : (u32)(ALIGN_UP(req + CHUNK_REDZONE_SIZE, CHUNK_ALIGNMENT)
+                              / CHUNK_ALIGNMENT
+                          - (CHUNK_MIN_PAYLOAD + CHUNK_REDZONE_SIZE) / CHUNK_ALIGNMENT);
         FL_ASSERT_DETAILS(actual == expected,
                           "Expected %u for request %zd (chunk size %zd). Actual %u. "
                           "(CHUNK_MIN_PAYLOAD %zd), (CHUNK_MIN_SIZE %zd), "
@@ -381,8 +383,8 @@ FL_TYPE_TEST_SETUP_CLEANUP("Small Range", ArenaTestSmall, test_small_range,
 
         } else {
             FL_ASSERT_DETAILS(actual == expected,
-                              "Expected %zd. Actual %zd, remainder %zd", expected,
-                              actual, remainder);
+                              "Expected %zd. Actual %zd, remainder %zd", expected, actual,
+                              remainder);
         }
 
         // ensure that the size is always at least CHUNK_MIN_SIZE.
@@ -489,7 +491,7 @@ static void setup_small_from_large_arena_test(FLTestCase *btc) {
     size_t          lower   = INDEX_BIN_TO_LOWER_LIMIT(0, ARENA_LOG2_MIN_LARGE_CHUNK);
     size_t          upper   = INDEX_BIN_TO_UPPER_LIMIT(0, ARENA_LOG2_MIN_LARGE_CHUNK);
     u32             cnt     = (u32)(upper - lower) / CHUNK_ALIGNMENT;
-    size_t          request = lower - CHUNK_ALIGNED_SIZE; // smallest request
+    size_t          request = CHUNK_REQUEST_FROM_SIZE(lower); // smallest request
 
     SUM_OVER_SCALED_RANGE(lower, upper, CHUNK_ALIGNMENT, size);
     at->arena  = new_arena(size + cnt * sizeof(void *), 0);
@@ -505,7 +507,7 @@ static void setup_small_from_large_arena_test(FLTestCase *btc) {
         mem[i] = arena_malloc_throw(at->arena, request, __FILE__, __LINE__);
         FL_ASSERT_EQ(lower, CHUNK_SIZE(CHUNK_FROM_MEMORY(mem[i])));
         lower += CHUNK_ALIGNMENT;
-        request = lower - CHUNK_ALIGNED_SIZE;
+        request = CHUNK_REQUEST_FROM_SIZE(lower);
     }
 
     // Each chunk is freed in address order, so it merges into the free chunk that
@@ -517,20 +519,21 @@ static void setup_small_from_large_arena_test(FLTestCase *btc) {
     for (u32 i = 0; i < cnt; i++) {
         ch   = FREE_CHUNK_FROM_MEMORY(mem[i], __FILE__, __LINE__);
         next = CHUNK_NEXT(ch);
-        FL_ASSERT_DETAILS(i == 0 || at->arena->large_map != 0,
-                          "i=%u, large map is zero!", i);
+        FL_ASSERT_DETAILS(i == 0 || at->arena->large_map != 0, "i=%u, large map is zero!",
+                          i);
 
         arena_free_throw(at->arena, mem[i], __FILE__, __LINE__);
         Arena *arena = at->arena;
         // when merged to top, the footer is not set. Otherwise, validate the address of
         // the footer is just prior the next chunk.
-        FL_ASSERT_DETAILS(first == arena->top
-                              || free_chunk_get_footer(first) == chunk_previous_footer(next),
-                          "chunk: 0x%08zx, next: 0x%08zx. Expected 0x%08zx. Actual 0x%08zx",
-                          ARENA_RELATIVE_ADDRESS(at->arena, first),
-                          ARENA_RELATIVE_ADDRESS(at->arena, next),
-                          (char *)chunk_previous_footer(next) - (char *)arena->base,
-                          (char *)free_chunk_get_footer(first) - (char *)arena->base);
+        FL_ASSERT_DETAILS(
+            first == arena->top
+                || free_chunk_get_footer(first) == chunk_previous_footer(next),
+            "chunk: 0x%08zx, next: 0x%08zx. Expected 0x%08zx. Actual 0x%08zx",
+            ARENA_RELATIVE_ADDRESS(at->arena, first),
+            ARENA_RELATIVE_ADDRESS(at->arena, next),
+            (char *)chunk_previous_footer(next) - (char *)arena->base,
+            (char *)free_chunk_get_footer(first) - (char *)arena->base);
     }
 }
 
@@ -561,8 +564,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Allocate Small Request from Large Bin", ArenaTestSma
     // exception.
     for (size_t req = 0; req <= ARENA_MAX_SMALL_REQUEST; req++) {
         if (arena->large_map != 0) {
-            chunk
-                = allocate_small_request_from_large_bin(arena, req, __FILE__, __LINE__);
+            chunk = allocate_small_request_from_large_bin(arena, req, __FILE__, __LINE__);
             FL_ASSERT_DETAILS(CHUNK_SIZE(chunk) % CHUNK_ALIGNMENT == 0,
                               "Expected %zd to have %zd alignment.", CHUNK_SIZE(chunk),
                               CHUNK_ALIGNMENT);
@@ -662,8 +664,8 @@ FL_TYPE_TEST_SETUP_CLEANUP("Small Exact-Fit Allocation", ArenaTestSmall,
         insert_small_chunk(arena, ch, __FILE__, __LINE__);
 
         FL_ASSERT_DETAILS(ARENA_SMALL_MAP_IS_MARKED(arena, idx),
-                          "small bin map is not set for index %u and chunk size %zd",
-                          idx, sz);
+                          "small bin map is not set for index %u and chunk size %zd", idx,
+                          sz);
 
         bin = ARENA_SMALL_BIN_AT(arena, idx);
         FL_ASSERT_DETAILS(!DLIST_IS_EMPTY(bin), "bin %u is empty", idx);
@@ -810,9 +812,9 @@ FL_TYPE_TEST_SETUP_CLEANUP("Large Chunk Allocation", ArenaTestLarge, test_large_
     // size-range for a bin
     size_t range = ARENA_MIN_LARGE_CHUNK >> 1;
     // smallest request for the bin
-    size_t low  = ARENA_MIN_LARGE_CHUNK - CHUNK_ALIGNED_SIZE - (CHUNK_ALIGNMENT - 1);
-    size_t mid  = low + (range >> 1);     // midpoint request
-    size_t high = mid + (range >> 1) - 1; // greatest request
+    size_t       low = ARENA_MIN_LARGE_CHUNK - CHUNK_ALIGNED_SIZE - (CHUNK_ALIGNMENT - 1);
+    size_t       mid = low + (range >> 1);          // midpoint request
+    size_t       high     = mid + (range >> 1) - 1; // greatest request
     size_t const top_size = CHUNK_SIZE(arena->top);
     u32 const    indicies = t->max_index + 1;
     for (u32 idx = 0; idx < indicies; idx++) {
@@ -844,7 +846,9 @@ FL_TYPE_TEST_SETUP_CLEANUP("Large Chunk Allocation", ArenaTestLarge, test_large_
 
             // write to a small part of the chunk to simulate it being in use and to
             // dispel any lingering spirits of invalid memory address.
+            // The chunk is still free, so its payload is poisoned under ASan.
             char *mem = (char *)CHUNK_TO_MEMORY(tree);
+            UNPOISON_BYTES(mem, CHUNK_MIN_PAYLOAD);
             for (u32 j = 0; j < CHUNK_MIN_PAYLOAD; j++) {
                 mem[j] = 0;
             }
@@ -887,11 +891,9 @@ FL_TYPE_TEST_SETUP_CLEANUP("Large Chunk Allocation", ArenaTestLarge, test_large_
             // The chunk went into the bin for this index, so that is the one that
             // should be empty again now it has been allocated back out.
             bin = ARENA_LARGE_BIN_AT(arena, idx);
-            FL_ASSERT_DETAILS(*bin == NULL, "expected bin to be NULL, actual 0x%p",
-                              *bin);
+            FL_ASSERT_DETAILS(*bin == NULL, "expected bin to be NULL, actual 0x%p", *bin);
 
-            FL_ASSERT_DETAILS(tree == actual, "expected 0x%p, actual 0x%p", tree,
-                              actual);
+            FL_ASSERT_DETAILS(tree == actual, "expected 0x%p, actual 0x%p", tree, actual);
 
             FreeChunk *expected = FREE_CHUNK_NEXT(ARENA_DST_TO_FREE_CHUNK(tree));
             FL_ASSERT_DETAILS(expected == arena->top, "expected top 0x%p, actual 0x%p",
@@ -938,14 +940,12 @@ void setup_use_region_node(FLTestCase *btc) {
     arn->arena[0]          = new_arena(initial_request, 0);
     arn->arena[1]          = new_arena(initial_request, 0);
 
-    // Allocate most of the space, leaving CHUNK_MIN_SIZE for the test. Subtract
-    // CHUNK_ALIGNED_SIZE, because that will be added by the allocator to ensure there's
-    // room for the chunk's size. Subtract CHUNK_MIN_SIZE to ensure there's room for one
-    // small allocation of CHUNK_MIN_PAYLOAD (16 bytes) (for a total of 32 bytes for the
-    // FreeChunk) in the test.
+    // Allocate most of the space, leaving CHUNK_MIN_SIZE for the test: room for one
+    // small allocation of CHUNK_MIN_PAYLOAD bytes. CHUNK_REQUEST_FROM_SIZE subtracts
+    // the bytes the allocator adds to a request, e.g. the chunk's size field.
     size_t top_size  = CHUNK_SIZE(arn->arena[0]->top);
     size_t available = region_available_bytes(MEM_TO_REGION(arn->arena[0]));
-    size_t request   = available + top_size - CHUNK_ALIGNED_SIZE - CHUNK_MIN_SIZE;
+    size_t request   = CHUNK_REQUEST_FROM_SIZE(available + top_size - CHUNK_MIN_SIZE);
     (void)arena_malloc_throw(arn->arena[0], request, __FILE__, __LINE__);
     available = region_available_bytes(MEM_TO_REGION(arn->arena[0]));
 }

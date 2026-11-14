@@ -119,7 +119,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Fast Node Consumed", ArenaFastMixedTest, fast_node_c
     size_t fast_size = arena->fast_size;
 
     // Allocate exactly the fast node's payload size to consume it entirely
-    size_t request = fast_size - CHUNK_ALIGNED_SIZE;
+    size_t request = CHUNK_REQUEST_FROM_SIZE(fast_size);
     void  *mem_d   = arena_malloc_throw(arena, request, __FILE__, __LINE__);
 
     // Fast node should be consumed (NULL) or reduced
