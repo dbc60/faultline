@@ -91,7 +91,6 @@ export function findSteps(tree, frames, id, key) {
                 push(`The search goes left, so save the right subtree at ${nodeKey}. All its keys are larger than ${key}.`);
                 break;
             case 'find_dead_end':
-                delete marks.visit;
                 push(`${nodeKey} has no child on that side, so bit-guided search ends.`);
                 break;
             case 'smallest_visit':

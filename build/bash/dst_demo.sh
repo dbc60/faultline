@@ -3,7 +3,8 @@
 #
 # This script has no build/cmd counterpart: only clang targets WebAssembly. It uses
 # wasi-sdk's clang rather than the CLANG that config.sh selects, so it does not source
-# options.sh, setup.sh or config.sh, and all.sh does not call it.
+# options.sh, setup.sh or config.sh, and all.sh does not call it. It runs arena_trace.sh,
+# which does use that CLANG, for the page's scripted traces.
 #
 # Usage:
 #   bash build/bash/dst_demo.sh [test]
@@ -41,11 +42,13 @@ mkdir -p "$DIR_OUT"
     -nostartfiles -Wl,--no-entry -Wl,--gc-sections -Wl,--strip-all \
     "$DIR_DEMO/dst_demo.c" -o "$DIR_OUT/dst_demo.wasm"
 
-# The page loads the module from its own directory.
+bash "$DIR_REPO/build/bash/arena_trace.sh"
+
+# The page loads the module and traces from its own directory.
 mkdir -p "$DIR_WEB"
-cp "$DIR_DEMO"/web/*.{html,css,js} "$DIR_OUT/dst_demo.wasm" "$DIR_WEB"
+cp "$DIR_DEMO"/web/*.{html,css,js} "$DIR_OUT/dst_demo.wasm" "$DIR_OUT"/traces/*.json "$DIR_WEB"
 
 if [[ "${1:-}" == "test" ]]; then
     node "$DIR_DEMO/dst_demo_check.mjs" "$DIR_OUT/dst_demo.wasm"
-    node "$DIR_DEMO/dst_demo_web_check.mjs" "$DIR_OUT/dst_demo.wasm"
+    node "$DIR_DEMO/dst_demo_web_check.mjs" "$DIR_OUT/dst_demo.wasm" "$DIR_OUT"/traces/*.json
 fi

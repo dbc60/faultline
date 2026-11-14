@@ -56,7 +56,8 @@ export class TreeView {
     // On a narrow screen the tree scrolls, so keep the step's active node in view.
     follow(step, boxes, reduced) {
         const scroller = this.svg.parentNode;
-        const focusId = step.ghost?.near ?? Object.values(step.marks).at(-1) ?? step.tree.nodes[0]?.id;
+        const lastMark = Object.values(step.marks).at(-1);
+        const focusId = step.ghost?.near ?? step.marks.visit ?? lastMark ?? step.tree.nodes[0]?.id;
 
         if (focusId === undefined) {
             return;

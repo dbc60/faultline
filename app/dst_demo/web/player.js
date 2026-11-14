@@ -2,6 +2,7 @@
 // holds, so scripted traces and free play share it. A view is { render(step, ms) }.
 //
 // Pausing lasts across load(), so a reader can step through each new operation by hand.
+// A step's optional hold multiplies the delay before the next one.
 
 export class Player {
     constructor(views, onChange) {
@@ -73,12 +74,14 @@ export class Player {
             return;
         }
 
+        const hold = this.steps[this.index].hold ?? 1;
+
         this.timer = setTimeout(() => {
             this.timer = null;
             this.show(this.index + 1);
             this.schedule();
             this.onChange();
-        }, this.delay);
+        }, this.delay * hold);
     }
 
     stop() {

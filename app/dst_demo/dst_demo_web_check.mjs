@@ -1,10 +1,11 @@
 // Checks the page's modules that need no browser, against the real dst_demo.wasm: the
 // wasm wrapper, step building, tree layout and the player.
 //
-// Usage: node dst_demo_web_check.mjs path\to\dst_demo.wasm
+// Usage: node dst_demo_web_check.mjs path\to\dst_demo.wasm path\to\trace.json...
 import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 
+import { arenaSteps } from './web/arena_steps.js';
 import { DstWasm } from './web/dst_wasm.js';
 import { Player } from './web/player.js';
 import { addSteps, findSteps, removeSteps } from './web/steps.js';
@@ -123,6 +124,9 @@ function checkSavedSubtreeCaption() {
 
     assert.equal(steps.at(-1).caption, 'Best fit for 1168 is 1296, with 128 bytes left over.');
     assert.ok(steps.some((step) => step.marks.saved !== undefined), 'a step marks the saved subtree');
+
+    const deadEnd = steps.find((step) => step.caption.includes('bit-guided search ends'));
+    assert.equal(deadEnd.marks.visit, frames.find((frame) => frame.event === 'find_dead_end').node);
 }
 
 function checkSiblingPromotion() {
@@ -138,6 +142,27 @@ function checkSiblingPromotion() {
     assert.deepEqual(steps.at(-1).tree.nodes[0].stack, []);
     assert.equal(steps.at(-1).marks.result, steps.at(-1).tree.nodes[0].id);
     assert.match(steps.at(-1).caption, /sibling now holds/);
+}
+
+const shape = (tree) => tree.nodes.map((node) => [node.key, node.path, node.stack.length]);
+
+// The trace covers each kind of tree step, and free play can take over its last tree.
+function checkTrace(path) {
+    const trace = JSON.parse(readFileSync(path));
+    const steps = arenaSteps(trace);
+
+    assertSteps(steps, steps.at(-1).tree);
+    steps.forEach((step) => assertLayout(step.tree));
+
+    const captions = steps.map((step) => step.caption).join('\n');
+    for (const expected of ['attaches there', 'sibling list', 'takes over', 'leftmost leaf', 'saved subtree', 'free neighbor']) {
+        assert.ok(captions.includes(expected), `no step says: ${expected}`);
+    }
+
+    wasm.restore(steps.at(-1).tree);
+    assert.deepEqual(shape(wasm.snapshot()), shape(steps.at(-1).tree), 'free play keeps the shape');
+
+    return steps;
 }
 
 function checkPlayer() {
@@ -175,3 +200,8 @@ checkSavedSubtreeCaption();
 checkSiblingPromotion();
 checkPlayer();
 console.log(`dst_demo web: ${OPERATIONS} operations through steps and layout passed`);
+
+for (const path of process.argv.slice(3)) {
+    const steps = checkTrace(path);
+    console.log(`dst_demo web: ${path}: ${steps.length} steps passed`);
+}

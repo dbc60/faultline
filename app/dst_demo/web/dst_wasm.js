@@ -48,6 +48,18 @@ export class DstWasm {
         return this.demo.capacity();
     }
 
+    // Rebuilds a snapshot's tree under new ids. A parent precedes its children in a
+    // snapshot, so each node attaches at its original path.
+    restore(tree) {
+        this.reset();
+
+        for (const node of tree.nodes) {
+            for (let copy = 0; copy <= node.stack.length; copy++) {
+                this.demo.add(node.key);
+            }
+        }
+    }
+
     // Each result is the node's id, or null if the operation did not apply.
     add(key) {
         return this.result(this.demo.add(key));
