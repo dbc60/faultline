@@ -63,18 +63,6 @@ static int                s_frame_count;
 static int                s_frame_limit = DEMO_MAX_FRAMES;
 static int                s_frames_dropped;
 
-/// Indexed by DSTTraceEvent. JavaScript reads these rather than repeating the enum.
-static char const *const s_event_names[] = {
-    "insert_visit",   "insert_attach", "insert_sibling",    "insert_root",
-    "find_visit",     "find_best",     "find_save",         "find_dead_end",
-    "smallest_visit", "smallest_best", "replace_from_tree", "replace_from_siblings",
-    "replace_take",   "remove_leaf",   "remove_sibling",
-};
-
-FL_STATIC_ASSERT(sizeof(s_event_names) / sizeof(s_event_names[0])
-                     == DST_TRACE_EVENT_COUNT,
-                 "s_event_names does not name every DSTTraceEvent");
-
 /* Assertions are the only source of throws here. Nothing catches them, so stop. */
 FLExceptionReason fl_internal_error = "internal error";
 
@@ -298,7 +286,8 @@ DEMO_EXPORT("event_count") int demo_event_count(void) {
 
 /// The address of a NUL-terminated name in linear memory, or 0 for an unknown event.
 DEMO_EXPORT("event_name") char const *demo_event_name(int event) {
-    return event >= 0 && event < DST_TRACE_EVENT_COUNT ? s_event_names[event] : NULL;
+    return event >= 0 && event < DST_TRACE_EVENT_COUNT ? DST_TRACE_EVENT_NAMES[event]
+                                                       : NULL;
 }
 
 /// Lower the frame limit, up to the next reset, so a test can fill the buffer.

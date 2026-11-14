@@ -373,6 +373,41 @@ struct Arena {
 };
 typedef struct Arena Arena;
 
+#ifdef ARENA_TRACE_ENABLED
+/**
+ * @brief The steps of an allocation or free, for a caller that animates them.
+ *
+ * Each event is reported where the arena's bins and chunks are consistent, so the sink
+ * can read the whole arena. The DST_TRACE events between them cannot do that: a tree
+ * removal returns before the arena updates the bin's root.
+ */
+typedef enum ArenaTraceEvent {
+    ARENA_TRACE_PATH_EXACT_FIT,
+    ARENA_TRACE_PATH_FAST,
+    ARENA_TRACE_PATH_NEXT_SMALL_BIN,
+    ARENA_TRACE_PATH_LARGE_FOR_SMALL,
+    ARENA_TRACE_PATH_LARGE_BIN,
+    ARENA_TRACE_PATH_TOP,
+    ARENA_TRACE_PATH_EXTEND,
+    ARENA_TRACE_SMALL_INSERT,
+    ARENA_TRACE_LARGE_INSERT,
+    ARENA_TRACE_LARGE_REMOVE,
+    ARENA_TRACE_SPLIT,
+    ARENA_TRACE_MERGE_BACK,
+    ARENA_TRACE_MERGE_FORWARD,
+    ARENA_TRACE_MERGE_TOP,
+    ARENA_TRACE_ALLOCATED,
+    ARENA_TRACE_EVENT_COUNT
+} ArenaTraceEvent;
+
+/// Supplied by the program that defines ARENA_TRACE_ENABLED. chunk may be NULL.
+void arena_trace(Arena const *arena, ArenaTraceEvent event, void const *chunk, int line);
+
+#define ARENA_TRACE(AR, EVENT, CHUNK) arena_trace((AR), (EVENT), (CHUNK), __LINE__)
+#else
+#define ARENA_TRACE(AR, EVENT, CHUNK) ((void)0)
+#endif
+
 /*
  * ARENA_SMALL_MAP_BITS is the width the bin geometry above is derived from; these tie it
  * to the fields that actually carry the bits, so narrowing either map breaks the build

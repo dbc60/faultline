@@ -309,6 +309,7 @@ static void insert_small_chunk(Arena *arena, FreeChunk *ch, char const *file, in
         next = free_chunk_next_sibling(next);
     }
     free_chunk_insert(next, ch);
+    ARENA_TRACE(arena, ARENA_TRACE_SMALL_INSERT, ch);
 }
 
 /**
@@ -335,11 +336,13 @@ static void insert_large_chunk(Arena *arena, DigitalSearchTree *node, char const
         // insert the node as the root of the bin.
         *bin = node;
         ARENA_MARK_LARGE_MAP(arena, index);
+        DST_TRACE(DST_TRACE_INSERT_ROOT, node, 0);
     } else {
         ARENA_RTCHECK(ARENA_LARGE_MAP_IS_MARKED(arena, index), file, line);
         dst_insert(*bin, node, ARENA_LEFT_SHIFT(index));
     }
     ARENA_RTCHECK(ARENA_LARGE_MAP_IS_MARKED(arena, index), file, line);
+    ARENA_TRACE(arena, ARENA_TRACE_LARGE_INSERT, node);
 }
 
 /**
@@ -497,6 +500,7 @@ static Chunk *allocate_small_request_from_large_bin(Arena *arena, size_t request
                 ARENA_CLEAR_LARGE_MAP(arena, index);
             }
         }
+        ARENA_TRACE(arena, ARENA_TRACE_LARGE_REMOVE, victim);
         if (CHUNK_SIZE(ch) - size < CHUNK_MIN_SIZE) {
             // The chunk is too small to split, so just mark it as in-use
             free_chunk_set_inuse(ch);
@@ -674,8 +678,10 @@ static Chunk *allocate_from_large_bin(Arena *arena, size_t request, char const *
 
     if (arena->fast != NULL && arena->fast_size >= size) {
         // prefer fast node
+        ARENA_TRACE(arena, ARENA_TRACE_PATH_FAST, NULL);
         chunk = chunk_from_fast(arena, size, file, line);
     } else {
+        ARENA_TRACE(arena, ARENA_TRACE_PATH_LARGE_BIN, NULL);
         INDEX_BY_VALUE64(size, ARENA_LARGE_BIN_COUNT, ARENA_LOG2_MIN_LARGE_CHUNK, index);
         if (ARENA_LARGE_MAP_IS_MARKED(arena, index)) {
             // search for the best fit from this bin
@@ -707,12 +713,14 @@ static Chunk *allocate_from_large_bin(Arena *arena, size_t request, char const *
                     ARENA_CLEAR_LARGE_MAP(arena, index);
                 }
             }
+            ARENA_TRACE(arena, ARENA_TRACE_LARGE_REMOVE, dst);
 
             // split victim if the remainder is large enough, otherwise, use it as is.
             FreeChunk *remainder
                 = free_chunk_split(ARENA_DST_TO_FREE_CHUNK(dst), size, file, line);
             free_chunk_set_inuse(ARENA_DST_TO_FREE_CHUNK(dst));
             if (remainder != NULL) {
+                ARENA_TRACE(arena, ARENA_TRACE_SPLIT, remainder);
                 // place remainder in the appropriate small or large bin
                 if (CHUNK_SIZE(remainder) < ARENA_MIN_LARGE_CHUNK) {
                     insert_small_chunk(arena, remainder, file, line);
@@ -886,6 +894,7 @@ static void arena_free_impl(Arena *arena, void *mem, char const *file, int line)
                 // but its siblings DList is linked into another node's list).
                 // Just remove it from the sibling list; the bin root is unchanged.
                 DLIST_REMOVE(&dst->siblings);
+                DST_TRACE(DST_TRACE_REMOVE_SIBLING, dst, 0);
             } else {
                 // prev is either the bin root or an internal tree node.
                 DigitalSearchTree *replacement = dst_remove_leftmost(dst);
@@ -896,6 +905,7 @@ static void arena_free_impl(Arena *arena, void *mem, char const *file, int line)
                     }
                 }
             }
+            ARENA_TRACE(arena, ARENA_TRACE_LARGE_REMOVE, dst);
             ARENA_RTCHECK(DST_IS_ROOT(dst), file, line);
             ARENA_RTCHECK(DST_IS_LEAF(dst), file, line);
             ARENA_RTCHECK(!DST_HAS_SIBLINGS(dst), file, line);
@@ -911,6 +921,7 @@ static void arena_free_impl(Arena *arena, void *mem, char const *file, int line)
 
         // the previous chunk is now the current chunk
         ch = prev;
+        ARENA_TRACE(arena, ARENA_TRACE_MERGE_BACK, ch);
     }
 
     if ((FreeChunk *)next == arena->top) {
@@ -932,6 +943,8 @@ static void arena_free_impl(Arena *arena, void *mem, char const *file, int line)
             arena->fast      = NULL;
             arena->fast_size = 0;
         }
+
+        ARENA_TRACE(arena, ARENA_TRACE_MERGE_TOP, ch);
 
         // Returning, because there's no need to insert the chunk into a bin.
         ARENA_STAT_DEC(arena, allocations);
@@ -995,6 +1008,7 @@ static void arena_free_impl(Arena *arena, void *mem, char const *file, int line)
                     // node's list). Just remove it from the sibling list; the bin
                     // root is unchanged.
                     DLIST_REMOVE(&tree_next->siblings);
+                    DST_TRACE(DST_TRACE_REMOVE_SIBLING, tree_next, 0);
                 } else {
                     DigitalSearchTree *replacement2 = dst_remove_leftmost(tree_next);
                     if (*fwd_bin == tree_next) {
@@ -1004,6 +1018,7 @@ static void arena_free_impl(Arena *arena, void *mem, char const *file, int line)
                         }
                     }
                 }
+                ARENA_TRACE(arena, ARENA_TRACE_LARGE_REMOVE, tree_next);
                 ARENA_RTCHECK(DST_IS_ROOT(tree_next), file, line);
                 ARENA_RTCHECK(DST_IS_LEAF(tree_next), file, line);
                 ARENA_RTCHECK(!DST_HAS_SIBLINGS(tree_next), file, line);
@@ -1013,6 +1028,7 @@ static void arena_free_impl(Arena *arena, void *mem, char const *file, int line)
             size_t original_size = CHUNK_SIZE(ch);
             free_chunk_merge_next(ch);
             ARENA_RTCHECK(CHUNK_SIZE(ch) == size, file, line);
+            ARENA_TRACE(arena, ARENA_TRACE_MERGE_FORWARD, ch);
             if (original_size < ARENA_MIN_LARGE_CHUNK
                 && CHUNK_SIZE(ch) > ARENA_MAX_SMALL_CHUNK) {
                 // small chunk has just been promoted to a large chunk, so complete its
@@ -1068,17 +1084,21 @@ static void *arena_malloc_impl(Arena *arena, size_t request, char const *file, i
         // satisfy the request, but too small to split.
         if (ARENA_HAS_REMAINDERLESS_SMALL_BIN(arena, size)) {
             // 1. Remainderless, exact fit.
+            ARENA_TRACE(arena, ARENA_TRACE_PATH_EXACT_FIT, NULL);
             ch = allocate_exact_fit(arena, size, file, line);
             ARENA_CHECK_ALLOCATED_CHUNK(arena, ch, size, file, line);
         } else if (size <= arena->fast_size) {
             // 2. Allocate from the fast node, splitting it if possible.
+            ARENA_TRACE(arena, ARENA_TRACE_PATH_FAST, NULL);
             ch = chunk_from_fast(arena, size, file, line);
         } else if (ARENA_SMALL_BITS(arena, size) != 0) {
             // 3. Use the chunk from the next non-empty smallbin, split it, and place the
             // remainder on the fast node.
+            ARENA_TRACE(arena, ARENA_TRACE_PATH_NEXT_SMALL_BIN, NULL);
             ch = allocate_from_next_nonempty_small_bin(arena, size, file, line);
         } else if (arena->large_map != 0) {
             // 4. No small bins and fast node is too small. Try a large free chunk.
+            ARENA_TRACE(arena, ARENA_TRACE_PATH_LARGE_FOR_SMALL, NULL);
             ch = allocate_small_request_from_large_bin(arena, request, file, line);
         }
     } else {
@@ -1099,6 +1119,7 @@ static void *arena_malloc_impl(Arena *arena, size_t request, char const *file, i
         if (top_size >= size) {
             LOG_DEBUG("Arena", "Allocate from top");
             // 5. Allocate from top.
+            ARENA_TRACE(arena, ARENA_TRACE_PATH_TOP, NULL);
             ch = allocate_from_top(arena, size, file, line);
             ARENA_CHECK_ALLOCATED_CHUNK(arena, ch, size, file, line);
             mem = CHUNK_TO_MEMORY(ch);
@@ -1128,6 +1149,7 @@ static void *arena_malloc_impl(Arena *arena, size_t request, char const *file, i
                 // from
                 //    what's already reserved, or extending reserved memory and
                 //    committing from that.
+                ARENA_TRACE(arena, ARENA_TRACE_PATH_EXTEND, NULL);
                 mem = extend(arena, request, file, line);
                 ch  = CHUNK_FROM_MEMORY_FILE_LINE(mem, file, line);
             }
@@ -1138,6 +1160,7 @@ static void *arena_malloc_impl(Arena *arena, size_t request, char const *file, i
     CHUNK_ASSERT_VALID(ch, size);
     ch->owner = arena;
     ARENA_STAT_INC(arena, allocations);
+    ARENA_TRACE(arena, ARENA_TRACE_ALLOCATED, ch);
     return mem;
 }
 

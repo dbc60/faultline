@@ -83,6 +83,18 @@ typedef enum DSTTraceEvent {
     DST_TRACE_EVENT_COUNT
 } DSTTraceEvent;
 
+/// Indexed by DSTTraceEvent.
+static char const *const DST_TRACE_EVENT_NAMES[] = {
+    "insert_visit",   "insert_attach", "insert_sibling",    "insert_root",
+    "find_visit",     "find_best",     "find_save",         "find_dead_end",
+    "smallest_visit", "smallest_best", "replace_from_tree", "replace_from_siblings",
+    "replace_take",   "remove_leaf",   "remove_sibling",
+};
+
+FL_STATIC_ASSERT(sizeof(DST_TRACE_EVENT_NAMES) / sizeof(DST_TRACE_EVENT_NAMES[0])
+                     == DST_TRACE_EVENT_COUNT,
+                 "DST_TRACE_EVENT_NAMES does not name every DSTTraceEvent");
+
 /// Supplied by the program that defines DST_TRACE_ENABLED.
 void dst_trace(DSTTraceEvent event, DigitalSearchTree const *node, size_t detail);
 
