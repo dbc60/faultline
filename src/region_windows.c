@@ -17,6 +17,7 @@
 #include <stdint.h>                         // for UINT32_MAX
 #include "bits.h"                           // for ALIGN_UP, ALIGN_DOWN
 #include <faultline/fl_exception.h>         // for fl_internal_error
+#include "poison.h"                         // for UNPOISON_BYTES
 #include "region.h"                         // for Region, region_initializati...
 #include "fl_lock.h"                        // for fl_lock_init, fl_lock_destroy
 #include "win32_platform.h"                 // for get_memory_info
@@ -115,6 +116,10 @@ Region *new_custom_region(size_t commit, u32 reserve, u32 granularity_multiplier
 
 void release_region(Region *region) {
     fl_lock_destroy(&region->lock);
+
+    // ASan's shadow memory outlives a mapping. Unpoison before releasing, or whoever maps
+    // these addresses next, e.g. the CRT heap, inherits the poison.
+    UNPOISON_BYTES(region, REGION_BYTES_COMMITTED(region));
     FL_ASSERT_TRUE(VirtualFree(region, 0, MEM_RELEASE));
 }
 
@@ -153,6 +158,10 @@ size_t commit(Region *region, size_t to_commit) {
 // decommit_size must be a multiple of the region's page size.
 void decommit(Region *region, size_t decommit_size) {
     void *page = region->end_committed - decommit_size;
+
+    // Unpoison first: ASan's shadow memory outlives the pages, so recommitting them
+    // would bring back their poison.
+    UNPOISON_BYTES(page, decommit_size);
 
     // 6250: decommitting pages inside a reserved region is the point of this
     // function. The address space itself is returned by release_region, which
@@ -251,6 +260,12 @@ void shrink(Region *region, size_t release_size, size_t to_decommit) {
      * number of bytes reserved.
      */
     while (region != memory_info.AllocationBase && last_reserved_size <= to_release) {
+        // A released reservation can still hold committed pages; unpoison them so the
+        // next mapping at these addresses does not inherit the poison.
+        char *base = (char *)memory_info.AllocationBase;
+        if (region->end_committed > base) {
+            UNPOISON_BYTES(base, (size_t)(region->end_committed - base));
+        }
         FL_ASSERT_TRUE(VirtualFree(memory_info.AllocationBase, 0, MEM_RELEASE));
 
         // Lather, rinse, and repeat

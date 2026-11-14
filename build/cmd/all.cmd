@@ -182,9 +182,13 @@ if errorlevel 1 (
     GOTO :ERROR
 )
 
-:: Built only with asan: its one case ends in an ASan report by design.
+:: Built only with asan: each canary's one case ends in an ASan report by design.
 if %asan% EQU 1 (
     call %DIR_CMD%\asan_canary.cmd !args!
+    if errorlevel 1 (
+        GOTO :ERROR
+    )
+    call %DIR_CMD%\asan_arena_canary.cmd !args!
     if errorlevel 1 (
         GOTO :ERROR
     )
@@ -203,6 +207,9 @@ if %analyze% EQU 1 (
 IF NOT EXIST "%DIR_TEST%" MD "%DIR_TEST%"
 copy /y %DIR_OUT_BIN%\*.exe "%DIR_TEST%\" > NUL
 copy /y %DIR_OUT_BIN%\*.dll "%DIR_TEST%\" > NUL
+:: The ASan runtime's PDB, so a debugger shows its frames by name. The suites'
+:: PDBs need no copy: each binary records its PDB's full path.
+if %asan% EQU 1 copy /y %DIR_OUT_BIN%\clang_rt.asan_dynamic-*.pdb "%DIR_TEST%\" > NUL
 
 if %timed% EQU 1 (
     ctime.exe -end "%DIR_METRICS%\all.ctm" %errorlevel%
@@ -220,9 +227,15 @@ if %test% EQU 1 (
     set "DB_OPT="
     if %asan% EQU 1 set "DB_OPT=--db faultline_asan.sqlite"
     REM Prove ASan reports an error before trusting a clean run, then send the run's
-    REM reports to files so a suite that redirects stderr cannot discard them.
+    REM reports to files so a suite that redirects stderr cannot discard them. The
+    REM first canary overflows a CRT heap block; the second reads a freed arena block,
+    REM which ASan sees only through the arena's poisoning.
     if %asan% EQU 1 (
-        call %DIR_CMD%\asan_reports.cmd canary "%DIR_TEST%" "%DIR_TEST%\faultline.exe"
+        call %DIR_CMD%\asan_reports.cmd canary "%DIR_TEST%" "%DIR_TEST%\faultline.exe" ^
+            asan_canary_tests.dll asan_canary_tests.c heap-buffer-overflow
+        if errorlevel 1 GOTO :ERROR
+        call %DIR_CMD%\asan_reports.cmd canary "%DIR_TEST%" "%DIR_TEST%\faultline.exe" ^
+            asan_arena_canary_tests.dll asan_arena_canary_tests.c use-after-poison
         if errorlevel 1 GOTO :ERROR
         call %DIR_CMD%\asan_reports.cmd env
         call %DIR_CMD%\asan_reports.cmd clear "%DIR_TEST%"

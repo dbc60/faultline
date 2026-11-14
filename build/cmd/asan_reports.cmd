@@ -19,9 +19,12 @@ SETLOCAL ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 ::   CALL asan_reports.cmd clear  <dir>           Delete <dir>\<REPORT_STEM>.*
 ::   CALL asan_reports.cmd check  <dir>           Print each <dir>\<REPORT_STEM>.* and
 ::                                                exit 1; exit 0 when there is none
-::   CALL asan_reports.cmd canary <dir> <driver>  Run asan_canary_tests.dll from <dir>
-::                                                and exit 1 unless ASan reported the
-::                                                canary's heap overflow
+::   CALL asan_reports.cmd canary <dir> <driver> <dll> <src> <kind>
+::                                                Run the canary suite <dll> from <dir>
+::                                                and exit 1 unless ASan reported a
+::                                                <kind> error in <src>, e.g.
+::                                                heap-buffer-overflow in
+::                                                asan_canary_tests.c
 ::
 ::   +-----------+  run   +----------------+  log_path  +----------------------+
 ::   | all.cmd   | -----> | faultline.exe  | ---------> | test\asan_report.pid |
@@ -30,9 +33,6 @@ SETLOCAL ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 ::         +-------------- asan_reports.cmd check <----------------+
 
 SET "REPORT_STEM=asan_report"
-SET "CANARY_DLL=asan_canary_tests.dll"
-SET "CANARY_SRC=asan_canary_tests.c"
-SET "CANARY_KIND=heap-buffer-overflow"
 SET "CANARY_OUT=asan_canary.out"
 
 SET "VERB=%~1"
@@ -65,10 +65,13 @@ FOR %%F IN ("%DIR%\%REPORT_STEM%.*") DO (
 EXIT /B 1
 
 :: The canary passes only when all three hold: the driver exits non-zero, a report
-:: exists, and the report names the canary's overflow in the canary's source. --no-db
-:: keeps the deliberate failure out of the results database.
+:: exists, and the report names the expected kind of error in the canary's source.
+:: --no-db keeps the deliberate failure out of the results database.
 :CANARY
 SET "DRIVER=%~3"
+SET "CANARY_DLL=%~4"
+SET "CANARY_SRC=%~5"
+SET "CANARY_KIND=%~6"
 SET "ASAN_OPTIONS=%ASAN_OPTIONS% log_path=%REPORT_STEM%"
 CALL :CLEAR
 
@@ -78,8 +81,9 @@ SET "RC=!errorlevel!"
 POPD
 
 IF "!RC!"=="0" (
-    ECHO ASAN CANARY ERROR: the driver exited 0, so the canary's overflow went 1>&2
-    ECHO undetected. The binaries are not instrumented or the ASan runtime is not loaded. 1>&2
+    ECHO ASAN CANARY ERROR: the driver exited 0, so the %CANARY_KIND% in 1>&2
+    ECHO %CANARY_SRC% went undetected. The binaries are not instrumented, the ASan 1>&2
+    ECHO runtime is not loaded, or the memory the canary reads is not poisoned. 1>&2
     GOTO :CANARY_FAIL
 )
 

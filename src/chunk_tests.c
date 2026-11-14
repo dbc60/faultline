@@ -33,18 +33,19 @@ typedef struct TestChunk {
     FreeChunk *ch;
 } TestChunk;
 
+// The chunk starts after the Region header, which release_region still reads.
 static FL_SETUP_FN(setup) {
     TestChunk *t         = FL_CONTAINER_OF(tc, TestChunk, tc);
     Region    *rgn       = new_region(MEBI(50), 0);
     size_t     committed = REGION_BYTES_COMMITTED(rgn);
-    t->ch                = (FreeChunk *)rgn;
-    free_chunk_init(t->ch, committed - CHUNK_SENTINEL_SIZE, true);
+    t->ch                = (FreeChunk *)REGION_TO_MEM(rgn);
+    free_chunk_init(t->ch, committed - REGION_ALIGNED_SIZE - CHUNK_SENTINEL_SIZE, true);
     CHUNK_SET_SENTINEL((Chunk *)t->ch);
 }
 
 static FL_CLEANUP_FN(cleanup) {
     TestChunk *t = FL_CONTAINER_OF(tc, TestChunk, tc);
-    release_region((Region *)(t->ch));
+    release_region(MEM_TO_REGION(t->ch));
 }
 
 // ============================================================================

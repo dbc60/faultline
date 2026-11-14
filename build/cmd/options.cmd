@@ -40,11 +40,12 @@ SETLOCAL ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 ::              driver runs suites of either dialect.
 ::  asan:       Build with AddressSanitizer (/fsanitize=address). Writes to a
 ::              separate <buildtype>-asan output directory, copies the ASan runtime
-::              DLL next to the binaries, and with test, all.cmd records results in
-::              faultline_asan.sqlite so instrumented timings stay out of the
-::              baselines in faultline.sqlite. With test, all.cmd first runs the
-::              ASan canary suite, which must end in an ASan report, and every run
-::              prints the ASan reports it leaves; see asan_reports.cmd.
+::              DLL and PDB from the toolset next to the binaries, and with test,
+::              all.cmd records results in faultline_asan.sqlite so instrumented
+::              timings stay out of the baselines in faultline.sqlite. With test,
+::              all.cmd first runs the ASan canary suites, which must each end in
+::              an ASan report: one on the CRT heap and one on arena memory. Every
+::              run prints the ASan reports it leaves; see asan_reports.cmd.
 
 :: Remember to export these in the ENDLOCAL section below
 SET "options=build: debug: release: cleanall: clean: cleanplat: x64: x86: win32: test: junit: vs2022: vs2026: verbose: trace: timed: analyze: cxx: asan:"

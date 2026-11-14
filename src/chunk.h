@@ -12,6 +12,7 @@
  *
  */
 #include "bits.h"                // ALIGN_UP, ALIGN_DOWN
+#include "poison.h"              // POISON_BYTES, UNPOISON_BYTES
 #include <faultline/dlist.h>     // DList
 #include <faultline/fl_macros.h> // FL_CONTAINER_OF
 
@@ -58,6 +59,16 @@
 
 #define CHUNK_FOOTER_SIZE SIZE_T_SIZE
 #define CHUNK_MIN_SIZE    (ALIGN_UP(sizeof(FreeChunk), CHUNK_ALIGNMENT))
+
+/**
+ * @brief The bytes at the start of a free chunk that hold allocator data: its size and
+ * sibling links, plus, in a large chunk, its digital search tree links. A free chunk
+ * stays addressable over these bytes and its footer, and is poisoned everywhere else.
+ *
+ * The size of a DigitalSearchTree node, the largest header of a free chunk, is six 8-byte
+ * words. digital_search_tree.h checks that at compile time.
+ */
+#define CHUNK_FREE_HEADER_SIZE (6 * SIZE_T_SIZE)
 
 #define CHUNK_IS_ALIGNED(CH)         (((size_t)(CH) & (CHUNK_ALIGNMENT_MASK)) == 0)
 #define CHUNK_SIZE(CH)               ((CH)->size & ~CHUNK_INUSE_FLAGS)
@@ -131,11 +142,11 @@
 #define FREE_CHUNK_FROM_SIBLINGS(S) FL_CONTAINER_OF(S, FreeChunk, siblings)
 #define FREE_CHUNK_TO_SIBLINGS(CH)  (&(CH)->siblings)
 
-#define CHUNK_ASSERT_VALID(CH, SIZE)                            \
-    do {                                                        \
-        FL_ASSERT_NOT_NULL(CH);                                 \
-        size_t ch_size_ = CHUNK_SIZE(CH);                       \
-                                                                \
+#define CHUNK_ASSERT_VALID(CH, SIZE)                     \
+    do {                                                 \
+        FL_ASSERT_NOT_NULL(CH);                          \
+        size_t ch_size_ = CHUNK_SIZE(CH);                \
+                                                         \
         FL_ASSERT_ZERO(ch_size_ & CHUNK_ALIGNMENT_MASK); \
         FL_ASSERT_GE(ch_size_, CHUNK_MIN_SIZE);          \
         FL_ASSERT_GE(ch_size_, (SIZE));                  \
@@ -218,6 +229,8 @@ FL_STATIC_ASSERT((CHUNK_MIN_SIZE % CHUNK_ALIGNMENT) == 0,
                  "CHUNK_MIN_SIZE must be a multiple of CHUNK_ALIGNMENT");
 FL_STATIC_ASSERT((CHUNK_ALIGNED_SIZE % CHUNK_ALIGNMENT) == 0,
                  "CHUNK_ALIGNED_SIZE must be a multiple of CHUNK_ALIGNMENT");
+FL_STATIC_ASSERT(sizeof(FreeChunk) <= CHUNK_FREE_HEADER_SIZE,
+                 "a free chunk's bookkeeping must lie in its unpoisoned header");
 
 /**
  * @brief Return the size of the previous chunk in memory.
@@ -272,14 +285,75 @@ static inline size_t free_chunk_footer_size(FreeChunk *ch) {
 }
 
 /**
- * @brief Initialize a free chunk with its size and whether or not the previous chunk in
- * memory is in use.
+ * @brief Make the header and footer of a free chunk of size bytes addressable (unpoisoned
+ * under ASan), before the allocator writes them. Either may lie inside a chunk that was
+ * poisoned, e.g. the remainder's header when a free chunk is split.
+ *
+ * @param ch the chunk whose header and footer will be written
+ * @param size the size the chunk will have, which places its footer
+ */
+static inline void free_chunk_unpoison_header(FreeChunk *ch, size_t size) {
+    UNPOISON_BYTES(ch, size < CHUNK_FREE_HEADER_SIZE ? size : CHUNK_FREE_HEADER_SIZE);
+    UNPOISON_BYTES((char *)ch + size - CHUNK_FOOTER_SIZE, CHUNK_FOOTER_SIZE);
+}
+
+/**
+ * @brief Poison a free chunk between its header and its footer, so ASan reports a
+ * caller's access to freed memory, e.g. a write through a pointer kept after free. The
+ * header and footer stay addressable, because the allocator reads them while the chunk
+ * is free.
+ *
+ * @param ch a free chunk whose size is set
+ */
+static inline void free_chunk_poison(FreeChunk *ch) {
+    size_t size = CHUNK_SIZE(ch);
+    if (size <= CHUNK_FREE_HEADER_SIZE + CHUNK_FOOTER_SIZE) {
+        return;
+    }
+
+    POISON_BYTES((char *)ch + CHUNK_FREE_HEADER_SIZE,
+                 size - CHUNK_FREE_HEADER_SIZE - CHUNK_FOOTER_SIZE);
+}
+
+/**
+ * @brief Poison the bytes a merge moved into a free chunk's interior: the left chunk's
+ * footer and the right chunk's header. Both interiors are poisoned already, so a merge
+ * costs a few bytes of poisoning rather than the whole chunk. Re-poisoning the whole
+ * chunk would make freeing n adjacent blocks in address order O(n^2).
+ *
+ * @param ch the merged chunk, with its size set
+ * @param boundary the address at which the right chunk started
+ */
+static inline void free_chunk_poison_boundary(FreeChunk *ch, char *boundary) {
+    char *lo          = boundary - CHUNK_FOOTER_SIZE;
+    char *hi          = boundary + CHUNK_FREE_HEADER_SIZE;
+    char *interior_lo = (char *)ch + CHUNK_FREE_HEADER_SIZE;
+    char *interior_hi = (char *)ch + CHUNK_SIZE(ch) - CHUNK_FOOTER_SIZE;
+
+    // The merged chunk's own header and footer stay addressable.
+    if (lo < interior_lo) {
+        lo = interior_lo;
+    }
+    if (hi > interior_hi) {
+        hi = interior_hi;
+    }
+    if (lo < hi) {
+        POISON_BYTES(lo, (size_t)(hi - lo));
+    }
+}
+
+/**
+ * @brief Write a free chunk's header and footer, leaving its interior's poisoning as it
+ * is. free_chunk_split uses it for a remainder, whose interior was the split chunk's
+ * interior and is poisoned already.
  *
  * @param ch the chunk to initialize
  * @param size the chunk's size in bytes
  * @param previous_inuse true if the previous chunk is in use and false otherwise
  */
-static inline void free_chunk_init(FreeChunk *ch, size_t size, bool previous_inuse) {
+static inline void free_chunk_init_header(FreeChunk *ch, size_t size,
+                                          bool previous_inuse) {
+    free_chunk_unpoison_header(ch, size);
     ch->size = size;
     if (previous_inuse) {
         CHUNK_SET_PREVIOUS_INUSE(ch);
@@ -296,6 +370,19 @@ static inline void free_chunk_init(FreeChunk *ch, size_t size, bool previous_inu
 }
 
 /**
+ * @brief Initialize a free chunk with its size and whether or not the previous chunk in
+ * memory is in use.
+ *
+ * @param ch the chunk to initialize
+ * @param size the chunk's size in bytes
+ * @param previous_inuse true if the previous chunk is in use and false otherwise
+ */
+static inline void free_chunk_init(FreeChunk *ch, size_t size, bool previous_inuse) {
+    free_chunk_init_header(ch, size, previous_inuse);
+    free_chunk_poison(ch);
+}
+
+/**
  * @brief free a chunk that was in use. It's safe to assume that its size is already set.
  *
  * - clear its in-use flag
@@ -306,15 +393,17 @@ static inline void free_chunk_init(FreeChunk *ch, size_t size, bool previous_inu
  * @param ch
  */
 static inline void free_chunk_init_simple(FreeChunk *ch) {
+    size_t size = CHUNK_SIZE(ch);
+    free_chunk_unpoison_header(ch, size);
     CHUNK_SET_FREE(ch);
     DLIST_INIT(&ch->siblings);
-    size_t size = CHUNK_SIZE(ch);
-    ch->footer  = size;
+    ch->footer = size;
     if (size > CHUNK_MIN_SIZE) {
         size_t *footer = free_chunk_get_footer(ch);
         *footer        = size;
     }
     CHUNK_CLEAR_PREVIOUS_INUSE(CHUNK_NEXT(ch));
+    free_chunk_poison(ch);
 }
 
 /**
@@ -369,6 +458,9 @@ static inline FreeChunk *free_chunk_split(FreeChunk *ch, size_t new_size,
     size_t     remainder_size = size - new_size;
     FreeChunk *remainder      = NULL;
     if (remainder_size >= CHUNK_MIN_SIZE) {
+        // The new footer lies inside the poisoned part of the chunk being split.
+        free_chunk_unpoison_header(ch, new_size);
+
         // maintain the original in-use flags
         ch->size   = new_size | in_use;
         ch->footer = new_size;
@@ -378,7 +470,7 @@ static inline FreeChunk *free_chunk_split(FreeChunk *ch, size_t new_size,
         }
 
         remainder = (FreeChunk *)CHUNK_NEXT(ch);
-        free_chunk_init(remainder, remainder_size, true);
+        free_chunk_init_header(remainder, remainder_size, true);
     }
 
     return remainder;
@@ -400,6 +492,9 @@ static inline FreeChunk *free_chunk_merge_previous(FreeChunk *ch) {
     prev->size        = total | (prev->size & CHUNK_PREVIOUS_INUSE_FLAG);
     prev->footer      = total;
     *footer           = total;
+
+    // ch's header and prev's old footer are now inside the merged chunk
+    free_chunk_poison_boundary(prev, (char *)ch);
     return prev;
 }
 
@@ -422,6 +517,9 @@ static inline void free_chunk_merge_next(FreeChunk *ch) {
     ch->size   = total | (ch->size & CHUNK_PREVIOUS_INUSE_FLAG);
     ch->footer = total;
     *footer    = total;
+
+    // ch's old footer and next's header are now inside the merged chunk
+    free_chunk_poison_boundary(ch, (char *)next);
 }
 
 /// Insert ch2 as a sibling after ch1 in the free list.
@@ -434,8 +532,13 @@ static inline void free_chunk_remove(FreeChunk *ch) {
     DLIST_REMOVE(&ch->siblings);
 }
 
-/// Mark a free chunk as in-use and set the next chunk's previous-inuse flag.
+/**
+ * @brief Mark a free chunk as in-use and set the next chunk's previous-inuse flag.
+ *
+ * The whole chunk becomes addressable. The caller poisons any bytes past the request.
+ */
 static inline void free_chunk_set_inuse(FreeChunk *ch) {
+    UNPOISON_BYTES(ch, CHUNK_SIZE(ch));
     CHUNK_SET_INUSE(ch);
     CHUNK_SET_PREVIOUS_INUSE(CHUNK_NEXT(ch));
 }
@@ -465,8 +568,8 @@ static inline Chunk *chunk_from_memory_validate(void *mem, char const *file, int
 
     // Validate chunk header
     if (!CHUNK_IS_ALIGNED(ch)) {
-        FL_THROW_DETAILS_FILE_LINE(fl_invalid_address,
-                                   "chunk header 0x%p is not aligned", file, line, ch);
+        FL_THROW_DETAILS_FILE_LINE(fl_invalid_address, "chunk header 0x%p is not aligned",
+                                   file, line, ch);
     }
 
     return ch;

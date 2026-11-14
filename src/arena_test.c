@@ -508,6 +508,10 @@ static void setup_small_from_large_arena_test(FLTestCase *btc) {
         request = lower - CHUNK_ALIGNED_SIZE;
     }
 
+    // Each chunk is freed in address order, so it merges into the free chunk that
+    // starts at the first one, and its own header becomes part of that chunk's
+    // interior. Check the merged chunk rather than the stale header.
+    FreeChunk *first = FREE_CHUNK_FROM_MEMORY(mem[0], __FILE__, __LINE__);
     FreeChunk *ch;
     Chunk     *next;
     for (u32 i = 0; i < cnt; i++) {
@@ -520,13 +524,13 @@ static void setup_small_from_large_arena_test(FLTestCase *btc) {
         Arena *arena = at->arena;
         // when merged to top, the footer is not set. Otherwise, validate the address of
         // the footer is just prior the next chunk.
-        FL_ASSERT_DETAILS(
-            ch == arena->top || free_chunk_get_footer(ch) == chunk_previous_footer(next),
-            "chunk: 0x%08zx, next: 0x%08zx. Expected 0x%08zx. Actual 0x%08zx",
-            ARENA_RELATIVE_ADDRESS(at->arena, ch),
-            ARENA_RELATIVE_ADDRESS(at->arena, next),
-            (char *)chunk_previous_footer(next) - (char *)arena->base,
-            (char *)free_chunk_get_footer(ch) - (char *)arena->base);
+        FL_ASSERT_DETAILS(first == arena->top
+                              || free_chunk_get_footer(first) == chunk_previous_footer(next),
+                          "chunk: 0x%08zx, next: 0x%08zx. Expected 0x%08zx. Actual 0x%08zx",
+                          ARENA_RELATIVE_ADDRESS(at->arena, first),
+                          ARENA_RELATIVE_ADDRESS(at->arena, next),
+                          (char *)chunk_previous_footer(next) - (char *)arena->base,
+                          (char *)free_chunk_get_footer(first) - (char *)arena->base);
     }
 }
 

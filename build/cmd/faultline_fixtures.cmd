@@ -36,7 +36,10 @@ IF %build% EQU 1 (
     if %verbose% EQU 1 (
         ECHO Build shared fixture object: sqlite3.obj
     )
-    cl %CommonCompilerFlagsFinal% /wd4456 /wd4200 /wd4115 ^
+    REM /wd4815: MSVC 14.52 warns on SQLite's zero-element flexible array members,
+    REM which /WX makes an error. sqlite3.c is third-party, so the warning is
+    REM suppressed rather than the source edited.
+    cl %CommonCompilerFlagsFinal% /wd4456 /wd4200 /wd4115 /wd4815 ^
     /I"%DIR_THIRD_PARTY%" /c %DIR_THIRD_PARTY%\sqlite\sqlite3.c ^
     /Fo:%DIR_OUT_OBJ%\sqlite3.obj /Fd:%DIR_OUT_OBJ%\sqlite3.pdb > "%TEMP_OUT%"
     if errorlevel 1 (

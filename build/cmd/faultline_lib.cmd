@@ -53,7 +53,8 @@ IF %build% EQU 1 (
 
     REM sqlite3.c is third-party and compiles on its own cl line, with the
     REM warning suppressions its code needs and the first-party sources do not.
-    cl /c %CommonCompilerFlagsFinal% /wd4200 /wd4115 /I%DIR_THIRD_PARTY% ^
+    REM /wd4815: MSVC 14.52 warns on SQLite's zero-element flexible array members.
+    cl /c %CommonCompilerFlagsFinal% /wd4200 /wd4115 /wd4815 /I%DIR_THIRD_PARTY% ^
         %DIR_THIRD_PARTY%\sqlite\sqlite3.c ^
         /Fo:%DIR_OUT_OBJ%\ /Fd:%DIR_OUT_LIB%\faultline.pdb > "%TEMP_OUT%"
     IF ERRORLEVEL 1 (

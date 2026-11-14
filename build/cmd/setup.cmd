@@ -216,22 +216,28 @@ IF !build!==1 (
 )
 
 :: An instrumented binary loads the ASan runtime DLL at startup and fails to start
-:: without it. vcvars puts the toolset's bin directory, which holds the runtime, on
-:: PATH. Copy it next to the binaries so they also start from a shell without
-:: vcvars; all.cmd then copies it into test\ with the other DLLs.
+:: without it, or with one from another toolset version. Copy the DLL and its PDB
+:: from the toolset that compiled the binaries, next to them, so they also start
+:: from a shell without vcvars and a debugger shows the runtime's frames by name;
+:: all.cmd then copies both into test\ with the other DLLs. Searching PATH instead
+:: can find another runtime of the same name, e.g. LLVM's. The directory follows
+:: shell.cmd: vcvars64 selects Hostx64\x64 and vcvars32 selects Hostx86\x86.
 IF !build!==1 IF %asan% EQU 1 (
-    SET ASAN_RUNTIME=clang_rt.asan_dynamic-x86_64.dll
-    IF %x86% EQU 1 SET ASAN_RUNTIME=clang_rt.asan_dynamic-i386.dll
-    SET ASAN_RUNTIME_PATH=
-    FOR /F "delims=" %%F IN ('where !ASAN_RUNTIME! 2^>NUL') DO (
-        IF NOT DEFINED ASAN_RUNTIME_PATH SET "ASAN_RUNTIME_PATH=%%F"
+    SET "ASAN_RUNTIME_DIR=%VCToolsInstallDir%bin\Hostx64\x64"
+    SET ASAN_RUNTIME=clang_rt.asan_dynamic-x86_64
+    IF %x86% EQU 1 (
+        SET "ASAN_RUNTIME_DIR=%VCToolsInstallDir%bin\Hostx86\x86"
+        SET ASAN_RUNTIME=clang_rt.asan_dynamic-i386
     )
-    IF NOT DEFINED ASAN_RUNTIME_PATH (
-        ECHO SETUP.CMD ERROR: !ASAN_RUNTIME! is not on PATH. Install the C++ 1>&2
-        ECHO AddressSanitizer component of Visual Studio. 1>&2
+    IF NOT EXIST "!ASAN_RUNTIME_DIR!\!ASAN_RUNTIME!.dll" (
+        ECHO SETUP.CMD ERROR: !ASAN_RUNTIME_DIR!\!ASAN_RUNTIME!.dll not found. Install 1>&2
+        ECHO the C++ AddressSanitizer component of Visual Studio. 1>&2
         EXIT /B 1
     )
-    copy /y "!ASAN_RUNTIME_PATH!" "%DIR_OUT_BIN%\" > NUL
+    copy /y "!ASAN_RUNTIME_DIR!\!ASAN_RUNTIME!.dll" "%DIR_OUT_BIN%\" > NUL
+    IF EXIST "!ASAN_RUNTIME_DIR!\!ASAN_RUNTIME!.pdb" (
+        copy /y "!ASAN_RUNTIME_DIR!\!ASAN_RUNTIME!.pdb" "%DIR_OUT_BIN%\" > NUL
+    )
 )
 
 :: Return Variables

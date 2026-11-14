@@ -42,6 +42,10 @@ typedef struct DigitalSearchTree {
     struct DigitalSearchTree *child[2]; // left and right children
 } DigitalSearchTree;
 
+// A large free chunk stores its node in its first bytes, which must stay unpoisoned.
+FL_STATIC_ASSERT(sizeof(DigitalSearchTree) <= CHUNK_FREE_HEADER_SIZE,
+                 "a tree node must lie in a free chunk's unpoisoned header");
+
 #define DST_HAS_PARENT(T)   ((T)->parent != (T))
 #define DST_IS_ROOT(T)      ((T)->parent == (T))
 #define DST_IS_LEAF(T)      ((T)->child[0] == (T) && (T)->child[1] == (T))

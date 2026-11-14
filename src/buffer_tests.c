@@ -186,7 +186,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("new zero capacity", TestWithArena, test_new_zero_cap
 
 FL_TYPE_TEST_SETUP_CLEANUP("init", TestWithArena, test_init, setup_with_arena,
                            cleanup_with_arena) {
-    Buffer *buf = (Buffer *)ARENA_MALLOC_THROW(t->arena, BUFFER_CAPACITY * ELEMENT_SIZE);
+    Buffer *buf = (Buffer *)ARENA_MALLOC_THROW(t->arena, sizeof *buf);
     init_buffer(buf, t->arena, BUFFER_CAPACITY, ELEMENT_SIZE);
 
     FL_ASSERT_TRUE(buffer_is_initialized(buf));

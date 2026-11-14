@@ -27,6 +27,7 @@
 #include "digital_search_tree.h"            // for DigitalSearchTree, dst_init...
 #include "fl_lock.h"                        // for fl_lock_acquire, fl_lock_re...
 #include "index.h"                          // for INDEX_BY_VALUE64, COMPUTE_L...
+#include "poison.h"                         // for POISON_BYTES, UNPOISON_BYTES
 #include "region.h"                         // for MEM_TO_REGION, REGION_BYTES...
 #include "region_node.h"                    // for RegionNode, new_region_node
 #include "win32_platform.h"                 // for get_memory_info
@@ -1138,6 +1139,10 @@ static void *arena_malloc_impl(Arena *arena, size_t request, char const *file, i
     CHUNK_ASSERT_VALID(ch, size);
     ch->owner = arena;
     ARENA_STAT_INC(arena, allocations);
+
+    // Poison the payload past the request, so ASan reports an overflow that stays
+    // inside the chunk, e.g. a write to p[10] after a 10-byte request.
+    POISON_BYTES((char *)mem + request, CHUNK_PAYLOAD_SIZE(ch) - request);
     return mem;
 }
 
@@ -1155,6 +1160,10 @@ static void *arena_realloc_impl(Arena *arena, void *mem, size_t size, char const
         size_t payload = CHUNK_PAYLOAD_SIZE(ch);
         p              = arena_malloc_impl(arena, size, file, line);
         size_t n       = (size < payload) ? size : payload;
+
+        // The copy can read past the old request, which arena_malloc_impl poisoned. The
+        // block is freed right after, so the bytes need no protection.
+        UNPOISON_BYTES(mem, payload);
         (void)memcpy(p, mem, n);
         arena_free_impl(arena, mem, file, line);
     }
@@ -1165,7 +1174,9 @@ static void *arena_realloc_impl(Arena *arena, void *mem, size_t size, char const
 void arena_free_remote(Arena *arena, void *mem) {
     // The dead block's payload stores the queue link; its header stays intact
     // (still marked in use) until the owner absorbs it through the normal
-    // free path at its next allocation.
+    // free path at its next allocation. A request smaller than the link leaves
+    // part of it poisoned.
+    UNPOISON_BYTES(mem, sizeof(void *));
     void *head = atomic_load_explicit(&arena->remote_free_head, memory_order_relaxed);
     do {
         *(void **)mem = head;
