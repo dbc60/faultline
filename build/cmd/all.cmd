@@ -182,6 +182,14 @@ if errorlevel 1 (
     GOTO :ERROR
 )
 
+:: Built only with asan: its one case ends in an ASan report by design.
+if %asan% EQU 1 (
+    call %DIR_CMD%\asan_canary.cmd !args!
+    if errorlevel 1 (
+        GOTO :ERROR
+    )
+)
+
 :: Code analysis is opt-in and runs after the build, so producing the binaries is
 :: never delayed by it. The pass links nothing, so it adds no artifact to copy into
 :: test\ below.
@@ -207,8 +215,20 @@ if %test% EQU 1 (
     TITLE Unit Tests
     set "JUNIT_OPT="
     if %junit% EQU 1 set "JUNIT_OPT=--junit-xml junit.xml"
+    REM Instrumented code runs slower, so its timings would read as regressions
+    REM against baselines recorded without asan. Keep them in a database of their own.
+    set "DB_OPT="
+    if %asan% EQU 1 set "DB_OPT=--db faultline_asan.sqlite"
+    REM Prove ASan reports an error before trusting a clean run, then send the run's
+    REM reports to files so a suite that redirects stderr cannot discard them.
+    if %asan% EQU 1 (
+        call %DIR_CMD%\asan_reports.cmd canary "%DIR_TEST%" "%DIR_TEST%\faultline.exe"
+        if errorlevel 1 GOTO :ERROR
+        call %DIR_CMD%\asan_reports.cmd env
+        call %DIR_CMD%\asan_reports.cmd clear "%DIR_TEST%"
+    )
     pushd "%DIR_TEST%"
-    .\faultline.exe run !JUNIT_OPT! ^
+    .\faultline.exe run !DB_OPT! !JUNIT_OPT! ^
         fl_exception_tests.dll ^
         but_tests.dll ^
         dlist_tests.dll ^
@@ -243,17 +263,23 @@ if %test% EQU 1 (
     REM listing. Fail the build rather than let a truncated run pass for a
     REM complete one.
     set "_run_rc=!errorlevel!"
-    .\faultline.exe result list --limit 27
+    .\faultline.exe result list !DB_OPT! --limit 27
     REM Split-architecture smoke: the same suites driven through the split host.
     REM Its log goes to faultline.log; the results table shows the runs.
-    .\win32_faultline.exe run ^
+    .\win32_faultline.exe run !DB_OPT! ^
         faultline_tests.dll ^
         flp_file_service_tests.dll ^
         flp_stream_service_tests.dll ^
         timer_tests.dll
     set "_split_rc=!errorlevel!"
-    .\win32_faultline.exe result list --limit 4
+    .\win32_faultline.exe result list !DB_OPT! --limit 4
     popd
+    REM Print reports ahead of the exit-code errors below, which they explain.
+    set "_asan_rc=0"
+    if %asan% EQU 1 (
+        call %DIR_CMD%\asan_reports.cmd check "%DIR_TEST%"
+        set "_asan_rc=!errorlevel!"
+    )
     if not "!_run_rc!"=="0" (
         ECHO ALL.CMD ERROR: test driver exited with !_run_rc! -- suites listed 1>&2
         ECHO after the failure point did not run. 1>&2
@@ -262,6 +288,10 @@ if %test% EQU 1 (
     if not "!_split_rc!"=="0" (
         ECHO ALL.CMD ERROR: split host exited with !_split_rc! -- suites listed 1>&2
         ECHO after the failure point did not run. 1>&2
+        GOTO :ERROR
+    )
+    REM A report from a run that still exited 0 fails the build too.
+    if not "!_asan_rc!"=="0" (
         GOTO :ERROR
     )
 )

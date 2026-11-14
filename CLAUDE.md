@@ -18,6 +18,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - `build\cmd\all.cmd cleanall` - Clean all build artifacts
   - `build\cmd\all.cmd analyze` - Run MSVC code analysis after the build
   - `build\cmd\all.cmd cxx` - Build every test suite as C++; drivers, hosts, libraries and examples stay C
+  - `build\cmd\all.cmd asan` - Build with AddressSanitizer into `<buildtype>-asan`; with `test`, `src/asan_canary_tests.c` first proves an ASan report fails the run, results go to `test\faultline_asan.sqlite`, and ASan reports print from `asan_report.<pid>` files
 
 ### Running Tests
 - **All tests**: `build\cmd\all.cmd test` - Builds and runs all unit test suites

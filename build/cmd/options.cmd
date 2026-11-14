@@ -38,9 +38,16 @@ SETLOCAL ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 ::              default. Drivers, hosts, libraries and examples are always C: a
 ::              suite contains its own exceptions behind fl_run_case, so one C
 ::              driver runs suites of either dialect.
+::  asan:       Build with AddressSanitizer (/fsanitize=address). Writes to a
+::              separate <buildtype>-asan output directory, copies the ASan runtime
+::              DLL next to the binaries, and with test, all.cmd records results in
+::              faultline_asan.sqlite so instrumented timings stay out of the
+::              baselines in faultline.sqlite. With test, all.cmd first runs the
+::              ASan canary suite, which must end in an ASan report, and every run
+::              prints the ASan reports it leaves; see asan_reports.cmd.
 
 :: Remember to export these in the ENDLOCAL section below
-SET "options=build: debug: release: cleanall: clean: cleanplat: x64: x86: win32: test: junit: vs2022: vs2026: verbose: trace: timed: analyze: cxx:"
+SET "options=build: debug: release: cleanall: clean: cleanplat: x64: x86: win32: test: junit: vs2022: vs2026: verbose: trace: timed: analyze: cxx: asan:"
 :: Initialize flags to zero
 FOR %%O in (%options%) DO FOR /f "tokens=1,* delims=:" %%A in ("%%O") DO (
     if NOT "%%~B"=="" (
@@ -136,4 +143,5 @@ ENDLOCAL & (
     SET "_FL_CTIME_WARNED=%_FL_CTIME_WARNED%"
     SET "analyze=%analyze%"
     SET "cxx=%cxx%"
+    SET "asan=%asan%"
 )

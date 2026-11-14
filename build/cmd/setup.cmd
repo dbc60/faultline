@@ -89,6 +89,11 @@ if %debug% EQU 1 (
     SET BUILD_TYPE=release
 )
 
+:: Instrumented objects must not share a tree with plain ones: a later build without
+:: asan would otherwise link stale instrumented objects. clean follows the same name,
+:: so "clean asan" deletes only the asan tree.
+if %asan% EQU 1 SET BUILD_TYPE=%BUILD_TYPE%-asan
+
 :: VSSOLUTION names the target\ subfolder, so a clean has to derive it exactly the
 :: way a build does, otherwise it deletes a different tree than the build writes.
 :: shell.cmd derives it correctly: it finds the installed Visual Studio through
@@ -129,7 +134,7 @@ if "%VSSOLUTION%"=="" (
 ::
 ::  - Compiler is either vs2022 or vs2026.
 ::  - Platform is either x64 or x86.
-::  - BuildType is either debug or release.
+::  - BuildType is either debug or release, with -asan appended for asan.
 ::
 :: For example build artifacts for a 64-bit debug-build created with Visual
 :: Studio 2026 would be written to "build\vs2026\x64\debug\".
@@ -208,6 +213,25 @@ IF !build!==1 (
     IF NOT EXIST %DIR_OUT_LIB% MD %DIR_OUT_LIB%
     IF NOT EXIST %DIR_OUT_OBJ% MD %DIR_OUT_OBJ%
     IF NOT EXIST %DIR_OUT_INC% MD %DIR_OUT_INC%
+)
+
+:: An instrumented binary loads the ASan runtime DLL at startup and fails to start
+:: without it. vcvars puts the toolset's bin directory, which holds the runtime, on
+:: PATH. Copy it next to the binaries so they also start from a shell without
+:: vcvars; all.cmd then copies it into test\ with the other DLLs.
+IF !build!==1 IF %asan% EQU 1 (
+    SET ASAN_RUNTIME=clang_rt.asan_dynamic-x86_64.dll
+    IF %x86% EQU 1 SET ASAN_RUNTIME=clang_rt.asan_dynamic-i386.dll
+    SET ASAN_RUNTIME_PATH=
+    FOR /F "delims=" %%F IN ('where !ASAN_RUNTIME! 2^>NUL') DO (
+        IF NOT DEFINED ASAN_RUNTIME_PATH SET "ASAN_RUNTIME_PATH=%%F"
+    )
+    IF NOT DEFINED ASAN_RUNTIME_PATH (
+        ECHO SETUP.CMD ERROR: !ASAN_RUNTIME! is not on PATH. Install the C++ 1>&2
+        ECHO AddressSanitizer component of Visual Studio. 1>&2
+        EXIT /B 1
+    )
+    copy /y "!ASAN_RUNTIME_PATH!" "%DIR_OUT_BIN%\" > NUL
 )
 
 :: Return Variables

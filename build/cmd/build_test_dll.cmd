@@ -153,11 +153,21 @@ if %test% EQU 1 (
     if %verbose% EQU 1 (
         ECHO Run the %_BTDLL_NAME% unit tests
     )
+    REM Send ASan reports to files so a suite that redirects stderr cannot discard
+    REM them; see asan_reports.cmd.
+    if %asan% EQU 1 (
+        CALL %_BTDLL_DIR%\asan_reports.cmd env
+        CALL %_BTDLL_DIR%\asan_reports.cmd clear "%DIR_OUT_BIN%"
+    )
     pushd %DIR_OUT_BIN%
     "%FL_TEST_DRIVER%" run %_BTDLL_DLL%.dll
     "%FL_TEST_DRIVER%" result list --limit 1
     "%FL_TEST_DRIVER%" failure list
     popd
+    if %asan% EQU 1 (
+        CALL %_BTDLL_DIR%\asan_reports.cmd check "%DIR_OUT_BIN%"
+        if errorlevel 1 GOTO :_btdll_error
+    )
 )
 GOTO :_btdll_success
 

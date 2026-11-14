@@ -173,6 +173,13 @@ SET CommonLinkerFlags=/MACHINE:X64 /nologo /incremental:no /MANIFESTUAC /opt:ref
     EXIT /B 1
 )
 
+:: /fsanitize=address: the asan option instruments every translation unit, C and
+:: C++, so it goes on CommonCompilerFlags ahead of the C++ derivation below. The
+:: existing flags already meet its requirements: /Zi rather than /ZI, no /RTC, and
+:: /incremental:no on the link line. The linker needs no extra flag; /INFERASANLIBS
+:: is its default and selects the ASan runtime for both /MT and /MTd.
+if %asan% EQU 1 SET "CommonCompilerFlags=%CommonCompilerFlags% /fsanitize=address"
+
 :: A second, C++ dialect flag set, mechanically derived from CommonCompilerFlags:
 :: strip the C-only /std:c17 and /experimental:c11atomics (cl rejects /std:c17
 :: outright when /std:c++20 is also present, and /experimental:c11atomics selects
