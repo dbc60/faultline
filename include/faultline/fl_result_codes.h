@@ -35,6 +35,9 @@ typedef enum {
     FL_DOUBLE_FREE,  ///< attempt to release a resource already released
     FL_FAIL,         ///< an assertion or other test condition failed
     FL_BAD_STATE,    ///< an internal error has occurred
+    FL_BUFFER_OVERFLOW,  ///< a write past the end of a block
+    FL_BUFFER_UNDERFLOW, ///< a write before the start of a block
+    FL_USE_AFTER_FREE,   ///< a write to a block after it was freed
 } FLResultCode;
 
 static inline char const *faultline_result_code_to_string(FLResultCode code) {
@@ -53,6 +56,12 @@ static inline char const *faultline_result_code_to_string(FLResultCode code) {
         return "Fail";
     case FL_BAD_STATE:
         return "Bad State";
+    case FL_BUFFER_OVERFLOW:
+        return "Buffer Overflow";
+    case FL_BUFFER_UNDERFLOW:
+        return "Buffer Underflow";
+    case FL_USE_AFTER_FREE:
+        return "Use After Free";
     default:
         return "Unknown Result Code";
     }

@@ -23,7 +23,7 @@ extern FLExceptionReason faultline_db_version_too_new;
 extern FLExceptionReason faultline_db_legacy_schema;
 
 // The schema version this build creates and opens, stored in PRAGMA user_version.
-#define FL_SCHEMA_VERSION 1
+#define FL_SCHEMA_VERSION 2
 
 // strftime format of every time the database stores: UTC, one-second resolution.
 #define FL_DB_TIME_FORMAT "%Y-%m-%dT%H:%M:%SZ"

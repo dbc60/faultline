@@ -35,9 +35,8 @@ FLExceptionReason fault_injector_exception = "fault injected";
 #endif
 
 FaultInjector *fault_injector_create(Arena *arena) {
-    FaultInjector *injector
-        = (FaultInjector *)arena_malloc_throw(arena, sizeof *injector, __FILE__,
-                                              __LINE__);
+    FaultInjector *injector = (FaultInjector *)arena_malloc_throw(arena, sizeof *injector,
+                                                                  __FILE__, __LINE__);
     fault_injector_init(injector, arena);
     return injector;
 }
@@ -58,6 +57,8 @@ void fault_injector_init(FaultInjector *injector, Arena *arena) {
     injector->enabled        = false;
     injector->discovery_mode = false;
     injector->initialized    = true;
+    injector->check          = NULL;
+    injector->check_ctx      = NULL;
 }
 
 void fault_injector_uninit(FaultInjector *injector) {
@@ -69,6 +70,8 @@ void fault_injector_uninit(FaultInjector *injector) {
     injector->enabled        = false;
     injector->discovery_mode = false;
     injector->initialized    = false;
+    injector->check          = NULL;
+    injector->check_ctx      = NULL;
 }
 
 void fault_injector_record_free(FaultInjector *injector, void volatile *resource,
@@ -102,8 +105,7 @@ void fault_injector_record_free(FaultInjector *injector, void volatile *resource
         return;
     }
 
-    LOG_DEBUG("FAULT INJECTOR RECORD FREE", "allocated contains resource 0x%p",
-              resource);
+    LOG_DEBUG("FAULT INJECTOR RECORD FREE", "allocated contains resource 0x%p", resource);
 
     // Guard: resource must not already be in the released set (internal inconsistency)
     if (injector_resource_set_contains(&injector->released_resources, &value)) {
@@ -135,6 +137,13 @@ void fault_injector_record_free(FaultInjector *injector, void volatile *resource
 void fault_injector_put_invalid_free(FaultInjector *injector, void volatile *resource,
                                      FLExceptionReason reason, char const *file,
                                      int line) {
+    fault_injector_put_fault(injector, FL_INVALID_FREE, resource, reason, "invalid free",
+                             file, line);
+}
+
+void fault_injector_put_fault(FaultInjector *injector, FLResultCode code,
+                              void const volatile *resource, FLExceptionReason reason,
+                              char const *details, char const *file, int line) {
     bool reenable = false;
 
     // if necessary, disable the fault injector before recording the fault
@@ -144,11 +153,11 @@ void fault_injector_put_invalid_free(FaultInjector *injector, void volatile *res
         reenable = true;
     }
 
-    LOG_DEBUG("FAULT INJECTOR", "recording invalid free");
+    LOG_DEBUG("FAULT INJECTOR", "recording %s", details);
     Fault *fault = fault_buffer_allocate_next_free_slot(&injector->faults);
     if (fault != NULL) {
-        init_fault(fault, injector->fault_index, FL_INVALID_FREE, resource, reason,
-                   "invalid free", file, line);
+        init_fault(fault, injector->fault_index, code, resource, reason, details, file,
+                   line);
     } else {
         LOG_ERROR("FAULT INJECTOR", "unable to allocate slot from fault buffer");
     }

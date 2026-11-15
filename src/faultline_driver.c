@@ -94,6 +94,32 @@ static FLResultCode run_test_case(FLContext *fctx, FLCaseOutcome *out,
 }
 
 /**
+ * @brief Copy the injector's overflow, underflow and use-after-free faults into summary.
+ *
+ * @return the code of the first such fault, or FL_PASS when there is none
+ */
+static FLResultCode record_corruption(FLTestSummary *summary, FaultInjector *injector,
+                                      i64 fault_index) {
+    FLResultCode first = FL_PASS;
+
+    for (size_t i = 0; i < fault_buffer_count(&injector->faults); i++) {
+        Fault const *fault = fault_buffer_get(&injector->faults, i);
+        if (!fault_is_corruption(fault->code)) {
+            continue;
+        }
+
+        if (first == FL_PASS) {
+            first = fault->code;
+        }
+        faultline_test_summary_add_fault(summary, fault_index, fault->code,
+                                         fault->resource, fault->reason, fault->details,
+                                         fault->file, fault->line);
+    }
+
+    return first;
+}
+
+/**
  * @brief faultline_run_test runs the test case selected by the context.
  *
  * Testing takes place in two phases. In Phase 1, the test executes without fault
@@ -144,8 +170,17 @@ FL_EXERCISE_TEST(faultline_run_test) {
 
     // Run the test case once in discovery mode
     FLCaseOutcome discovery_outcome = {0};
-    rc = run_test_case(fctx, &discovery_outcome, &setup_cleanup_result,
-                       &discovery_result, FL_DISCOVERY_PHASE);
+    rc = run_test_case(fctx, &discovery_outcome, &setup_cleanup_result, &discovery_result,
+                       FL_DISCOVERY_PHASE);
+
+    // Verify the blocks the pass left allocated or freed.
+    fault_injector_check(injector);
+    FLResultCode const discovery_corruption = record_corruption(&summary, injector, 0);
+    if (discovery_corruption != FL_PASS) {
+        LOG_ERROR(fctx->ts->name, "%zu. %s: DISCOVERY FAILED - %s", fctx->index + 1,
+                  fctx->ts->test_cases[fctx->index]->name,
+                  faultline_result_code_to_string(discovery_corruption));
+    }
 
     fctx->tests_run++;
     bool discovery_counted_test_failure = discovery_result.unexpected_exception;
@@ -209,13 +244,19 @@ FL_EXERCISE_TEST(faultline_run_test) {
           : setup_cleanup_result.unexpected_exception ? &setup_cleanup_result
                                                       : NULL;
 
+    // A case that passed but corrupted memory fails with the corruption's code.
+    if (rc == FL_PASS) {
+        rc = discovery_corruption;
+    }
+
     summary.code   = rc;
     summary.reason = failed_discovery_result ? failed_discovery_result->reason : NULL;
     summary.faults_exercised = total_fault_sites;
 
     FLFailureType failure_type = failed_discovery_result
                                      ? failed_discovery_result->failure_type
-                                     : FL_FAILURE_NONE;
+                                 : discovery_corruption != FL_PASS ? FL_TEST_FAILURE
+                                                                   : FL_FAILURE_NONE;
     faultline_update_summary_phase_info(&summary, FL_DISCOVERY_PHASE, failure_type,
                                         discovery_outcome.elapsed_seconds);
 
@@ -291,6 +332,7 @@ FL_EXERCISE_TEST(faultline_run_test) {
 
         triggered = fault_injector_triggered(injector);
         fault_injector_disable(injector);
+        fault_injector_check(injector);
         i64 leaks = fault_injector_get_allocated_count(injector) - initial_resources;
 
         /*
@@ -338,14 +380,27 @@ FL_EXERCISE_TEST(faultline_run_test) {
                     fctx->index + 1, fctx->ts->test_cases[fctx->index]->name,
                     fault_index);
 
-                faultline_record_injection_failure(&summary, fault_index,
-                                                   FL_INVALID_FREE,
+                faultline_record_injection_failure(&summary, fault_index, FL_INVALID_FREE,
                                                    FL_INVALID_FREE_FAILURE,
                                                    &injection_result, injection_time,
                                                    "invalid free",
                                                    "invalid resource release", __FILE__,
                                                    __LINE__);
                 had_failure = true;
+            }
+
+            // Report overflows, underflows and uses after free immediately
+            FLResultCode const corruption
+                = record_corruption(&summary, injector, fault_index);
+            if (corruption != FL_PASS) {
+                LOG_ERROR(fctx->ts->name, "%zu. %s: INJECTION FAULT %lld - %s",
+                          fctx->index + 1, fctx->ts->test_cases[fctx->index]->name,
+                          fault_index, faultline_result_code_to_string(corruption));
+
+                faultline_update_summary_phase_info(&summary, FL_INJECTION_PHASE,
+                                                    FL_TEST_FAILURE, injection_time);
+                summary.code = corruption;
+                had_failure  = true;
             }
 
             // Report memory leak failures immediately
@@ -367,8 +422,11 @@ FL_EXERCISE_TEST(faultline_run_test) {
                     faultline_update_summary_phase_info(&summary, FL_INJECTION_PHASE,
                                                         FL_LEAK_FAILURE, injection_time);
 
-                    // Set the overall result code to indicate leak
-                    summary.code = FL_LEAK;
+                    // Set the overall result code to indicate leak, unless the case
+                    // corrupted memory, which is the worse result.
+                    if (!fault_is_corruption(summary.code)) {
+                        summary.code = FL_LEAK;
+                    }
 
                     had_failure = true;
                 } else {

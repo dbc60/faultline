@@ -44,6 +44,13 @@ extern "C" {
 extern FLExceptionReason fault_injector_exception;
 
 /**
+ * @brief A check that the allocator registers to verify its blocks when a pass ends.
+ *
+ * @param ctx the context passed to fault_injector_set_check
+ */
+typedef void FaultInjectorCheckFn(void *ctx);
+
+/**
  * @brief FaultInjector tracks the number of resources acquired and released in the code
  * under test.
  *
@@ -95,6 +102,9 @@ typedef struct FaultInjector {
     bool discovery_mode;
 
     bool initialized; ///< used for initialization
+
+    FaultInjectorCheckFn *check;     ///< runs when a pass ends; NULL for none
+    void                 *check_ctx; ///< the argument passed to check
 } FaultInjector;
 
 /**
@@ -237,6 +247,70 @@ void fault_injector_put_invalid_free(FaultInjector *injector, void volatile *res
                                      int line);
 
 /**
+ * @brief Record a fault of any kind.
+ *
+ * @param injector the address of a FaultInjector
+ * @param code the kind of fault
+ * @param resource the address the fault concerns
+ * @param reason the reason for the fault
+ * @param details a static string describing the site in file and line
+ * @param file the file of the site
+ * @param line the line of the site
+ */
+void fault_injector_put_fault(FaultInjector *injector, FLResultCode code,
+                              void const volatile *resource, FLExceptionReason reason,
+                              char const *details, char const *file, int line);
+
+/**
+ * @brief Return true if @p code is an overflow, underflow or use-after-free.
+ */
+static inline bool fault_is_corruption(FLResultCode code) {
+    return code == FL_BUFFER_OVERFLOW || code == FL_BUFFER_UNDERFLOW
+           || code == FL_USE_AFTER_FREE;
+}
+
+/**
+ * @brief Return true if @p resource was allocated and not yet released.
+ */
+static inline bool fault_injector_is_allocated(FaultInjector       *injector,
+                                               void const volatile *resource) {
+    InjectorResource value;
+    injector_resource_init(&value, resource, NULL, 0);
+    return injector_resource_set_contains(&injector->allocated_resources, &value);
+}
+
+/**
+ * @brief Call @p fn on each resource allocated and not yet released.
+ */
+static inline void fault_injector_foreach_allocated(FaultInjector   *injector,
+                                                    set_foreach_fn_t fn, void *ctx) {
+    set_foreach((Set const *)&injector->allocated_resources, fn, ctx);
+}
+
+/**
+ * @brief Register the check that fault_injector_check runs.
+ *
+ * @param injector the address of a FaultInjector
+ * @param check the check, or NULL for none
+ * @param ctx the argument passed to check
+ */
+static inline void fault_injector_set_check(FaultInjector        *injector,
+                                            FaultInjectorCheckFn *check, void *ctx) {
+    injector->check     = check;
+    injector->check_ctx = ctx;
+}
+
+/**
+ * @brief Run the registered check, if any. The driver calls this when a pass ends, so
+ * faults the check records belong to that pass.
+ */
+static inline void fault_injector_check(FaultInjector *injector) {
+    if (injector->check != NULL) {
+        injector->check(injector->check_ctx);
+    }
+}
+
+/**
  * @brief return the number of allocated resources.
  *
  * @param injector the address of a FaultInjector
@@ -274,13 +348,31 @@ static inline i64 fault_injector_get_allocation_index(FaultInjector *injector) {
 }
 
 /**
+ * @brief the number of overflows, underflows and uses after free recorded
+ *
+ * @param injector the address of a FaultInjector
+ * @return i64
+ */
+static inline i64 fault_injector_get_corruption_count(FaultInjector *injector) {
+    i64 count = 0;
+    for (size_t i = 0; i < fault_buffer_count(&injector->faults); i++) {
+        if (fault_is_corruption(fault_buffer_get(&injector->faults, i)->code)) {
+            count++;
+        }
+    }
+
+    return count;
+}
+
+/**
  * @brief the number of invalid resources passed to fault_release
  *
  * @param injector the address of a FaultInjector
  * @return i64
  */
 static inline i64 fault_injector_get_invalid_address_count(FaultInjector *injector) {
-    return fault_buffer_count(&injector->faults);
+    return (i64)fault_buffer_count(&injector->faults)
+           - fault_injector_get_corruption_count(injector);
 }
 
 /**
@@ -291,7 +383,7 @@ static inline i64 fault_injector_get_invalid_address_count(FaultInjector *inject
  * @return pointer to the Fault, or NULL if index >= fault count
  */
 static inline Fault *fault_injector_get_fault(FaultInjector *injector, size_t index) {
-    if (index >= (size_t)fault_injector_get_invalid_address_count(injector)) {
+    if (index >= fault_buffer_count(&injector->faults)) {
         return NULL;
     }
     return fault_buffer_get(&injector->faults, index);

@@ -18,6 +18,8 @@
 #include "flp_fault_memory_service.c"
 #include <faultline/fl_test.h>
 #include <stddef.h> // offsetof
+#include <stdint.h> // uintptr_t
+#include <string.h> // memset
 
 // -- Fault-injecting service fixtures -----------------------------------------
 
@@ -231,8 +233,7 @@ FL_TYPE_TEST_SETUP_CLEANUP("Free Pointer Clears Pointer", ArenaServiceTestCase,
 // not special-case NULL, so this also pins down that the resulting exception is
 // contained by the provider rather than escaping to the caller.
 FL_TYPE_TEST_SETUP_CLEANUP("Free Pointer Accepts Null Target", ArenaServiceTestCase,
-                           free_pointer_accepts_null_target, arena_setup,
-                           arena_cleanup) {
+                           free_pointer_accepts_null_target, arena_setup, arena_cleanup) {
     FL_UNUSED_TYPE_ARG;
     void *ptr = NULL;
     flp_free_pointer(&ptr, __FILE__, __LINE__);
@@ -309,6 +310,172 @@ FL_TYPE_TEST_SETUP_CLEANUP("Fault Realloc Tracks Resized Block", MemServiceTestC
     FL_ASSERT_ZERO(fault_injector_get_invalid_address_count(&t->fi));
 }
 
+// -- Tests: guard bytes --------------------------------------------------------
+
+enum {
+    // Not a multiple of the arena's alignment, so the byte past the request lies inside
+    // the chunk the arena returns, and a write there corrupts nothing the arena checks.
+    GUARD_TEST_REQUEST   = 10,
+    GUARD_TEST_GROWN     = 4096,
+    GUARD_TEST_ALIGNMENT = 64,
+};
+
+// Count the faults of one kind the injector recorded.
+static size_t count_faults(FaultInjector *fi, FLResultCode code) {
+    size_t count = 0;
+    for (size_t i = 0; i < fault_buffer_count(&fi->faults); i++) {
+        if (fault_buffer_get(&fi->faults, i)->code == code) {
+            count++;
+        }
+    }
+
+    return count;
+}
+
+// A block whose writes stay inside its request is freed without a fault.
+FL_TYPE_TEST_SETUP_CLEANUP("Clean Block Records No Fault", MemServiceTestCase,
+                           fault_free_clean_block, flp_setup, flp_cleanup) {
+    unsigned char *mem
+        = (unsigned char *)flp_fault_malloc(GUARD_TEST_REQUEST, __FILE__, __LINE__);
+    FL_ASSERT_NOT_NULL(mem);
+    memset(mem, 0, GUARD_TEST_REQUEST);
+
+    flp_fault_free(mem, __FILE__, __LINE__);
+    FL_ASSERT_ZERO(fault_buffer_count(&t->fi.faults));
+}
+
+// A write to the first byte past the request is recorded when the block is freed.
+FL_TYPE_TEST_SETUP_CLEANUP("Overflow Is Recorded At Free", MemServiceTestCase,
+                           fault_free_records_overflow, flp_setup, flp_cleanup) {
+    unsigned char *mem
+        = (unsigned char *)flp_fault_malloc(GUARD_TEST_REQUEST, __FILE__, __LINE__);
+    FL_ASSERT_NOT_NULL(mem);
+    mem[GUARD_TEST_REQUEST] = 0;
+
+    flp_fault_free(mem, __FILE__, __LINE__);
+    FL_ASSERT_EQ((size_t)1, count_faults(&t->fi, FL_BUFFER_OVERFLOW));
+    FL_ASSERT_ZERO(fault_injector_get_invalid_address_count(&t->fi));
+}
+
+// A write to the last byte before the block is recorded when the block is freed.
+FL_TYPE_TEST_SETUP_CLEANUP("Underflow Is Recorded At Free", MemServiceTestCase,
+                           fault_free_records_underflow, flp_setup, flp_cleanup) {
+    unsigned char *mem
+        = (unsigned char *)flp_fault_malloc(GUARD_TEST_REQUEST, __FILE__, __LINE__);
+    FL_ASSERT_NOT_NULL(mem);
+    mem[-1] = 0;
+
+    flp_fault_free(mem, __FILE__, __LINE__);
+    FL_ASSERT_EQ((size_t)1, count_faults(&t->fi, FL_BUFFER_UNDERFLOW));
+    FL_ASSERT_ZERO(fault_injector_get_invalid_address_count(&t->fi));
+}
+
+// Realloc checks the block it replaces, and copies the request into the new block.
+FL_TYPE_TEST_SETUP_CLEANUP("Realloc Records Overflow", MemServiceTestCase,
+                           fault_realloc_records_overflow, flp_setup, flp_cleanup) {
+    unsigned char *mem
+        = (unsigned char *)flp_fault_malloc(GUARD_TEST_REQUEST, __FILE__, __LINE__);
+    FL_ASSERT_NOT_NULL(mem);
+    memset(mem, GUARD_TEST_REQUEST, GUARD_TEST_REQUEST);
+    mem[GUARD_TEST_REQUEST] = 0;
+
+    unsigned char *grown
+        = (unsigned char *)flp_fault_realloc(mem, GUARD_TEST_GROWN, __FILE__, __LINE__);
+    FL_ASSERT_NOT_NULL(grown);
+    FL_ASSERT_EQ((size_t)1, count_faults(&t->fi, FL_BUFFER_OVERFLOW));
+    for (size_t i = 0; i < GUARD_TEST_REQUEST; i++) {
+        FL_ASSERT_EQ(GUARD_TEST_REQUEST, grown[i]);
+    }
+
+    flp_fault_free(grown, __FILE__, __LINE__);
+    FL_ASSERT_ZERO(fault_injector_get_invalid_address_count(&t->fi));
+}
+
+// An aligned block keeps its alignment and has the same guard bytes.
+FL_TYPE_TEST_SETUP_CLEANUP("Aligned Overflow Is Recorded", MemServiceTestCase,
+                           fault_aligned_records_overflow, flp_setup, flp_cleanup) {
+    unsigned char *mem = (unsigned char *)flp_fault_aligned_alloc(GUARD_TEST_ALIGNMENT,
+                                                                  GUARD_TEST_REQUEST,
+                                                                  __FILE__, __LINE__);
+    FL_ASSERT_NOT_NULL(mem);
+    FL_ASSERT_ZERO((uintptr_t)mem % GUARD_TEST_ALIGNMENT);
+    mem[GUARD_TEST_REQUEST] = 0;
+
+    flp_fault_free(mem, __FILE__, __LINE__);
+    FL_ASSERT_EQ((size_t)1, count_faults(&t->fi, FL_BUFFER_OVERFLOW));
+}
+
+// A write to a freed block is recorded when the pass-end check releases the quarantine.
+FL_TYPE_TEST_SETUP_CLEANUP("Use After Free Is Recorded At Check", MemServiceTestCase,
+                           fault_check_records_use_after_free, flp_setup, flp_cleanup) {
+    unsigned char *mem
+        = (unsigned char *)flp_fault_malloc(GUARD_TEST_REQUEST, __FILE__, __LINE__);
+    FL_ASSERT_NOT_NULL(mem);
+    flp_fault_free(mem, __FILE__, __LINE__);
+    mem[0] = 0;
+
+    fault_injector_check(&t->fi);
+    FL_ASSERT_EQ((size_t)1, count_faults(&t->fi, FL_USE_AFTER_FREE));
+}
+
+// A write to a freed block is recorded when later frees push it out of the quarantine.
+FL_TYPE_TEST_SETUP_CLEANUP("Use After Free Is Recorded At Eviction", MemServiceTestCase,
+                           fault_eviction_records_use_after_free, flp_setup,
+                           flp_cleanup) {
+    unsigned char *first
+        = (unsigned char *)flp_fault_malloc(GUARD_TEST_REQUEST, __FILE__, __LINE__);
+    FL_ASSERT_NOT_NULL(first);
+    flp_fault_free(first, __FILE__, __LINE__);
+    first[0] = 0;
+
+    for (size_t i = 0; i < FL_FAULT_QUARANTINE_CAPACITY; i++) {
+        void *mem = flp_fault_malloc(GUARD_TEST_REQUEST, __FILE__, __LINE__);
+        FL_ASSERT_NOT_NULL(mem);
+        flp_fault_free(mem, __FILE__, __LINE__);
+    }
+
+    FL_ASSERT_EQ((size_t)1, count_faults(&t->fi, FL_USE_AFTER_FREE));
+}
+
+// The pass-end check verifies blocks that are still allocated.
+FL_TYPE_TEST_SETUP_CLEANUP("Check Records Overflow Of Live Block", MemServiceTestCase,
+                           fault_check_records_live_overflow, flp_setup, flp_cleanup) {
+    unsigned char *mem
+        = (unsigned char *)flp_fault_malloc(GUARD_TEST_REQUEST, __FILE__, __LINE__);
+    FL_ASSERT_NOT_NULL(mem);
+    mem[GUARD_TEST_REQUEST] = 0;
+
+    fault_injector_check(&t->fi);
+    FL_ASSERT_EQ((size_t)1, count_faults(&t->fi, FL_BUFFER_OVERFLOW));
+}
+
+// A second free of a quarantined block is a double free, and leaves the block in place.
+FL_TYPE_TEST_SETUP_CLEANUP("Double Free Is Recorded", MemServiceTestCase,
+                           fault_free_records_double_free, flp_setup, flp_cleanup) {
+    void *mem = flp_fault_malloc(GUARD_TEST_REQUEST, __FILE__, __LINE__);
+    FL_ASSERT_NOT_NULL(mem);
+    flp_fault_free(mem, __FILE__, __LINE__);
+    flp_fault_free(mem, __FILE__, __LINE__);
+
+    FL_ASSERT_EQ((size_t)1, count_faults(&t->fi, FL_DOUBLE_FREE));
+    fault_injector_check(&t->fi);
+    FL_ASSERT_ZERO(fault_injector_get_corruption_count(&t->fi));
+}
+
+// Calloc returns a zeroed payload with the same guard bytes.
+FL_TYPE_TEST_SETUP_CLEANUP("Calloc Zeroes The Payload", MemServiceTestCase,
+                           fault_calloc_zeroes_payload, flp_setup, flp_cleanup) {
+    unsigned char *mem
+        = (unsigned char *)flp_fault_calloc(GUARD_TEST_REQUEST, 1, __FILE__, __LINE__);
+    FL_ASSERT_NOT_NULL(mem);
+    for (size_t i = 0; i < GUARD_TEST_REQUEST; i++) {
+        FL_ASSERT_ZERO(mem[i]);
+    }
+
+    flp_fault_free(mem, __FILE__, __LINE__);
+    FL_ASSERT_ZERO(fault_buffer_count(&t->fi.faults));
+}
+
 // -- Cross-boundary injection --------------------------------------------------
 //
 // Unlike the tests above -- whose setups self-inject a service built from a
@@ -353,6 +520,16 @@ FL_SUITE_ADD_EMBEDDED(fault_free_pointer_clears_pointer)
 FL_SUITE_ADD_EMBEDDED(arena_free_pointer_matches_free)
 FL_SUITE_ADD_EMBEDDED(fault_realloc_accepts_null_pointer)
 FL_SUITE_ADD_EMBEDDED(fault_realloc_tracks_resized_block)
+FL_SUITE_ADD_EMBEDDED(fault_free_clean_block)
+FL_SUITE_ADD_EMBEDDED(fault_free_records_overflow)
+FL_SUITE_ADD_EMBEDDED(fault_free_records_underflow)
+FL_SUITE_ADD_EMBEDDED(fault_realloc_records_overflow)
+FL_SUITE_ADD_EMBEDDED(fault_aligned_records_overflow)
+FL_SUITE_ADD_EMBEDDED(fault_check_records_use_after_free)
+FL_SUITE_ADD_EMBEDDED(fault_eviction_records_use_after_free)
+FL_SUITE_ADD_EMBEDDED(fault_check_records_live_overflow)
+FL_SUITE_ADD_EMBEDDED(fault_free_records_double_free)
+FL_SUITE_ADD_EMBEDDED(fault_calloc_zeroes_payload)
 FL_SUITE_END;
 
 FL_GET_TEST_SUITE("Memory Service", ts)

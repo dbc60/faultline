@@ -1,7 +1,8 @@
 /**
  * @file faultline_sqlite_test.c
  * @author Douglas Cuthbertson
- * @brief Test cases for opening a results database: the version gates and schema v1.
+ * @brief Test cases for opening a results database: the version gates, the schema and
+ * its upgrade.
  * @version 0.1
  * @date 2025-09-06
  *
@@ -143,8 +144,8 @@ static void test_db_query_text(sqlite3 *db, char const *sql, char *out, size_t s
 static bool test_db_object_exists(sqlite3 *db, char const *type, char const *name) {
     char sql[160];
     snprintf(sql, sizeof sql,
-             "SELECT count(*) FROM sqlite_master WHERE type = '%s' AND name = '%s';", type,
-             name);
+             "SELECT count(*) FROM sqlite_master WHERE type = '%s' AND name = '%s';",
+             type, name);
     return test_db_query_int(db, sql, 0) > 0;
 }
 
@@ -215,14 +216,15 @@ static int test_db_insert_result(sqlite3 *db, int result_code, int failure_type,
     }
 
     char sql[640];
-    snprintf(sql, sizeof sql,
-             "INSERT INTO runs (suite_id, started_at, completed_at, case_count)"
-             " VALUES (1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 1);"
-             "INSERT INTO results (run_id, case_id, case_index, result_code, failure_type,"
-             " failure_phase, elapsed_seconds, discovery_seconds, injection_seconds,"
-             " fault_sites, discovery_failures, injection_failures)"
-             " VALUES (last_insert_rowid(), 1, 0, %d, %d, %s, 0, 0, 0, 0, 0, 0);",
-             result_code, failure_type, phase);
+    snprintf(
+        sql, sizeof sql,
+        "INSERT INTO runs (suite_id, started_at, completed_at, case_count)"
+        " VALUES (1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 1);"
+        "INSERT INTO results (run_id, case_id, case_index, result_code, failure_type,"
+        " failure_phase, elapsed_seconds, discovery_seconds, injection_seconds,"
+        " fault_sites, discovery_failures, injection_failures)"
+        " VALUES (last_insert_rowid(), 1, 0, %d, %d, %s, 0, 0, 0, 0, 0, 0);",
+        result_code, failure_type, phase);
 
     return test_db_exec_rc(db, sql);
 }
@@ -249,32 +251,32 @@ FL_TYPE_TEST_SETUP_CLEANUP("Fresh Database Is Stamped", TestSchema,
     t->db = faultline_init_database(t->path);
 
     FL_ASSERT_NOT_NULL(t->db);
-    FL_ASSERT_EQ(FL_SCHEMA_VERSION,
-                     test_db_query_int(t->db, "PRAGMA user_version;", -1));
+    FL_ASSERT_EQ(FL_SCHEMA_VERSION, test_db_query_int(t->db, "PRAGMA user_version;", -1));
 }
 
 // Opening a current database again changes neither its version nor its objects.
 FL_TYPE_TEST_SETUP_CLEANUP("Reopen Is Idempotent", TestSchema,
                            schema_reopen_is_idempotent, setup_schema_db,
                            cleanup_schema_db) {
-    t->db             = faultline_init_database(t->path);
-    int const objects = test_db_query_int(t->db, "SELECT count(*) FROM sqlite_master;", -1);
+    t->db = faultline_init_database(t->path);
+    int const objects
+        = test_db_query_int(t->db, "SELECT count(*) FROM sqlite_master;", -1);
     faultline_close_database(t->db);
     t->db = NULL;
 
     t->db = faultline_init_database(t->path);
 
-    FL_ASSERT_EQ(FL_SCHEMA_VERSION,
-                     test_db_query_int(t->db, "PRAGMA user_version;", -1));
+    FL_ASSERT_EQ(FL_SCHEMA_VERSION, test_db_query_int(t->db, "PRAGMA user_version;", -1));
     FL_ASSERT_EQ(objects,
-                     test_db_query_int(t->db, "SELECT count(*) FROM sqlite_master;", -1));
+                 test_db_query_int(t->db, "SELECT count(*) FROM sqlite_master;", -1));
 }
 
 // Every table schema v1 defines, and no others.
 FL_TYPE_TEST_SETUP_CLEANUP("Schema Creates Every Table", TestSchema,
                            schema_creates_every_table, setup_schema_db,
                            cleanup_schema_db) {
-    static char const *const expected[] = {"suites", "cases", "runs", "results", "faults"};
+    static char const *const expected[]
+        = {"suites", "cases", "runs", "results", "faults"};
 
     t->db = faultline_init_database(t->path);
 
@@ -313,9 +315,9 @@ FL_TYPE_TEST_SETUP_CLEANUP("Foreign Keys Are Enforced", TestSchema,
 
     FL_ASSERT_EQ(1, test_db_query_int(t->db, "PRAGMA foreign_keys;", -1));
 
-    int const rc = test_db_exec_rc(t->db,
-                                   "INSERT INTO runs (suite_id, started_at, completed_at,"
-                                   " case_count) VALUES (999, 'x', 'x', 0);");
+    int const rc
+        = test_db_exec_rc(t->db, "INSERT INTO runs (suite_id, started_at, completed_at,"
+                                 " case_count) VALUES (999, 'x', 'x', 0);");
     FL_ASSERT_EQ(SQLITE_CONSTRAINT, rc);
     FL_ASSERT_EQ(SQLITE_CONSTRAINT_FOREIGNKEY, sqlite3_extended_errcode(t->db));
 }
@@ -330,33 +332,103 @@ FL_TYPE_TEST_SETUP_CLEANUP("Checks Match Enums", TestSchema, schema_checks_match
 
     // The last value of each enum is accepted.
     FL_ASSERT_EQ(SQLITE_OK,
-                     test_db_insert_result(t->db, FL_BAD_STATE, FL_INVALID_FREE_FAILURE,
-                                           FL_INJECTION_PHASE));
+                 test_db_insert_result(t->db, FL_USE_AFTER_FREE, FL_INVALID_FREE_FAILURE,
+                                       FL_INJECTION_PHASE));
 
     // One past it is not.
     FL_ASSERT_EQ(SQLITE_CONSTRAINT,
-                     test_db_insert_result(t->db, FL_BAD_STATE + 1, FL_TEST_FAILURE,
-                                           FL_DISCOVERY_PHASE));
+                 test_db_insert_result(t->db, FL_USE_AFTER_FREE + 1, FL_TEST_FAILURE,
+                                       FL_DISCOVERY_PHASE));
     FL_ASSERT_EQ(SQLITE_CONSTRAINT,
-                     test_db_insert_result(t->db, FL_FAIL, FL_INVALID_FREE_FAILURE + 1,
-                                           FL_DISCOVERY_PHASE));
-    FL_ASSERT_EQ(SQLITE_CONSTRAINT,
-                     test_db_insert_result(t->db, FL_FAIL, FL_TEST_FAILURE,
-                                           FL_INJECTION_PHASE + 1));
+                 test_db_insert_result(t->db, FL_FAIL, FL_INVALID_FREE_FAILURE + 1,
+                                       FL_DISCOVERY_PHASE));
+    FL_ASSERT_EQ(SQLITE_CONSTRAINT, test_db_insert_result(t->db, FL_FAIL, FL_TEST_FAILURE,
+                                                          FL_INJECTION_PHASE + 1));
 
     // A result records a phase exactly when it records a failure.
-    FL_ASSERT_EQ(SQLITE_CONSTRAINT,
-                     test_db_insert_result(t->db, FL_PASS, FL_FAILURE_NONE,
-                                           FL_DISCOVERY_PHASE));
-    FL_ASSERT_EQ(SQLITE_CONSTRAINT,
-                     test_db_insert_result(t->db, FL_FAIL, FL_TEST_FAILURE,
-                                           TEST_DB_NO_PHASE));
+    FL_ASSERT_EQ(SQLITE_CONSTRAINT, test_db_insert_result(t->db, FL_PASS, FL_FAILURE_NONE,
+                                                          FL_DISCOVERY_PHASE));
+    FL_ASSERT_EQ(SQLITE_CONSTRAINT, test_db_insert_result(t->db, FL_FAIL, FL_TEST_FAILURE,
+                                                          TEST_DB_NO_PHASE));
     FL_ASSERT_EQ(SQLITE_OK, test_db_insert_result(t->db, FL_PASS, FL_FAILURE_NONE,
-                                                      TEST_DB_NO_PHASE));
+                                                  TEST_DB_NO_PHASE));
 
     // A fault's result code has the same range.
-    FL_ASSERT_EQ(SQLITE_OK, test_db_insert_fault(t->db, FL_BAD_STATE));
-    FL_ASSERT_EQ(SQLITE_CONSTRAINT, test_db_insert_fault(t->db, FL_BAD_STATE + 1));
+    FL_ASSERT_EQ(SQLITE_OK, test_db_insert_fault(t->db, FL_USE_AFTER_FREE));
+    FL_ASSERT_EQ(SQLITE_CONSTRAINT, test_db_insert_fault(t->db, FL_USE_AFTER_FREE + 1));
+}
+
+// Schema v1's results and faults tables, which limit result_code to 0..FL_BAD_STATE.
+static char const test_db_v1_tables[]
+    = "CREATE TABLE results ("
+      "    id                 INTEGER PRIMARY KEY,"
+      "    run_id             INTEGER NOT NULL REFERENCES runs (id) ON DELETE CASCADE,"
+      "    case_id            INTEGER NOT NULL REFERENCES cases (id),"
+      "    case_index         INTEGER NOT NULL CHECK (case_index >= 0),"
+      "    result_code        INTEGER NOT NULL CHECK (result_code BETWEEN 0 AND 6),"
+      "    failure_type       INTEGER NOT NULL CHECK (failure_type BETWEEN 0 AND 5),"
+      "    failure_phase      INTEGER CHECK (failure_phase BETWEEN 0 AND 1),"
+      "    reason             TEXT,"
+      "    details            TEXT,"
+      "    elapsed_seconds    REAL NOT NULL,"
+      "    discovery_seconds  REAL NOT NULL,"
+      "    injection_seconds  REAL NOT NULL,"
+      "    fault_sites        INTEGER NOT NULL CHECK (fault_sites >= 0),"
+      "    discovery_failures INTEGER NOT NULL CHECK (discovery_failures >= 0),"
+      "    injection_failures INTEGER NOT NULL CHECK (injection_failures >= 0),"
+      "    CHECK ((failure_type = 0) = (failure_phase IS NULL)),"
+      "    UNIQUE (run_id, case_index),"
+      "    UNIQUE (run_id, case_id)"
+      ");"
+      "CREATE TABLE faults ("
+      "    id               INTEGER PRIMARY KEY,"
+      "    result_id        INTEGER NOT NULL REFERENCES results (id) ON DELETE CASCADE,"
+      "    position         INTEGER NOT NULL CHECK (position >= 0),"
+      "    fault_index      INTEGER NOT NULL,"
+      "    result_code      INTEGER NOT NULL CHECK (result_code BETWEEN 0 AND 6),"
+      "    reason           TEXT,"
+      "    details          TEXT,"
+      "    source_file      TEXT,"
+      "    source_line      INTEGER,"
+      "    resource_address INTEGER,"
+      "    UNIQUE (result_id, position)"
+      ");";
+
+// A v1 file upgrades in place: its rows stay, its results and faults accept the codes
+// v2 adds, and its indexes, view and foreign keys are back.
+FL_TYPE_TEST_SETUP_CLEANUP("Upgrade From V1 Keeps Rows", TestSchema, schema_upgrades_v1,
+                           setup_schema_db, cleanup_schema_db) {
+    // Build a v1 file from a current one by restoring v1's results and faults tables.
+    t->db = faultline_init_database(t->path);
+    sqlite3_close_v2(t->db);
+    t->db = NULL;
+
+    sqlite3 *seed = test_db_open_raw(t->path);
+    test_db_exec(seed, "DROP VIEW run_totals; DROP TABLE faults; DROP TABLE results;");
+    test_db_exec(seed, test_db_v1_tables);
+
+    // v2 replaces this view with run_totals' real definition.
+    test_db_exec(seed, "CREATE VIEW run_totals AS SELECT 0 AS passed_with_leaks;");
+    test_db_exec(seed, "INSERT INTO suites (name) VALUES ('S');"
+                       "INSERT INTO cases (suite_id, name) VALUES (1, 'c');"
+                       "PRAGMA user_version = 1;");
+    FL_ASSERT_EQ(SQLITE_OK, test_db_insert_result(seed, FL_LEAK, FL_LEAK_FAILURE,
+                                                  FL_INJECTION_PHASE));
+    FL_ASSERT_EQ(SQLITE_OK, test_db_insert_fault(seed, FL_LEAK));
+    sqlite3_close_v2(seed);
+
+    t->db = faultline_init_database(t->path);
+
+    FL_ASSERT_EQ(FL_SCHEMA_VERSION, test_db_query_int(t->db, "PRAGMA user_version;", -1));
+    FL_ASSERT_EQ(1, test_db_query_int(t->db, "SELECT count(*) FROM results;", -1));
+    FL_ASSERT_EQ(1, test_db_query_int(t->db, "SELECT count(*) FROM faults;", -1));
+    FL_ASSERT_EQ(1, test_db_query_int(t->db, "PRAGMA foreign_keys;", -1));
+    FL_ASSERT_EQ(1, test_db_query_int(t->db, "SELECT passed_with_leaks FROM run_totals;",
+                                      -1));
+    FL_ASSERT_TRUE(test_db_object_exists(t->db, "index", "idx_results_case"));
+    FL_ASSERT_TRUE(test_db_object_exists(t->db, "index", "idx_results_failed"));
+
+    FL_ASSERT_EQ(SQLITE_OK, test_db_insert_fault(t->db, FL_USE_AFTER_FREE));
 }
 
 // Opening switches the file to WAL.
@@ -423,7 +495,8 @@ FL_TYPE_TEST_SETUP_CLEANUP("Legacy Schema Is Refused", TestSchema,
 // A view already named results makes the schema step fail. Nothing the step created
 // before the failure remains, and the version is not stamped.
 FL_TYPE_TEST_SETUP_CLEANUP("Failed Schema Rolls Back", TestSchema,
-                           schema_failure_rolls_back, setup_schema_db, cleanup_schema_db) {
+                           schema_failure_rolls_back, setup_schema_db,
+                           cleanup_schema_db) {
     sqlite3 *seed = test_db_open_raw(t->path);
     test_db_exec(seed, "CREATE VIEW results AS SELECT 1 AS x;");
     sqlite3_close_v2(seed);

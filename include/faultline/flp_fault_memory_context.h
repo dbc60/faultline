@@ -13,9 +13,22 @@
 #include <faultline/arena.h>          // Arena
 #include <faultline/fault_injector.h> // FaultInjector (opaque)
 
+#include <stddef.h> // size_t
+
+enum {
+    FL_FAULT_QUARANTINE_CAPACITY = 64, ///< freed blocks held before the arena reuses them
+};
+
 typedef struct FLFaultMemoryContext {
     Arena         *arena;
     FaultInjector *fi;
+
+    // Freed blocks, oldest first from quarantine_head. A block stays here, filled with a
+    // known byte, until a newer free evicts it or the pass ends; a write to it in the
+    // meantime is a use after free.
+    void  *quarantine[FL_FAULT_QUARANTINE_CAPACITY];
+    size_t quarantine_head;
+    size_t quarantine_count;
 } FLFaultMemoryContext;
 
 #define FLP_INIT_FAULT_MEMORY_CONTEXT_FN(name) \

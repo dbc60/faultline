@@ -13,7 +13,9 @@
 #include "faultline_test_result.h"     // TestResult
 #include <faultline/fl_result_codes.h> // FLResultCode
 #include <faultline/fl_context.h>
+#include <faultline/fl_exception_assert.h> // FL_ASSERT_EQ
 #include <faultline/fl_log.h>
+#include "fault_injector_internal.h" // fault_injector_set_check, fault_injector_put_fault
 
 #include <faultline/fl_test.h>
 #include <faultline/fl_try.h>
@@ -36,8 +38,7 @@ static FLExceptionReason load_begin_failure      = "failed to load " BEGIN_CTX_S
 static FLExceptionReason load_end_failure        = "failed to load " END_CTX_STR;
 static FLExceptionReason load_add_fault_faulure  = "failed to load " ADD_FAULT_CTX_STR;
 static FLExceptionReason load_next_failure       = "failed to load " NEXT_CTX_STR;
-static FLExceptionReason load_has_more_failure
-    = "failed to load " HAS_MORE_CASES_CTX_STR;
+static FLExceptionReason load_has_more_failure = "failed to load " HAS_MORE_CASES_CTX_STR;
 static FLExceptionReason load_get_case_name_failure
     = "failed to load " GET_CASE_NAME_CTX_STR;
 static FLExceptionReason load_get_result_code_failure
@@ -80,7 +81,7 @@ static FLExceptionReason unexpected_test_result_count
     = "expected one non-passing test result";
 
 static FLExceptionReason test_result_phase_mismatch = "test result phase mismatch";
-static FLExceptionReason test_result_type_mismatch = "test result failure type mismatch";
+static FLExceptionReason test_result_type_mismatch  = "test result failure type mismatch";
 static FLExceptionReason test_result_file_missing
     = "test result file information missing";
 static FLExceptionReason test_result_line_invalid = "test result line number invalid";
@@ -163,8 +164,7 @@ static void set_up_test_driver_data(TestDriverData *t) {
         FL_THROW(load_get_result_code_failure);
     }
 
-    t->get_index
-        = (faultline_get_index_fn *)GetProcAddress(t->h, GET_CASE_INDEX_CTX_STR);
+    t->get_index = (faultline_get_index_fn *)GetProcAddress(t->h, GET_CASE_INDEX_CTX_STR);
     if (t->get_index == NULL) {
         FL_THROW(load_get_index_failure);
     }
@@ -270,8 +270,8 @@ FL_TYPE_TEST("Load Driver", TestDriverData, load_driver_test) {
 }
 
 // Verify begin() and end() create and delete the test context
-FL_TYPE_TEST_SETUP_CLEANUP("Begin and End", TestDriverData, begin_end_test,
-                           setup_context, cleanup_context) {
+FL_TYPE_TEST_SETUP_CLEANUP("Begin and End", TestDriverData, begin_end_test, setup_context,
+                           cleanup_context) {
     t->add_fault(&t->context, 0, FL_PASS, FAULT_NO_RESOURCE, "test begin, end", "test",
                  __FILE__, __LINE__);
     if (t->get_results_count(&t->context) != 1) {
@@ -398,6 +398,28 @@ FL_TYPE_TEST_SETUP_CLEANUP("Test the Driver", TestDriverData, test_driver,
         FL_THROW_DETAILS(fl_internal_error, "Expected code: %d. Actual: %d", FL_PASS,
                          code);
     }
+}
+
+// A check that records an overflow each time a pass ends, as the fault memory service's
+// check does when a block's rear guard bytes changed.
+static void record_overflow_check(void *ctx) {
+    fault_injector_put_fault((FaultInjector *)ctx, FL_BUFFER_OVERFLOW, FAULT_NO_RESOURCE,
+                             "write past the end of a block",
+                             "the block was allocated at this site", __FILE__, __LINE__);
+}
+
+// A case that passes but corrupts memory fails with the corruption's result code.
+FL_TYPE_TEST_SETUP_CLEANUP("Corrupting Case Fails", TestDriverData,
+                           driver_fails_corrupting_case, setup_test_context,
+                           cleanup_context) {
+    FaultInjector *injector = fault_injector_create(t->arena);
+    fault_injector_set_check(injector, record_overflow_check, injector);
+    t->context.injector = injector;
+
+    t->driver(&t->context);
+
+    FL_ASSERT_EQ((size_t)1, t->get_fail_count(&t->context));
+    FL_ASSERT_EQ(FL_BUFFER_OVERFLOW, t->get_result_code(&t->context, t->context.index));
 }
 
 FL_TYPE_TEST_SETUP_CLEANUP("Results", TestDriverData, results_test, setup_test_context,

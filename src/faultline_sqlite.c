@@ -8,13 +8,13 @@
  * See LICENSE.txt for copyright and licensing information about this file.
  */
 #include <faultline_sqlite.h>
-#include <faultline/fl_exception_types.h>   // FLExceptionReason
-#include <faultline/fl_log.h>               // LOG_DEBUG, LOG_ERROR, LOG_WARN
-#include <faultline/fl_try.h>               // FL_THROW_DETAILS, FL_CATCH_ALL
-#include <sqlite/sqlite3.h>                 // sqlite3_exec, sqlite3_prepare_v2
-#include <stdbool.h>                        // bool
-#include <stdio.h>                          // snprintf
-#include <faultline/fl_macros.h>            // FL_ARRAY_COUNT, FL_STATIC_ASSERT
+#include <faultline/fl_exception_types.h> // FLExceptionReason
+#include <faultline/fl_log.h>             // LOG_DEBUG, LOG_ERROR, LOG_WARN
+#include <faultline/fl_try.h>             // FL_THROW_DETAILS, FL_CATCH_ALL
+#include <sqlite/sqlite3.h>               // sqlite3_exec, sqlite3_prepare_v2
+#include <stdbool.h>                      // bool
+#include <stdio.h>                        // snprintf
+#include <faultline/fl_macros.h>          // FL_ARRAY_COUNT, FL_STATIC_ASSERT
 
 #if defined(__cplusplus)
 extern "C" {
@@ -98,6 +98,34 @@ static int db_query_int(sqlite3 *db, char const *sql, int fallback, char const *
  * result_code, failure_type and failure_phase hold FLResultCode, FLFailureType and
  * FLTestPhase values. Each CHECK range runs from an enum's first value to its last.
  */
+/*
+ * Totals per run. Result codes: FL_PASS 1, FL_LEAK 2, FL_INVALID_FREE 3, FL_DOUBLE_FREE
+ * 4; failed counts every code above FL_LEAK. Failure types: FL_SETUP_FAILURE 1,
+ * FL_CLEANUP_FAILURE 3. pass_rate is NULL for a run with no results.
+ */
+#define RUN_TOTALS_VIEW                                                                  \
+    "CREATE VIEW run_totals AS "                                                         \
+    "SELECT r.id AS run_id,"                                                             \
+    "       r.suite_id,"                                                                 \
+    "       r.started_at,"                                                               \
+    "       r.completed_at,"                                                             \
+    "       r.case_count,"                                                               \
+    "       count(x.id) AS cases_run,"                                                   \
+    "       coalesce(sum(x.result_code = 1), 0) AS passed,"                              \
+    "       coalesce(sum(x.result_code = 2), 0) AS passed_with_leaks,"                   \
+    "       coalesce(sum(x.result_code > 2), 0) AS failed,"                              \
+    "       coalesce(sum(x.failure_type = 1), 0) AS setup_failures,"                     \
+    "       coalesce(sum(x.failure_type = 3), 0) AS cleanup_failures,"                   \
+    "       coalesce(sum(x.result_code IN (3, 4)), 0) AS invalid_frees,"                 \
+    "       coalesce(sum(x.fault_sites), 0) AS fault_sites,"                             \
+    "       coalesce(sum(x.elapsed_seconds), 0.0) AS elapsed_seconds,"                   \
+    "       coalesce(sum(x.discovery_failures), 0) AS discovery_failures,"               \
+    "       coalesce(sum(x.injection_failures), 0) AS injection_failures,"               \
+    "       CAST(sum(x.result_code = 1) AS REAL) / nullif(count(x.id), 0) AS pass_rate " \
+    "FROM runs r "                                                                       \
+    "LEFT JOIN results x ON x.run_id = r.id "                                            \
+    "GROUP BY r.id;"
+
 static char const *const schema_v1[] = {
     "CREATE TABLE suites ("
     "    id         INTEGER PRIMARY KEY,"
@@ -175,31 +203,66 @@ static char const *const schema_v1[] = {
     "CREATE INDEX idx_results_case ON results (case_id, run_id);",
     "CREATE INDEX idx_results_failed ON results (run_id) WHERE result_code > 1;",
 
-    // Totals per run. Result codes: FL_PASS 1, FL_LEAK 2, FL_INVALID_FREE 3,
-    // FL_DOUBLE_FREE 4; failed counts every code above FL_LEAK. Failure types:
-    // FL_SETUP_FAILURE 1, FL_CLEANUP_FAILURE 3. pass_rate is NULL for a run with no
-    // results.
-    "CREATE VIEW run_totals AS "
-    "SELECT r.id AS run_id,"
-    "       r.suite_id,"
-    "       r.started_at,"
-    "       r.completed_at,"
-    "       r.case_count,"
-    "       count(x.id) AS cases_run,"
-    "       coalesce(sum(x.result_code = 1), 0) AS passed,"
-    "       coalesce(sum(x.result_code = 2), 0) AS passed_with_leaks,"
-    "       coalesce(sum(x.result_code > 2), 0) AS failed,"
-    "       coalesce(sum(x.failure_type = 1), 0) AS setup_failures,"
-    "       coalesce(sum(x.failure_type = 3), 0) AS cleanup_failures,"
-    "       coalesce(sum(x.result_code IN (3, 4)), 0) AS invalid_frees,"
-    "       coalesce(sum(x.fault_sites), 0) AS fault_sites,"
-    "       coalesce(sum(x.elapsed_seconds), 0.0) AS elapsed_seconds,"
-    "       coalesce(sum(x.discovery_failures), 0) AS discovery_failures,"
-    "       coalesce(sum(x.injection_failures), 0) AS injection_failures,"
-    "       CAST(sum(x.result_code = 1) AS REAL) / nullif(count(x.id), 0) AS pass_rate "
-    "FROM runs r "
-    "LEFT JOIN results x ON x.run_id = r.id "
-    "GROUP BY r.id;",
+    RUN_TOTALS_VIEW,
+
+    NULL // Terminator
+};
+
+/*
+ * Schema v2 widens the result_code range of results and faults to 0..FL_USE_AFTER_FREE.
+ * SQLite cannot alter a CHECK constraint, so each table is rebuilt: create a copy with
+ * the new range, copy the rows, drop the old table, and rename the copy. The rename
+ * fails while a view names the old table, so the view is dropped first and recreated
+ * last; dropping results drops its indexes, which are recreated too. schema_upgrade
+ * turns foreign keys off around the step, so dropping results deletes no faults.
+ */
+static char const *const schema_v2[] = {
+    "DROP VIEW run_totals;",
+
+    "CREATE TABLE results_v2 ("
+    "    id                 INTEGER PRIMARY KEY,"
+    "    run_id             INTEGER NOT NULL REFERENCES runs (id) ON DELETE CASCADE,"
+    "    case_id            INTEGER NOT NULL REFERENCES cases (id),"
+    "    case_index         INTEGER NOT NULL CHECK (case_index >= 0),"
+    "    result_code        INTEGER NOT NULL CHECK (result_code BETWEEN 0 AND 9),"
+    "    failure_type       INTEGER NOT NULL CHECK (failure_type BETWEEN 0 AND 5),"
+    "    failure_phase      INTEGER CHECK (failure_phase BETWEEN 0 AND 1),"
+    "    reason             TEXT,"
+    "    details            TEXT,"
+    "    elapsed_seconds    REAL NOT NULL,"
+    "    discovery_seconds  REAL NOT NULL,"
+    "    injection_seconds  REAL NOT NULL,"
+    "    fault_sites        INTEGER NOT NULL CHECK (fault_sites >= 0),"
+    "    discovery_failures INTEGER NOT NULL CHECK (discovery_failures >= 0),"
+    "    injection_failures INTEGER NOT NULL CHECK (injection_failures >= 0),"
+    "    CHECK ((failure_type = 0) = (failure_phase IS NULL)),"
+    "    UNIQUE (run_id, case_index),"
+    "    UNIQUE (run_id, case_id)"
+    ");",
+    "INSERT INTO results_v2 SELECT * FROM results;",
+    "DROP TABLE results;",
+    "ALTER TABLE results_v2 RENAME TO results;",
+
+    "CREATE TABLE faults_v2 ("
+    "    id               INTEGER PRIMARY KEY,"
+    "    result_id        INTEGER NOT NULL REFERENCES results (id) ON DELETE CASCADE,"
+    "    position         INTEGER NOT NULL CHECK (position >= 0),"
+    "    fault_index      INTEGER NOT NULL,"
+    "    result_code      INTEGER NOT NULL CHECK (result_code BETWEEN 0 AND 9),"
+    "    reason           TEXT,"
+    "    details          TEXT,"
+    "    source_file      TEXT,"
+    "    source_line      INTEGER,"
+    "    resource_address INTEGER,"
+    "    UNIQUE (result_id, position)"
+    ");",
+    "INSERT INTO faults_v2 SELECT * FROM faults;",
+    "DROP TABLE faults;",
+    "ALTER TABLE faults_v2 RENAME TO faults;",
+
+    "CREATE INDEX idx_results_case ON results (case_id, run_id);",
+    "CREATE INDEX idx_results_failed ON results (run_id) WHERE result_code > 1;",
+    RUN_TOTALS_VIEW,
 
     NULL // Terminator
 };
@@ -207,6 +270,7 @@ static char const *const schema_v1[] = {
 // schema_steps[i] takes a database from version i to version i + 1.
 static char const *const *const schema_steps[] = {
     schema_v1,
+    schema_v2,
 };
 
 FL_STATIC_ASSERT(FL_ARRAY_COUNT(schema_steps) == (size_t)FL_SCHEMA_VERSION,
@@ -233,8 +297,13 @@ static void sql_exec_or_throw(sqlite3 *db, char const *sql, FLExceptionReason re
  * The version is set inside the same transaction as the schema steps. A step that throws
  * leaves the transaction open; the caller closes the connection, which rolls it back, so
  * the file keeps neither the step's objects nor a new version.
+ *
+ * Foreign keys are off during the steps, so a step can drop and rebuild a parent table
+ * without deleting its children's rows. The pragma has no effect inside a transaction,
+ * so it is set before BEGIN and after COMMIT.
  */
 static void schema_upgrade(sqlite3 *db, int from) {
+    sql_exec_or_throw(db, "PRAGMA foreign_keys = OFF;", faultline_db_create_failed);
     sql_exec_or_throw(db, "BEGIN IMMEDIATE;", faultline_db_create_failed);
 
     for (int step = from; step < FL_SCHEMA_VERSION; step++) {
@@ -249,6 +318,7 @@ static void schema_upgrade(sqlite3 *db, int from) {
     sql_exec_or_throw(db, set_version, faultline_db_create_failed);
 
     sql_exec_or_throw(db, "COMMIT;", faultline_db_create_failed);
+    sql_exec_or_throw(db, "PRAGMA foreign_keys = ON;", faultline_db_create_failed);
 }
 
 /**
@@ -263,8 +333,8 @@ static void schema_upgrade(sqlite3 *db, int from) {
 sqlite3 *faultline_init_database(char const *db_path) {
     sqlite3 *db;
     LOG_VERBOSE(faultline_db, "Opening database: %s", db_path);
-    int rc = sqlite3_open_v2(db_path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE,
-                             NULL);
+    int rc
+        = sqlite3_open_v2(db_path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
 
     if (rc != SQLITE_OK) {
         char details[256];
@@ -308,9 +378,9 @@ sqlite3 *faultline_init_database(char const *db_path) {
 
         /*
          * The goal is to balance the number of writes to disk vs database durability
-         * across an OS crash or power loss. We select the write-ahead log (WAL) instead of
-         * the default rollback journal, because it is much faster. This PRAGMA pair also
-         * reduces the number of writes that this module still leaves auto-committed.
+         * across an OS crash or power loss. We select the write-ahead log (WAL) instead
+         * of the default rollback journal, because it is much faster. This PRAGMA pair
+         * also reduces the number of writes that this module still leaves auto-committed.
          *
          * NORMAL synchronization trades a small amount of durability across an OS crash
          * or power loss for a significant performance gain. NORMAL only fsyncs at WAL

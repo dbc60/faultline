@@ -394,7 +394,7 @@ and runs from `build\cmd\faultline_analyze.cmd`.
 - `--log-level LEVEL` - Set logging level (error|warn|info|debug)
 - `help [command...]` prints generated help; a malformed command line exits 2
 
-**Database Schema** (version 1, in `PRAGMA user_version`; defined in `src/faultline_sqlite.c`):
+**Database Schema** (version 2, in `PRAGMA user_version`; defined in `src/faultline_sqlite.c`; a version 1 file upgrades in place on open):
 - `suites` - One row per suite name
 - `cases` - One row per case name within a suite, with the run it is compared against (its baseline)
 - `runs` - One row per finished suite run, written after its last case in one savepoint
