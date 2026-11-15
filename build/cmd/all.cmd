@@ -272,12 +272,11 @@ if %test% EQU 1 (
         flp_file_service_tests.dll ^
         flp_stream_service_tests.dll ^
         cxx_suite_tests.dll
-    REM The driver returns 0 for ordinary test failures, so a non-zero status
-    REM means it died or could not start. A crash takes down every suite listed
-    REM after the one that crashed, and those suites report nothing at all -- the
-    REM results table then backfills with older runs, which looks like a normal
-    REM listing. Fail the build rather than let a truncated run pass for a
-    REM complete one.
+    REM The driver exits 1 when a case fails or a suite does not run. A crash
+    REM also exits non-zero and takes down every suite listed after the one that
+    REM crashed; those suites report nothing, and the results table then
+    REM backfills with older runs, which looks like a normal listing. Either way
+    REM the build fails.
     set "_run_rc=!errorlevel!"
     .\faultline.exe result list !DB_OPT! --limit 27
     REM Split-architecture smoke: the same suites driven through the split host.
@@ -297,13 +296,13 @@ if %test% EQU 1 (
         set "_asan_rc=!errorlevel!"
     )
     if not "!_run_rc!"=="0" (
-        ECHO ALL.CMD ERROR: test driver exited with !_run_rc! -- suites listed 1>&2
-        ECHO after the failure point did not run. 1>&2
+        ECHO ALL.CMD ERROR: test driver exited with !_run_rc! -- a case failed, 1>&2
+        ECHO a suite did not run, or the driver stopped early. 1>&2
         GOTO :ERROR
     )
     if not "!_split_rc!"=="0" (
-        ECHO ALL.CMD ERROR: split host exited with !_split_rc! -- suites listed 1>&2
-        ECHO after the failure point did not run. 1>&2
+        ECHO ALL.CMD ERROR: split host exited with !_split_rc! -- a case failed, 1>&2
+        ECHO a suite did not run, or the host stopped early. 1>&2
         GOTO :ERROR
     )
     REM A report from a run that still exited 0 fails the build too.

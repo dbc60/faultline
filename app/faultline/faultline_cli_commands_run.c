@@ -296,7 +296,8 @@ static void display_test_results(FLContext *fctx, FLTestSuite *ts) {
     }
 }
 
-static void exercise_test_suite(FLContext *fctx, FLTestSuite *ts, sqlite3 *db,
+// Run every case in the suite and return whether each one passed.
+static bool exercise_test_suite(FLContext *fctx, FLTestSuite *ts, sqlite3 *db,
                                 JUnitXML *junit) {
     // faultline_begin stamps fctx->run_start_time and faultline_end clears it
     // after each suite, so the stamp must be taken before the run record is
@@ -314,6 +315,7 @@ static void exercise_test_suite(FLContext *fctx, FLTestSuite *ts, sqlite3 *db,
 
     display_test_results(fctx, ts);
     junit_write(junit, fctx);
+    bool const passed = faultline_get_pass_count(fctx) == faultline_get_run_count(fctx);
 
     // The run is written only after every case has finished, so a suite that crashes
     // records nothing. A failed write is logged, and the remaining suites still run.
@@ -332,6 +334,7 @@ static void exercise_test_suite(FLContext *fctx, FLTestSuite *ts, sqlite3 *db,
     }
 
     faultline_end(fctx);
+    return passed;
 }
 
 // -- Suite module mechanics -----------------------------------------------------------
@@ -490,6 +493,7 @@ static WB_RUN_FN(run_suites) {
     FLContext        *fctx             = session->fctx;
     int               test_suite_count = argc;
     int               loaded           = 0;
+    bool              failed           = false; // a suite did not run, or a case failed
     static char const module[]         = COMMAND_MODULE_NAME;
     FL_UNUSED(io);
 
@@ -508,6 +512,7 @@ static WB_RUN_FN(run_suites) {
             SuiteHandle test_suite = suite_load(session, dll_path);
             if (test_suite == NULL) {
                 LOG_ERROR(module, "Failed to load \"%s\"", dll_path);
+                failed = true;
                 continue;
             }
 
@@ -519,6 +524,7 @@ static WB_RUN_FN(run_suites) {
             // the run alive.
             if (!suite_abi_ok(session, test_suite, dll_path)) {
                 suite_unload(session, test_suite);
+                failed = true;
                 continue;
             }
 
@@ -533,12 +539,14 @@ static WB_RUN_FN(run_suites) {
                                                             FL_RUN_CASE_STR);
             if (fl_get_test_suite == NULL) {
                 LOG_ERROR(module, "\"%s\" does not export fl_get_test_suite", dll_path);
+                failed = true;
             } else if (fl_run_case == NULL) {
                 // FL_GET_TEST_SUITE emits both exports together, so a suite with one
                 // and not the other was built against an older framework and cannot
                 // run its cases.
                 LOG_ERROR(module, "\"%s\" does not export fl_run_case - skipping",
                           dll_path);
+                failed = true;
             } else {
                 FL_TRY {
                     FLTestSuite *ts = fl_get_test_suite();
@@ -546,11 +554,14 @@ static WB_RUN_FN(run_suites) {
                     // Restore what the memset in faultline_initialize cleared.
                     fctx->injector = suite_injector(session);
                     fctx->run_case = fl_run_case;
-                    exercise_test_suite(fctx, ts, db, &junit);
+                    if (!exercise_test_suite(fctx, ts, db, &junit)) {
+                        failed = true;
+                    }
                 }
                 FL_CATCH_ALL {
                     LOG_ERROR(module, "\"%s\": unhandled exception: %s (%s:%d)",
                               dll_path, FL_REASON, FL_FILE, FL_LINE);
+                    failed = true;
                 }
                 FL_END_TRY;
                 loaded++;
@@ -564,5 +575,5 @@ static WB_RUN_FN(run_suites) {
     }
     FL_END_TRY;
     LOG_INFO(module, "Exercised %d of %d test suite(s).", loaded, test_suite_count);
-    return WB_CLI_OK;
+    return failed ? WB_CLI_ERROR : WB_CLI_OK;
 }

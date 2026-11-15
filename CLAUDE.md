@@ -24,7 +24,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **All tests**: `build\cmd\all.cmd test` - Builds and runs all unit test suites
 - **Single component test**: `build\cmd\<component>.cmd test` (e.g., `build\cmd\arena.cmd test`)
 - **Manual test execution**: After building, use `but.exe` or `faultline.exe` with test DLL files
-- **FaultLine tests**: Use `faultline.exe` from the output bin directory for fault injection testing
+- **FaultLine tests**: Use `faultline.exe` from the output bin directory for fault injection testing; `run` exits 1 when a case fails or a suite does not run
 - **FaultLine with database**: `faultline.exe run --db results.sqlite <test_suites>` - Store results in SQLite database
 
 ### Code Formatting

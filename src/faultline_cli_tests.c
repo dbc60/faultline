@@ -46,6 +46,7 @@
 #include "faultline_cli.c"
 
 #include <faultline/fault.h>                // FAULT_NO_RESOURCE
+#include <faultline/fl_case_outcome.h>      // FLCaseOutcome, FL_RUN_CASE_FN
 #include <faultline/fl_abbreviated_types.h> // i64, u32
 #include <faultline/fl_exception_assert.h>  // FL_ASSERT_*
 #include <faultline/fl_macros.h>            // FL_ARRAY_COUNT, FL_CONTAINER_OF, FL_STR
@@ -94,6 +95,19 @@ static CliTestOutcome const cli_beta_fails[] = {{FL_PASS, 10, 1.0}, {FL_FAIL, 3,
 // Both pass, and alpha exercises fewer fault sites than in cli_both_pass.
 static CliTestOutcome const cli_alpha_drops[] = {{FL_PASS, 7, 1.0}, {FL_PASS, 10, 1.0}};
 
+// The suite the stub platform loads for the run command, and whether its case fails.
+static FLTestCase  cli_run_case       = {.name = "stub"};
+static FLTestCase *cli_run_cases[]    = {&cli_run_case};
+static FLTestSuite cli_run_suite      = {.name       = "CliRunSuite",
+                                         .count      = FL_ARRAY_COUNT(cli_run_cases),
+                                         .test_cases = cli_run_cases};
+static bool        cli_run_case_fails = false;
+
+// The module the stub platform loads for any path but CLI_TEST_MISSING_SUITE.
+static char cli_run_module;
+
+#define CLI_TEST_MISSING_SUITE "missing.dll"
+
 ///////////////
 //  Fixture  //
 ///////////////
@@ -101,6 +115,8 @@ static CliTestOutcome const cli_alpha_drops[] = {{FL_PASS, 7, 1.0}, {FL_PASS, 10
 typedef struct CliTest {
     FLTestCase   tc;
     FLCliSession session;
+    FLContext     fctx;     // the context the run command drives
+    FLPlatformAPI platform; // loads cli_run_suite in place of a module
     Arena       *arena; // backs the contexts a case records
     char         db_path[CLI_TEST_PATH_MAX];
     char         out_path[CLI_TEST_PATH_MAX];
@@ -109,6 +125,51 @@ typedef struct CliTest {
     char        *argv[WB_CLI_MAX_ARGS];
     char         capture[CLI_TEST_CAPTURE_MAX];
 } CliTest;
+
+// The suite module's exports, as the stub platform resolves them.
+static FL_GET_TEST_SUITE_FN(cli_get_run_suite) {
+    return &cli_run_suite;
+}
+
+static FL_RUN_CASE_FN(cli_run_stub_case) {
+    FL_UNUSED(index);
+    FL_UNUSED(out_size);
+    fl_case_outcome_clear(out);
+    if (cli_run_case_fails) {
+        out->status       = FL_CASE_UNEXPECTED_FAILURE;
+        out->failure_type = FL_TEST_FAILURE;
+        out->reason       = "stub failure";
+    }
+    return FL_RUN_CASE_OK;
+}
+
+// A platform whose modules are cli_run_suite. CLI_TEST_MISSING_SUITE fails to load.
+static FL_MODULE_LOAD_FN(cli_load_module) {
+    FLModule *module = NULL;
+    if (strcmp(path, CLI_TEST_MISSING_SUITE) != 0) {
+        module = (FLModule *)&cli_run_module;
+    }
+    return module;
+}
+
+static FL_MODULE_SYMBOL_FN(cli_resolve_symbol) {
+    FL_UNUSED(m);
+    void *address = NULL;
+    if (strcmp(symbol, FL_GET_TEST_SUITE_STR) == 0) {
+        address = (void *)(uintptr_t)cli_get_run_suite;
+    } else if (strcmp(symbol, FL_RUN_CASE_STR) == 0) {
+        address = (void *)(uintptr_t)cli_run_stub_case;
+    }
+    return address;
+}
+
+static FL_MODULE_UNLOAD_FN(cli_unload_module) {
+    FL_UNUSED(m);
+}
+
+static FL_INJECT_SERVICES_FN(cli_inject_services) {
+    FL_UNUSED(suite);
+}
 
 static int cli_test_counter = 0;
 
@@ -164,6 +225,15 @@ static FL_SETUP_FN(setup_cli_cmd) {
     t->session.db     = faultline_init_database(t->db_path);
     t->session.io.out = cli_test_scratch(t->out_path, sizeof t->out_path, "out");
     t->session.io.err = cli_test_scratch(t->err_path, sizeof t->err_path, "err");
+
+    t->platform         = (FLPlatformAPI){.load_module     = cli_load_module,
+                                          .resolve_symbol  = cli_resolve_symbol,
+                                          .unload_module   = cli_unload_module,
+                                          .inject_services = cli_inject_services};
+    t->session.fctx     = &t->fctx;
+    t->session.arena    = t->arena;
+    t->session.platform = &t->platform;
+    cli_run_case_fails  = false;
 }
 
 static FL_CLEANUP_FN(cleanup_cli_cmd) {
@@ -430,6 +500,23 @@ FL_TYPE_TEST_SETUP_CLEANUP("run needs at least one suite", CliTest, cli_run_need
                    != NULL);
 }
 
+FL_TYPE_TEST_SETUP_CLEANUP("run exits 0 when every case passes", CliTest, cli_run_passes,
+                           setup_cli_cmd, cleanup_cli_cmd) {
+    FL_ASSERT_EQ(cli_test_run(t, "run stub.dll"), WB_CLI_OK);
+}
+
+FL_TYPE_TEST_SETUP_CLEANUP("run exits 1 when a case fails", CliTest, cli_run_fails,
+                           setup_cli_cmd, cleanup_cli_cmd) {
+    cli_run_case_fails = true;
+    FL_ASSERT_EQ(cli_test_run(t, "run stub.dll"), WB_CLI_ERROR);
+}
+
+FL_TYPE_TEST_SETUP_CLEANUP("run exits 1 when a suite fails to load", CliTest,
+                           cli_run_load_fails, setup_cli_cmd, cleanup_cli_cmd) {
+    FL_ASSERT_EQ(cli_test_run(t, "run " CLI_TEST_MISSING_SUITE " stub.dll"),
+                 WB_CLI_ERROR);
+}
+
 FL_TYPE_TEST_SETUP_CLEANUP("version prints the version", CliTest, cli_version,
                            setup_cli_cmd, cleanup_cli_cmd) {
     FL_ASSERT_EQ(cli_test_run(t, "version"), WB_CLI_OK);
@@ -459,6 +546,9 @@ FL_SUITE_ADD_EMBEDDED(cli_unknown_flag)
 FL_SUITE_ADD_EMBEDDED(cli_show_unknown)
 FL_SUITE_ADD_EMBEDDED(cli_help_command)
 FL_SUITE_ADD_EMBEDDED(cli_run_needs_suite)
+FL_SUITE_ADD_EMBEDDED(cli_run_passes)
+FL_SUITE_ADD_EMBEDDED(cli_run_fails)
+FL_SUITE_ADD_EMBEDDED(cli_run_load_fails)
 FL_SUITE_ADD_EMBEDDED(cli_version)
 FL_SUITE_END;
 
