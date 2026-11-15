@@ -30,7 +30,7 @@
 
         build_scripts = @{
             Title   = 'MSVC Build Scripts Distribution'
-            Version = '0.1.0'
+            Version = '0.1.1'
             Depends = ''
 
             Cmd = @(
@@ -69,7 +69,7 @@
 
         fault_memory_service = @{
             Title   = 'Standalone Fault-Injecting Memory Service Distribution'
-            Version = '0.4.1'
+            Version = '0.5.0'
             Depends = ''
 
             Src = @(
@@ -100,6 +100,7 @@
                 'atomic.h'
                 'bits.h'
                 'chunk.h'
+                'poison.h'
                 'digital_search_tree.h'
                 'index.h'
                 'index_generic.h'
@@ -189,7 +190,7 @@
 
         log_service = @{
             Title   = 'Log Service Distribution'
-            Version = '0.5.1'
+            Version = '0.5.2'
             Depends = 'stream_service'
 
             Src = @(
@@ -219,7 +220,7 @@
 
         memory_service = @{
             Title   = 'Standalone Memory Service Distribution (no fault injection)'
-            Version = '0.4.1'
+            Version = '0.5.0'
             Depends = ''
 
             Src = @(
@@ -246,6 +247,7 @@
                 'atomic.h'
                 'bits.h'
                 'chunk.h'
+                'poison.h'
                 'digital_search_tree.h'
                 'index.h'
                 'index_generic.h'
@@ -315,7 +317,7 @@
 
         test_framework = @{
             Title   = 'Test Framework Distribution'
-            Version = '0.4.1'
+            Version = '0.4.2'
             Depends = 'exceptions timer_service'
 
             Inc = @(
