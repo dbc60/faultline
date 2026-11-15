@@ -314,13 +314,14 @@ FL_TEST("Select Small Bin Index", test_select_small_bins) {
     // ARENA_SMALL_BIN_INCREMENT(i) is valid only for non-zero indices.
     for (u32 i = 0; i < U64_BIT; i++) {
         actual = ARENA_SMALL_BIN_INCREMENT(i);
-        // check bits 0, 1, 2, and 3 in order.
+        // check bits 0, 1, 2, 3, and 4 in order.
         expected = ARENA_SBM(i) == 0 ? 0
                    : (i & 0x1)       ? 0
                                      : ((i & 0x2) ? 1
                                                   : ((i & 0x4)   ? 2
-                                                     : (i & 0x8) ? 3
-                                                                 : 0));
+                                                     : (i & 0x8)  ? 3
+                                                     : (i & 0x10) ? 4
+                                                                  : 0));
         FL_ASSERT_DETAILS(actual == expected, "Index %u. Expected %u. Actual %u", i,
                           expected, actual);
     }

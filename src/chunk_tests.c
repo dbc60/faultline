@@ -429,13 +429,15 @@ FL_TYPE_TEST_SETUP_CLEANUP("Payload Size", TestChunk, chunk_payload_size, setup,
                            cleanup) {
     FreeChunk *ch   = t->ch;
     size_t     size = CHUNK_SIZE(ch);
-    FL_ASSERT_EQ(size - CHUNK_ALIGNED_SIZE, CHUNK_PAYLOAD_SIZE(ch));
+    FL_ASSERT_EQ(size - CHUNK_ALIGNED_SIZE - CHUNK_REDZONE_SIZE, CHUNK_PAYLOAD_SIZE(ch));
 
     // Also verify after a split
     FreeChunk *rem = free_chunk_split(ch, MEBI(10), __FILE__, __LINE__);
     FL_ASSERT_NOT_NULL(rem);
-    FL_ASSERT_EQ(MEBI(10) - CHUNK_ALIGNED_SIZE, CHUNK_PAYLOAD_SIZE(ch));
-    FL_ASSERT_EQ(CHUNK_SIZE(rem) - CHUNK_ALIGNED_SIZE, CHUNK_PAYLOAD_SIZE(rem));
+    FL_ASSERT_EQ(MEBI(10) - CHUNK_ALIGNED_SIZE - CHUNK_REDZONE_SIZE,
+                 CHUNK_PAYLOAD_SIZE(ch));
+    FL_ASSERT_EQ(CHUNK_SIZE(rem) - CHUNK_ALIGNED_SIZE - CHUNK_REDZONE_SIZE,
+                 CHUNK_PAYLOAD_SIZE(rem));
 }
 
 // ============================================================================
@@ -522,7 +524,7 @@ FL_TEST("Payload vs Chunk Size", payload_vs_chunk_size) {
     // mis-model the loop bound.
     for (size_t req = 0; req < (size_t)KIBI(64); req++) {
         size_t chunk_size = CHUNK_SIZE_FROM_REQUEST(req);
-        size_t expected   = chunk_size - CHUNK_ALIGNED_SIZE;
+        size_t expected   = chunk_size - CHUNK_ALIGNED_SIZE - CHUNK_REDZONE_SIZE;
         size_t actual     = CHUNK_REQUEST_TO_PAYLOAD(req);
         FL_ASSERT_EQ(expected, actual);
     }

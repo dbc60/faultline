@@ -132,13 +132,13 @@ extern "C" {
 /**
  * @brief Given a bin map BM, return the
  *
- * This macro is valid for header sizes of 8, 16, 24, and 32 bytes. If you're using a
- * larger header (fascinating!), please extend or replace this macro.
+ * This macro is valid for up to five exact-fit bins (CHUNK_MIN_SIZE / CHUNK_ALIGNMENT
+ * <= 5). An x86 ASan build has five. For more, extend or replace this macro.
  */
 #define ARENA_SMALL_BIN_INCREMENT(BM)                            \
     (~FL_COMPARE(ARENA_SBM(BM), 0)                               \
      & ((~ARENA_SBM(BM) & 0x1) + ((~ARENA_SBM(BM) & 0x3) == 0x3) \
-        + ((~ARENA_SBM(BM) & 0x7) == 0x7)))
+        + ((~ARENA_SBM(BM) & 0x7) == 0x7) + ((~ARENA_SBM(BM) & 0xF) == 0xF)))
 
 /**
  * @brief Given the size of a small chunk, return the index of the first bin with a chunk
@@ -296,6 +296,8 @@ extern "C" {
  * to either can put the size classes out of step with the maps that index them. These
  * catch that at compile time, on whichever target is being built.
  */
+FL_STATIC_ASSERT(CHUNK_MIN_SIZE / CHUNK_ALIGNMENT <= 5,
+                 "ARENA_SMALL_BIN_INCREMENT covers at most five exact-fit bins");
 FL_STATIC_ASSERT(ARENA_SMALL_BIN_COUNT <= ARENA_SMALL_MAP_BITS,
                  "small bins outnumber the bits of the small-bin map that indexes them");
 FL_STATIC_ASSERT(((size_t)1 << ARENA_LOG2_MIN_LARGE_CHUNK) == ARENA_MIN_LARGE_CHUNK,

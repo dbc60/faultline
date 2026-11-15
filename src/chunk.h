@@ -127,7 +127,7 @@
  * by a 64-bit size_t.
  */
 #define CHUNK_MAX_REQUEST \
-    ALIGN_DOWN(MAX_SIZE_T - CHUNK_ALIGNED_SIZE - CHUNK_REDZONE_SIZE, CHUNK_ALIGNMENT)
+    (ALIGN_DOWN(MAX_SIZE_T - CHUNK_ALIGNED_SIZE, CHUNK_ALIGNMENT) - CHUNK_REDZONE_SIZE)
 
 /**
  * @brief The minimum payload is the space used by a FreeChunk less the space for its
@@ -592,12 +592,21 @@ static inline void free_chunk_set_inuse(FreeChunk *ch) {
  * @param ch an in-use chunk whose size is set
  * @param request the bytes the caller asked for
  */
+#if defined(__cplusplus)
+static inline void chunk_poison_inuse(Chunk *ch, size_t request) {
+    char *mem = static_cast<char*>(CHUNK_TO_MEMORY(ch));
+
+    POISON_BYTES((char *)ch + sizeof(Chunk), CHUNK_ALIGNED_SIZE - sizeof(Chunk));
+    POISON_BYTES(mem + request, CHUNK_SIZE(ch) - CHUNK_ALIGNED_SIZE - request);
+}
+#else
 static inline void chunk_poison_inuse(Chunk *ch, size_t request) {
     char *mem = CHUNK_TO_MEMORY(ch);
 
     POISON_BYTES((char *)ch + sizeof(Chunk), CHUNK_ALIGNED_SIZE - sizeof(Chunk));
     POISON_BYTES(mem + request, CHUNK_SIZE(ch) - CHUNK_ALIGNED_SIZE - request);
 }
+#endif
 
 /**
  * @brief verify memory address is not NULL, and is aligned before converting to a chunk
