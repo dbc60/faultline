@@ -10,7 +10,6 @@
  */
 #include <faultline/fl_context.h>
 #include <faultline/buffer.h>               // for buffer_count
-#include <faultline/fault.h>                // for FAULT_NO_RESOURCE
 #include <faultline/fl_result_codes.h>      // for FLResultCode
 #include <faultline/fl_test_summary.h>      // for faultline_test_summary_buffer_get
 #include <faultline/fl_types.h>             // for FLFailureType, FaultlineT...
@@ -68,74 +67,6 @@ FL_GET_RESULT_CODE(faultline_get_result_code) {
     }
 
     return frc;
-}
-
-/**
- * @brief Standardized function to record injection phase failures with complete context
- *
- * This ensures all injection phase failures are recorded consistently with proper
- * fault index correlation and complete failure information.
- *
- * @param summary the test summary to update
- * @param fault_index the fault injection index where failure occurred
- * @param result_code the FLResultCode from the failed operation
- * @param failure_type the categorized type of failure
- * @param test_result the TestResult containing detailed failure context (can be NULL for
- * synthetic failures)
- * @param phase_time the time spent in this injection phase (seconds)
- * @param synthetic_reason reason string for synthetic failures (leaks, invalid frees)
- * when test_result is NULL
- * @param fallback_file fallback file name when no better context is available
- * @param fallback_line fallback line number when no better context is available
- */
-void faultline_record_injection_failure(FLTestSummary *summary, i64 fault_index,
-                                        FLResultCode  result_code,
-                                        FLFailureType failure_type,
-                                        TestResult *test_result, double phase_time,
-                                        char const *synthetic_reason,
-                                        char const *details, char const *fallback_file,
-                                        int fallback_line) {
-    // Update summary with injection phase failure information
-    faultline_update_summary_phase_info(summary, FL_INJECTION_PHASE, failure_type,
-                                        phase_time);
-
-    // Determine the best available context information
-    char const *reason = NULL;
-    char const *file   = NULL;
-    int         line   = 0;
-
-    if (test_result && test_result->unexpected_exception) {
-        // Use real test failure context (highest priority)
-        reason = test_result->reason;
-        file   = test_result->file;
-        line   = test_result->line;
-    } else if (synthetic_reason) {
-        // Use synthetic failure with best available context
-        reason = synthetic_reason;
-
-        // Try to get file/line from test_result even if it didn't have an exception
-        if (test_result && test_result->file) {
-            file = test_result->file;
-            line = test_result->line;
-        } else {
-            // Fall back to provided context
-            file = fallback_file;
-            line = fallback_line;
-        }
-    }
-
-    // Ensure we always have some context
-    if (!file) {
-        file = "unknown";
-        line = 0;
-    }
-    if (!reason) {
-        reason = "unspecified failure";
-    }
-
-    // Record the fault with validated context
-    faultline_test_summary_add_fault(summary, fault_index, result_code,
-                                     FAULT_NO_RESOURCE, reason, details, file, line);
 }
 
 bool faultline_validate_test_result(TestResult *test_result) {

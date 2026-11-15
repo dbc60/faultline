@@ -434,14 +434,6 @@ static inline void faultline_update_summary_phase_info(FLTestSummary *summary,
     }
 }
 
-void faultline_record_injection_failure(FLTestSummary *summary, i64 fault_index,
-                                        FLResultCode  result_code,
-                                        FLFailureType failure_type,
-                                        TestResult *test_result, double phase_time,
-                                        char const *synthetic_reason,
-                                        char const *details, char const *fallback_file,
-                                        int fallback_line);
-
 /**
  * @brief Validate that a TestResult contains complete failure information when it should
  *
