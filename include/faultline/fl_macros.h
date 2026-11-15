@@ -52,6 +52,8 @@
 #endif // FL_THREAD_LOCAL
 
 #if defined(__cplusplus)
+// Outside extern "C": libstdc++'s templates do not declare C++ linkage themselves.
+#include <type_traits> // std::decay_t, for FL_TYPEOF
 extern "C" {
 #endif
 
@@ -126,7 +128,6 @@ extern "C" {
  * drops the cv-qualifiers, so the temporary is assignable.
  */
 #if defined(__cplusplus)
-#include <type_traits> // std::decay_t
 #define FL_TYPEOF(V) std::decay_t<decltype(V)>
 #else
 #define FL_TYPEOF(V) __typeof__(V)

@@ -50,7 +50,7 @@
 
         exceptions = @{
             Title   = 'Exception Module Distribution'
-            Version = '0.5.1'
+            Version = '0.5.2'
             Depends = ''
 
             Src = @(
@@ -69,7 +69,7 @@
 
         fault_memory_service = @{
             Title   = 'Standalone Fault-Injecting Memory Service Distribution'
-            Version = '0.5.0'
+            Version = '0.5.1'
             Depends = ''
 
             Src = @(
@@ -190,7 +190,7 @@
 
         log_service = @{
             Title   = 'Log Service Distribution'
-            Version = '0.5.2'
+            Version = '0.5.3'
             Depends = 'stream_service'
 
             Src = @(
@@ -220,7 +220,7 @@
 
         memory_service = @{
             Title   = 'Standalone Memory Service Distribution (no fault injection)'
-            Version = '0.5.0'
+            Version = '0.5.1'
             Depends = ''
 
             Src = @(
