@@ -16,6 +16,11 @@
 #include <faultline/fl_exception_assert.h> // FL_ASSERT_EQ
 #include <faultline/fl_log.h>
 #include "fault_injector_internal.h" // fault_injector_set_check, fault_injector_put_fault
+#include <faultline/fl_case_outcome.h> // FL_RUN_CASE_FN, fl_case_outcome_clear
+#include <faultline/fl_types.h>        // FLTestPhase
+#include <faultline/fl_test_summary.h> // FLTestSummary, faultline_test_summary_buffer_get
+
+#include <string.h> // strcmp
 
 #include <faultline/fl_test.h>
 #include <faultline/fl_try.h>
@@ -420,6 +425,91 @@ FL_TYPE_TEST_SETUP_CLEANUP("Corrupting Case Fails", TestDriverData,
 
     FL_ASSERT_EQ((size_t)1, t->get_fail_count(&t->context));
     FL_ASSERT_EQ(FL_BUFFER_OVERFLOW, t->get_result_code(&t->context, t->context.index));
+}
+
+// The injector the invalid-free case uses, and the phase in which it frees an address
+// it never allocated.
+static FaultInjector *invalid_free_injector;
+static FLTestPhase    invalid_free_phase;
+static int            invalid_free_line; // where the case frees the invalid address
+
+// A case with one fault site that frees an invalid address in invalid_free_phase. The
+// fault injected at the site is handled, so only the invalid free can fail the case.
+static FL_RUN_CASE_FN(invalid_free_run_case) {
+    FL_UNUSED(index);
+    FL_UNUSED(out_size);
+    fl_case_outcome_clear(out);
+
+    FL_TRY {
+        fault_injector_try_throw_with_site(invalid_free_injector, __FILE__, __LINE__);
+    }
+    FL_CATCH_ALL {
+        ; // the case handles the injected fault
+    }
+    FL_END_TRY;
+
+    FLTestPhase const phase
+        = invalid_free_injector->discovery_mode ? FL_DISCOVERY_PHASE : FL_INJECTION_PHASE;
+    if (phase == invalid_free_phase) {
+        invalid_free_line = __LINE__ + 1;
+        fault_injector_put_invalid_free(invalid_free_injector, &invalid_free_phase,
+                                        "free of an address never allocated", __FILE__,
+                                        invalid_free_line);
+    }
+
+    return FL_RUN_CASE_OK;
+}
+
+// Run the invalid-free case with the invalid free in `phase`.
+static void run_invalid_free_case(TestDriverData *t, FLTestPhase phase) {
+    invalid_free_injector = fault_injector_create(t->arena);
+    invalid_free_phase    = phase;
+    t->context.injector   = invalid_free_injector;
+    t->context.run_case   = invalid_free_run_case;
+
+    t->driver(&t->context);
+}
+
+// Assert the case's summary records the invalid free where the case made it.
+static void assert_invalid_free_site(TestDriverData *t) {
+    FLTestSummary *summary = faultline_test_summary_buffer_get(&t->context.results, 0);
+    FaultBuffer   *faults  = &summary->fault_buffer;
+    Fault const   *found   = NULL;
+
+    for (size_t i = 0; i < fault_buffer_count(faults); i++) {
+        Fault const *fault = fault_buffer_get(faults, i);
+        if (fault->code == FL_INVALID_FREE) {
+            found = fault;
+            break;
+        }
+    }
+
+    FL_ASSERT_NOT_NULL(found);
+    FL_ASSERT_DETAILS(strcmp(found->file, __FILE__) == 0, "file %s", found->file);
+    FL_ASSERT_EQ(invalid_free_line, found->line);
+}
+
+// A case that frees an invalid address on its main path fails with FL_INVALID_FREE.
+FL_TYPE_TEST_SETUP_CLEANUP("Invalid Free In Discovery Fails", TestDriverData,
+                           driver_fails_discovery_free, setup_test_context,
+                           cleanup_context) {
+    run_invalid_free_case(t, FL_DISCOVERY_PHASE);
+
+    FL_ASSERT_EQ((size_t)1, t->get_fail_count(&t->context));
+    FL_ASSERT_EQ(FL_INVALID_FREE, t->get_result_code(&t->context, t->context.index));
+    assert_invalid_free_site(t);
+}
+
+// A case that frees an invalid address after an injected fault fails with
+// FL_INVALID_FREE.
+FL_TYPE_TEST_SETUP_CLEANUP("Invalid Free In Injection Fails", TestDriverData,
+                           driver_fails_injection_free, setup_test_context,
+                           cleanup_context) {
+    run_invalid_free_case(t, FL_INJECTION_PHASE);
+
+    FL_ASSERT_EQ((size_t)1, t->get_fail_count(&t->context));
+    FL_ASSERT_EQ(FL_INVALID_FREE, t->get_result_code(&t->context, t->context.index));
+    assert_invalid_free_site(t);
 }
 
 FL_TYPE_TEST_SETUP_CLEANUP("Results", TestDriverData, results_test, setup_test_context,

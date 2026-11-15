@@ -26,6 +26,8 @@ FL_TYPE_TEST_DECL(TestDriverData, case_name_test);
 FL_TYPE_TEST_DECL(TestDriverData, index_test);
 FL_TYPE_TEST_DECL(TestDriverData, test_driver);
 FL_TYPE_TEST_DECL(TestDriverData, driver_fails_corrupting_case);
+FL_TYPE_TEST_DECL(TestDriverData, driver_fails_discovery_free);
+FL_TYPE_TEST_DECL(TestDriverData, driver_fails_injection_free);
 FL_TYPE_TEST_DECL(TestDriverData, results_test);
 FL_TYPE_TEST_DECL(TestDriverData, discovery_failure_recording);
 FL_TYPE_TEST_DECL(TestDriverData, injection_failure_recording);

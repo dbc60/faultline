@@ -93,18 +93,26 @@ static FLResultCode run_test_case(FLContext *fctx, FLCaseOutcome *out,
     return FL_FAIL;
 }
 
+// Selects the faults that record_faults copies.
+typedef bool FaultFilterFn(FLResultCode code);
+
+// Selects invalid frees: every fault the injector records that is not a corruption.
+static bool fault_is_invalid_free(FLResultCode code) {
+    return !fault_is_corruption(code);
+}
+
 /**
- * @brief Copy the injector's overflow, underflow and use-after-free faults into summary.
+ * @brief Copy the injector's faults that `match` selects into summary.
  *
  * @return the code of the first such fault, or FL_PASS when there is none
  */
-static FLResultCode record_corruption(FLTestSummary *summary, FaultInjector *injector,
-                                      i64 fault_index) {
+static FLResultCode record_faults(FLTestSummary *summary, FaultInjector *injector,
+                                  i64 fault_index, FaultFilterFn *match) {
     FLResultCode first = FL_PASS;
 
     for (size_t i = 0; i < fault_buffer_count(&injector->faults); i++) {
         Fault const *fault = fault_buffer_get(&injector->faults, i);
-        if (!fault_is_corruption(fault->code)) {
+        if (!match(fault->code)) {
             continue;
         }
 
@@ -175,11 +183,20 @@ FL_EXERCISE_TEST(faultline_run_test) {
 
     // Verify the blocks the pass left allocated or freed.
     fault_injector_check(injector);
-    FLResultCode const discovery_corruption = record_corruption(&summary, injector, 0);
+    FLResultCode const discovery_corruption
+        = record_faults(&summary, injector, 0, fault_is_corruption);
     if (discovery_corruption != FL_PASS) {
         LOG_ERROR(fctx->ts->name, "%zu. %s: DISCOVERY FAILED - %s", fctx->index + 1,
                   fctx->ts->test_cases[fctx->index]->name,
                   faultline_result_code_to_string(discovery_corruption));
+    }
+
+    FLResultCode const discovery_invalid_free
+        = record_faults(&summary, injector, 0, fault_is_invalid_free);
+    if (discovery_invalid_free != FL_PASS) {
+        LOG_ERROR(fctx->ts->name, "%zu. %s: DISCOVERY FAILED - %s", fctx->index + 1,
+                  fctx->ts->test_cases[fctx->index]->name,
+                  faultline_result_code_to_string(discovery_invalid_free));
     }
 
     fctx->tests_run++;
@@ -244,19 +261,24 @@ FL_EXERCISE_TEST(faultline_run_test) {
           : setup_cleanup_result.unexpected_exception ? &setup_cleanup_result
                                                       : NULL;
 
-    // A case that passed but corrupted memory fails with the corruption's code.
+    // A case that passed but corrupted memory or freed an invalid address fails with
+    // that fault's code. A corruption takes precedence.
     if (rc == FL_PASS) {
         rc = discovery_corruption;
+    }
+    if (rc == FL_PASS) {
+        rc = discovery_invalid_free;
     }
 
     summary.code   = rc;
     summary.reason = failed_discovery_result ? failed_discovery_result->reason : NULL;
     summary.faults_exercised = total_fault_sites;
 
-    FLFailureType failure_type = failed_discovery_result
-                                     ? failed_discovery_result->failure_type
-                                 : discovery_corruption != FL_PASS ? FL_TEST_FAILURE
-                                                                   : FL_FAILURE_NONE;
+    FLFailureType failure_type
+        = failed_discovery_result             ? failed_discovery_result->failure_type
+          : discovery_corruption != FL_PASS   ? FL_TEST_FAILURE
+          : discovery_invalid_free != FL_PASS ? FL_INVALID_FREE_FAILURE
+                                              : FL_FAILURE_NONE;
     faultline_update_summary_phase_info(&summary, FL_DISCOVERY_PHASE, failure_type,
                                         discovery_outcome.elapsed_seconds);
 
@@ -372,26 +394,29 @@ FL_EXERCISE_TEST(faultline_run_test) {
             }
 
             // Report invalid address/free failures immediately
-            i64 invalid_count = fault_injector_get_invalid_address_count(injector);
-            if (invalid_count > 0) {
+            FLResultCode const invalid_free
+                = record_faults(&summary, injector, fault_index, fault_is_invalid_free);
+            if (invalid_free != FL_PASS) {
                 LOG_ERROR(
                     fctx->ts->name,
                     "%zu. %s: INJECTION FAULT %lld - Invalid resource release detected",
                     fctx->index + 1, fctx->ts->test_cases[fctx->index]->name,
                     fault_index);
 
-                faultline_record_injection_failure(&summary, fault_index, FL_INVALID_FREE,
-                                                   FL_INVALID_FREE_FAILURE,
-                                                   &injection_result, injection_time,
-                                                   "invalid free",
-                                                   "invalid resource release", __FILE__,
-                                                   __LINE__);
+                faultline_update_summary_phase_info(&summary, FL_INJECTION_PHASE,
+                                                    FL_INVALID_FREE_FAILURE,
+                                                    injection_time);
+
+                // A corruption from an earlier pass keeps its code.
+                if (!fault_is_corruption(summary.code)) {
+                    summary.code = FL_INVALID_FREE;
+                }
                 had_failure = true;
             }
 
             // Report overflows, underflows and uses after free immediately
             FLResultCode const corruption
-                = record_corruption(&summary, injector, fault_index);
+                = record_faults(&summary, injector, fault_index, fault_is_corruption);
             if (corruption != FL_PASS) {
                 LOG_ERROR(fctx->ts->name, "%zu. %s: INJECTION FAULT %lld - %s",
                           fctx->index + 1, fctx->ts->test_cases[fctx->index]->name,
@@ -423,8 +448,9 @@ FL_EXERCISE_TEST(faultline_run_test) {
                                                         FL_LEAK_FAILURE, injection_time);
 
                     // Set the overall result code to indicate leak, unless the case
-                    // corrupted memory, which is the worse result.
-                    if (!fault_is_corruption(summary.code)) {
+                    // corrupted memory or freed an invalid address, which are worse.
+                    if (!fault_is_corruption(summary.code)
+                        && summary.code != FL_INVALID_FREE) {
                         summary.code = FL_LEAK;
                     }
 
