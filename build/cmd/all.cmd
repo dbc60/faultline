@@ -3,6 +3,8 @@ SETLOCAL ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 
 :: See LICENSE.txt for copyright and licensing information about this file.
 
+:: all.cmd - Build all components in dependency order, then optionally run the tests.
+
 SET DIR_CMD=%~dp0
 SET DIR_CMD=%DIR_CMD:~0,-1%
 CALL %DIR_CMD%\options.cmd %*
@@ -272,11 +274,11 @@ if %test% EQU 1 (
         flp_file_service_tests.dll ^
         flp_stream_service_tests.dll ^
         cxx_suite_tests.dll
-    REM The driver exits 1 when a case fails or a suite does not run. A crash
-    REM also exits non-zero and takes down every suite listed after the one that
-    REM crashed; those suites report nothing, and the results table then
-    REM backfills with older runs, which looks like a normal listing. Either way
-    REM the build fails.
+    REM The driver exits 1 when a case fails or a suite does not run, and 2 on a
+    REM malformed command line. A crash also exits non-zero and takes down every
+    REM suite listed after the one that crashed; those suites report nothing, and
+    REM the results table then backfills with older runs, which looks like a
+    REM normal listing. Either way the build fails.
     set "_run_rc=!errorlevel!"
     .\faultline.exe result list !DB_OPT! --limit 27
     REM Split-architecture smoke: the same suites driven through the split host.
@@ -297,12 +299,14 @@ if %test% EQU 1 (
     )
     if not "!_run_rc!"=="0" (
         ECHO ALL.CMD ERROR: test driver exited with !_run_rc! -- a case failed, 1>&2
-        ECHO a suite did not run, or the driver stopped early. 1>&2
+        ECHO a suite did not run, the command line was malformed, or the driver 1>&2
+        ECHO stopped early. 1>&2
         GOTO :ERROR
     )
     if not "!_split_rc!"=="0" (
         ECHO ALL.CMD ERROR: split host exited with !_split_rc! -- a case failed, 1>&2
-        ECHO a suite did not run, or the host stopped early. 1>&2
+        ECHO a suite did not run, the command line was malformed, or the host 1>&2
+        ECHO stopped early. 1>&2
         GOTO :ERROR
     )
     REM A report from a run that still exited 0 fails the build too.

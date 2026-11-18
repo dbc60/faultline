@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# new.sh - Build all components in dependency order, then assemble compile_commands.json.
-# Mirrors build/cmd/new.cmd.
+# all.sh - Build all components in dependency order, then assemble compile_commands.json.
+# Mirrors build/cmd/all.cmd.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -18,7 +18,7 @@ for _a in "$@"; do
             _forward_args+=(build)
             ;;
         clean|cleanall)
-            # Clean is handled at the new.sh level via setup.sh; skip for sub-components
+            # Clean is handled at the all.sh level via setup.sh; skip for sub-components
             ;;
         *)
             _forward_args+=("$_a")
@@ -32,7 +32,7 @@ if [[ $timed -eq 1 ]]; then
     ctime.exe -begin "$DIR_REPO/metrics/clang/all.ctm"
 fi
 
-# Build all components in dependency order (mirrors new.cmd order)
+# Build all components in dependency order (mirrors all.cmd order)
 bash "$SCRIPT_DIR/exception_service.sh"     "${_forward_args[@]}"
 bash "$SCRIPT_DIR/but_driver.sh"            "${_forward_args[@]}"
 bash "$SCRIPT_DIR/dlist.sh"                 "${_forward_args[@]}"
@@ -62,7 +62,7 @@ bash "$SCRIPT_DIR/stream_service.sh"        "${_forward_args[@]}"
 # Always C++, whatever the caller passed. See cxx_suite.sh.
 bash "$SCRIPT_DIR/cxx_suite.sh"             "${_forward_args[@]}"
 
-# Copy build artifacts to test/ directory (mirrors new.cmd behavior)
+# Copy build artifacts to test/ directory (mirrors all.cmd behavior)
 if [[ $build -eq 1 ]]; then
     mkdir -p "$DIR_REPO/test_clang"
     cp -f "$DIR_OUT_BIN"/*.exe "$DIR_REPO/test_clang/" 2>/dev/null || true
@@ -127,11 +127,11 @@ if [[ $_has_test -eq 1 ]]; then
         flp_file_service_tests.dll \
         flp_stream_service_tests.dll \
         cxx_suite_tests.dll || _run_rc=$?
-    # The driver returns 0 for ordinary test failures, so a non-zero status means
-    # it died or could not start. A crash takes down every suite listed after the
-    # one that crashed, and those suites report nothing at all -- the results
-    # table then backfills with older runs, which looks like a normal listing.
-    # Fail the build instead of letting a truncated run pass for a complete one.
+    # The driver exits 1 when a case fails or a suite does not run, and 2 on a
+    # malformed command line. A crash also exits non-zero and takes down every
+    # suite listed after the one that crashed; those suites report nothing, and
+    # the results table then backfills with older runs, which looks like a
+    # normal listing. Either way the build fails.
     # The status is captured with `|| _run_rc=$?` rather than a following
     # `_run_rc=$?`: under `set -e` a bare non-zero command exits the script on the
     # spot, so the checks at the end of this block would never be reached and the
@@ -147,13 +147,15 @@ if [[ $_has_test -eq 1 ]]; then
     popd > /dev/null
 
     if [[ $_run_rc -ne 0 ]]; then
-        echo "all.sh: ERROR: the test driver exited with $_run_rc;" \
-             "suites after the failure point did not run" >&2
+        echo "all.sh: ERROR: the test driver exited with $_run_rc --" \
+             "a case failed, a suite did not run, the command line was malformed," \
+             "or the driver stopped early" >&2
         exit 1
     fi
     if [[ $_split_rc -ne 0 ]]; then
-        echo "all.sh: ERROR: the split host exited with $_split_rc;" \
-             "suites after the failure point did not run" >&2
+        echo "all.sh: ERROR: the split host exited with $_split_rc --" \
+             "a case failed, a suite did not run, the command line was malformed," \
+             "or the host stopped early" >&2
         exit 1
     fi
 fi
